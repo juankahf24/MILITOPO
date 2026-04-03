@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MILITOPO | Sistema de Recorridos Topográficos</title>
+
+<!-- Librerías principales -->
+<link rel="stylesheet" href="[unpkg.com](https://unpkg.com/leaflet@1.9.4/dist/leaflet.css)"/>
+<script src="[unpkg.com](https://unpkg.com/leaflet@1.9.4/dist/leaflet.js)"></script>
+<script src="[cdnjs.cloudflare.com](https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js)"></script>
+<script src="[cdn.jsdelivr.net](https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js)"></script>
+<script src="[cdnjs.cloudflare.com](https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js)"></script>
+<script src="[cdnjs.cloudflare.com](https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js)"></script>
+<script src="[unpkg.com](https://unpkg.com/geotiff@1.0.0-beta.11/dist-browser/geotiff.bundle.min.js)"></script>
+<script src="[unpkg.com](https://unpkg.com/georaster-layer-for-leaflet@3.8.0/dist/georaster-layer-for-leaflet.min.js)"></script>
+
+<style>
+/* === TEMA Y EFECTOS === */
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Courier New',monospace;min-height:100vh;transition:background .3s,color .3s;padding:20px;}
+:root{
+ --bg:#f0ede0;--fg:#222;--accent:#b87c4a;--accent2:#9b6238;
+ --card:#fff;--success:#6b8c3e;--error:#b85c3a;
+}
+body.dark{--bg:#1e1e13;--fg:#eee;--card:#2a2a1a;--accent:#dba450;--accent2:#a67c38;}
+body{background:var(--bg);color:var(--fg);}
+.container{max-width:1400px;margin:0 auto;animation:fadeIn .5s;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.header{background:linear-gradient(135deg,#4a5a3a,#2a3a1a);border-radius:24px;padding:16px 32px;margin-bottom:32px;display:flex;justify-content:space-between;align-items:center;color:#ffe;}
+.logo-imagen{width:80px;height:80px;border-radius:50%;object-fit:cover;}
+.theme-switch{display:flex;border:1px solid #ddd;border-radius:30px;overflow:hidden;}
+.theme-opt{padding:6px 14px;cursor:pointer;font-weight:bold;}
+.theme-opt.active{background:var(--accent);color:#fff;}
+.step-content{transition:opacity .3s,transform .3s;}
+.step-content:not(.active){opacity:0;transform:translateY(10px);pointer-events:none;}
+.card{background:var(--card);border-radius:24px;padding:20px;box-shadow:0 4px 10px rgba(0,0,0,.1);margin-bottom:20px;}
+.btn{padding:10px 20px;border:none;border-radius:30px;cursor:pointer;font-weight:bold;font-family:monospace;transition:transform .2s;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-secondary{background:#ccc;color:#000;}
+.btn-success{background:var(--success);color:#fff;}
+.btn:hover{transform:scale(1.05);}
+.toast{position:fixed;bottom:24px;right:24px;padding:10px 16px;border-radius:30px;color:#fff;font-weight:600;z-index:5000;animation:fadeIn .4s;}
+.toast.success{background:var(--success);}
+.toast.error{background:var(--error);}
+.layer-toggle,.gps-btn{
+ background:var(--accent2);color:#fff;border:none;border-radius:18px;padding:6px 12px;margin-left:4px;
+ cursor:pointer;font-family:monospace;font-weight:bold;transition:background .2s;
+}
+.gps-btn:hover{background:var(--success);}
+.layer-toggle:hover{background:var(--accent);}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:3000;justify-content:center;align-items:center;}
+.modal-content{background:var(--card);padding:20px;border-radius:20px;max-width:1200px;width:90%;position:relative;}
+.close-modal{position:absolute;top:10px;right:20px;font-size:20px;cursor:pointer;color:var(--fg);}
+.map-container{height:550px;border-radius:14px;overflow:hidden;margin-top:10px;}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <img src="[i.postimg.cc](https://i.postimg.cc/RFmGrHdD/IMG-4917.jpg)" alt="Logo" class="logo-imagen">
+      <div>
+        <h1>MILITOPO™</h1>
+        <div style="font-size:.8rem;">▸ TOPOGRAFÍA DE CAMPO ▸ SISTEMA TÁCTICO</div>
+      </div>
+    </div>
+    <div class="theme-switch" id="themeSwitch">
+      <span class="theme-opt active" data-theme="light">☀️ DÍA</span>
+      <span class="theme-opt" data-theme="dark">🌙 NOCHE</span>
+    </div>
+  </div>
+
+  <!-- PASOS -->
+  <div class="steps-container" style="display:flex;justify-content:space-between;margin-bottom:20px;">
+    <div class="step" data-step="1">PASO 1 · CONFIGURAR ESTRUCTURA</div>
+    <div class="step" data-step="2">PASO 2 · EDITAR PUNTOS</div>
+    <div class="step" data-step="3">PASO 3 · GENERAR RECORRIDOS</div>
+  </div>
+
+  <!-- Paso 2 reducido para mostrar funciones nuevas -->
+  <div id="step2" class="step-content active">
+    <div class="card">
+      <h2>📍 Editar Puntos Topográficos</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:20px;">
+        <div class="option-card" style="flex:1;min-width:250px;">
+          <b>🗺️ Mapa IGN/Aéreo</b>
+          <p>Selecciona puntos visualmente en mapa IGN/Aéreo.</p>
+          <button id="mapBtn" class="btn btn-primary">🗺️ Abrir mapa IGN/Aéreo</button>
+        </div>
+        <div class="option-card" style="flex:1;min-width:250px;">
+          <b>✍️ Introducción Manual</b>
+          <p>Introduce coordenadas manualmente en UTM o MGRS.</p>
+        </div>
+        <div class="option-card" style="flex:1;min-width:250px;">
+          <b>🖼️ GeoTIFF Local</b>
+          <p>Carga un archivo .tif/.tiff georreferenciado y selecciona puntos sobre él.</p>
+          <button id="geoTiffBtn" class="btn btn-primary">🖼️ Abrir GeoTIFF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Mapa IGN -->
+<div id="mapModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <h3>🗺️ Mapa IGN (Aéreo/Topográfico)</h3>
+    <div style="margin-bottom:8px;">
+      <input type="text" id="searchInput" style="padding:6px;border-radius:10px;width:50%;" placeholder="Buscar lugar o coordenadas">
+      <button id="searchBtn" class="layer-toggle">🔍 Buscar</button>
+      <button id="gpsBtn" class="gps-btn">📍 Mi ubicación</button>
+      <button id="toggleLayerBtn" class="layer-toggle">🛰️ Aérea</button>
+    </div>
+    <div id="mapContainer" class="map-container"></div>
+    <div class="alert-info" style="margin-top:10px;font-size:.85rem;">
+      <strong>ℹ️</strong> Usa <em>Mi ubicación</em> para centrar el mapa en tu GPS (actual requiere HTTPS o localhost).
+    </div>
+  </div>
+</div>
+
+<!-- Modal GeoTIFF -->
+<div id="geoTiffModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <h3>🖼️ Mapa GeoTIFF Local</h3>
+    <input type="file" id="geoTiffInput" accept=".tif,.tiff" style="margin:10px 0;">
+    <div id="geoTiffMap" class="map-container"></div>
+  </div>
+</div>
+
+<script>
+/* === VARIABLES BÁSICAS === */
+let map,aerialLayer,topoLayer,currentBaseLayer,gpsMarker;
+let geoTiffMap,geoTiffLayer;
+
+/* === UTILIDAD DE TOAST === */
+function toast(msg,type="success"){
+ const t=document.createElement("div");
+ t.className=`toast ${type}`;
+ t.textContent=msg;
+ document.body.appendChild(t);
+ setTimeout(()=>t.remove(),2500);
+}
+
+/* === TEMA DÍA/NOCHE === */
+document.addEventListener("DOMContentLoaded",()=>{
+ const switcher=document.getElementById("themeSwitch");
+ const opts=switcher.querySelectorAll(".theme-opt");
+ const saved=localStorage.getItem("theme")||"light";
+ document.body.classList.toggle("dark",saved==="dark");
+ opts.forEach(o=>{o.classList.remove("active");if(o.dataset.theme===saved)o.classList.add("active");});
+ switcher.addEventListener("click",e=>{
+   const opt=e.target.closest(".theme-opt");if(!opt)return;
+   opts.forEach(o=>o.classList.remove("active"));opt.classList.add("active");
+   const th=opt.dataset.theme;
+   document.body.classList.toggle("dark",th==="dark");
+   localStorage.setItem("theme",th);
+ });
+});
+/* === MAPA IGN y GEOLOCALIZACIÓN === */
+function initMapIGN(){
+ if(map){map.remove();}
+ map=L.map("mapContainer").setView([40.4168,-3.7038],6);
+
+ topoLayer=L.tileLayer(
+  '[ign.es](https://www.ign.es/wmts/mapa-raster?request=GetTile&service=WMTS&version=1.0.0&layer=MTN&style=default&format=image/jpeg&tilematrixset=GoogleMapsCompatible&tilematrix={z}&tilerow={y}&tilecol={x})',
+  {attribution:'&copy; IGN España',maxZoom:18,minZoom:4});
+ aerialLayer=L.tileLayer(
+  '[ign.es](https://www.ign.es/wmts/pnoa-ma?request=GetTile&service=WMTS&version=1.0.0&layer=OI.OrthoimageCoverage&style=default&format=image/jpeg&tilematrixset=GoogleMapsCompatible&tilematrix={z}&tilerow={y}&tilecol={x})',
+  {attribution:'&copy; PNOA IGN',maxZoom:18,minZoom:4});
+ topoLayer.addTo(map);currentBaseLayer=topoLayer;
+
+ document.getElementById("toggleLayerBtn").onclick=()=>{
+   if(currentBaseLayer===topoLayer){
+     map.removeLayer(topoLayer);aerialLayer.addTo(map);currentBaseLayer=aerialLayer;
+     toggleLayerBtn.textContent="🗺️ Topográfico";
+   }else{
+     map.removeLayer(aerialLayer);topoLayer.addTo(map);currentBaseLayer=topoLayer;
+     toggleLayerBtn.textContent="🛰️ Aérea";
+   }
+ };
+}
+
+/* abrir modal IGN */
+document.getElementById("mapBtn").addEventListener("click",()=>{
+ document.getElementById("mapModal").style.display="flex";
+ setTimeout(()=>{initMapIGN();map.invalidateSize();},300);
+});
+document.querySelector("#mapModal .close-modal").addEventListener("click",()=>{
+ document.getElementById("mapModal").style.display="none";
+ if(map){map.remove();map=null;}
+});
+
+/* Botón GPS */
+document.getElementById("gpsBtn").addEventListener("click",()=>{
+ if(!navigator.geolocation){toast("⚠️ Sin soporte de GPS","error");return;}
+ navigator.geolocation.getCurrentPosition(p=>{
+   const {latitude,longitude,accuracy}=p.coords;
+   if(gpsMarker)map.removeLayer(gpsMarker);
+   gpsMarker=L.circleMarker([latitude,longitude],{
+    radius:8,color:"blue",fillColor:"blue",fillOpacity:0.6
+   }).addTo(map).bindPopup(`📍 Tu posición<br>Precisión ±${Math.round(accuracy)} m`).openPopup();
+   map.setView([latitude,longitude],14);
+ },()=>toast("❌ No se pudo obtener la ubicación","error"),{enableHighAccuracy:true});
+});
+
+/* === MAPA GEO TIFF === */
+document.getElementById("geoTiffBtn").addEventListener("click",()=>{
+ document.getElementById("geoTiffModal").style.display="flex";
+ setTimeout(()=>{
+   if(geoTiffMap)geoTiffMap.remove();
+   geoTiffMap=L.map("geoTiffMap").setView([40,-3.7],5);
+ },200);
+});
+document.querySelector("#geoTiffModal .close-modal").addEventListener("click",()=>{
+ document.getElementById("geoTiffModal").style.display="none";
+ if(geoTiffMap){geoTiffMap.remove();geoTiffMap=null;}
+});
+
+document.getElementById("geoTiffInput").addEventListener("change",async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{
+   const arrayBuffer=await f.arrayBuffer();
+   const georaster=await parseGeoraster(arrayBuffer);
+   if(geoTiffLayer)geoTiffMap.removeLayer(geoTiffLayer);
+   geoTiffLayer=new GeoRasterLayer({georaster,opacity:1,resolution:256});
+   geoTiffLayer.addTo(geoTiffMap);
+   geoTiffMap.fitBounds(geoTiffLayer.getBounds());
+   toast("🖼️ GeoTIFF cargado correctamente","success");
+   geoTiffMap.on("click",e=>{
+     const lat=e.latlng.lat.toFixed(6),lon=e.latlng.lng.toFixed(6);
+     toast(`📍 ${lat}, ${lon}`,"success");
+   });
+ }catch(err){console.error(err);toast("❌ Error al cargar el GeoTIFF","error");}
+});
+
+/* === MEJORAS MENORES === */
+/* Animación de aparición de pasos (demo inicial) */
+document.querySelectorAll(".step").forEach((s,i)=>{
+ s.addEventListener("click",()=>{
+   document.querySelectorAll(".step-content").forEach((c,j)=>{
+     c.classList.toggle("active",i===j);
+   });
+ });
+});
+
+/* Pequeño mensaje de carga */
+window.addEventListener("load",()=>{
+ toast("✅ MILITOPO listo","success");
+});
+</script>
+</body>
+</html>
