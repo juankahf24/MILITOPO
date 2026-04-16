@@ -1569,9 +1569,11 @@ BRAVO 1"></textarea>
                 if (antesCoord !== puntosData[id].coordsUTM || antesDesc !== puntosData[id].descripcion) actualizados++;
                 importados++;
             }
+            markUnsavedChanges();
             guardarStorage();
             renderizarPuntos();
             actualizarDashboard();
+            pintarEstadoCamposPuntos();
             let msg = `✅ Importados ${importados} puntos`;
             if (ignorados) msg += ` · ignorados ${ignorados}`;
             toast(msg, importados ? "success" : "error");
@@ -1625,9 +1627,11 @@ BRAVO 1"></textarea>
                 asignados++;
             }
         }
+        markUnsavedChanges();
         guardarStorage();
         renderizarPuntos();
         actualizarDashboard();
+        pintarEstadoCamposPuntos();
         toast(`✅ Importados ${asignados} puntos desde GPX`, "success");
     }
 
@@ -1656,9 +1660,11 @@ BRAVO 1"></textarea>
                 asignados++;
             }
         }
+        markUnsavedChanges();
         guardarStorage();
         renderizarPuntos();
         actualizarDashboard();
+        pintarEstadoCamposPuntos();
         toast(`✅ Importados ${asignados} puntos desde KML`, "success");
     }
 
@@ -3253,8 +3259,27 @@ BRAVO 1"></textarea>
 
     function saveCurrentWork() {
         try {
+            document.querySelectorAll(".coord-inp").forEach(inp => {
+                const pid = inp.getAttribute("data-id");
+                if (!pid) return;
+                if (!puntosData[pid]) puntosData[pid] = { coordsUTM: "", descripcion: "" };
+                puntosData[pid].coordsUTM = inp.value;
+                if (puntosData[pid].latlng) delete puntosData[pid].latlng;
+            });
+
+            document.querySelectorAll(".desc-inp").forEach(ta => {
+                const pid = ta.getAttribute("data-id");
+                if (!pid) return;
+                if (!puntosData[pid]) puntosData[pid] = { coordsUTM: "", descripcion: "" };
+                puntosData[pid].descripcion = ta.value;
+            });
+
             if (typeof guardarStorage === "function") guardarStorage();
             if (typeof syncOrientationParticipants === "function") syncOrientationParticipants();
+            if (typeof renderizarPuntos === "function") renderizarPuntos();
+            if (typeof actualizarDashboard === "function") actualizarDashboard();
+            if (typeof pintarEstadoCamposPuntos === "function") pintarEstadoCamposPuntos();
+
             clearUnsavedChanges();
             return true;
         } catch (e) {
