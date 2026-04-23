@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MILITOPO · Orientación</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="./orientacion.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>Orientación</h1>
+        <p>Rama nueva · editor + generador</p>
+      </div>
+
+      <section class="panel">
+        <h2>Prueba</h2>
+        <div class="form-grid one">
+          <label>Nombre del ejercicio
+            <input id="exerciseName" type="text" placeholder="Bronchales TAO 2026" />
+          </label>
+          <label>Participantes
+            <input id="participantsCount" type="number" min="1" value="8" />
+          </label>
+          <label>Balizas por recorrido
+            <input id="pointsPerRoute" type="number" min="1" value="10" />
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Importación</h2>
+        <div class="button-stack">
+          <label class="file-btn">Importar Excel
+            <input id="excelInput" type="file" accept=".xlsx,.xls,.csv" hidden />
+          </label>
+          <label class="file-btn">Importar ATAK (GPX/KML)
+            <input id="atakInput" type="file" accept=".gpx,.kml,.xml" hidden />
+          </label>
+          <button id="exportJsonBtn" class="btn secondary">Exportar JSON</button>
+          <button id="importJsonBtn" class="btn secondary">Importar JSON</button>
+          <input id="jsonInput" type="file" accept=".json" hidden />
+        </div>
+        <p class="small-note">Excel: columnas <strong>id</strong>, <strong>descripción</strong>, <strong>utm</strong>. ATAK: waypoint nombrado como <strong>id descripción</strong>.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Puntos especiales</h2>
+        <div class="form-grid one">
+          <label>Salida · descripción
+            <input id="startDesc" type="text" placeholder="Salida" />
+          </label>
+          <label>Salida · UTM
+            <input id="startUtm" type="text" placeholder="30T 123456 1234567" />
+          </label>
+          <label>Llegada · descripción
+            <input id="finishDesc" type="text" placeholder="Llegada" />
+          </label>
+          <label>Llegada · UTM
+            <input id="finishUtm" type="text" placeholder="30T 123456 1234567" />
+          </label>
+        </div>
+        <div class="button-row">
+          <button id="saveSpecialBtn" class="btn">Guardar salida/llegada</button>
+          <button id="pickStartBtn" class="btn secondary">Poner salida en mapa</button>
+          <button id="pickFinishBtn" class="btn secondary">Poner llegada en mapa</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Balizas</h2>
+        <div class="form-grid one">
+          <label>ID
+            <input id="pointId" type="text" placeholder="B01" />
+          </label>
+          <label>Descripción
+            <input id="pointDesc" type="text" placeholder="Loma norte" />
+          </label>
+          <label>UTM
+            <input id="pointUtm" type="text" placeholder="30T 123456 1234567" />
+          </label>
+        </div>
+        <div class="button-row">
+          <button id="savePointBtn" class="btn">Guardar baliza</button>
+          <button id="newPointBtn" class="btn secondary">Nueva</button>
+          <button id="deletePointBtn" class="btn danger">Borrar</button>
+        </div>
+        <div class="button-row compact">
+          <button id="pickPointBtn" class="btn secondary">Colocar en mapa</button>
+          <button id="zoomPointBtn" class="btn secondary">Zoom a seleccionada</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Capas y mapa</h2>
+        <div class="button-stack">
+          <button id="setLayerMapant" class="btn active">MAPANT</button>
+          <button id="setLayerIgn" class="btn secondary">IGN</button>
+          <button id="setLayerAerial" class="btn secondary">Aérea</button>
+          <button id="locateBtn" class="btn secondary">Mi ubicación</button>
+        </div>
+        <label>Buscar lugar
+          <div class="search-row">
+            <input id="placeSearch" type="text" placeholder="Buscar municipio, monte, etc." />
+            <button id="placeSearchBtn" class="btn secondary">Buscar</button>
+          </div>
+        </label>
+        <p class="small-note">MAPANT queda como capa principal deseada. He dejado el selector preparado, pero el endpoint público embebible de teselas no aparece documentado claramente en la página pública del visor. citeturn167084view0turn850826view5</p>
+      </section>
+
+      <section class="panel">
+        <h2>Generador</h2>
+        <div class="button-row">
+          <button id="generateRoutesBtn" class="btn success">Generar recorridos</button>
+          <button id="clearRoutesBtn" class="btn secondary">Limpiar</button>
+        </div>
+        <p class="small-note">Prioridad: 50% distancia · 50% desnivel · coincidencias mínimas.</p>
+      </section>
+    </aside>
+
+    <main class="main-content">
+      <section class="top-grid">
+        <div class="map-card panel-wide">
+          <div class="map-toolbar">
+            <div>
+              <strong>Plano editable de orientación</strong>
+              <span id="mapStatus" class="status-chip">Listo</span>
+            </div>
+            <div class="selector-group">
+              <label>Baliza seleccionada
+                <select id="pointSelect"></select>
+              </label>
+            </div>
+          </div>
+          <div id="map"></div>
+        </div>
+
+        <div class="side-stack">
+          <section class="panel card-panel">
+            <h2>Resumen técnico</h2>
+            <div id="summaryCards" class="summary-grid"></div>
+            <div id="summaryNote" class="summary-note"></div>
+          </section>
+
+          <section class="panel card-panel">
+            <h2>Estado</h2>
+            <div id="logBox" class="log-box"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="table-head">
+          <h2>Tabla de balizas</h2>
+          <div class="small-note">Salida y llegada se dibujan con símbolos propios. Las balizas normales llevan etiqueta con su ID.</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>ID</th>
+                <th>Descripción</th>
+                <th>UTM</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="pointsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel routes-panel">
+        <div class="table-head">
+          <h2>Recorridos generados</h2>
+          <div class="small-note">Se dibujan en el mapa y se listan abajo con tramo más largo, desnivel y dificultad.</div>
+        </div>
+        <div id="routesGrid" class="routes-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script type="module" src="./orientacion-app.js"></script>
+</body>
+</html>
