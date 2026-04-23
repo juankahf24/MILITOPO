@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MILITOPO · Orientación</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="./orientacion.css" />
+</head>
+<body>
+  <div class="wizard-app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">MILITOPO · Rama orientación</div>
+        <h1>Diseñador de recorridos de orientación</h1>
+        <p class="hero-copy">Interfaz guiada paso a paso para preparar mapa, balizas, generación de recorridos y revisión final.</p>
+      </div>
+      <div class="topbar-actions">
+        <span class="status-pill" id="globalStatusPill">Listo</span>
+        <button class="ghost-btn" id="saveDraftBtn" type="button">Guardar borrador</button>
+      </div>
+    </header>
+
+    <nav class="steps-nav" aria-label="Pasos del asistente">
+      <button class="step-tab active" data-step="1"><span>1</span><small>Prueba</small></button>
+      <button class="step-tab" data-step="2"><span>2</span><small>Mapa</small></button>
+      <button class="step-tab" data-step="3"><span>3</span><small>Balizas</small></button>
+      <button class="step-tab" data-step="4"><span>4</span><small>Generación</small></button>
+      <button class="step-tab" data-step="5"><span>5</span><small>Revisión</small></button>
+    </nav>
+
+    <main class="wizard-layout">
+      <aside class="wizard-summary card">
+        <div class="card-header compact">
+          <div>
+            <p class="section-kicker">Progreso</p>
+            <h2 id="currentStepTitle">Paso 1 · Datos de la prueba</h2>
+          </div>
+        </div>
+        <p id="currentStepHelp" class="step-help">Empieza definiendo los datos base del ejercicio de orientación.</p>
+
+        <div class="summary-stack">
+          <div class="mini-stat"><span>Prueba</span><strong id="miniExerciseName">Orientación</strong></div>
+          <div class="mini-stat"><span>Participantes</span><strong id="miniParticipants">8</strong></div>
+          <div class="mini-stat"><span>Balizas</span><strong id="miniPoints">0</strong></div>
+          <div class="mini-stat"><span>Recorridos</span><strong id="miniRoutes">0</strong></div>
+        </div>
+
+        <div class="guide-box">
+          <h3>Flujo recomendado</h3>
+          <ol>
+            <li>Define la prueba</li>
+            <li>Prepara el mapa base</li>
+            <li>Crea salida, llegada y balizas</li>
+            <li>Ajusta el generador</li>
+            <li>Revisa recorridos y métricas</li>
+          </ol>
+        </div>
+
+        <div class="guide-box subtle">
+          <h3>Importaciones admitidas</h3>
+          <ul>
+            <li><strong>Excel:</strong> columnas <code>id</code>, <code>descripción</code>, <code>utm</code></li>
+            <li><strong>ATAK:</strong> waypoint con nombre <code>id descripción</code></li>
+            <li><strong>UTM:</strong> formato tipo <code>30T 123456 1234567</code></li>
+          </ul>
+        </div>
+      </aside>
+
+      <section class="wizard-content">
+        <section class="map-shell card hidden" id="sharedMapShell">
+          <div class="card-header with-actions">
+            <div>
+              <p class="section-kicker">Mapa operativo</p>
+              <h2>Plano editable</h2>
+            </div>
+            <div class="map-shell-tools">
+              <span id="mapStatus" class="status-chip">Listo</span>
+              <button class="ghost-btn small" id="locateBtn" type="button">Mi ubicación</button>
+            </div>
+          </div>
+          <div class="map-shell-toolbar">
+            <div class="segmented">
+              <button id="setLayerMapant" class="segmented-btn active" type="button">MAPANT</button>
+              <button id="setLayerIgn" class="segmented-btn" type="button">IGN</button>
+              <button id="setLayerAerial" class="segmented-btn" type="button">Aérea</button>
+            </div>
+            <div class="search-inline">
+              <input id="placeSearch" type="text" placeholder="Buscar lugar o zona" />
+              <button id="placeSearchBtn" class="primary-btn small" type="button">Buscar</button>
+            </div>
+          </div>
+          <div id="map"></div>
+        </section>
+
+        <section class="step-panel card active" data-step-panel="1">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">Paso 1</p>
+              <h2>Datos de la prueba</h2>
+            </div>
+          </div>
+          <div class="step-grid">
+            <label class="field">
+              <span>Nombre del ejercicio</span>
+              <input id="exerciseName" type="text" placeholder="Bronchales TAO 2026" />
+            </label>
+            <label class="field">
+              <span>Número de participantes</span>
+              <input id="participantsCount" type="number" min="1" value="8" />
+            </label>
+            <label class="field">
+              <span>Balizas por recorrido</span>
+              <input id="pointsPerRoute" type="number" min="1" value="10" />
+            </label>
+          </div>
+          <div class="info-callout">
+            <strong>Consejo:</strong> deja aquí solo la configuración general. Las balizas, salida y llegada se preparan en el paso 3.
+          </div>
+        </section>
+
+        <section class="step-panel card hidden" data-step-panel="2">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">Paso 2</p>
+              <h2>Mapa base</h2>
+            </div>
+          </div>
+          <div class="step-grid two-col">
+            <div class="info-callout">
+              <strong>Capa principal:</strong> MAPANT queda como capa inicial. Si no carga teselas específicas, el sistema mantiene un fallback temporal para que puedas trabajar.
+            </div>
+            <div class="info-callout subtle">
+              <strong>Acciones disponibles:</strong> usa tu ubicación, cambia de capa o busca una zona antes de empezar a colocar balizas.
+            </div>
+          </div>
+        </section>
+
+        <section class="step-panel card hidden" data-step-panel="3">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">Paso 3</p>
+              <h2>Salida, llegada y balizas</h2>
+            </div>
+            <div class="header-actions">
+              <label class="upload-btn">Importar Excel
+                <input id="excelInput" type="file" accept=".xlsx,.xls,.csv" hidden />
+              </label>
+              <label class="upload-btn">Importar ATAK
+                <input id="atakInput" type="file" accept=".gpx,.kml,.xml" hidden />
+              </label>
+              <button id="exportJsonBtn" class="ghost-btn small" type="button">Exportar JSON</button>
+              <button id="importJsonBtn" class="ghost-btn small" type="button">Importar JSON</button>
+              <input id="jsonInput" type="file" accept=".json" hidden />
+            </div>
+          </div>
+
+          <div class="step-grid three-panels">
+            <article class="subcard highlighted">
+              <h3>Salida</h3>
+              <label class="field"><span>Descripción</span><input id="startDesc" type="text" placeholder="Salida" /></label>
+              <label class="field"><span>UTM</span><input id="startUtm" type="text" placeholder="30T 123456 1234567" /></label>
+              <div class="inline-actions">
+                <button id="pickStartBtn" class="secondary-btn" type="button">Marcar en mapa</button>
+              </div>
+            </article>
+
+            <article class="subcard highlighted finish">
+              <h3>Llegada</h3>
+              <label class="field"><span>Descripción</span><input id="finishDesc" type="text" placeholder="Llegada" /></label>
+              <label class="field"><span>UTM</span><input id="finishUtm" type="text" placeholder="30T 123456 1234567" /></label>
+              <div class="inline-actions">
+                <button id="pickFinishBtn" class="secondary-btn" type="button">Marcar en mapa</button>
+              </div>
+            </article>
+
+            <article class="subcard">
+              <h3>Guardar especiales</h3>
+              <p class="small-copy">La salida se representa con triángulo. La llegada con doble círculo.</p>
+              <button id="saveSpecialBtn" class="primary-btn full" type="button">Guardar salida y llegada</button>
+            </article>
+          </div>
+
+          <div class="subcard point-editor">
+            <div class="subcard-head">
+              <div>
+                <h3>Editor de balizas</h3>
+                <p class="small-copy">Crea, edita o selecciona una baliza. Las etiquetas salen sobre el mapa.</p>
+              </div>
+              <label class="field compact-select">
+                <span>Baliza seleccionada</span>
+                <select id="pointSelect"></select>
+              </label>
+            </div>
+            <div class="step-grid point-grid">
+              <label class="field"><span>ID</span><input id="pointId" type="text" placeholder="B01" /></label>
+              <label class="field"><span>Descripción</span><input id="pointDesc" type="text" placeholder="Loma norte" /></label>
+              <label class="field"><span>UTM</span><input id="pointUtm" type="text" placeholder="30T 123456 1234567" /></label>
+            </div>
+            <div class="inline-actions wrap">
+              <button id="savePointBtn" class="primary-btn" type="button">Guardar baliza</button>
+              <button id="newPointBtn" class="secondary-btn" type="button">Nueva</button>
+              <button id="pickPointBtn" class="secondary-btn" type="button">Colocar en mapa</button>
+              <button id="zoomPointBtn" class="ghost-btn small" type="button">Zoom a seleccionada</button>
+              <button id="deletePointBtn" class="danger-btn" type="button">Borrar</button>
+            </div>
+          </div>
+
+          <div class="subcard table-card">
+            <div class="subcard-head">
+              <div>
+                <h3>Tabla de balizas</h3>
+                <p class="small-copy">Salida y llegada se muestran diferenciadas del resto de balizas.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>ID</th>
+                    <th>Descripción</th>
+                    <th>UTM</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="pointsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="step-panel card hidden" data-step-panel="4">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">Paso 4</p>
+              <h2>Configuración de generación</h2>
+            </div>
+          </div>
+          <div class="step-grid two-col">
+            <article class="subcard">
+              <h3>Equilibrio aplicado</h3>
+              <div class="weight-bars">
+                <div><span>Distancia</span><strong>50%</strong></div>
+                <div><span>Desnivel</span><strong>50%</strong></div>
+                <div><span>Coincidencias</span><strong>Mínimas</strong></div>
+                <div><span>Orden de paso</span><strong>Obligatorio</strong></div>
+              </div>
+            </article>
+            <article class="subcard">
+              <h3>Acción</h3>
+              <p class="small-copy">Genera los recorridos una vez hayas definido salida, llegada y suficientes balizas.</p>
+              <div class="inline-actions wrap">
+                <button id="generateRoutesBtn" class="primary-btn" type="button">Generar recorridos</button>
+                <button id="clearRoutesBtn" class="ghost-btn small" type="button">Limpiar resultados</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="step-panel card hidden" data-step-panel="5">
+          <div class="card-header">
+            <div>
+              <p class="section-kicker">Paso 5</p>
+              <h2>Revisión y resultados</h2>
+            </div>
+          </div>
+
+          <div class="subcard summary-box">
+            <div class="subcard-head">
+              <div>
+                <h3>Resumen técnico</h3>
+                <p class="small-copy">Métricas globales de los recorridos generados.</p>
+              </div>
+            </div>
+            <div id="summaryCards" class="summary-grid"></div>
+            <div id="summaryNote" class="summary-note"></div>
+          </div>
+
+          <div class="subcard log-panel">
+            <div class="subcard-head">
+              <div>
+                <h3>Registro de acciones</h3>
+                <p class="small-copy">Mensajes recientes del sistema.</p>
+              </div>
+            </div>
+            <div id="logBox" class="log-box"></div>
+          </div>
+
+          <div class="subcard routes-box">
+            <div class="subcard-head">
+              <div>
+                <h3>Recorridos generados</h3>
+                <p class="small-copy">Cada tarjeta incluye distancia, tramo más largo, desnivel, dificultad y secuencia.</p>
+              </div>
+            </div>
+            <div id="routesGrid" class="routes-grid"></div>
+          </div>
+        </section>
+
+        <footer class="wizard-footer card">
+          <button class="ghost-btn" id="prevStepBtn" type="button">← Anterior</button>
+          <div class="footer-copy">Interfaz guiada · móvil primero · orientación profesional</div>
+          <button class="primary-btn" id="nextStepBtn" type="button">Continuar →</button>
+        </footer>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script type="module" src="./orientacion-app.js"></script>
+</body>
+</html>
