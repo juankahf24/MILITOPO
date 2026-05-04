@@ -1687,7 +1687,20 @@ module.exports = QRCode;
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.06); }
 }
-/* ROUTE GENERATION LOADER END */</style>
+/* ROUTE GENERATION LOADER END */
+.metric-card{border-radius:18px;padding:14px;background:rgba(0,0,0,.16);border:1px solid rgba(230,188,122,.22)}
+.metric-card small{display:block;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:1px;font-weight:900}
+.metric-card strong{display:block;margin-top:6px;color:var(--gold2);font-size:clamp(1.4rem,5vw,2.2rem);font-weight:900}
+.table-wrap{overflow:auto;border-radius:18px;border:1px solid rgba(230,188,122,.22)}
+.results-table{width:100%;border-collapse:collapse;min-width:680px;background:rgba(0,0,0,.12)}
+.results-table th,.results-table td{border-bottom:1px solid rgba(230,188,122,.18);padding:10px;text-align:left;font-weight:900}
+.results-table th{color:var(--gold2);background:rgba(0,0,0,.2);font-size:.78rem;text-transform:uppercase;letter-spacing:1px}
+.results-table tr.ok td{color:#efffdc}
+.results-table tr.warn td{color:#ffe2b5}
+.results-table tr.bad td{color:#ffd0c7}
+.result-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;background:rgba(0,0,0,.18);border:1px solid rgba(230,188,122,.22);font-size:.78rem;font-weight:900}
+
+</style>
 </head>
 <body>
 <div class="app">
@@ -1796,35 +1809,76 @@ module.exports = QRCode;
 </div>
 
 <div id="qrPreview" class="qr-grid"></div></div><div id="zipStatus" class="status warn">Genera primero los recorridos y después el material.</div><div class="nav-row"><button class="btn secondary" onclick="goStep(3)">← ANTERIOR</button><button class="btn green" onclick="goStep(5)">MODO PARTICIPANTE →</button></div></section>
-<section id="step5" class="card"><div class="card-header"><h2>📱 MODO PARTICIPANTE OFFLINE</h2><div class="mode-pill">Escaneo QR · registro local · exportación final</div></div><div class="participant-shell"><div class="grid two"><div class="block"><label>Participante</label><select id="participantSelect"></select><div class="btn-row"><button class="btn green" onclick="loadParticipantMode()">🧭 CARGAR RECORRIDO</button><button class="btn secondary" onclick="exportParticipantLog()">📤 EXPORTAR REGISTRO</button></div></div><div class="block"><label>Escanear / introducir QR de baliza</label><input id="scanInput" placeholder="Ej: ORI|CONTROL|B03">
-<div class="btn-row">
-    <button class="btn green" onclick="startQrCamera()">📷 ESCANEAR CON CÁMARA</button>
-    <button class="btn" onclick="scanControl()">✍️ REGISTRAR MANUAL</button>
-    <button class="btn red" onclick="clearParticipantLog()">🧹 LIMPIAR REGISTRO</button>
-</div>
-<div id="qrCameraPanel" class="block" style="display:none;margin-top:12px;">
-    <label>LECTOR QR</label>
-    <video id="qrVideo" playsinline muted style="width:100%;max-height:360px;border-radius:18px;background:#111;object-fit:cover;"></video>
-    <canvas id="qrCanvas" style="display:none;"></canvas>
-    <div id="qrCameraStatus" class="status warn" style="margin-top:10px;">Preparando cámara...</div>
-    <div class="btn-row">
-        <button class="btn red" onclick="stopQrCamera()">DETENER CÁMARA</button>
+<section id="step5" class="card">
+  <div class="card-header">
+    <h2>🏁 RESULTADOS Y CONTROL</h2>
+    <div class="mode-pill">Clasificación · importación · revisión · exportación</div>
+  </div>
+
+  <div class="block">
+    <label>Resumen del evento</label>
+    <div id="resultsControlSummary" class="status warn">Genera recorridos e importa resultados para ver el resumen.</div>
+    <div class="grid two" style="margin-top:12px;">
+      <div class="metric-card"><small>Participantes</small><strong id="resTotalParticipants">--</strong></div>
+      <div class="metric-card"><small>Resultados importados</small><strong id="resImportedCount">--</strong></div>
+      <div class="metric-card"><small>Finalizados OK</small><strong id="resCompletedCount">--</strong></div>
+      <div class="metric-card"><small>Con avisos</small><strong id="resWarningCount">--</strong></div>
     </div>
-</div>
-<div class="help">La base guarda todo offline. Cada registro queda preparado internamente para sincronización futura, sin mostrar nada en vivo.</div></div></div><div id="participantInfo" class="status warn">Selecciona un participante.</div>
-<div id="runnerNextInfo" class="status warn">Carga un participante para ver el siguiente punto.</div>
-<div class="btn-row"><button class="btn green" onclick="markStart()">▶️ SALIDA MANUAL</button><button class="btn red" onclick="markFinish()">🏁 LLEGADA MANUAL</button></div>
-<div id="scanList" class="scan-list"></div>
-<div id="runnerResultBox" class="block" style="display:none;margin-top:14px;">
-    <label>Resultado final offline</label>
-    <div id="runnerResultSummary" class="status ok"></div>
-    <div id="runnerResultQr" style="display:grid;place-items:center;margin:12px 0;"></div>
-    <textarea id="runnerResultText" readonly style="width:100%;min-height:120px;border-radius:14px;padding:10px;font-family:'Courier New',monospace;font-weight:900;"></textarea>
+  </div>
+
+  <div class="block">
+    <label>Importar QR final de participante</label>
+    <div class="help">Cuando el participante escanee LLEGADA, su móvil mostrará un QR final. Escanéalo aquí o pega el texto del resultado.</div>
+    <textarea id="step5ResultImportInput" placeholder="ORI|RESULT|EVENTO|P01|..." style="min-height:120px;"></textarea>
     <div class="btn-row">
-        <button class="btn secondary" onclick="copyRunnerResult()">📋 COPIAR RESULTADO</button>
-        <button class="btn" onclick="exportParticipantLog()">📤 EXPORTAR JSON</button>
+      <button class="btn green" onclick="startStep5ResultQrCamera()">📷 ESCANEAR QR RESULTADO</button>
+      <button class="btn" onclick="importStep5ResultFromInput()">📥 IMPORTAR MANUAL</button>
+      <button class="btn secondary" onclick="downloadImportedResultsCsv()">📊 EXPORTAR CSV</button>
+      <button class="btn red" onclick="clearImportedResults()">🧹 LIMPIAR RESULTADOS</button>
     </div>
-</div></div><div class="nav-row"><button class="btn secondary" onclick="goStep(4)">← MATERIAL</button><button class="btn" onclick="saveState()">💾 GUARDAR ESTADO</button></div></section>
+
+    <div id="step5ResultQrCameraPanel" class="block" style="display:none;margin-top:12px;">
+      <label>LECTOR QR RESULTADO</label>
+      <video id="step5ResultQrVideo" playsinline muted style="width:100%;max-height:380px;border-radius:18px;background:#111;object-fit:cover;"></video>
+      <canvas id="step5ResultQrCanvas" style="display:none;"></canvas>
+      <div id="step5ResultQrCameraStatus" class="status warn" style="margin-top:10px;">Preparando cámara...</div>
+      <div class="btn-row">
+        <button class="btn red" onclick="stopStep5ResultQrCamera()">DETENER CÁMARA</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <label>Clasificación</label>
+    <div id="classificationTable" class="table-wrap"></div>
+  </div>
+
+  <div class="block">
+    <label>Estado de participantes</label>
+    <div id="participantsStatusGrid" class="scan-list"></div>
+  </div>
+
+  <div class="block">
+    <label>Detalle del resultado seleccionado</label>
+    <select id="resultDetailSelect" onchange="renderSelectedResultDetail()"></select>
+    <div id="selectedResultDetail" class="status warn">Selecciona un resultado importado.</div>
+  </div>
+
+  <div class="block">
+    <label>Herramientas de resultados</label>
+    <div class="btn-row">
+      <button class="btn secondary" onclick="downloadImportedResults()">📤 EXPORTAR JSON COMPLETO</button>
+      <button class="btn secondary" onclick="downloadImportedResultsCsv()">📊 EXPORTAR CSV RESUMEN</button>
+      <button class="btn secondary" onclick="downloadDetailedSplitsCsv()">⏱️ EXPORTAR PARCIALES CSV</button>
+      <button class="btn" onclick="saveState();toast('Resultados guardados')">💾 GUARDAR ESTADO</button>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn secondary" onclick="goStep(4)">← MATERIAL Y QR</button>
+    <button class="btn green" onclick="renderResultsControl()">ACTUALIZAR RESULTADOS</button>
+  </div>
+</section>
 <div class="footer-note">MILITOPO · Rama Orientación V1 offline · topografía cerrada</div></div><!-- ROUTE GENERATION LOADER START -->
 <div id="routeGenerationLoader" class="route-generation-loader" style="display:none;">
     <div class="route-generation-card">
@@ -1845,7 +1899,7 @@ function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
 function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
 function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={};next.START=preserve&&state.points.START?state.points.START:makePoint("START","SALIDA");next.FINISH=preserve&&state.points.FINISH?state.points.FINISH:makePoint("FINISH","LLEGADA");for(let i=1;i<=state.controlCount;i++){const id="B"+String(i).padStart(2,"0");next[id]=preserve&&state.points[id]?state.points[id]:makePoint(id,"BALIZA")}state.points=next}function makePoint(id,type){return{id,type,utm:"",desc:type==="BALIZA"?id:type,lat:null,lon:null,elevation:null}}
-function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){currentAppStep=n;document.querySelectorAll(".card").forEach(c=>c.classList.remove("active"));const target=document.getElementById("step"+n);if(target)target.classList.add("active");document.querySelectorAll(".step-tab").forEach(btn=>{const step=Number(btn.dataset.step);btn.classList.toggle("active",step===n);btn.classList.toggle("done",step<n)});if(n===2)setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers()},200);if(n===4)renderQrPreview();if(n===5)updateParticipantSelect();if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});if(!opts.silent)scheduleSaveState()}function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.style.display="none",2600)}
+function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){currentAppStep=n;document.querySelectorAll(".card").forEach(c=>c.classList.remove("active"));const target=document.getElementById("step"+n);if(target)target.classList.add("active");document.querySelectorAll(".step-tab").forEach(btn=>{const step=Number(btn.dataset.step);btn.classList.toggle("active",step===n);btn.classList.toggle("done",step<n)});if(n===2)setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers()},200);if(n===4)renderQrPreview();if(n===5)renderResultsControl();if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});if(!opts.silent)scheduleSaveState()}function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.style.display="none",2600)}
 function confirmStep1(){rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();updateParticipantSelect();updateRouteCountInfo();saveState();toast("Configuración guardada");goStep(2)}
 // AUTOFILL TEST POINTS JS START
 function autofillOrientationPoints() {
@@ -2834,6 +2888,7 @@ function importResultPayload(raw){
 
     saveState();
     renderImportedResults();
+    renderResultsControl();
 }
 
 function renderImportedResults(){
@@ -4061,7 +4116,308 @@ function resetSavedEvent(){
     localStorage.removeItem(STORAGE_KEY_BACKUP);
     localStorage.removeItem(STORAGE_KEY_LEGACY);
     location.reload();
-}function downloadText(filename,content){const blob=new Blob([content],{type:"text/plain;charset=utf-8"});saveAs(blob,filename)}function csvEscape(v){const s=String(v??"");return /[",\n;]/.test(s)?`"${s.replaceAll('"','""')}"`:s}function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]))}
+}let step5ResultQrCameraStream=null;
+let step5ResultQrCameraRunning=false;
+let step5ResultQrDetector=null;
+let step5ResultQrUseJsQr=false;
+let step5ResultQrLastValue="";
+let step5ResultQrLastTime=0;
+
+function resultMs(r){
+    if(!r||!r.startTime||!r.finishTime)return null;
+    const ms=new Date(r.finishTime)-new Date(r.startTime);
+    return Number.isFinite(ms)&&ms>=0?ms:null;
+}
+
+function classifyParticipantStatus(pid){
+    const r=(state.importedResults||[]).find(x=>x.participantId===pid);
+    if(r){
+        return r.completed ? {status:"FINALIZADO OK",cls:"ok",icon:"✅",result:r} : {status:"FINALIZADO CON AVISOS",cls:"bad",icon:"⚠️",result:r};
+    }
+    return {status:"SIN RESULTADO IMPORTADO",cls:"pending",icon:"⏳",result:null};
+}
+
+function renderResultsControl(){
+    if(!state.importedResults)state.importedResults=[];
+    const routes=state.routes||[];
+    const totalParticipants=routes.length||state.participantCount||0;
+    const imported=state.importedResults.length;
+    const completed=state.importedResults.filter(r=>r.completed).length;
+    const warnings=imported-completed;
+    const pending=Math.max(0,totalParticipants-imported);
+
+    const summary=document.getElementById("resultsControlSummary");
+    if(summary){
+        summary.className=warnings||pending?"status warn":"status ok";
+        summary.innerHTML=`Evento <b>${escapeHtml(state.eventId)}</b><br>${imported}/${totalParticipants} resultados importados · ${completed} correctos · ${warnings} con avisos · ${pending} pendientes.`;
+    }
+
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
+    set("resTotalParticipants",totalParticipants);
+    set("resImportedCount",imported);
+    set("resCompletedCount",completed);
+    set("resWarningCount",warnings);
+
+    renderClassificationTable();
+    renderParticipantsStatusGrid();
+    renderResultDetailSelect();
+    renderSelectedResultDetail();
+    renderImportedResults();
+}
+
+function sortedImportedResults(){
+    return [...(state.importedResults||[])].sort((a,b)=>{
+        const ac=a.completed?0:1,bc=b.completed?0:1;
+        if(ac!==bc)return ac-bc;
+        const am=resultMs(a),bm=resultMs(b);
+        if(am!==null&&bm!==null&&am!==bm)return am-bm;
+        if(am!==null&&bm===null)return -1;
+        if(am===null&&bm!==null)return 1;
+        return String(a.participantId).localeCompare(String(b.participantId),"es",{numeric:true});
+    });
+}
+
+function renderClassificationTable(){
+    const box=document.getElementById("classificationTable");
+    if(!box)return;
+
+    const rows=sortedImportedResults();
+    if(!rows.length){
+        box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;
+        return;
+    }
+
+    let rank=0;
+    box.innerHTML=`<table class="results-table">
+        <thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo</th><th>Estado</th><th>Controles</th><th>Pendientes</th></tr></thead>
+        <tbody>${rows.map(r=>{
+            if(r.completed)rank++;
+            const ms=resultMs(r);
+            const time=ms!==null?formatDuration(ms):"--";
+            const controls=(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
+            const missing=(r.missingControls||[]).join(", ");
+            const cls=r.completed?"ok":((r.missingControls||[]).length?"bad":"warn");
+            return `<tr class="${cls}">
+                <td>${r.completed?rank:"--"}</td>
+                <td>${escapeHtml(r.participantId)}</td>
+                <td>${escapeHtml(r.routeId||"--")}</td>
+                <td>${time}</td>
+                <td><span class="result-chip">${r.completed?"✅ OK":"⚠️ AVISO"}</span></td>
+                <td>${controls}</td>
+                <td>${escapeHtml(missing||"--")}</td>
+            </tr>`;
+        }).join("")}</tbody>
+    </table>`;
+}
+
+function renderParticipantsStatusGrid(){
+    const box=document.getElementById("participantsStatusGrid");
+    if(!box)return;
+
+    const routes=state.routes||[];
+    if(!routes.length){
+        box.innerHTML=`<div class="status warn">Genera recorridos para ver el estado de participantes.</div>`;
+        return;
+    }
+
+    box.innerHTML=routes.map(route=>{
+        const st=classifyParticipantStatus(route.participantId);
+        const r=st.result;
+        const ms=resultMs(r);
+        const time=ms!==null?formatDuration(ms):"--";
+        const missing=r&&r.missingControls&&r.missingControls.length?` · faltan: ${r.missingControls.join(", ")}`:"";
+        return `<div class="scan-item ${st.cls}">
+            <b>${escapeHtml(route.participantId)}</b>
+            <span>${escapeHtml(route.routeId)} · ${st.status} · ${time}${escapeHtml(missing)}</span>
+            <span>${st.icon}</span>
+        </div>`;
+    }).join("");
+}
+
+function renderResultDetailSelect(){
+    const sel=document.getElementById("resultDetailSelect");
+    if(!sel)return;
+
+    const current=sel.value;
+    const rows=sortedImportedResults();
+
+    sel.innerHTML=`<option value="">Selecciona resultado...</option>`+rows.map(r=>`<option value="${escapeHtml(r.participantId)}">${escapeHtml(r.participantId)} · ${escapeHtml(r.routeId||"--")}</option>`).join("");
+    if(current && rows.some(r=>r.participantId===current)) sel.value=current;
+}
+
+function renderSelectedResultDetail(){
+    const sel=document.getElementById("resultDetailSelect");
+    const box=document.getElementById("selectedResultDetail");
+    if(!sel||!box)return;
+
+    const pid=sel.value;
+    const r=(state.importedResults||[]).find(x=>x.participantId===pid);
+    if(!r){
+        box.className="status warn";
+        box.innerHTML="Selecciona un resultado importado.";
+        return;
+    }
+
+    const ms=resultMs(r);
+    const time=ms!==null?formatDuration(ms):"--";
+    const scans=(r.scans||[]).map((s,i)=>`${i+1}. ${escapeHtml(s.id||s.controlId)} · ${escapeHtml(s.t||s.timestamp||"--")} · ${escapeHtml(s.st||s.status||"--")}`).join("<br>");
+
+    box.className=r.completed?"status ok":"status warn";
+    box.innerHTML=`<b>${escapeHtml(r.participantId)} · ${escapeHtml(r.routeId||"--")}</b><br>
+        Estado: ${r.completed?"✅ Completo":"⚠️ Con avisos"}<br>
+        Salida: ${r.startTime?formatTime(r.startTime):"--"} · Llegada: ${r.finishTime?formatTime(r.finishTime):"--"} · Tiempo: ${time}<br>
+        Pendientes: ${escapeHtml((r.missingControls||[]).join(", ")||"--")}<br><br>
+        <b>Pasos registrados</b><br>${scans||"--"}`;
+}
+
+function importStep5ResultFromInput(){
+    const input=document.getElementById("step5ResultImportInput");
+    if(!input||!input.value.trim())return toast("Pega o escanea un resultado primero");
+    importResultPayload(input.value.trim());
+    renderResultsControl();
+}
+
+function downloadImportedResultsCsv(){
+    const rows=[["Puesto","Participante","Recorrido","Estado","Tiempo","Salida","Llegada","ControlesCorrectos","Pendientes"]];
+    let rank=0;
+    sortedImportedResults().forEach(r=>{
+        if(r.completed)rank++;
+        const ms=resultMs(r);
+        const controls=(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
+        rows.push([
+            r.completed?rank:"",
+            r.participantId,
+            r.routeId||"",
+            r.completed?"OK":"AVISO",
+            ms!==null?formatDuration(ms):"",
+            r.startTime||"",
+            r.finishTime||"",
+            controls,
+            (r.missingControls||[]).join(" ")
+        ]);
+    });
+    downloadText(`clasificacion_${state.eventId}.csv`,rows.map(r=>r.map(csvEscape).join(";")).join("\n"));
+}
+
+function downloadDetailedSplitsCsv(){
+    const rows=[["Participante","Recorrido","Orden","Baliza","Hora","Estado"]];
+    sortedImportedResults().forEach(r=>{
+        (r.scans||[]).forEach((s,i)=>{
+            rows.push([r.participantId,r.routeId||"",i+1,s.id||s.controlId||"",s.t||s.timestamp||"",s.st||s.status||""]);
+        });
+    });
+    downloadText(`parciales_${state.eventId}.csv`,rows.map(r=>r.map(csvEscape).join(";")).join("\n"));
+}
+
+async function startStep5ResultQrCamera(){
+    const panel=document.getElementById("step5ResultQrCameraPanel");
+    const video=document.getElementById("step5ResultQrVideo");
+    const status=document.getElementById("step5ResultQrCameraStatus");
+    if(!panel||!video||!status)return;
+
+    panel.style.display="block";
+    status.className="status warn";
+    status.textContent="Preparando lector QR de resultado...";
+
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+        status.className="status err";
+        status.textContent="Este navegador no permite cámara. Usa importación manual.";
+        return;
+    }
+
+    step5ResultQrDetector=null;
+    step5ResultQrUseJsQr=false;
+
+    if("BarcodeDetector" in window){
+        try{step5ResultQrDetector=new BarcodeDetector({formats:["qr_code"]})}catch(e){step5ResultQrDetector=null}
+    }
+
+    if(!step5ResultQrDetector){
+        try{await loadJsQrLibrary();step5ResultQrUseJsQr=!!window.jsQR}catch(e){
+            status.className="status err";
+            status.textContent="No se pudo cargar lector QR. Usa importación manual.";
+            return;
+        }
+    }
+
+    try{
+        step5ResultQrCameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false});
+        video.srcObject=step5ResultQrCameraStream;
+        await video.play();
+        step5ResultQrCameraRunning=true;
+        step5ResultQrLastValue="";
+        step5ResultQrLastTime=0;
+        status.className="status ok";
+        status.textContent="Cámara activa. Apunta al QR final.";
+        scanStep5ResultQrCameraLoop();
+    }catch(e){
+        status.className="status err";
+        status.textContent="No se pudo abrir la cámara. Usa importación manual.";
+        stopStep5ResultQrCamera();
+    }
+}
+
+function stopStep5ResultQrCamera(){
+    step5ResultQrCameraRunning=false;
+    if(step5ResultQrCameraStream){
+        step5ResultQrCameraStream.getTracks().forEach(t=>t.stop());
+        step5ResultQrCameraStream=null;
+    }
+    const video=document.getElementById("step5ResultQrVideo");
+    if(video)video.srcObject=null;
+    const panel=document.getElementById("step5ResultQrCameraPanel");
+    if(panel)panel.style.display="none";
+}
+
+async function scanStep5ResultQrCameraLoop(){
+    if(!step5ResultQrCameraRunning)return;
+    const video=document.getElementById("step5ResultQrVideo");
+    const canvas=document.getElementById("step5ResultQrCanvas");
+    const status=document.getElementById("step5ResultQrCameraStatus");
+
+    try{
+        let raw="";
+        if(video&&video.readyState>=2){
+            if(step5ResultQrDetector){
+                const codes=await step5ResultQrDetector.detect(video);
+                if(codes&&codes.length)raw=(codes[0].rawValue||"").trim();
+            }else if(step5ResultQrUseJsQr&&window.jsQR&&canvas){
+                const w=video.videoWidth||640,h=video.videoHeight||480;
+                canvas.width=w;canvas.height=h;
+                const ctx=canvas.getContext("2d",{willReadFrequently:true});
+                ctx.drawImage(video,0,0,w,h);
+                const img=ctx.getImageData(0,0,w,h);
+                const code=window.jsQR(img.data,w,h,{inversionAttempts:"attemptBoth"});
+                if(code&&code.data)raw=String(code.data).trim();
+            }
+        }
+
+        if(raw){
+            const now=Date.now();
+            if(raw!==step5ResultQrLastValue||now-step5ResultQrLastTime>2500){
+                step5ResultQrLastValue=raw;
+                step5ResultQrLastTime=now;
+                const input=document.getElementById("step5ResultImportInput");
+                if(input)input.value=raw;
+                importResultPayload(raw);
+                renderResultsControl();
+                if(status){status.className="status ok";status.textContent="QR resultado importado."}
+                if(navigator.vibrate)navigator.vibrate(120);
+                stopStep5ResultQrCamera();
+                return;
+            }
+        }else if(status){
+            status.className="status warn";
+            status.textContent="Buscando QR final...";
+        }
+    }catch(e){
+        if(status){status.className="status warn";status.textContent="Buscando QR final..."}
+    }
+
+    if(step5ResultQrCameraRunning)requestAnimationFrame(scanStep5ResultQrCameraLoop);
+}
+
+function downloadText(filename,content){const blob=new Blob([content],{type:"text/plain;charset=utf-8"});saveAs(blob,filename)}function csvEscape(v){const s=String(v??"");return /[",\n;]/.test(s)?`"${s.replaceAll('"','""')}"`:s}function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]))}
 window.addEventListener("load",init);
 </script>
 </body>
