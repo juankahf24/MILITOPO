@@ -1711,6 +1711,65 @@ module.exports = QRCode;
 @media(max-width:850px){.iof-actions{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.iof-actions{grid-template-columns:1fr}}
 
+
+/* IOF preview clean/pro style */
+.iof-preview{
+  margin-top:10px!important;
+  display:grid!important;
+  grid-template-columns:34px 54px 44px 54px 54px 54px minmax(120px,1fr) 44px!important;
+  border:1px solid rgba(230,188,122,.45)!important;
+  background:rgba(20,28,15,.46)!important;
+  border-radius:14px!important;
+  overflow:hidden!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important;
+}
+.iof-preview>div{
+  border-right:1px solid rgba(230,188,122,.28)!important;
+  background:rgba(34,49,25,.72)!important;
+  color:var(--cream)!important;
+  padding:6px 5px!important;
+  min-height:42px!important;
+  font-weight:900!important;
+  text-align:center!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.iof-preview>div:first-child{
+  background:rgba(230,188,122,.16)!important;
+  color:var(--gold2)!important;
+}
+.iof-preview>div:last-child{border-right:0!important}
+.iof-symbol-svg{
+  background:rgba(245,230,200,.92)!important;
+  color:#17120d!important;
+  border:1px solid rgba(230,188,122,.75)!important;
+  box-shadow:0 2px 7px rgba(0,0,0,.18)!important;
+}
+.iof-preview .iof-text{
+  background:rgba(34,49,25,.72)!important;
+  color:var(--cream)!important;
+  text-align:left!important;
+  justify-content:flex-start!important;
+  line-height:1.15!important;
+  word-break:break-word!important;
+  font-size:.78rem!important;
+}
+.iof-row{
+  background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.035)),rgba(32,47,25,.48)!important;
+}
+.iof-quick-buttons{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:10px;
+}
+@media(max-width:850px){
+  .iof-preview{grid-template-columns:30px 48px 40px 46px 46px 46px minmax(90px,1fr) 40px!important}
+  .iof-preview>div{min-height:38px!important;font-size:.78rem!important}
+  .iof-quick-buttons{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
@@ -4069,24 +4128,264 @@ async function generateZip(){
 
 function buildEventData(){return{version:"orientacion_v1_offline",eventId:state.eventId,eventName:state.eventName,createdAt:new Date().toISOString(),config:{participantCount:state.participantCount,controlCount:state.controlCount,controlsPerRoute:state.controlsPerRoute,maxControlReuse:state.maxControlReuse,balance:{distance:.5,climb:.5},liveReadyInternals:true,liveVisible:false},points:state.points,routes:state.routes,metrics:state.metrics,iofDescriptions:state.iofDescriptions||{}}}function pointsCsv(){const rows=[["ID","TIPO","UTM","LAT","LON","ELEVACION","DESCRIPCION","QR"]];Object.values(state.points).forEach(p=>rows.push([p.id,p.type,p.utm||"",p.lat??"",p.lon??"",p.elevation??"",p.desc||"",controlPayload(p.id)]));return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}function routesCsv(){const rows=[["PARTICIPANTE","RECORRIDO","DISTANCIA_KM","TRAMO_LARGO_KM","DESNIVEL_POSITIVO_M","DESNIVEL_NEGATIVO_M","DESNIVEL_GLOBAL_M","DIFICULTAD","ORDEN"]];state.routes.forEach((r,i)=>{const m=state.metrics[i]||{};rows.push([r.participantId,r.routeId,m.distanceKm,m.longestKm,m.positiveM,m.negativeM,m.globalM,m.difficulty,r.points.join(" > ")])});return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}
 const IOF_OPTIONS={
- c:[["",""],["norte","↑ el del norte"],["este","→ el del este"],["superior","↥ el superior"],["inferior","↧ el inferior"],["medio","▥ el del medio"]],
- d:[["",""],["terraza","⌜ terraza"],["espolon","╮ espolón / saliente"],["vaguada","∪ vaguada / entrante"],["talud","⌒ talud"],["cantera","◔ cantera"],["muro_tierra","▦ muro de tierra"],["surco_erosion","⌃ surco de erosión"],["colina","○ colina"],["cota","● cota / montículo"],["collado","⌒⌒ collado"],["depresion","⊂ depresión"],["foso","∨ foso / hoyo"],["cortado_rocoso","▥ cortado rocoso"],["pilar_rocoso","▲ pilar rocoso"],["cueva","⌁ cueva / gruta"],["roca","▲ roca"],["campo_piedras","▴▴ campo de piedras"],["grupo_piedras","◭ grupo de piedras"],["pedregal","▦ pedregal"],["pasaje_estrecho","║ pasaje estrecho"],["lago","≋ lago"],["charca","∪ charca"],["hoyo_agua","∨ hoyo de agua"],["rio","≈ río / curso de agua"],["cauce_arroyo","≈ cauce de agua / arroyo"],["pantano","▤ pantano"],["manantial","⌒ manantial"],["deposito_agua","▭ depósito de agua"],["campo_abierto","◇ campo abierto"],["campo_semiabierto","◇ campo semiabierto"],["esquina_bosque","◁ esquina de bosque"],["claro","○ claro"],["matorral","▧ matorral / vegetación espesa"],["seto","⋯ seto / matorral lineal"],["linde_vegetacion","〉 linde de vegetación"],["bosquecillo","♧ bosquecillo"],["arbol","♤ árbol peculiar"],["raiz","⊗ raíz / tocón"],["carretera","/ carretera"],["camino","/ camino / pista"],["cortafuegos","⋱ cortafuegos"],["puente","╪ puente"],["linea_electrica","╳ línea eléctrica"],["poste_electrico","⊗ poste eléctrico"],["tunel","═ túnel"],["muro_tapia","▰ muro / tapia"],["cerca_valla","╫ cerca / valla"],["paso","＋ punto de paso"],["edificio","■ edificio"],["ruina","□ ruina"],["torre","┬ torre / poste"],["hito","⊙ hito / mojón"],["comedor_animales","↑ comedero animales"],["carbonera","△ carbonera"],["monumento","△ monumento"],["escaleras","▰ escaleras"],["fuera_limites","▣ área fuera de límites"],["elemento_especial_x","× elemento especial"],["elemento_especial_o","○ elemento especial"]],
- e:[["",""],["bajo","⌒ bajo"],["suave","⌣ suave / poco profundo"],["profundo","∪ profundo"],["cubierto_maleza","▦ cubierto de maleza"],["despejado","□ despejado / abierto"],["pedregoso","▲ pedregoso / rocoso"],["pantanoso","═ pantanoso"],["arenoso","░ arenoso"],["perenne","♤ perenne / hoja fina"],["caducifolio","♧ caducifolio / hoja ancha"],["en_ruinas","⌞ en ruinas"],["caido","╲ caído"]],
- f:[["",""],["altura","2,0 altura/profundidad"],["tamano","8×4 tamaño"],["pendiente","1,0/2,5 altura en pendiente"],["entre_objetos","2,0·3,0 altura de 2 objetos"]],
- g:[["",""],["norte_exterior","○ al norte exterior"],["borde_este","○ borde este"],["sudoeste_interior","○ sudoeste interior"],["esquina_norte_dentro","⌃ esquina norte dentro"],["esquina_este_fuera","〉 esquina este fuera"],["punta_sudoeste","⌞ punta sudoeste"],["curva","⌒ en la curva"],["extremo_sudoeste","⌜ extremo sudoeste"],["parte_superior","▮ parte superior"],["parte_inferior","▯ parte inferior"],["encima","⊓ encima / nivel superior"],["debajo","⊔ debajo / nivel inferior"],["pie","⊥ al pie"],["pie_norte","⊥N al pie norte"],["entre_objetos","═ entre 2 objetos"]],
- h:[["",""],["primeros_auxilios","✚ primeros auxilios"],["avituallamiento","▱ avituallamiento"],["controlador","♙ controlador"]],
- combo:[["",""],["cruce","× cruce"],["union","Y unión"],["union_carreteras","/ / unión de carreteras"],["union_rio_pantano","≈⋯ unión río y pantano"],["cruce_pistas","/ / × cruce de pistas"],["entre_bosques_tupidos","▧▧═ entre 2 bosques tupidos"],["entre_roca_monticulo","▲●═ entre roca y montículo"]]
+    c:[
+        ["","—"],
+        ["norte","C1 el del norte"],
+        ["este","C2 el del este"],
+        ["superior","C3 el superior"],
+        ["inferior","C4 el inferior"],
+        ["medio","C5 el del medio"]
+    ],
+    d:[
+        ["","—"],
+
+        ["terraza","D1-1 terraza"],
+        ["espolon_saliente","D1-2 espolón / saliente"],
+        ["vaguada_entrante","D1-3 vaguada / entrante"],
+        ["talud","D1-4 talud"],
+        ["cantera","D1-5 cantera"],
+        ["muro_tierra","D1-6 muro de tierra"],
+        ["surco_erosion","D1-7 surco de erosión"],
+        ["surco_sin_agua","D1-8 surco sin agua"],
+        ["colina","D1-9 colina"],
+        ["cota_monticulo","D1-10 cota / montículo"],
+        ["collado","D1-11 collado"],
+        ["depresion","D1-12 depresión"],
+        ["foso_hoyo","D1-13 foso / hoyo"],
+        ["terreno_irregular","D1-14 terreno irregular"],
+        ["hormiguero","D1-15 hormiguero"],
+
+        ["cortado_rocoso","D2-1 cortado rocoso"],
+        ["pilar_rocoso","D2-2 pilar rocoso"],
+        ["cueva_gruta","D2-3 cueva / gruta"],
+        ["roca","D2-4 roca"],
+        ["campo_piedras","D2-5 campo de piedras"],
+        ["grupo_piedras","D2-6 grupo de piedras"],
+        ["pedregal","D2-7 pedregal"],
+        ["afloramiento_rocoso","D2-8 afloramiento rocoso"],
+        ["pasaje_estrecho","D2-9 pasaje estrecho"],
+        ["trinchera","D2-10 trinchera"],
+
+        ["lago","D3-1 lago"],
+        ["charca","D3-2 charca"],
+        ["hoyo_agua","D3-3 hoyo de agua"],
+        ["rio_curso_agua","D3-4 río / curso de agua"],
+        ["cauce_agua_arroyo","D3-5 cauce de agua / arroyo"],
+        ["pantano_estrecho","D3-6 pantano estrecho"],
+        ["pantano","D3-7 pantano"],
+        ["terreno_firme_pantano","D3-8 terreno firme en pantano"],
+        ["fuente_pozo","D3-9 fuente / pozo"],
+        ["manantial","D3-10 manantial"],
+        ["deposito_agua_abrevadero","D3-11 depósito de agua / abrevadero"],
+
+        ["campo_abierto","D4-1 campo abierto"],
+        ["campo_semiabierto","D4-2 campo semiabierto"],
+        ["esquina_bosque","D4-3 esquina de bosque"],
+        ["claro","D4-4 claro"],
+        ["matorral_vegetacion_espesa","D4-5 matorral / vegetación espesa"],
+        ["seto_matorral_lineal","D4-6 seto / matorral lineal"],
+        ["linde_vegetacion","D4-7 linde de vegetación"],
+        ["bosquecillo","D4-8 bosquecillo"],
+        ["arbol_peculiar","D4-9 árbol peculiar"],
+        ["raiz_tocon","D4-10 raíz / tocón de árbol"],
+
+        ["carretera","D5-1 carretera"],
+        ["camino_pista","D5-2 camino / pista"],
+        ["cortafuegos","D5-3 cortafuegos"],
+        ["puente","D5-4 puente"],
+        ["linea_electrica","D5-5 línea eléctrica"],
+        ["poste_electrico","D5-6 poste eléctrico"],
+        ["tunel","D5-7 túnel"],
+        ["muro_tapia","D5-8 muro / tapia"],
+        ["cerca_valla","D5-9 cerca / valla"],
+        ["punto_paso","D5-10 punto de paso"],
+        ["edificio_pilar","D5-11 edificio / pilar"],
+        ["zona_pavimentada","D5-12 zona pavimentada"],
+        ["ruina","D5-13 ruina"],
+        ["tuberia_estructura_elevada","D5-14 tubería / estructura elevada"],
+        ["torre_poste","D5-15 torre / poste"],
+        ["plataforma_tiro","D5-16 plataforma de tiro"],
+        ["hito_mojon","D5-17 hito / mojón"],
+        ["comedero_animales","D5-18 comedero animales"],
+        ["carbonera","D5-19 carbonera"],
+        ["plataforma_monumento","D5-20 plataforma / monumento"],
+        ["pasaje_zona_cubierta","D5-21 pasaje / zona cubierta"],
+        ["escaleras","D5-22 escaleras"],
+        ["area_fuera_limites","D5-23 área fuera de límites"],
+        ["ferrocarril_tranvia","D5-24 ferrocarril / tranvía"],
+
+        ["elemento_especial_x","D6-1 elemento especial X"],
+        ["elemento_especial_o","D6-2 elemento especial O"]
+    ],
+    e:[
+        ["","—"],
+        ["bajo","E1 bajo"],
+        ["suave_poco_profundo","E2 suave / poco profundo"],
+        ["profundo","E3 profundo"],
+        ["cubierto_maleza","E4 cubierto de maleza"],
+        ["despejado_abierto","E5 despejado / abierto"],
+        ["pedregoso_rocoso","E6 pedregoso / rocoso"],
+        ["pantanoso","E7 pantanoso"],
+        ["arenoso","E8 arenoso"],
+        ["perenne_hoja_fina","E9 perenne / hoja fina"],
+        ["caducifolio_hoja_ancha","E10 caducifolio / hoja ancha"],
+        ["en_ruinas_caido","E11 en ruinas / caído"]
+    ],
+    f:[
+        ["","—"],
+        ["altura_profundidad","F1 altura / profundidad"],
+        ["tamano","F2 tamaño"],
+        ["altura_pendiente","F3 altura en pendiente"],
+        ["altura_dos_objetos","F4 altura de dos objetos"]
+    ],
+    g:[
+        ["","—"],
+        ["norte_exterior","G1 al norte exterior"],
+        ["borde_este","G2 borde este"],
+        ["sudoeste_interior","G3 al sudoeste interior"],
+        ["esquina_norte_dentro","G4 esquina norte dentro"],
+        ["esquina_este_fuera","G5 esquina este fuera"],
+        ["punta_sudoeste","G6 punta sudoeste"],
+        ["en_curva","G7 en la curva"],
+        ["extremo_sudoeste","G8 extremo sudoeste"],
+        ["parte_superior","G9 parte superior"],
+        ["parte_inferior","G10 parte inferior"],
+        ["encima_superior","G11 encima / superior / dos niveles"],
+        ["debajo_inferior","G12 debajo / inferior / dos niveles"],
+        ["al_pie","G13 al pie"],
+        ["al_pie_norte","G14 al pie norte"],
+        ["entre_dos_objetos","G15 entre dos objetos"]
+    ],
+    h:[
+        ["","—"],
+        ["primeros_auxilios","H1 primeros auxilios"],
+        ["avituallamiento","H2 avituallamiento"],
+        ["controlador","H3 controlador"]
+    ],
+    combo:[
+        ["","—"],
+        ["cruce","COMB-1 cruce"],
+        ["union","COMB-2 unión"],
+        ["union_carreteras","COMB unión de carreteras"],
+        ["union_rio_pantano_estrecho","COMB unión río y pantano estrecho"],
+        ["cruce_pistas","COMB cruce de pistas"],
+        ["cruce_cortafuegos_rio","COMB cruce cortafuegos y río"],
+        ["entre_bosques_tupidos","COMB entre dos bosques tupidos"],
+        ["entre_roca_monticulo","COMB entre roca y montículo"]
+    ]
 };
-function ensureIofDescriptions(){if(!state.iofDescriptions)state.iofDescriptions={};Object.keys(state.points||{}).forEach(id=>{if(!state.iofDescriptions[id])state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:""}})}
+
+function ensureIofDescriptions(){
+    if(!state.iofDescriptions)state.iofDescriptions={};
+    const validFields=["c","d","e","f","g","h","combo"];
+    const isValid=(field,value)=>!value || (IOF_OPTIONS[field]||[]).some(x=>x[0]===value);
+
+    Object.keys(state.points||{}).forEach(id=>{
+        if(!state.iofDescriptions[id]){
+            state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:""};
+        }
+        validFields.forEach(field=>{
+            if(!isValid(field,state.iofDescriptions[id][field])){
+                state.iofDescriptions[id][field]="";
+            }
+        });
+    });
+}
+
 function iofOptionLabel(group,value){const item=(IOF_OPTIONS[group]||[]).find(x=>x[0]===value);return item?item[1]:""}
 function iofSymbol(group,value){const label=iofOptionLabel(group,value);return label?label.split(" ")[0]:""}
 function iofText(group,value){const label=iofOptionLabel(group,value);return label?label.replace(/^\S+\s*/,""):""}
 function syncIofEventName(){const input=document.getElementById("iofEventName");if(input&&input.value.trim()){state.eventName=input.value.trim();const main=document.getElementById("eventName");if(main)main.value=state.eventName;scheduleSaveState()}}
 function iofSelectHtml(id,field,label,value){const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>`<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(txt||"—")}</option>`).join("");return `<div><label>${label}</label><select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`}
-function iofPreviewCells(id){ensureIofDescriptions();const d=state.iofDescriptions[id]||{},p=state.points[id]||{};const code=id==="START"?"▶":id==="FINISH"?"◎":escapeHtml(id);return `<div>A</div><div>${escapeHtml(code)}</div><div>${escapeHtml(iofSymbol("c",d.c))}</div><div class="iof-symbol">${escapeHtml(iofSymbol("d",d.d))}</div><div class="iof-symbol">${escapeHtml(iofSymbol("e",d.e))}</div><div class="iof-symbol">${escapeHtml(iofSymbol("f",d.f)||iofSymbol("combo",d.combo))}</div><div class="iof-text">${escapeHtml(iofText("g",d.g)||d.text||p.desc||"")}</div><div class="iof-symbol">${escapeHtml(iofSymbol("h",d.h))}</div>`}
-function renderIofDescriptionsEditor(){ensureIofDescriptions();const box=document.getElementById("iofDescriptionsEditor");if(!box)return;const eventNameInput=document.getElementById("iofEventName");if(eventNameInput)eventNameInput.value=state.eventName||"";const ids=Object.keys(state.points||{}).sort((a,b)=>{const order=id=>id==="START"?0:id==="FINISH"?9999:Number(String(id).replace(/\D/g,""))||5000;return order(a)-order(b)});box.innerHTML=ids.map(id=>{const p=state.points[id]||{},d=state.iofDescriptions[id]||{};return `<div class="iof-row"><div class="iof-code">${escapeHtml(id)}</div><div><div class="iof-fields">${iofSelectHtml(id,"c","C · similar",d.c)}${iofSelectHtml(id,"d","D · elemento",d.d)}${iofSelectHtml(id,"e","E · aspecto",d.e)}${iofSelectHtml(id,"f","F · dimensión",d.f)}${iofSelectHtml(id,"g","G · situación",d.g)}${iofSelectHtml(id,"h","H · info extra",d.h)}${iofSelectHtml(id,"combo","Combinación",d.combo)}<div><label>Texto libre</label><input value="${escapeHtml(d.text||p.desc||"")}" onchange="updateIofDescription('${id}','text',this.value)" placeholder="Ej: pie norte del cortado"></div></div><div id="iofPreview_${id}" class="iof-preview">${iofPreviewCells(id)}</div></div></div>`}).join("")}
+function iofPreviewCells(id){
+    ensureIofDescriptions();
+    const d=state.iofDescriptions[id]||{};
+    const p=state.points[id]||{};
+    const code=id==="START"?"▶":id==="FINISH"?"◎":escapeHtml(id);
+    const dSymbol=iofSymbol("d",d.d);
+    const eSymbol=iofSymbol("e",d.e);
+    const fSymbol=iofSymbol("f",d.f)||iofSymbol("combo",d.combo);
+    const hSymbol=iofSymbol("h",d.h);
+    const cSymbol=iofSymbol("c",d.c);
+    return `<div>A</div><div>${escapeHtml(code)}</div><div>${iofSymbolBox(cSymbol,"small")}</div><div>${iofSymbolBox(dSymbol,"small")}</div><div>${iofSymbolBox(eSymbol,"small")}</div><div>${iofSymbolBox(fSymbol,"small")}</div><div class="iof-text">${escapeHtml(iofText("g",d.g)||d.text||p.desc||"")}</div><div>${iofSymbolBox(hSymbol,"small")}</div>`;
+}
+
 function updateIofDescription(id,field,value){ensureIofDescriptions();state.iofDescriptions[id][field]=value;const preview=document.getElementById("iofPreview_"+id);if(preview)preview.innerHTML=iofPreviewCells(id);scheduleSaveState()}
-function applyIofTemplateToEmpty(){ensureIofDescriptions();const template=document.getElementById("iofQuickTemplate")?.value;if(!template)return toast("Elige una plantilla");const presets={terreno:{d:"vaguada",g:"pie",text:""},rocas:{d:"roca",g:"pie_norte",text:""},agua:{d:"rio",g:"borde_este",text:""},vegetacion:{d:"linde_vegetacion",g:"curva",text:""},construido:{d:"cerca_valla",g:"esquina_este_fuera",text:""},especial:{d:"elemento_especial_x",g:"entre_objetos",text:""}};const preset=presets[template]||{};Object.keys(state.points||{}).forEach(id=>{if(id==="START"||id==="FINISH")return;const d=state.iofDescriptions[id]||{};if(!d.d&&!d.g&&!d.text)state.iofDescriptions[id]={...d,...preset}});renderIofDescriptionsEditor();scheduleSaveState();toast("Plantilla aplicada a balizas vacías")}
+function pickRandom(arr){
+    const values=(arr||[]).map(x=>x[0]).filter(Boolean);
+    return values[Math.floor(Math.random()*values.length)]||"";
+}
+
+function pickRandom(arr){
+    const values=(arr||[]).map(x=>x[0]).filter(Boolean);
+    return values[Math.floor(Math.random()*values.length)]||"";
+}
+
+function autofillRandomIofDescriptions(){
+    ensureIofDescriptions();
+    const terrain=["terraza","espolon_saliente","vaguada_entrante","talud","colina","cota_monticulo","collado","depresion","foso_hoyo"];
+    const rock=["cortado_rocoso","pilar_rocoso","cueva_gruta","roca","campo_piedras","grupo_piedras","pedregal","afloramiento_rocoso"];
+    const water=["lago","charca","hoyo_agua","rio_curso_agua","cauce_agua_arroyo","pantano_estrecho","pantano","fuente_pozo","manantial"];
+    const veg=["campo_abierto","campo_semiabierto","esquina_bosque","claro","matorral_vegetacion_espesa","seto_matorral_lineal","linde_vegetacion","bosquecillo","arbol_peculiar","raiz_tocon"];
+    const built=["carretera","camino_pista","cortafuegos","puente","linea_electrica","poste_electrico","muro_tapia","cerca_valla","punto_paso","edificio_pilar","ruina","escaleras"];
+    const pools=[terrain,rock,water,veg,built];
+
+    Object.keys(state.points||{}).forEach(id=>{
+        const p=state.points[id]||{};
+        if(id==="START"){
+            state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:p.desc||"SALIDA"};
+            return;
+        }
+        if(id==="FINISH"){
+            state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:p.desc||"LLEGADA"};
+            return;
+        }
+        const pool=pools[Math.floor(Math.random()*pools.length)];
+        state.iofDescriptions[id]={
+            c:Math.random()<0.15?pickRandom(IOF_OPTIONS.c):"",
+            d:pool[Math.floor(Math.random()*pool.length)],
+            e:Math.random()<0.45?pickRandom(IOF_OPTIONS.e):"",
+            f:Math.random()<0.18?pickRandom(IOF_OPTIONS.f):"",
+            g:pickRandom(IOF_OPTIONS.g),
+            h:"",
+            combo:Math.random()<0.10?pickRandom(IOF_OPTIONS.combo):"",
+            text:""
+        };
+    });
+    renderIofDescriptionsEditor();
+    validateIofDescriptions();
+    scheduleSaveState();
+    toast("Descripciones oficiales aleatorias generadas");
+}
+
+function applyIofTemplateToEmpty(){
+    ensureIofDescriptions();
+    const template=document.getElementById("iofQuickTemplate")?.value;
+    if(!template)return toast("Elige una plantilla");
+
+    const presets={
+        terreno:{d:"vaguada_entrante",g:"al_pie",text:""},
+        rocas:{d:"roca",g:"al_pie_norte",text:""},
+        agua:{d:"rio_curso_agua",g:"borde_este",text:""},
+        vegetacion:{d:"linde_vegetacion",g:"en_curva",text:""},
+        construido:{d:"cerca_valla",g:"esquina_este_fuera",text:""},
+        especial:{d:"elemento_especial_x",g:"entre_dos_objetos",text:""}
+    };
+    const preset=presets[template]||{};
+
+    Object.keys(state.points||{}).forEach(id=>{
+        if(id==="START"||id==="FINISH")return;
+        const d=state.iofDescriptions[id]||{};
+        if(!d.d&&!d.g&&!d.text){
+            state.iofDescriptions[id]={...d,...preset};
+        }
+    });
+    renderIofDescriptionsEditor();
+    validateIofDescriptions();
+    scheduleSaveState();
+    toast("Plantilla oficial aplicada a balizas vacías");
+}
+
 function getIofDescription(id){ensureIofDescriptions();const d=state.iofDescriptions[id]||{},p=state.points[id]||{};return {c:d.c||"",d:d.d||"",e:d.e||"",f:d.f||"",g:d.g||"",h:d.h||"",combo:d.combo||"",text:d.text||p.desc||"",cSymbol:iofSymbol("c",d.c),dSymbol:iofSymbol("d",d.d),eSymbol:iofSymbol("e",d.e),fSymbol:iofSymbol("f",d.f)||iofSymbol("combo",d.combo),gText:iofText("g",d.g)||d.text||p.desc||"",hSymbol:iofSymbol("h",d.h),dText:iofText("d",d.d)||p.desc||"",eText:iofText("e",d.e),fText:iofText("f",d.f)||iofText("combo",d.combo),hText:iofText("h",d.h)}}
 
 
