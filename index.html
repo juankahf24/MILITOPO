@@ -1875,6 +1875,16 @@ module.exports = QRCode;
   .iof-complete-toggle{grid-template-columns:1fr 1fr}
 }
 
+
+/* Point base validation */
+.point-status-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;font-size:.72rem;font-weight:900;border:1px solid rgba(230,188,122,.28);white-space:nowrap}
+.point-status-badge.ok{background:rgba(105,165,75,.22);border-color:rgba(150,220,110,.45);color:#eaffd8}
+.point-status-badge.warn{background:rgba(230,188,122,.16);border-color:rgba(230,188,122,.45);color:var(--gold2)}
+.point-row-ok{box-shadow:inset 4px 0 0 rgba(130,205,90,.75)}
+.point-row-warn{box-shadow:inset 4px 0 0 rgba(230,188,122,.75)}
+.point-input-invalid{outline:2px solid rgba(235,100,80,.75)!important;border-color:rgba(235,100,80,.9)!important}
+.point-format-help{font-size:.68rem;color:var(--muted);line-height:1.2;margin-top:4px}
+
 </style>
 </head>
 <body>
@@ -2278,8 +2288,115 @@ async function confirmStep2(){
 }
 function validatePoints(){const requiredOk=["START","FINISH"].every(id=>state.points[id]?.lat!==null&&state.points[id]?.lon!==null);const controls=Object.values(state.points).filter(p=>p.type==="BALIZA"&&p.lat!==null&&p.lon!==null);return{ok:requiredOk&&controls.length>=state.controlsPerRoute,controlsCount:controls.length}}
 function renderPointSelectors(){const sel=document.getElementById("selectedPoint");sel.innerHTML="";Object.values(state.points).forEach(p=>{const opt=document.createElement("option");opt.value=p.id;opt.textContent=`${symbolForType(p.type)} ${p.id} · ${p.desc||p.type}`;sel.appendChild(opt)});sel.value=selectedPointId;sel.onchange=()=>{selectedPointId=sel.value;loadSelectedPointFields();zoomSelectedPoint()};loadSelectedPointFields()}function symbolForType(type){return type==="SALIDA"?"△":type==="LLEGADA"?"◎":"○"}function loadSelectedPointFields(){const p=state.points[selectedPointId];if(!p)return;document.getElementById("selectedUtm").value=p.utm||"";document.getElementById("selectedDesc").value=p.desc||""}
-function saveSelectedPoint(){const p=state.points[selectedPointId];if(!p)return;const utm=document.getElementById("selectedUtm").value.trim().toUpperCase();const desc=document.getElementById("selectedDesc").value.trim();const ll=utmToLatLon(utm);if(!ll){toast("UTM no válida");return}p.utm=normalizeUtm(utm);p.lat=ll.lat;p.lon=ll.lon;p.desc=desc||p.id;renderPointsTable();renderMapMarkers();saveState();toast(`${p.id} guardado`)}function clearSelectedPoint(){const p=state.points[selectedPointId];if(!p)return;p.utm="";p.lat=null;p.lon=null;p.elevation=null;renderPointsTable();renderMapMarkers();saveState();toast(`${p.id} limpiado`)}
-function renderPointsTable(){const tbody=document.getElementById("pointsTable");tbody.innerHTML="";Object.values(state.points).forEach(p=>{const tr=document.createElement("tr");const ok=p.lat!==null&&p.lon!==null;tr.innerHTML=`<td><b>${p.id}</b></td><td>${p.type}</td><td><input value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm"></td><td><input value="${escapeHtml(p.desc||"")}" data-id="${p.id}" data-field="desc"></td><td>${ok?"✅ Completa":"❌ Incompleta"}</td><td><button class="btn secondary" style="min-height:36px;padding:7px 10px" onclick="selectPoint('${p.id}')">Editar</button></td>`;tbody.appendChild(tr)});tbody.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{const id=e.target.dataset.id,field=e.target.dataset.field,p=state.points[id];if(!p)return;if(field==="utm"){const val=e.target.value.trim().toUpperCase();const ll=utmToLatLon(val);if(val&&!ll){toast(`UTM no válida en ${id}`);return}p.utm=val?normalizeUtm(val):"";p.lat=ll?ll.lat:null;p.lon=ll?ll.lon:null}else p.desc=e.target.value.trim();renderMapMarkers();saveState()}))}function selectPoint(id){selectedPointId=id;document.getElementById("selectedPoint").value=id;loadSelectedPointFields();zoomSelectedPoint()}
+function saveSelectedPoint(){
+    const p=state.points[selectedPointId];
+    if(!p)return;
+    const utm=normalizeUtmText(document.getElementById("selectedUtm").value);
+    const desc=document.getElementById("selectedDesc").value.trim();
+    const parsed=parseUtmStrict(utm);
+    if(!parsed){toast("UTM no válida. Usa formato exacto: 30T 463941 4106198");return}
+    const ll=utmToLatLon(parsed.normalized);
+    if(!ll){toast("UTM no válida");return}
+    p.utm=parsed.normalized;
+    p.lat=ll.lat;
+    p.lon=ll.lon;
+    p.desc=desc||p.id;
+    renderPointsTable();
+    renderMapMarkers();
+    renderIofDescriptionsEditor();
+    saveState();
+    toast(`${p.id} guardado`);
+}
+function clearSelectedPoint(){const p=state.points[selectedPointId];if(!p)return;p.utm="";p.lat=null;p.lon=null;p.elevation=null;renderPointsTable();renderMapMarkers();saveState();toast(`${p.id} limpiado`)}
+function normalizeUtmText(value){
+    return String(value||"").trim().replace(/\s+/g," ").toUpperCase();
+}
+
+function parseUtmStrict(value){
+    const raw=normalizeUtmText(value);
+    const m=raw.match(/^([1-9]|[1-5][0-9]|60)([C-HJ-NP-X])\s+(\d{6})\s+(\d{7})$/);
+    if(!m)return null;
+    const zone=Number(m[1]), band=m[2], easting=Number(m[3]), northing=Number(m[4]);
+    if(easting<100000||easting>999999)return null;
+    if(northing<0||northing>10000000)return null;
+    return {raw,zone,band,easting,northing,normalized:`${zone}${band} ${String(easting).padStart(6,"0")} ${String(northing).padStart(7,"0")}`};
+}
+
+function isValidUtm(value){
+    return !!parseUtmStrict(value);
+}
+
+function pointBaseStatus(id){
+    const p=(state.points||{})[id]||{};
+    const utmOk=isValidUtm(p.utm);
+    const descOk=String(p.desc||"").trim().length>=3;
+    const latLonOk=Number.isFinite(p.lat)&&Number.isFinite(p.lon);
+    const missing=[];
+    if(!utmOk)missing.push("UTM");
+    if(!descOk)missing.push("descripción");
+    if(!latLonOk)missing.push("coordenadas");
+    return {ok:utmOk&&descOk&&latLonOk,utmOk,descOk,latLonOk,missing};
+}
+
+function pointStatusBadgeHtml(id){
+    const st=pointBaseStatus(id);
+    return `<span class="point-status-badge ${st.ok?"ok":"warn"}">${st.ok?"✅ Completa":"⚠️ Pendiente"}${st.ok?"":": "+escapeHtml(st.missing.join(", "))}</span>`;
+}
+
+function renderPointsTable(){
+    const tbody=document.getElementById("pointsTable");
+    tbody.innerHTML="";
+    Object.values(state.points).forEach(p=>{
+        const st=pointBaseStatus(p.id);
+        const tr=document.createElement("tr");
+        tr.className=st.ok?"point-row-ok":"point-row-warn";
+        tr.innerHTML=`<td><b>${p.id}</b><br>${pointStatusBadgeHtml(p.id)}</td>
+            <td>${p.type}</td>
+            <td>
+                <input class="${st.utmOk?"":"point-input-invalid"}" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198">
+                <div class="point-format-help">Formato exacto: 30T 463941 4106198</div>
+            </td>
+            <td><input class="${st.descOk?"":"point-input-invalid"}" value="${escapeHtml(p.desc||"")}" data-id="${p.id}" data-field="desc"></td>
+            <td>${st.ok?"✅ Completa":"⚠️ Pendiente"}</td>
+            <td><button class="btn secondary" style="min-height:36px;padding:7px 10px" onclick="selectPoint('${p.id}')">Editar</button></td>`;
+        tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{
+        const id=e.target.dataset.id,field=e.target.dataset.field,p=state.points[id];
+        if(!p)return;
+        if(field==="utm"){
+            const val=normalizeUtmText(e.target.value);
+            const parsed=parseUtmStrict(val);
+            if(val&&!parsed){
+                p.utm=val;
+                p.lat=null;
+                p.lon=null;
+                toast(`UTM incompleta o con formato incorrecto en ${id}`);
+            }else if(parsed){
+                const ll=utmToLatLon(parsed.normalized);
+                p.utm=parsed.normalized;
+                p.lat=ll?ll.lat:null;
+                p.lon=ll?ll.lon:null;
+            }else{
+                p.utm="";
+                p.lat=null;
+                p.lon=null;
+            }
+        }else{
+            p.desc=String(e.target.value||"").trim();
+            ensureIofDescriptions();
+            if(state.iofDescriptions&&state.iofDescriptions[id]&&!state.iofDescriptions[id].text){
+                state.iofDescriptions[id].text=p.desc;
+            }
+        }
+        renderPointsTable();
+        renderMapMarkers();
+        renderIofDescriptionsEditor();
+        saveState();
+    }))
+}
+
+function selectPoint(id){selectedPointId=id;document.getElementById("selectedPoint").value=id;loadSelectedPointFields();zoomSelectedPoint()}
 function initMap(){if(map)return;map=L.map("map",{zoomControl:true}).setView([40.4168,-3.7038],7);layers.mapant=L.tileLayer.wms("https://mapant.es/wms",{layers:"mapant",format:"image/png",transparent:false,version:"1.3.0",attribution:"© Mapant.es"});layers.ign=L.tileLayer("https://www.ign.es/wmts/mapa-raster?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=MTN&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© Instituto Geográfico Nacional"});layers.pnoa=L.tileLayer("https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© PNOA"});currentLayer=layers.mapant.addTo(map);markersLayer=L.layerGroup().addTo(map);routeLayer=L.layerGroup().addTo(map);map.on("click",e=>{const p=state.points[selectedPointId];if(!p)return;const utm=latLonToUtm(e.latlng.lat,e.latlng.lng);p.lat=e.latlng.lat;p.lon=e.latlng.lng;p.utm=utm;document.getElementById("selectedUtm").value=utm;renderPointsTable();renderMapMarkers();saveState();toast(`${p.id} colocado en el mapa`)});renderMapMarkers();fitAllPoints()}
 function switchLayer(name){if(!map||!layers[name])return;if(currentLayer)map.removeLayer(currentLayer);currentLayer=layers[name].addTo(map);document.querySelectorAll(".layer-btn").forEach(b=>b.classList.toggle("active",b.dataset.layer===name));setTimeout(()=>map.invalidateSize(),80)}
 
@@ -4508,6 +4625,8 @@ function iofPointIds(){
 
 function isIofComplete(id){
     ensureIofDescriptions();
+    const base=pointBaseStatus(id);
+    if(!base.ok)return false;
     const d=state.iofDescriptions[id]||{};
     if(d.complete===false)return false;
     if(d.complete===true)return true;
@@ -4516,7 +4635,9 @@ function isIofComplete(id){
 }
 
 function iofDisplayStatus(id){
-    return isIofComplete(id)?"✅ completo":"⚠️ pendiente";
+    const base=pointBaseStatus(id);
+    if(!base.ok)return "⚠️ pendiente base";
+    return isIofComplete(id)?"✅ completo":"⚠️ pendiente IOF";
 }
 
 function renderIofPointSelector(){
@@ -4599,13 +4720,14 @@ function renderIofStatus(){
     const summary=document.getElementById("iofCompactSummary");
     if(summary){
         summary.className=complete===total?"iof-status-pill ok":"iof-status-pill warn";
-        summary.textContent=`${complete}/${total} descripciones completas`;
+        summary.textContent=`${complete}/${total} puntos completos`;
     }
     const current=document.getElementById("iofCurrentStatus");
     if(current){
+        const base=pointBaseStatus(selectedIofPointId);
         const done=isIofComplete(selectedIofPointId);
         current.className=done?"iof-status-pill ok":"iof-status-pill warn";
-        current.textContent=`${selectedIofPointId}: ${done?"completa":"pendiente"}`;
+        current.textContent=done?`${selectedIofPointId}: completa`:`${selectedIofPointId}: pendiente${base.ok?" IOF":" · "+base.missing.join(", ")}`;
     }
     renderIofPointSelector();
 }
@@ -4630,6 +4752,12 @@ function moveIofPoint(delta){
 function markCurrentIofComplete(){
     ensureIofDescriptions();
     if(!selectedIofPointId)return;
+    const base=pointBaseStatus(selectedIofPointId);
+    if(!base.ok){
+        toast(selectedIofPointId+" pendiente: falta "+base.missing.join(", "));
+        renderIofStatus();
+        return;
+    }
     state.iofDescriptions[selectedIofPointId]={...(state.iofDescriptions[selectedIofPointId]||{}),complete:true};
     renderIofDescriptionsEditor();
     scheduleSaveState();
