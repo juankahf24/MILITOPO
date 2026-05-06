@@ -1911,7 +1911,7 @@ module.exports = QRCode;
 <body>
 <div class="app">
 <header class="hero"><div class="hero-inner"><div class="logo">🧭</div><div><h1>MILITOPO · ORIENTACIÓN</h1><p>Sistema offline para generar recorridos, planos individuales y control por QR.</p><div class="mode-pill">✅ Versión 1 offline · preparada internamente para futura sincronización</div></div></div></header>
-<nav class="steps"><button class="step-tab active" data-step="1">PASO 1 · CONFIGURAR</button><button class="step-tab" data-step="2">PASO 2 · BALIZAS Y MAPA</button><button class="step-tab" data-step="3">PASO 3 · RECORRIDOS</button><button class="step-tab" data-step="4">PASO 4 · MATERIAL QR</button><button class="step-tab" data-step="5">PASO 5 · 🚦 SECUENCIA</button></nav>
+<nav class="steps"><button class="step-tab active" data-step="1">PASO 1 · CONFIGURAR</button><button class="step-tab" data-step="2">PASO 2 · BALIZAS Y MAPA</button><button class="step-tab" data-step="3">PASO 3 · RECORRIDOS</button><button class="step-tab" data-step="4">PASO 4 · MATERIAL QR</button><button class="step-tab" data-step="5">PASO 5 · 🚦 SECUENCIA</button><button class="step-tab" data-step="6">PASO 6 · RESULTADOS</button></nav>
 <section id="step1" class="card active"><div class="card-header"><h2>⚙️ CONFIGURAR PRUEBA</h2></div><div class="grid two"><div class="block"><label>Nombre de la prueba</label><input id="eventName" value="ENTRENAMIENTO ORIENTACIÓN"><div class="help">Se usa para identificar el evento y para el ZIP.</div></div><div class="block"><label>Identificador interno</label><input id="eventId" readonly><div class="help">Preparado para una futura sincronización, sin mostrar nada en vivo.</div></div><div class="block"><label>Participantes / recorridos</label><select id="participantCount"></select></div><div class="block"><label>Balizas totales</label><select id="controlCount"></select></div><div class="block"><label>Balizas por recorrido</label><select id="controlsPerRoute"></select></div><div class="block"><label>Máximo uso por baliza</label><select id="maxControlReuse"></select><div class="help">Limita que una misma baliza aparezca en demasiados recorridos.</div></div></div><div class="grid two" style="margin-top:16px"><div class="block"><label>Equilibrio</label><div class="status ok">50% distancia · 50% desnivel · minimizando coincidencias entre recorridos.</div></div><div class="block"><label>Formato de coordenadas</label><div class="status">UTM obligatorio. Ejemplo: <b>30T 451520 4780100</b></div></div></div><div class="nav-row"><span></span><button class="btn green" onclick="confirmStep1()">CONFIRMAR Y PASAR AL MAPA →</button><button class="btn red" onclick="resetSavedEvent()">🆕 BORRAR EVENTO GUARDADO</button></div></section>
 <section id="step2" class="card"><div class="card-header"><h2>🗺️ EDITAR BALIZAS Y MAPA</h2><div class="mode-pill">Salida · Llegada · Balizas con etiqueta</div></div><div class="grid two"><div class="block"><label>Baliza a editar sobre el plano</label><select id="selectedPoint"></select><div class="btn-row"><button class="btn secondary" onclick="zoomSelectedPoint()">🔎 ZOOM A SELECCIÓN</button><button class="btn" onclick="useMyLocation()">📍 MI UBICACIÓN</button></div></div><div class="block"><label>Buscar zona del mapa</label><div class="map-tools"><input id="searchBox" placeholder="Lugar, dirección o coordenada UTM"><button class="btn" onclick="searchPlace()">🔍 BUSCAR</button><button class="btn secondary" onclick="fitAllPoints()">🧭 VER TODO</button></div></div></div><div class="block autofill-test-panel"><label>Herramientas rápidas de prueba</label><div class="btn-row"><button class="btn green" onclick="autofillOrientationPoints()">✨ AUTORRELLENAR TODOS LOS PUNTOS</button><button class="btn red" onclick="clearAllOrientationPoints()">🧹 LIMPIAR TODOS LOS PUNTOS</button></div><div class="help">Solo para pruebas: rellena salida, llegada y balizas alrededor de una zona base para generar recorridos rápidamente.</div></div><div class="layer-pills"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button></div><div id="map"></div><div class="grid two" style="margin-top:16px"><div class="block"><label>Coordenada UTM de la selección</label><input id="selectedUtm" placeholder="30T 451520 4780100"><label style="margin-top:12px">Descripción</label><input id="selectedDesc" placeholder="Ej: Control 1, vaguada, collado..."><div class="btn-row"><button class="btn green" onclick="saveSelectedPoint()">💾 GUARDAR PUNTO</button><button class="btn red" onclick="clearSelectedPoint()">🧹 LIMPIAR PUNTO</button></div></div><div class="block"><label>Importar coordenadas</label><textarea id="importText" rows="6" placeholder="CSV o texto: ID,UTM,DESCRIPCIÓN&#10;B01,30T 451520 4780100,LOMA&#10;B02,30T 451700 4780200,VAGUADA"></textarea><div class="btn-row"><button class="btn" onclick="importTextPoints()">📥 IMPORTAR TEXTO / EXCEL CSV</button><button class="btn secondary" onclick="exportPointsCsv()">📤 EXPORTAR CSV</button></div><input type="file" id="gpxFile" accept=".gpx,.kml,.xml,.txt" onchange="importGpxKmlFile(event)" style="margin-top:12px"><div class="help">Base preparada para GPX/KML/ATAK. Importa puntos si el archivo contiene coordenadas.</div></div></div><div class="block" style="margin-top:16px"><label>Tabla editable de salida, llegada y balizas</label><div class="table-wrap"><table><thead><tr><th>ID</th><th>Tipo</th><th>Coordenada UTM</th><th>Descripción</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="pointsTable"></tbody></table></div></div>
 <div class="block" id="iofDescriptionsBlock" style="margin-top:16px">
@@ -5342,152 +5342,166 @@ function participantPlanHtml(route){
     const metric=(state.metrics||[])[routeIndex]||{};
     const routePoints=(route.points||[]).map(id=>state.points[id]).filter(Boolean);
     const mapPoints=routePoints.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
-    const title=escapeHtml(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
+    const eventTitle=escapeHtml(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
+    const participant=escapeHtml(route.participantId||"P--");
+    const routeId=escapeHtml(route.routeId||"R--");
     const difficulty=escapeHtml(metric.difficulty||"-");
     const distance=metric.distanceKm!=null?`${metric.distanceKm} km`:"-";
     const climb=metric.globalM!=null?`${metric.globalM} m`:"-";
 
-    const w=1120, h=1584;
-    const headerH=128, footerH=78;
-    const mapX=42, mapY=headerH+22, mapW=775, mapH=1240;
-    const tableX=840, tableY=mapY, tableW=240;
-    const tableHeaderH=90;
-    const rowCount=Math.max(routePoints.length,1);
-    const tableRowH=Math.min(38, Math.max(24, Math.floor((mapH-tableHeaderH-24)/rowCount)));
+    const centerLat=mapPoints.length?mapPoints.reduce((a,p)=>a+p.lat,0)/mapPoints.length:40.4168;
+    const centerLon=mapPoints.length?mapPoints.reduce((a,p)=>a+p.lon,0)/mapPoints.length:-3.7038;
 
-    function project(lat,lon,bounds){
-        if(!bounds)return {x:mapX+mapW/2,y:mapY+mapH/2};
-        const x=mapX+((lon-bounds.minLon)/(bounds.maxLon-bounds.minLon||1))*mapW;
-        const y=mapY+((bounds.maxLat-lat)/(bounds.maxLat-bounds.minLat||1))*mapH;
-        return {x,y};
-    }
-
-    let bounds=null;
-    if(mapPoints.length){
-        const lats=mapPoints.map(p=>p.lat), lons=mapPoints.map(p=>p.lon);
-        bounds={minLat:Math.min(...lats),maxLat:Math.max(...lats),minLon:Math.min(...lons),maxLon:Math.max(...lons)};
-        const padLat=(bounds.maxLat-bounds.minLat||0.002)*0.28;
-        const padLon=(bounds.maxLon-bounds.minLon||0.002)*0.28;
-        bounds.minLat-=padLat; bounds.maxLat+=padLat; bounds.minLon-=padLon; bounds.maxLon+=padLon;
-    }
-
-    let mapBg=`<rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="#fff8e8"/>
-        <text x="${mapX+18}" y="${mapY+34}" font-size="26" fill="#333">Plano base MAPANT</text>
-        <text x="${mapX+mapW/2}" y="${mapY+mapH/2}" font-size="54" fill="#777" text-anchor="middle">?</text>
-        <text x="${mapX+mapW/2}" y="${mapY+mapH/2+44}" font-size="18" fill="#777" text-anchor="middle">Fondo no disponible en este visor</text>`;
-
-    if(bounds){
-        const bbox=[bounds.minLon,bounds.minLat,bounds.maxLon,bounds.maxLat].map(v=>v.toFixed(6)).join(",");
-        const wms=`https://mapant.es/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=mapant&STYLES=&SRS=EPSG:4326&BBOX=${bbox}&WIDTH=${mapW}&HEIGHT=${mapH}&FORMAT=image/png`;
-        mapBg=`<image href="${wms.replace(/&/g,"&amp;")}" x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" preserveAspectRatio="none"/>
-        <rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="none" stroke="#ddd" stroke-width="3"/>`;
-    }
-
-    const projected=routePoints.map(p=>({...p,...project(p.lat,p.lon,bounds)}));
-    const poly=projected.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-    const courseLine=poly?`<polyline points="${poly}" fill="none" stroke="#d000b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".95"/>`:"";
-
-    const markers=projected.map((p,idx)=>{
-        const isStart=p.id==="START", isFinish=p.id==="FINISH";
-        if(isStart){
-            const s=22;
-            return `<polygon points="${p.x},${p.y-s} ${p.x-s*0.92},${p.y+s*0.72} ${p.x+s*0.92},${p.y+s*0.72}" fill="none" stroke="#d000b8" stroke-width="5"/>
-                <text x="${p.x+21}" y="${p.y-17}" font-size="27" fill="#d000b8" font-weight="900">S</text>`;
-        }
-        if(isFinish){
-            return `<circle cx="${p.x}" cy="${p.y}" r="19" fill="none" stroke="#d000b8" stroke-width="5"/>
-                <circle cx="${p.x}" cy="${p.y}" r="29" fill="none" stroke="#d000b8" stroke-width="5"/>
-                <text x="${p.x+23}" y="${p.y-18}" font-size="27" fill="#d000b8" font-weight="900">M</text>`;
-        }
-        const n=routePoints.slice(0,idx+1).filter(q=>q.id!=="START"&&q.id!=="FINISH").length;
-        return `<circle cx="${p.x}" cy="${p.y}" r="24" fill="none" stroke="#d000b8" stroke-width="5"/>
-            <text x="${p.x+23}" y="${p.y-22}" font-size="27" fill="#d000b8" font-weight="900">${n}</text>`;
-    }).join("");
-
-    const ioRows=routePoints.map((p,idx)=>{
+    const pointData=routePoints.map((p,idx)=>{
+        const isStart=p.id==="START";
+        const isFinish=p.id==="FINISH";
+        const order=isStart?"S":isFinish?"M":String(routePoints.slice(0,idx+1).filter(q=>q.id!=="START"&&q.id!=="FINISH").length);
         const io=typeof getIofDescription==="function"?getIofDescription(p.id):{};
-        const isStart=p.id==="START", isFinish=p.id==="FINISH";
-        const n=isStart?"▶":(isFinish?"◎":routePoints.slice(0,idx+1).filter(q=>q.id!=="START"&&q.id!=="FINISH").length);
-        const code=isStart?"SALIDA":(isFinish?"META":p.id);
-        return {n,code,c:io.cSymbol||"",d:io.dSymbol||"",e:io.eSymbol||"",f:io.fSymbol||"",g:io.gText||"",h:io.hSymbol||""};
+        return {
+            id:p.id,
+            lat:p.lat,
+            lon:p.lon,
+            desc:p.desc||"",
+            order,
+            type:isStart?"START":isFinish?"FINISH":"CONTROL",
+            c:io.cSymbol||"",
+            d:io.dSymbol||"",
+            e:io.eSymbol||"",
+            f:io.fSymbol||"",
+            g:io.gText||"",
+            h:io.hSymbol||""
+        };
     });
 
-    const tableRows=ioRows.map((r,i)=>{
-        const y=tableY+tableHeaderH+i*tableRowH;
-        const gText=String(r.g||"").slice(0,13);
-        return `<g>
-            <rect x="${tableX}" y="${y}" width="${tableW}" height="${tableRowH}" fill="#fff" stroke="#d000b8" stroke-width="2"/>
-            <line x1="${tableX+34}" y1="${y}" x2="${tableX+34}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
-            <line x1="${tableX+78}" y1="${y}" x2="${tableX+78}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
-            <line x1="${tableX+108}" y1="${y}" x2="${tableX+108}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
-            <line x1="${tableX+138}" y1="${y}" x2="${tableX+138}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
-            <line x1="${tableX+168}" y1="${y}" x2="${tableX+168}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
-            <line x1="${tableX+204}" y1="${y}" x2="${tableX+204}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
-            <text x="${tableX+17}" y="${y+tableRowH*.65}" font-size="17" text-anchor="middle" fill="#d000b8" font-weight="900">${escapeHtml(String(r.n))}</text>
-            <text x="${tableX+56}" y="${y+tableRowH*.65}" font-size="15" text-anchor="middle" fill="#d000b8" font-weight="900">${escapeHtml(String(r.code))}</text>
-            <text x="${tableX+93}" y="${y+tableRowH*.65}" font-size="16" text-anchor="middle" fill="#d000b8">${escapeHtml(r.c)}</text>
-            <text x="${tableX+123}" y="${y+tableRowH*.65}" font-size="16" text-anchor="middle" fill="#d000b8">${escapeHtml(r.d)}</text>
-            <text x="${tableX+153}" y="${y+tableRowH*.65}" font-size="16" text-anchor="middle" fill="#d000b8">${escapeHtml(r.e)}</text>
-            <text x="${tableX+186}" y="${y+tableRowH*.65}" font-size="13" text-anchor="middle" fill="#d000b8">${escapeHtml(r.f)}</text>
-            <text x="${tableX+209}" y="${y+tableRowH*.42}" font-size="9.5" fill="#d000b8">${escapeHtml(gText)}</text>
-            <text x="${tableX+225}" y="${y+tableRowH*.78}" font-size="13" text-anchor="middle" fill="#d000b8">${escapeHtml(r.h)}</text>
-        </g>`;
-    }).join("");
-
-    const tableSvg=`<g>
-        <rect x="${tableX}" y="${tableY}" width="${tableW}" height="${mapH}" fill="#fff" stroke="#d000b8" stroke-width="3"/>
-        <rect x="${tableX}" y="${tableY}" width="${tableW}" height="${tableHeaderH}" fill="#ffe4fa" stroke="#d000b8" stroke-width="3"/>
-        <text x="${tableX+tableW/2}" y="${tableY+22}" font-size="17" text-anchor="middle" fill="#d000b8" font-weight="900">${escapeHtml(state.eventName||"PRUEBA")}</text>
-        <text x="${tableX+tableW/2}" y="${tableY+46}" font-size="16" text-anchor="middle" fill="#d000b8" font-weight="900">${difficulty} · ${distance} · ${climb}</text>
-        <text x="${tableX+tableW/2}" y="${tableY+70}" font-size="15" text-anchor="middle" fill="#d000b8" font-weight="900">${escapeHtml(route.participantId)} · ${escapeHtml(route.routeId)}</text>
-        ${tableRows}
-        <text x="${tableX+tableW/2}" y="${tableY+mapH-14}" font-size="14" text-anchor="middle" fill="#d000b8" font-weight="900">E: 1:10000</text>
-    </g>`;
-
     const orderText=escapeHtml((route.points||[]).join(" → "));
+    const json=JSON.stringify(pointData).replace(/</g,"\\u003c");
 
-    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Plano_${escapeHtml(route.participantId)}_${escapeHtml(route.routeId)}</title>
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plano_${participant}_${routeId}</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 @page{size:A4 portrait;margin:0}
-html,body{margin:0;background:#f1f1f1;font-family:Arial,Helvetica,sans-serif;color:#111}
-.sheet{width:210mm;min-height:297mm;margin:0 auto;background:white;box-sizing:border-box;position:relative}
-.toolbar{position:sticky;top:0;background:rgba(255,255,255,.94);padding:8px;z-index:2;border-bottom:1px solid #ddd}
-button{border:0;border-radius:999px;background:#d000b8;color:white;font-weight:900;padding:10px 16px;font-size:14px}
-svg{width:210mm;height:297mm;display:block}
-@media print{.toolbar{display:none}.sheet{margin:0}.no-print{display:none}}
-</style></head><body>
-<div class="toolbar no-print"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div>
+html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-serif;color:#111}
+.toolbar{position:sticky;top:0;z-index:1000;background:rgba(255,255,255,.94);padding:8px;border-bottom:1px solid #ddd}
+.toolbar button{border:0;border-radius:999px;background:#d000b8;color:white;font-weight:900;padding:10px 16px}
+.sheet{width:210mm;height:297mm;background:white;margin:0 auto;position:relative;overflow:hidden;box-sizing:border-box;border:6px solid #14a018}
+.header{height:20mm;background:#16a019;color:white;display:grid;grid-template-columns:1fr auto;align-items:center;padding:0 8mm;box-sizing:border-box}
+.title h1{margin:0;font-size:22px;letter-spacing:3px;font-weight:900}
+.title h2{margin:3px 0 0;font-size:13px;letter-spacing:1.5px;font-weight:900}
+.scale{text-align:right;font-weight:900;font-size:16px}
+.scale small{display:block;font-size:10px}
+.content{display:grid;grid-template-columns:1fr 48mm;gap:3mm;padding:4mm 5mm 0 5mm;height:248mm;box-sizing:border-box}
+.map-wrap{position:relative;border:3px solid #16a019;background:#e9f2e9;overflow:hidden}
+#map{width:100%;height:100%}
+.iof{border:2px solid #d000b8;color:#d000b8;font-weight:900;background:white;display:flex;flex-direction:column}
+.iof-head{text-align:center;border-bottom:2px solid #d000b8;padding:3px 2px;font-size:9px;line-height:1.18;background:#fff0fb}
+.iof-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8px}
+.iof-table td,.iof-table th{border:1.4px solid #d000b8;height:16px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
+.iof-table th{background:#fff0fb;font-size:7px}
+.iof-table .code{font-size:7px}
+.iof-table .g{font-size:6px;text-align:left;padding-left:1px}
+.footer{height:29mm;display:grid;grid-template-columns:62mm 1fr;align-items:end;padding:0 5mm 5mm;box-sizing:border-box;font-size:8px}
+.footer .tech{color:#079000;font-weight:900;line-height:1.25}
+.footer .note{text-align:right;font-weight:800;font-size:8px}
+.leaflet-control-attribution{display:none}
+.ctrl-label{color:#d000b8;font-weight:900;font-size:16px;text-shadow:0 0 3px white,0 0 3px white}
+@media print{.toolbar{display:none}.sheet{margin:0;border-width:4px}body{background:white}}
+</style>
+</head>
+<body>
+<div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div>
 <div class="sheet">
-<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
-    <rect x="0" y="0" width="${w}" height="${h}" fill="#fff"/>
-    <rect x="0" y="0" width="${w}" height="64" fill="#38a81f"/>
-    <text x="42" y="45" font-size="42" fill="#fff" font-weight="900">${title}</text>
-    <text x="${w-42}" y="32" font-size="30" fill="#fff" font-weight="900" text-anchor="end">E: 1/10.000</text>
-    <text x="${w-42}" y="58" font-size="18" fill="#fff" font-weight="900" text-anchor="end">Equidistancia 5 m</text>
+    <div class="header">
+        <div class="title">
+            <h1>${eventTitle}</h1>
+            <h2>${participant} · ${routeId} · ${difficulty} · ${distance} · ${climb}</h2>
+        </div>
+        <div class="scale">E: 1/10.000<small>Equidistancia 5 mts.</small></div>
+    </div>
 
-    <text x="42" y="104" font-size="24" fill="#111" font-weight="900">${escapeHtml(route.participantId)} · ${escapeHtml(route.routeId)} · ${difficulty} · ${distance} · ${climb}</text>
-    <text x="42" y="130" font-size="18" fill="#555">${orderText}</text>
+    <div class="content">
+        <div class="map-wrap"><div id="map"></div></div>
+        <div class="iof">
+            <div class="iof-head">
+                ${eventTitle}<br>
+                ${difficulty} · ${distance} · ${climb}<br>
+                ${participant} · ${routeId}
+            </div>
+            <table class="iof-table">
+                <thead><tr><th>Nº</th><th>Cód.</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th><th>H</th></tr></thead>
+                <tbody>
+                    ${pointData.map(p=>`<tr>
+                        <td>${escapeHtml(String(p.order))}</td>
+                        <td class="code">${escapeHtml(p.type==="START"?"SALIDA":p.type==="FINISH"?"META":p.id)}</td>
+                        <td>${escapeHtml(p.c)}</td>
+                        <td>${escapeHtml(p.d)}</td>
+                        <td>${escapeHtml(p.e)}</td>
+                        <td>${escapeHtml(p.f)}</td>
+                        <td class="g">${escapeHtml(String(p.g).slice(0,16))}</td>
+                        <td>${escapeHtml(p.h)}</td>
+                    </tr>`).join("")}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-    <clipPath id="mapClip"><rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}"/></clipPath>
-    <g clip-path="url(#mapClip)">
-        ${mapBg}
-        ${courseLine}
-        ${markers}
-    </g>
-    <rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="none" stroke="#38a81f" stroke-width="8"/>
-
-    ${tableSvg}
-
-    <rect x="0" y="${h-footerH}" width="${w}" height="${footerH}" fill="#fff"/>
-    <line x1="0" y1="${h-footerH}" x2="${w}" y2="${h-footerH}" stroke="#38a81f" stroke-width="8"/>
-    <text x="42" y="${h-45}" font-size="18" fill="#159000" font-weight="900">FICHA TÉCNICA:</text>
-    <text x="42" y="${h-22}" font-size="15" fill="#159000">Evento ${escapeHtml(state.eventId)} · ${escapeHtml(state.eventName||"")} · Plano generado por MILITOPO</text>
-    <text x="${w-42}" y="${h-22}" font-size="15" fill="#111" text-anchor="end">El deporte de orientación es respetuoso con el medio natural.</text>
-</svg>
+    <div class="footer">
+        <div class="tech">
+            FICHA TÉCNICA:<br>
+            EVENTO: ${escapeHtml(state.eventId||"")}<br>
+            RECORRIDO: ${participant} / ${routeId}<br>
+            ORDEN: ${orderText}
+        </div>
+        <div class="note">EL DEPORTE DE ORIENTACIÓN ES RESPETUOSO CON EL MEDIO NATURAL.</div>
+    </div>
 </div>
-</body></html>`;
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+<script>
+const points=${json};
+const map=L.map('map',{zoomControl:false,attributionControl:false,preferCanvas:true}).setView([${centerLat},${centerLon}],15);
+
+// Fondo MAPANT principal. Si el servidor no responde, queda OpenTopoMap como respaldo visual.
+const mapant=L.tileLayer('https://mapant.es/tiles/{z}/{x}/{y}.png',{maxZoom:18,crossOrigin:true});
+const fallback=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,crossOrigin:true});
+mapant.on('tileerror',()=>{if(!map.hasLayer(fallback))fallback.addTo(map)});
+mapant.addTo(map);
+
+const latlngs=points.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)).map(p=>[p.lat,p.lon]);
+if(latlngs.length){
+    map.fitBounds(latlngs,{padding:[35,35],maxZoom:16});
+    setTimeout(()=>map.invalidateSize(),200);
 }
+
+if(latlngs.length>1){
+    L.polyline(latlngs,{color:'#d000b8',weight:4,opacity:.95,lineJoin:'round'}).addTo(map);
+}
+
+function startIcon(){
+    return L.divIcon({className:'',html:'<svg width="38" height="38" viewBox="0 0 38 38"><polygon points="19,3 4,33 34,33" fill="none" stroke="#d000b8" stroke-width="4"/></svg>',iconSize:[38,38],iconAnchor:[19,19]});
+}
+function finishIcon(){
+    return L.divIcon({className:'',html:'<svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="13" fill="none" stroke="#d000b8" stroke-width="4"/><circle cx="23" cy="23" r="20" fill="none" stroke="#d000b8" stroke-width="4"/></svg>',iconSize:[46,46],iconAnchor:[23,23]});
+}
+function controlIcon(n){
+    return L.divIcon({className:'',html:'<svg width="50" height="50" viewBox="0 0 50 50"><circle cx="25" cy="25" r="18" fill="none" stroke="#d000b8" stroke-width="4"/><text x="38" y="14" fill="#d000b8" font-size="18" font-weight="900">'+n+'</text></svg>',iconSize:[50,50],iconAnchor:[25,25]});
+}
+
+points.forEach(p=>{
+    if(!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return;
+    let icon=p.type==='START'?startIcon():p.type==='FINISH'?finishIcon():controlIcon(p.order);
+    L.marker([p.lat,p.lon],{icon,interactive:false}).addTo(map);
+});
+<\/script>
+</body>
+</html>`;
+}
+
+
 
 
 
