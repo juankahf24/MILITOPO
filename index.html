@@ -5286,54 +5286,158 @@ function openIofDescriptionsSheet(){
 
 
 function participantPlanHtml(route){
-    const pts=route.points.map(id=>state.points[id]).filter(Boolean);
-    const metric=state.metrics[state.routes.findIndex(r=>r.routeId===route.routeId&&r.participantId===route.participantId)]||{};
-    const rows=pts.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(p.id||"")}</td><td>${escapeHtml(p.utm||"")}</td><td>${escapeHtml(p.desc||"")}</td></tr>`).join("");
-    const allPts=Object.values(state.points).filter(p=>p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon));
-    if(!pts.length||pts.some(p=>!Number.isFinite(p.lat)||!Number.isFinite(p.lon))||!allPts.length){
-        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Plano ${route.participantId}</title><style>body{font-family:Arial;margin:18px}h1{color:#c000a0}table{border-collapse:collapse;width:100%}td,th{border:1px solid #999;padding:7px}.route{font-size:18px;color:#c000a0;font-weight:bold}</style></head><body><h1>Plano orientación · ${route.participantId} · ${route.routeId}</h1><p class="route">${route.points.join(" → ")}</p><p>No hay coordenadas suficientes para generar el plano con fondo cartográfico.</p><table><tr><th>Orden</th><th>Baliza</th><th>UTM</th><th>Descripción</th></tr>${rows}</table><p>QR participante: ${participantPayload(route.participantId)}</p></body></html>`;
+    const routeIndex=(state.routes||[]).findIndex(r=>r.routeId===route.routeId&&r.participantId===route.participantId);
+    const metric=(state.metrics||[])[routeIndex]||{};
+    const routePoints=(route.points||[]).map(id=>state.points[id]).filter(Boolean);
+    const mapPoints=routePoints.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+    const title=escapeHtml(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
+    const difficulty=escapeHtml(metric.difficulty||"-");
+    const distance=metric.distanceKm!=null?`${metric.distanceKm} km`:"-";
+    const climb=metric.globalM!=null?`${metric.globalM} m`:"-";
+
+    const w=1120, h=1584;
+    const headerH=128, footerH=78;
+    const mapX=42, mapY=headerH+22, mapW=775, mapH=1240;
+    const tableX=840, tableY=mapY, tableW=240;
+    const tableHeaderH=90;
+    const rowCount=Math.max(routePoints.length,1);
+    const tableRowH=Math.min(38, Math.max(24, Math.floor((mapH-tableHeaderH-24)/rowCount)));
+
+    function project(lat,lon,bounds){
+        if(!bounds)return {x:mapX+mapW/2,y:mapY+mapH/2};
+        const x=mapX+((lon-bounds.minLon)/(bounds.maxLon-bounds.minLon||1))*mapW;
+        const y=mapY+((bounds.maxLat-lat)/(bounds.maxLat-bounds.minLat||1))*mapH;
+        return {x,y};
     }
 
-    const mercX=lon=>lon*20037508.34/180;
-    const mercY=lat=>{const y=Math.log(Math.tan((90+lat)*Math.PI/360))/(Math.PI/180);return y*20037508.34/180};
-    const mapW=920, mapH=1180;
-    const mercAll=allPts.map(p=>({x:mercX(p.lon),y:mercY(p.lat)}));
-    let minX=Math.min(...mercAll.map(p=>p.x)), maxX=Math.max(...mercAll.map(p=>p.x));
-    let minY=Math.min(...mercAll.map(p=>p.y)), maxY=Math.max(...mercAll.map(p=>p.y));
-    let dx=Math.max(maxX-minX,600), dy=Math.max(maxY-minY,600);
-    minX-=dx*0.10; maxX+=dx*0.10; minY-=dy*0.10; maxY+=dy*0.10;
-    dx=maxX-minX; dy=maxY-minY;
-    const target=mapW/mapH;
-    const current=dx/dy;
-    if(current>target){const need=dx/target; const extra=(need-dy)/2; minY-=extra; maxY+=extra;}else{const need=dy*target; const extra=(need-dx)/2; minX-=extra; maxX+=extra;}
-    const world={minX,maxX,minY,maxY,w:maxX-minX,h:maxY-minY};
-    const toPx=(lat,lon)=>{const x=mercX(lon),y=mercY(lat);return {x:((x-world.minX)/world.w)*mapW,y:mapH-((y-world.minY)/world.h)*mapH}};
-    const screenPts=pts.map(p=>({id:p.id,type:p.type,utm:p.utm||"",desc:p.desc||"",...toPx(p.lat,p.lon)}));
-    const routeLine=screenPts.map((p,i)=>`${i===0?'M':'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-    const controlMarkers=screenPts.map((p,i)=>{
-        if(p.type==='START'){
-            const s=22; const points=`${p.x},${(p.y-s).toFixed(1)} ${(p.x-s*0.86).toFixed(1)},${(p.y+s*0.5).toFixed(1)} ${(p.x+s*0.86).toFixed(1)},${(p.y+s*0.5).toFixed(1)}`;
-            return `<g><polygon points="${points}" fill="none" stroke="#d414b0" stroke-width="6"/><text x="${(p.x+18).toFixed(1)}" y="${(p.y-18).toFixed(1)}" font-size="26" font-weight="800" fill="#d414b0">S</text></g>`;
+    let bounds=null;
+    if(mapPoints.length){
+        const lats=mapPoints.map(p=>p.lat), lons=mapPoints.map(p=>p.lon);
+        bounds={minLat:Math.min(...lats),maxLat:Math.max(...lats),minLon:Math.min(...lons),maxLon:Math.max(...lons)};
+        const padLat=(bounds.maxLat-bounds.minLat||0.002)*0.28;
+        const padLon=(bounds.maxLon-bounds.minLon||0.002)*0.28;
+        bounds.minLat-=padLat; bounds.maxLat+=padLat; bounds.minLon-=padLon; bounds.maxLon+=padLon;
+    }
+
+    let mapBg=`<rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="#fff8e8"/>
+        <text x="${mapX+18}" y="${mapY+34}" font-size="26" fill="#333">Plano base MAPANT</text>
+        <text x="${mapX+mapW/2}" y="${mapY+mapH/2}" font-size="54" fill="#777" text-anchor="middle">?</text>
+        <text x="${mapX+mapW/2}" y="${mapY+mapH/2+44}" font-size="18" fill="#777" text-anchor="middle">Fondo no disponible en este visor</text>`;
+
+    if(bounds){
+        const bbox=[bounds.minLon,bounds.minLat,bounds.maxLon,bounds.maxLat].map(v=>v.toFixed(6)).join(",");
+        const wms=`https://mapant.es/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=mapant&STYLES=&SRS=EPSG:4326&BBOX=${bbox}&WIDTH=${mapW}&HEIGHT=${mapH}&FORMAT=image/png`;
+        mapBg=`<image href="${wms.replace(/&/g,"&amp;")}" x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" preserveAspectRatio="none"/>
+        <rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="none" stroke="#ddd" stroke-width="3"/>`;
+    }
+
+    const projected=routePoints.map(p=>({...p,...project(p.lat,p.lon,bounds)}));
+    const poly=projected.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+    const courseLine=poly?`<polyline points="${poly}" fill="none" stroke="#d000b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".95"/>`:"";
+
+    const markers=projected.map((p,idx)=>{
+        const isStart=p.id==="START", isFinish=p.id==="FINISH";
+        if(isStart){
+            const s=22;
+            return `<polygon points="${p.x},${p.y-s} ${p.x-s*0.92},${p.y+s*0.72} ${p.x+s*0.92},${p.y+s*0.72}" fill="none" stroke="#d000b8" stroke-width="5"/>
+                <text x="${p.x+21}" y="${p.y-17}" font-size="27" fill="#d000b8" font-weight="900">S</text>`;
         }
-        if(p.type==='FINISH'){
-            return `<g><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="22" fill="none" stroke="#d414b0" stroke-width="6"/><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="13" fill="none" stroke="#d414b0" stroke-width="6"/><text x="${(p.x+20).toFixed(1)}" y="${(p.y-18).toFixed(1)}" font-size="24" font-weight="800" fill="#d414b0">F</text></g>`;
+        if(isFinish){
+            return `<circle cx="${p.x}" cy="${p.y}" r="19" fill="none" stroke="#d000b8" stroke-width="5"/>
+                <circle cx="${p.x}" cy="${p.y}" r="29" fill="none" stroke="#d000b8" stroke-width="5"/>
+                <text x="${p.x+23}" y="${p.y-18}" font-size="27" fill="#d000b8" font-weight="900">M</text>`;
         }
-        const n=i;
-        return `<g><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="17" fill="none" stroke="#d414b0" stroke-width="6"/><text x="${(p.x+19).toFixed(1)}" y="${(p.y-16).toFixed(1)}" font-size="24" font-weight="800" fill="#d414b0">${n}</text></g>`;
-    }).join('');
-    const descRows=screenPts.map((p,i)=>{
-        const io=getIofDescription(p.id);
-        const symbol=p.type==='START'?'▶':(p.type==='FINISH'?'◎':'○');
-        const feature=p.type==='START'?'Salida':(p.type==='FINISH'?'Llegada':(io.dText||p.desc||'Elemento pendiente'));
-        const loc=p.type==='BALIZA'?(io.gText||'Ubicación exacta pendiente'):'';
-        return `<tr><td>${i+1}</td><td>${escapeHtml(p.id||'')}</td><td><span class="symCell">${escapeHtml(io.cSymbol||symbol)}</span></td><td>${escapeHtml(feature)}</td><td><span class="symCell">${escapeHtml(io.eSymbol||'')}</span></td><td><span class="symCell">${escapeHtml(io.fSymbol||'')}</span></td><td>${escapeHtml(loc)}</td><td><span class="symCell">${escapeHtml(io.hSymbol||'')}</span></td></tr>`;
-    }).join('');
-    const wmsUrl='https://mapant.es/wms?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=mapant&STYLES=&FORMAT=image/png&TRANSPARENT=FALSE&CRS=EPSG:3857&BBOX='+[world.minX.toFixed(2),world.minY.toFixed(2),world.maxX.toFixed(2),world.maxY.toFixed(2)].join(',')+'&WIDTH='+mapW+'&HEIGHT='+mapH;
-    const raceNumber=String(route.participantId||'').replace(/\D/g,'')||route.participantId;
-    const category=metric.difficulty||'-';
-    const descHeader=`<div style="border:1px solid #dfb3d7;margin-bottom:8px;color:#cc00aa;font-weight:800"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0"><div style="padding:5px;border-right:1px solid #dfb3d7">${escapeHtml(state.eventName||'Prueba')}</div><div style="padding:5px;border-right:1px solid #dfb3d7">${escapeHtml(category)}</div><div style="padding:5px">Carrera ${escapeHtml(raceNumber)}</div></div><div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #dfb3d7"><div style="padding:5px;border-right:1px solid #dfb3d7">${metric.distanceKm??'-'} km</div><div style="padding:5px">${metric.globalM??'-'} m</div></div></div>`;
-    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Plano_${route.participantId}_${route.routeId}</title><style>@page{size:A4 portrait;margin:8mm}body{margin:0;background:#efefef;font-family:Arial,Helvetica,sans-serif;color:#141414}.page{width:100%;max-width:1240px;margin:0 auto;background:#fff;padding:18px 18px 22px}.top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:12px}.title{font-size:44px;line-height:1.02;font-weight:900;color:#cc00aa;letter-spacing:.2px}.subtitle{font-size:21px;font-weight:800;color:#cc00aa;margin-top:8px}.meta{font-size:14px;line-height:1.45;text-align:right}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}.toolbar button{border:0;border-radius:999px;background:#cc00aa;color:white;font-weight:800;padding:9px 13px}.toolbar button.secondary{background:#333}.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}.map-wrap{position:relative;border:2px solid #d9d9d9;background:#fff}.map-wrap img{display:block;width:100%;height:auto}.map-svg{position:absolute;inset:0;width:100%;height:100%}.info{border:2px solid #f099e0;padding:10px 12px;background:#fff}.info h3{margin:0 0 8px;color:#cc00aa;font-size:21px}.desc{width:100%;border-collapse:collapse;font-size:12px}.desc th,.desc td{border:1px solid #dfb3d7;padding:5px;text-align:center;vertical-align:middle}.symCell{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid #333;background:#fff;font-weight:900;border-radius:4px}.desc th{background:#fde6f8;color:#80116a}.desc td:nth-child(4),.desc td:nth-child(7){text-align:left}.summary{margin-top:12px;border:1px solid #ddd;padding:10px;background:#fafafa;font-size:13px;line-height:1.45}.summary b{color:#333}.footerTable{margin-top:14px;width:100%;border-collapse:collapse;font-size:14px}.footerTable th,.footerTable td{border:1px solid #a0a0a0;padding:7px;vertical-align:top}.footerTable th{background:#f4f4f4}.qr{margin-top:12px;font-size:13px;word-break:break-all}.legend{margin-top:10px;font-size:12px;color:#444}.chip{display:inline-block;border:1px solid #ccc;border-radius:999px;padding:4px 10px;margin:0 6px 6px 0;font-size:12px;background:#fff}.print-note{font-size:12px;color:#555;margin-top:8px}@media print{body{background:#fff}.toolbar{display:none}.page{padding:0;max-width:none}.title{font-size:34px}.layout{grid-template-columns:1fr 290px;gap:10px}.footerTable{font-size:11px}.desc{font-size:10px}}@media (max-width:980px){.layout{grid-template-columns:1fr}.title{font-size:34px}.meta{text-align:left}}</style></head><body><div class="page"><div class="top"><div><div class="title">Plano orientación · ${route.participantId} · ${route.routeId}</div><div class="subtitle">${route.points.join(' → ')}</div></div><div class="meta"><div><b>Escala objetivo:</b> 1:10000</div><div><b>Base:</b> MAPANT</div><div><b>Fondo común:</b> mismo encuadre para todos los recorridos</div><div><b>Evento:</b> ${escapeHtml(state.eventName||'')}</div></div></div><div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button><button class="secondary" onclick="alert('Para PNG: usa captura/exportación del navegador. En próximas versiones se hará exportación PNG directa si MAPANT permite CORS.')">🖼️ PNG</button></div><div class="layout"><div><div class="map-wrap" id="mapWrap"><img crossorigin="anonymous" src="${wmsUrl}" alt="Plano base MAPANT" width="${mapW}" height="${mapH}"><svg class="map-svg" viewBox="0 0 ${mapW} ${mapH}" xmlns="http://www.w3.org/2000/svg"><path d="${routeLine}" fill="none" stroke="#d414b0" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>${controlMarkers}</svg></div><div class="legend"><span class="chip">🧭 Fondo MAPANT</span><span class="chip">🟣 Recorrido</span><span class="chip">▶ Salida</span><span class="chip">◎ Llegada</span><span class="chip">○ Controles numerados</span></div></div><aside class="info"><h3>Descripciones de control</h3>${descHeader}<table class="desc"><thead><tr><th>A<br>#</th><th>B<br>Código</th><th>Símb.</th><th>D<br>Elemento</th><th>E</th><th>F</th><th>G<br>Ubicación</th><th>H</th></tr></thead><tbody>${descRows}</tbody></table><div class="summary"><b>Distancia:</b> ${metric.distanceKm??'-'} km<br><b>Tramo largo:</b> ${metric.longestKm??'-'} km<br><b>Desnivel +:</b> ${metric.positiveM??'-'} m<br><b>Desnivel -:</b> ${metric.negativeM??'-'} m<br><b>Global:</b> ${metric.globalM??'-'} m<br><b>Dificultad:</b> ${escapeHtml(metric.difficulty||'-')}</div><div class="print-note">Las columnas A-H siguen la estructura internacional de descripciones. La ubicación exacta se completará cuando indiques elemento, lado, esquina, pie, cima, interior/exterior, etc.</div></aside></div><table class="footerTable"><thead><tr><th>Orden</th><th>Baliza</th><th>UTM</th><th>Descripción textual</th></tr></thead><tbody>${rows}</tbody></table><div class="qr"><b>QR participante:</b> ${participantPayload(route.participantId)}</div></div></body></html>`
+        const n=routePoints.slice(0,idx+1).filter(q=>q.id!=="START"&&q.id!=="FINISH").length;
+        return `<circle cx="${p.x}" cy="${p.y}" r="24" fill="none" stroke="#d000b8" stroke-width="5"/>
+            <text x="${p.x+23}" y="${p.y-22}" font-size="27" fill="#d000b8" font-weight="900">${n}</text>`;
+    }).join("");
+
+    const ioRows=routePoints.map((p,idx)=>{
+        const io=typeof getIofDescription==="function"?getIofDescription(p.id):{};
+        const isStart=p.id==="START", isFinish=p.id==="FINISH";
+        const n=isStart?"▶":(isFinish?"◎":routePoints.slice(0,idx+1).filter(q=>q.id!=="START"&&q.id!=="FINISH").length);
+        const code=isStart?"SALIDA":(isFinish?"META":p.id);
+        return {n,code,c:io.cSymbol||"",d:io.dSymbol||"",e:io.eSymbol||"",f:io.fSymbol||"",g:io.gText||"",h:io.hSymbol||""};
+    });
+
+    const tableRows=ioRows.map((r,i)=>{
+        const y=tableY+tableHeaderH+i*tableRowH;
+        const gText=String(r.g||"").slice(0,13);
+        return `<g>
+            <rect x="${tableX}" y="${y}" width="${tableW}" height="${tableRowH}" fill="#fff" stroke="#d000b8" stroke-width="2"/>
+            <line x1="${tableX+34}" y1="${y}" x2="${tableX+34}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
+            <line x1="${tableX+78}" y1="${y}" x2="${tableX+78}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
+            <line x1="${tableX+108}" y1="${y}" x2="${tableX+108}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
+            <line x1="${tableX+138}" y1="${y}" x2="${tableX+138}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
+            <line x1="${tableX+168}" y1="${y}" x2="${tableX+168}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
+            <line x1="${tableX+204}" y1="${y}" x2="${tableX+204}" y2="${y+tableRowH}" stroke="#d000b8" stroke-width="2"/>
+            <text x="${tableX+17}" y="${y+tableRowH*.65}" font-size="17" text-anchor="middle" fill="#d000b8" font-weight="900">${escapeHtml(String(r.n))}</text>
+            <text x="${tableX+56}" y="${y+tableRowH*.65}" font-size="15" text-anchor="middle" fill="#d000b8" font-weight="900">${escapeHtml(String(r.code))}</text>
+            <text x="${tableX+93}" y="${y+tableRowH*.65}" font-size="16" text-anchor="middle" fill="#d000b8">${escapeHtml(r.c)}</text>
+            <text x="${tableX+123}" y="${y+tableRowH*.65}" font-size="16" text-anchor="middle" fill="#d000b8">${escapeHtml(r.d)}</text>
+            <text x="${tableX+153}" y="${y+tableRowH*.65}" font-size="16" text-anchor="middle" fill="#d000b8">${escapeHtml(r.e)}</text>
+            <text x="${tableX+186}" y="${y+tableRowH*.65}" font-size="13" text-anchor="middle" fill="#d000b8">${escapeHtml(r.f)}</text>
+            <text x="${tableX+209}" y="${y+tableRowH*.42}" font-size="9.5" fill="#d000b8">${escapeHtml(gText)}</text>
+            <text x="${tableX+225}" y="${y+tableRowH*.78}" font-size="13" text-anchor="middle" fill="#d000b8">${escapeHtml(r.h)}</text>
+        </g>`;
+    }).join("");
+
+    const tableSvg=`<g>
+        <rect x="${tableX}" y="${tableY}" width="${tableW}" height="${mapH}" fill="#fff" stroke="#d000b8" stroke-width="3"/>
+        <rect x="${tableX}" y="${tableY}" width="${tableW}" height="${tableHeaderH}" fill="#ffe4fa" stroke="#d000b8" stroke-width="3"/>
+        <text x="${tableX+tableW/2}" y="${tableY+22}" font-size="17" text-anchor="middle" fill="#d000b8" font-weight="900">${escapeHtml(state.eventName||"PRUEBA")}</text>
+        <text x="${tableX+tableW/2}" y="${tableY+46}" font-size="16" text-anchor="middle" fill="#d000b8" font-weight="900">${difficulty} · ${distance} · ${climb}</text>
+        <text x="${tableX+tableW/2}" y="${tableY+70}" font-size="15" text-anchor="middle" fill="#d000b8" font-weight="900">${escapeHtml(route.participantId)} · ${escapeHtml(route.routeId)}</text>
+        ${tableRows}
+        <text x="${tableX+tableW/2}" y="${tableY+mapH-14}" font-size="14" text-anchor="middle" fill="#d000b8" font-weight="900">E: 1:10000</text>
+    </g>`;
+
+    const orderText=escapeHtml((route.points||[]).join(" → "));
+
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plano_${escapeHtml(route.participantId)}_${escapeHtml(route.routeId)}</title>
+<style>
+@page{size:A4 portrait;margin:0}
+html,body{margin:0;background:#f1f1f1;font-family:Arial,Helvetica,sans-serif;color:#111}
+.sheet{width:210mm;min-height:297mm;margin:0 auto;background:white;box-sizing:border-box;position:relative}
+.toolbar{position:sticky;top:0;background:rgba(255,255,255,.94);padding:8px;z-index:2;border-bottom:1px solid #ddd}
+button{border:0;border-radius:999px;background:#d000b8;color:white;font-weight:900;padding:10px 16px;font-size:14px}
+svg{width:210mm;height:297mm;display:block}
+@media print{.toolbar{display:none}.sheet{margin:0}.no-print{display:none}}
+</style></head><body>
+<div class="toolbar no-print"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div>
+<div class="sheet">
+<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="0" width="${w}" height="${h}" fill="#fff"/>
+    <rect x="0" y="0" width="${w}" height="64" fill="#38a81f"/>
+    <text x="42" y="45" font-size="42" fill="#fff" font-weight="900">${title}</text>
+    <text x="${w-42}" y="32" font-size="30" fill="#fff" font-weight="900" text-anchor="end">E: 1/10.000</text>
+    <text x="${w-42}" y="58" font-size="18" fill="#fff" font-weight="900" text-anchor="end">Equidistancia 5 m</text>
+
+    <text x="42" y="104" font-size="24" fill="#111" font-weight="900">${escapeHtml(route.participantId)} · ${escapeHtml(route.routeId)} · ${difficulty} · ${distance} · ${climb}</text>
+    <text x="42" y="130" font-size="18" fill="#555">${orderText}</text>
+
+    <clipPath id="mapClip"><rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}"/></clipPath>
+    <g clip-path="url(#mapClip)">
+        ${mapBg}
+        ${courseLine}
+        ${markers}
+    </g>
+    <rect x="${mapX}" y="${mapY}" width="${mapW}" height="${mapH}" fill="none" stroke="#38a81f" stroke-width="8"/>
+
+    ${tableSvg}
+
+    <rect x="0" y="${h-footerH}" width="${w}" height="${footerH}" fill="#fff"/>
+    <line x1="0" y1="${h-footerH}" x2="${w}" y2="${h-footerH}" stroke="#38a81f" stroke-width="8"/>
+    <text x="42" y="${h-45}" font-size="18" fill="#159000" font-weight="900">FICHA TÉCNICA:</text>
+    <text x="42" y="${h-22}" font-size="15" fill="#159000">Evento ${escapeHtml(state.eventId)} · ${escapeHtml(state.eventName||"")} · Plano generado por MILITOPO</text>
+    <text x="${w-42}" y="${h-22}" font-size="15" fill="#111" text-anchor="end">El deporte de orientación es respetuoso con el medio natural.</text>
+</svg>
+</div>
+</body></html>`;
 }
+
+
 
 const STORAGE_KEY_MAIN="militopo_orientacion_autosave_v2";
 const STORAGE_KEY_BACKUP="militopo_orientacion_autosave_backup_v2";
