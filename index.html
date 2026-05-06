@@ -4392,20 +4392,38 @@ function validateExercise(){
         missingMetrics.length?missingMetrics.map(r=>`${r.participantId||"?"} · ${r.routeId||"?"}: métricas incompletas`):[`Todos los recorridos tienen distancia y desnivel calculados.`]
     );
 
-    const diffCounts={facil:0,media:0,dificil:0};
+    const diffCounts={facil:0,media:0,dificil:0,sinClasificar:0};
     (metrics||[]).forEach(m=>{
-        const d=String(m.difficulty||"").toLowerCase();
-        if(d.includes("fácil")||d.includes("facil"))diffCounts.facil++;
-        else if(d.includes("media"))diffCounts.media++;
-        else if(d.includes("difícil")||d.includes("dificil"))diffCounts.dificil++;
+        const d=String(m.difficulty||"").trim().toLowerCase();
+
+        // La app muestra normalmente BAJA / MEDIA / ALTA.
+        // En el informe se traduce a Fácil / Media / Difícil.
+        if(d==="baja"||d.includes("baja")||d.includes("fácil")||d.includes("facil")){
+            diffCounts.facil++;
+        }else if(d==="media"||d.includes("media")){
+            diffCounts.media++;
+        }else if(d==="alta"||d.includes("alta")||d.includes("difícil")||d.includes("dificil")){
+            diffCounts.dificil++;
+        }else{
+            diffCounts.sinClasificar++;
+        }
     });
+
+    const diffTotal=diffCounts.facil+diffCounts.media+diffCounts.dificil+diffCounts.sinClasificar;
+    const diffOk=metrics.length===routes.length&&routes.length>0&&diffTotal===routes.length&&diffCounts.sinClasificar===0;
+
     addVerificationItem(
         items,
         "difficulty",
         "Reparto de categorías/dificultad",
-        metrics.length===routes.length&&routes.length>0,
-        [`Fácil: ${diffCounts.facil}`,`Media: ${diffCounts.media}`,`Difícil: ${diffCounts.dificil}`],
-        routes.length&&!metrics.length?[`No hay métricas suficientes para revisar categorías.`]:[]
+        diffOk,
+        [
+            `Fácil/Baja: ${diffCounts.facil}`,
+            `Media: ${diffCounts.media}`,
+            `Difícil/Alta: ${diffCounts.dificil}`,
+            `Total clasificado: ${diffCounts.facil+diffCounts.media+diffCounts.dificil}/${routes.length}`
+        ],
+        diffCounts.sinClasificar?[`${diffCounts.sinClasificar} recorrido(s) sin dificultad reconocida.`]:(routes.length&&!metrics.length?[`No hay métricas suficientes para revisar categorías.`]:[])
     );
 
     const expectedFiles=[
