@@ -1886,12 +1886,7 @@ module.exports = QRCode;
 <div class="block" id="iofDescriptionsBlock" style="margin-top:16px">
   <h3>📋 DESCRIPCIONES DE CONTROL · IOF</h3>
   <div class="help">Rellena aquí la descripción profesional de cada baliza antes de generar el ZIP. Las columnas A-H siguen la estructura de orientación: A número de control, B código, C cuál de objetos similares, D elemento, E aspecto, F dimensión/combinación, G situación exacta de la baliza y H información extra.</div>
-  <div class="iof-top-tools">
-    <div><label>Nombre de prueba en descripciones</label><input id="iofEventName" placeholder="Ej: Entrenamiento orientación" onchange="syncIofEventName()"></div>
-    <div><label>Plantilla rápida</label><select id="iofQuickTemplate"><option value="">Selecciona plantilla...</option><option value="terreno">Terreno / relieve</option><option value="rocas">Rocas y piedras</option><option value="agua">Agua</option><option value="vegetacion">Vegetación</option><option value="construido">Objeto construido</option><option value="especial">Objeto especial</option></select></div>
-    <div><label>Acciones</label><button class="btn secondary" onclick="applyIofTemplateToEmpty()">APLICAR A VACÍAS</button></div>
-  </div>
-  <div class="iof-compact-wrap">
+<div class="iof-compact-wrap">
         <div class="iof-status-line">
             <div id="iofCompactSummary" class="iof-status-pill warn">Descripciones pendientes.</div>
             <div id="iofCurrentStatus" class="iof-status-pill warn">Baliza pendiente</div>
@@ -4514,6 +4509,7 @@ function iofPointIds(){
 function isIofComplete(id){
     ensureIofDescriptions();
     const d=state.iofDescriptions[id]||{};
+    if(d.complete===false)return false;
     if(d.complete===true)return true;
     if(id==="START"||id==="FINISH")return !!(d.text||state.points[id]?.desc);
     return !!(d.d||d.text) && !!d.g;
@@ -4635,7 +4631,7 @@ function markCurrentIofComplete(){
     ensureIofDescriptions();
     if(!selectedIofPointId)return;
     state.iofDescriptions[selectedIofPointId]={...(state.iofDescriptions[selectedIofPointId]||{}),complete:true};
-    renderIofStatus();
+    renderIofDescriptionsEditor();
     scheduleSaveState();
     toast(selectedIofPointId+" marcada como completa");
 }
@@ -4644,7 +4640,7 @@ function markCurrentIofPending(){
     ensureIofDescriptions();
     if(!selectedIofPointId)return;
     state.iofDescriptions[selectedIofPointId]={...(state.iofDescriptions[selectedIofPointId]||{}),complete:false};
-    renderIofStatus();
+    renderIofDescriptionsEditor();
     scheduleSaveState();
     toast(selectedIofPointId+" marcada como pendiente");
 }
@@ -4662,7 +4658,17 @@ function iofPreviewCells(id){
     return `<div>A</div><div>${escapeHtml(code)}</div><div>${iofSymbolBox(cSymbol,"small")}</div><div>${iofSymbolBox(dSymbol,"small")}</div><div>${iofSymbolBox(eSymbol,"small")}</div><div>${iofSymbolBox(fSymbol,"small")}</div><div class="iof-text">${escapeHtml(iofText("g",d.g)||d.text||p.desc||"")}</div><div>${iofSymbolBox(hSymbol,"small")}</div>`;
 }
 
-function updateIofDescription(id,field,value){ensureIofDescriptions();state.iofDescriptions[id][field]=value;const preview=document.getElementById("iofPreview_"+id);if(preview)preview.innerHTML=iofPreviewCells(id);scheduleSaveState()}
+function updateIofDescription(id,field,value){
+    ensureIofDescriptions();
+    state.iofDescriptions[id][field]=value;
+    if(field!=="complete") state.iofDescriptions[id].complete=false;
+    const preview=document.getElementById("iofPreview_"+id);
+    if(preview)preview.innerHTML=iofPreviewCells(id);
+    renderIofStatus();
+    renderIofPointSelector();
+    scheduleSaveState();
+}
+
 function pickRandom(arr){
     const values=(arr||[]).map(x=>x[0]).filter(Boolean);
     return values[Math.floor(Math.random()*values.length)]||"";
