@@ -1911,7 +1911,7 @@ module.exports = QRCode;
 <body>
 <div class="app">
 <header class="hero"><div class="hero-inner"><div class="logo">🧭</div><div><h1>MILITOPO · ORIENTACIÓN</h1><p>Sistema offline para generar recorridos, planos individuales y control por QR.</p><div class="mode-pill">✅ Versión 1 offline · preparada internamente para futura sincronización</div></div></div></header>
-<nav class="steps"><button class="step-tab active" data-step="1">PASO 1 · CONFIGURAR</button><button class="step-tab" data-step="2">PASO 2 · BALIZAS Y MAPA</button><button class="step-tab" data-step="3">PASO 3 · RECORRIDOS</button><button class="step-tab" data-step="4">PASO 4 · MATERIAL QR</button><button class="step-tab" data-step="5">PASO 5 · RESULTADOS</button></nav>
+<nav class="steps"><button class="step-tab active" data-step="1">PASO 1 · CONFIGURAR</button><button class="step-tab" data-step="2">PASO 2 · BALIZAS Y MAPA</button><button class="step-tab" data-step="3">PASO 3 · RECORRIDOS</button><button class="step-tab" data-step="4">PASO 4 · MATERIAL QR</button><button class="step-tab" data-step="5">PASO 5 · 🚦 SECUENCIA</button></nav>
 <section id="step1" class="card active"><div class="card-header"><h2>⚙️ CONFIGURAR PRUEBA</h2></div><div class="grid two"><div class="block"><label>Nombre de la prueba</label><input id="eventName" value="ENTRENAMIENTO ORIENTACIÓN"><div class="help">Se usa para identificar el evento y para el ZIP.</div></div><div class="block"><label>Identificador interno</label><input id="eventId" readonly><div class="help">Preparado para una futura sincronización, sin mostrar nada en vivo.</div></div><div class="block"><label>Participantes / recorridos</label><select id="participantCount"></select></div><div class="block"><label>Balizas totales</label><select id="controlCount"></select></div><div class="block"><label>Balizas por recorrido</label><select id="controlsPerRoute"></select></div><div class="block"><label>Máximo uso por baliza</label><select id="maxControlReuse"></select><div class="help">Limita que una misma baliza aparezca en demasiados recorridos.</div></div></div><div class="grid two" style="margin-top:16px"><div class="block"><label>Equilibrio</label><div class="status ok">50% distancia · 50% desnivel · minimizando coincidencias entre recorridos.</div></div><div class="block"><label>Formato de coordenadas</label><div class="status">UTM obligatorio. Ejemplo: <b>30T 451520 4780100</b></div></div></div><div class="nav-row"><span></span><button class="btn green" onclick="confirmStep1()">CONFIRMAR Y PASAR AL MAPA →</button><button class="btn red" onclick="resetSavedEvent()">🆕 BORRAR EVENTO GUARDADO</button></div></section>
 <section id="step2" class="card"><div class="card-header"><h2>🗺️ EDITAR BALIZAS Y MAPA</h2><div class="mode-pill">Salida · Llegada · Balizas con etiqueta</div></div><div class="grid two"><div class="block"><label>Baliza a editar sobre el plano</label><select id="selectedPoint"></select><div class="btn-row"><button class="btn secondary" onclick="zoomSelectedPoint()">🔎 ZOOM A SELECCIÓN</button><button class="btn" onclick="useMyLocation()">📍 MI UBICACIÓN</button></div></div><div class="block"><label>Buscar zona del mapa</label><div class="map-tools"><input id="searchBox" placeholder="Lugar, dirección o coordenada UTM"><button class="btn" onclick="searchPlace()">🔍 BUSCAR</button><button class="btn secondary" onclick="fitAllPoints()">🧭 VER TODO</button></div></div></div><div class="block autofill-test-panel"><label>Herramientas rápidas de prueba</label><div class="btn-row"><button class="btn green" onclick="autofillOrientationPoints()">✨ AUTORRELLENAR TODOS LOS PUNTOS</button><button class="btn red" onclick="clearAllOrientationPoints()">🧹 LIMPIAR TODOS LOS PUNTOS</button></div><div class="help">Solo para pruebas: rellena salida, llegada y balizas alrededor de una zona base para generar recorridos rápidamente.</div></div><div class="layer-pills"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button></div><div id="map"></div><div class="grid two" style="margin-top:16px"><div class="block"><label>Coordenada UTM de la selección</label><input id="selectedUtm" placeholder="30T 451520 4780100"><label style="margin-top:12px">Descripción</label><input id="selectedDesc" placeholder="Ej: Control 1, vaguada, collado..."><div class="btn-row"><button class="btn green" onclick="saveSelectedPoint()">💾 GUARDAR PUNTO</button><button class="btn red" onclick="clearSelectedPoint()">🧹 LIMPIAR PUNTO</button></div></div><div class="block"><label>Importar coordenadas</label><textarea id="importText" rows="6" placeholder="CSV o texto: ID,UTM,DESCRIPCIÓN&#10;B01,30T 451520 4780100,LOMA&#10;B02,30T 451700 4780200,VAGUADA"></textarea><div class="btn-row"><button class="btn" onclick="importTextPoints()">📥 IMPORTAR TEXTO / EXCEL CSV</button><button class="btn secondary" onclick="exportPointsCsv()">📤 EXPORTAR CSV</button></div><input type="file" id="gpxFile" accept=".gpx,.kml,.xml,.txt" onchange="importGpxKmlFile(event)" style="margin-top:12px"><div class="help">Base preparada para GPX/KML/ATAK. Importa puntos si el archivo contiene coordenadas.</div></div></div><div class="block" style="margin-top:16px"><label>Tabla editable de salida, llegada y balizas</label><div class="table-wrap"><table><thead><tr><th>ID</th><th>Tipo</th><th>Coordenada UTM</th><th>Descripción</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="pointsTable"></tbody></table></div></div>
 <div class="block" id="iofDescriptionsBlock" style="margin-top:16px">
@@ -1974,7 +1974,25 @@ module.exports = QRCode;
 </div><div id="routesGrid" class="grid two" style="margin-top:16px"></div><div class="nav-row"><button class="btn secondary" onclick="goStep(2)">← ANTERIOR</button><button class="btn green" onclick="confirmStep3()">GENERAR MATERIAL →</button></div></section>
 <section id="step4" class="card"><div class="card-header"><h2>📦 MATERIAL · PLANOS · QR</h2><button class="btn green" onclick="verifyAndGenerateZip()">✨ GENERAR ZIP</button></div><div class="grid one"><div class="block"><label>El ZIP incluirá</label><div class="status ok">Planos HTML por participante, QR de participantes, QR de balizas, JSON del evento, CSV de recorridos y registro base offline.</div></div></div>
 
-<div class="block" id="organizerQrSequenceBlock" style="margin-top:16px;">
+<div class="block" id="exerciseVerifierBlock" style="margin-top:16px;">
+    <h3>✅ VERIFICADOR DEL EJERCICIO</h3>
+    <div class="help">Revisa automáticamente si el ejercicio está listo antes de generar el ZIP: puntos, UTM, descripciones IOF, recorridos, QR, planos y app participante.</div>
+    <div class="verify-actions">
+        <button class="btn green" onclick="runExerciseVerifier(true)">🔍 VERIFICAR TODO</button>
+        <button class="btn secondary" onclick="downloadVerificationReport()">📄 EXPORTAR INFORME</button>
+        <button class="btn" onclick="verifyAndGenerateZip()">📦 VERIFICAR Y GENERAR ZIP</button>
+    </div>
+    <div id="exerciseVerifierSummary" class="status warn" style="margin-top:12px;">Todavía no se ha verificado el ejercicio.</div>
+    <div id="exerciseVerifierResults" class="verify-grid"></div>
+</div>
+
+<div id="zipStatus" class="status warn">Genera primero los recorridos y después el material.</div><div class="nav-row"><button class="btn secondary" onclick="goStep(3)">← ANTERIOR</button><button class="btn green" onclick="goStep(5)">SECUENCIA SALIDA/LLEGADA →</button></div></section>
+<section id="step5" class="card">
+  <div class="card-header">
+    <h2>🚦 SECUENCIA SALIDA / LLEGADA</h2>
+    <div class="mode-pill">Organizador · QR participante · salida · llegada</div>
+  </div>
+  <div class="block" id="organizerQrSequenceBlock" style="margin-top:16px;">
     <h3>🚦 SECUENCIA DE SALIDA Y LLEGADA</h3>
     <div class="help">Uso del organizador: enseña primero el QR del participante para cargar su recorrido, después el QR de salida para empezar. Al terminar, selecciona el participante y enseña llegada.</div>
 
@@ -2006,20 +2024,13 @@ module.exports = QRCode;
     </div>
 </div>
 
-<div class="block" id="exerciseVerifierBlock" style="margin-top:16px;">
-    <h3>✅ VERIFICADOR DEL EJERCICIO</h3>
-    <div class="help">Revisa automáticamente si el ejercicio está listo antes de generar el ZIP: puntos, UTM, descripciones IOF, recorridos, QR, planos y app participante.</div>
-    <div class="verify-actions">
-        <button class="btn green" onclick="runExerciseVerifier(true)">🔍 VERIFICAR TODO</button>
-        <button class="btn secondary" onclick="downloadVerificationReport()">📄 EXPORTAR INFORME</button>
-        <button class="btn" onclick="verifyAndGenerateZip()">📦 VERIFICAR Y GENERAR ZIP</button>
-    </div>
-    <div id="exerciseVerifierSummary" class="status warn" style="margin-top:12px;">Todavía no se ha verificado el ejercicio.</div>
-    <div id="exerciseVerifierResults" class="verify-grid"></div>
-</div>
 
-<div id="zipStatus" class="status warn">Genera primero los recorridos y después el material.</div><div class="nav-row"><button class="btn secondary" onclick="goStep(3)">← ANTERIOR</button><button class="btn green" onclick="goStep(5)">RESULTADOS →</button></div></section>
-<section id="step5" class="card">
+  <div class="nav-row">
+    <button class="btn secondary" onclick="goStep(4)">← VERIFICACIÓN Y ZIP</button>
+    <button class="btn green" onclick="goStep(6)">RESULTADOS →</button>
+  </div>
+</section>
+<section id="step6" class="card">
   <div class="card-header">
     <h2>🏁 RESULTADOS Y CONTROL</h2>
     <div class="mode-pill">Clasificación · importación · revisión · exportación</div>
@@ -2085,7 +2096,7 @@ module.exports = QRCode;
   </div>
 
   <div class="nav-row">
-    <button class="btn secondary" onclick="goStep(4)">← MATERIAL Y QR</button>
+    <button class="btn secondary" onclick="goStep(5)">← SECUENCIA SALIDA/LLEGADA</button>
     <button class="btn green" onclick="renderResultsControl()">ACTUALIZAR RESULTADOS</button>
   </div>
 </section>
@@ -2109,7 +2120,7 @@ function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
 function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
 function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={};next.START=preserve&&state.points.START?state.points.START:makePoint("START","SALIDA");next.FINISH=preserve&&state.points.FINISH?state.points.FINISH:makePoint("FINISH","LLEGADA");for(let i=1;i<=state.controlCount;i++){const id="B"+String(i).padStart(2,"0");next[id]=preserve&&state.points[id]?state.points[id]:makePoint(id,"BALIZA")}state.points=next}function makePoint(id,type){return{id,type,utm:"",desc:type==="BALIZA"?id:type,lat:null,lon:null,elevation:null}}
-function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){currentAppStep=n;document.querySelectorAll(".card").forEach(c=>c.classList.remove("active"));const target=document.getElementById("step"+n);if(target)target.classList.add("active");document.querySelectorAll(".step-tab").forEach(btn=>{const step=Number(btn.dataset.step);btn.classList.toggle("active",step===n);btn.classList.toggle("done",step<n)});if(n===2){renderIofDescriptionsEditor();validateIofDescriptions();setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers()},200)};if(n===4){renderQrPreview();updateOrganizerParticipantSelects();runExerciseVerifier(false)};if(n===5)renderResultsControl();if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});if(!opts.silent)scheduleSaveState()}function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.style.display="none",2600)}
+function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){currentAppStep=n;document.querySelectorAll(".card").forEach(c=>c.classList.remove("active"));const target=document.getElementById("step"+n);if(target)target.classList.add("active");document.querySelectorAll(".step-tab").forEach(btn=>{const step=Number(btn.dataset.step);btn.classList.toggle("active",step===n);btn.classList.toggle("done",step<n)});if(n===2){renderIofDescriptionsEditor();validateIofDescriptions();setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers()},200)};if(n===4){runExerciseVerifier(false)};if(n===5){updateOrganizerParticipantSelects();prepareStartFlow()}if(n===6)renderResultsControl();if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});if(!opts.silent)scheduleSaveState()}function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.style.display="none",2600)}
 function confirmStep1(){rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();updateParticipantSelect();updateRouteCountInfo();saveState();toast("Configuración guardada");goStep(2)}
 // AUTOFILL TEST POINTS JS START
 function autofillOrientationPoints() {
@@ -4160,7 +4171,7 @@ function drawFormatBits(matrix,reserved,mask,size){
     const bits=getFormatBits(mask); // ECC L
     const get=i=>((bits>>>i)&1)!==0;
 
-    for(let i=0;i<=5;i++) matrix[8][i]=get(i);
+    for(let i=0;i<=6;i++) matrix[8][i]=get(i);
     matrix[8][7]=get(6);
     matrix[8][8]=get(7);
     matrix[7][8]=get(8);
@@ -4169,7 +4180,7 @@ function drawFormatBits(matrix,reserved,mask,size){
     for(let i=0;i<8;i++) matrix[size-1-i][8]=get(i);
     for(let i=8;i<15;i++) matrix[8][size-15+i]=get(i);
 
-    for(let i=0;i<=5;i++) reserved[8][i]=true;
+    for(let i=0;i<=6;i++) reserved[8][i]=true;
     reserved[8][7]=reserved[8][8]=reserved[7][8]=true;
     for(let i=9;i<15;i++) reserved[14-i][8]=true;
     for(let i=0;i<8;i++) reserved[size-1-i][8]=true;
