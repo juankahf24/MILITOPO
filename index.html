@@ -1770,6 +1770,26 @@ module.exports = QRCode;
   .iof-quick-buttons{grid-template-columns:1fr}
 }
 
+
+/* IOF mobile/layout fix */
+#iofDescriptionsBlock{overflow:hidden}
+.iof-row{width:100%;max-width:100%;overflow:hidden}
+.iof-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%;max-width:100%;overflow:hidden}
+.iof-fields>div{min-width:0;max-width:100%}
+.iof-fields select,.iof-fields input{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:clamp(.72rem,2.9vw,.92rem)!important}
+.iof-preview{width:100%!important;max-width:100%!important;box-sizing:border-box!important;grid-template-columns:32px 48px 42px 42px 42px 42px minmax(86px,1fr) 42px!important;overflow:hidden!important}
+.iof-preview>div{min-width:0!important;box-sizing:border-box!important}
+.iof-preview .iof-text{font-size:clamp(.65rem,2.4vw,.82rem)!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.iof-symbol-svg.small{width:26px!important;height:26px!important;min-width:26px!important;font-size:.86rem!important}
+.iof-quick-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.iof-quick-buttons .btn{min-height:52px;padding-left:8px;padding-right:8px;font-size:clamp(.78rem,2.7vw,.95rem)}
+@media(max-width:520px){
+  .iof-fields{grid-template-columns:1fr!important}
+  .iof-preview{grid-template-columns:28px 42px 36px 36px 36px 36px minmax(70px,1fr) 36px!important}
+  .iof-symbol-svg.small{width:23px!important;height:23px!important;min-width:23px!important;font-size:.74rem!important}
+  .iof-quick-buttons{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
@@ -1786,7 +1806,11 @@ module.exports = QRCode;
     <div><label>Plantilla rápida</label><select id="iofQuickTemplate"><option value="">Selecciona plantilla...</option><option value="terreno">Terreno / relieve</option><option value="rocas">Rocas y piedras</option><option value="agua">Agua</option><option value="vegetacion">Vegetación</option><option value="construido">Objeto construido</option><option value="especial">Objeto especial</option></select></div>
     <div><label>Acciones</label><button class="btn secondary" onclick="applyIofTemplateToEmpty()">APLICAR A VACÍAS</button></div>
   </div>
-  <div id="iofDescriptionsEditor" class="iof-editor-grid"></div>
+  <div class="iof-quick-buttons">
+        <button class="btn green" onclick="autofillOfficialIofDescriptions()">🎲 AUTORRELLENAR OFICIAL</button>
+        <button class="btn red" onclick="clearIofDescriptions()">🧹 LIMPIAR DESCRIPCIONES IOF</button>
+    </div>
+    <div id="iofDescriptionsEditor" class="iof-editor-grid"></div>
 </div>
 <div class="nav-row"><button class="btn secondary" onclick="goStep(1)">← ANTERIOR</button><button class="btn green" onclick="confirmStep2()">GENERAR RECORRIDOS →</button></div></section>
 <section id="step3" class="card"><div class="card-header"><h2>🏃 GENERAR RECORRIDOS</h2><button class="btn" onclick="generateRoutes()">✨ GENERAR / REGENERAR</button></div><div class="grid three"><div class="block"><label>Recorridos</label><div class="status" id="routeCountInfo">--</div></div><div class="block"><label>Equilibrio</label><div class="status ok">50% distancia · 50% desnivel</div></div><div class="block"><label>Coincidencias</label><div class="status warn">Se penalizan balizas compartidas.</div></div></div><div id="routeSummary" class="status warn">Todavía no hay recorridos generados.</div>
@@ -4292,9 +4316,34 @@ function ensureIofDescriptions(){
     });
 }
 
-function iofOptionLabel(group,value){const item=(IOF_OPTIONS[group]||[]).find(x=>x[0]===value);return item?item[1]:""}
-function iofSymbol(group,value){const label=iofOptionLabel(group,value);return label?label.split(" ")[0]:""}
-function iofText(group,value){const label=iofOptionLabel(group,value);return label?label.replace(/^\S+\s*/,""):""}
+function cleanIofLabel(label){
+    return String(label||"")
+        .replace(/^C\d+\s+/,"")
+        .replace(/^D\d+-\d+\s+/,"")
+        .replace(/^E\d+\s+/,"")
+        .replace(/^F\d+\s+/,"")
+        .replace(/^G\d+\s+/,"")
+        .replace(/^H\d+\s+/,"")
+        .replace(/^COMB-\d+\s+/,"")
+        .replace(/^COMB\s+/,"");
+}
+
+function iofOptionLabel(group,value){
+    const item=(IOF_OPTIONS[group]||[]).find(x=>x[0]===value);
+    return item?cleanIofLabel(item[1]):"";
+}
+
+function iofSymbol(group,value){
+    const label=iofOptionLabel(group,value);
+    return label&&label!=="—"?label.split(" ")[0]:"";
+}
+
+function iofText(group,value){
+    const label=iofOptionLabel(group,value);
+    if(!label||label==="—")return "";
+    return label.replace(/^\S+\s*/,"");
+}
+
 function syncIofEventName(){const input=document.getElementById("iofEventName");if(input&&input.value.trim()){state.eventName=input.value.trim();const main=document.getElementById("eventName");if(main)main.value=state.eventName;scheduleSaveState()}}
 function iofSelectHtml(id,field,label,value){const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>`<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(txt||"—")}</option>`).join("");return `<div><label>${label}</label><select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`}
 function renderIofDescriptionsEditor(){
@@ -4313,7 +4362,8 @@ function renderIofDescriptionsEditor(){
 
     box.innerHTML=ids.map(id=>{
         const p=state.points[id]||{};
-        const d=(state.iofDescriptions&&state.iofDescriptions[id])||{};
+        let d=(state.iofDescriptions&&state.iofDescriptions[id])||{};
+        if(id==="START"||id==="FINISH") d={...d,c:"",d:"",e:"",f:"",g:"",h:"",combo:""};
         return `<div class="iof-row">
             <div class="iof-code">${escapeHtml(id)}</div>
             <div>
@@ -4340,15 +4390,16 @@ function renderIofDescriptionsEditor(){
 
 function iofSelectHtml(id,field,label,value){
     const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>{
-        return `<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(txt||"—")}</option>`;
+        return `<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(cleanIofLabel(txt||"—"))}</option>`;
     }).join("");
     return `<div><label>${escapeHtml(label)}</label><select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`;
 }
 
 function iofPreviewCells(id){
     ensureIofDescriptions();
-    const d=state.iofDescriptions[id]||{};
+    let d=state.iofDescriptions[id]||{};
     const p=state.points[id]||{};
+    if(id==="START"||id==="FINISH") d={...d,c:"",d:"",e:"",f:"",g:"",h:"",combo:""};
     const code=id==="START"?"▶":id==="FINISH"?"◎":escapeHtml(id);
     const dSymbol=iofSymbol("d",d.d);
     const eSymbol=iofSymbol("e",d.e);
@@ -4401,6 +4452,29 @@ function autofillRandomIofDescriptions(){
     validateIofDescriptions();
     scheduleSaveState();
     toast("Descripciones oficiales aleatorias generadas");
+}
+
+function autofillOfficialIofDescriptions(){
+    ensureIofDescriptions();
+    const terrain=["terraza","espolon_saliente","vaguada_entrante","talud","colina","cota_monticulo","collado","depresion","foso_hoyo"];
+    const rock=["cortado_rocoso","pilar_rocoso","cueva_gruta","roca","campo_piedras","grupo_piedras","pedregal","afloramiento_rocoso"];
+    const water=["lago","charca","hoyo_agua","rio_curso_agua","cauce_agua_arroyo","pantano_estrecho","pantano","fuente_pozo","manantial"];
+    const veg=["campo_abierto","campo_semiabierto","esquina_bosque","claro","matorral_vegetacion_espesa","seto_matorral_lineal","linde_vegetacion","bosquecillo","arbol_peculiar","raiz_tocon"];
+    const built=["carretera","camino_pista","cortafuegos","puente","linea_electrica","poste_electrico","muro_tapia","cerca_valla","punto_paso","edificio_pilar","ruina","escaleras"];
+    const pools=[terrain,rock,water,veg,built];
+    const rand=a=>a[Math.floor(Math.random()*a.length)];
+    const values=field=>(IOF_OPTIONS[field]||[]).map(x=>x[0]).filter(Boolean);
+    const randOption=field=>rand(values(field));
+    Object.keys(state.points||{}).forEach(id=>{
+        const p=state.points[id]||{};
+        if(id==="START"){state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:p.desc||"SALIDA"};return;}
+        if(id==="FINISH"){state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:p.desc||"LLEGADA"};return;}
+        state.iofDescriptions[id]={c:Math.random()<0.12?randOption("c"):"",d:rand(rand(pools)),e:Math.random()<0.40?randOption("e"):"",f:Math.random()<0.15?randOption("f"):"",g:randOption("g"),h:"",combo:Math.random()<0.08?randOption("combo"):"",text:""};
+    });
+    renderIofDescriptionsEditor();
+    if(typeof validateIofDescriptions==="function") validateIofDescriptions();
+    scheduleSaveState();
+    toast("Descripciones oficiales generadas");
 }
 
 function applyIofTemplateToEmpty(){
