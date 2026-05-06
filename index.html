@@ -1793,6 +1793,62 @@ module.exports = QRCode;
 
 .iof-symbol-svg.small{font-family:Arial,Helvetica,sans-serif!important;font-size:.72rem!important;letter-spacing:-.5px!important;padding:0 2px!important;box-sizing:border-box!important}
 
+
+/* IOF final fit fix */
+#iofDescriptionsBlock .block,#iofDescriptionsBlock{box-sizing:border-box;max-width:100%;overflow:hidden}
+.iof-editor-grid{max-width:100%;overflow:hidden}
+.iof-row{box-sizing:border-box!important;width:100%!important;max-width:100%!important;padding:10px!important;margin:0!important;overflow:hidden!important}
+.iof-fields{box-sizing:border-box!important;width:100%!important;max-width:100%!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important;overflow:hidden!important}
+.iof-fields>div{box-sizing:border-box!important;width:100%!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+.iof-fields select,.iof-fields input{
+  display:block!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  height:54px!important;
+  padding:8px 38px 8px 12px!important;
+  font-size:clamp(.82rem,3.3vw,1rem)!important;
+  line-height:1.1!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.iof-fields label{font-size:clamp(.68rem,2.4vw,.82rem)!important;line-height:1.1!important}
+.iof-code{font-size:clamp(1.15rem,5vw,1.65rem)!important}
+.iof-preview{
+  box-sizing:border-box!important;
+  width:100%!important;
+  max-width:100%!important;
+  grid-template-columns:30px 42px 34px 34px 34px 38px minmax(74px,1fr) 34px!important;
+  overflow:hidden!important;
+}
+.iof-preview>div{
+  box-sizing:border-box!important;
+  min-width:0!important;
+  min-height:40px!important;
+  padding:4px 3px!important;
+}
+.iof-preview .iof-text{
+  font-size:clamp(.60rem,2.35vw,.76rem)!important;
+  line-height:1.05!important;
+  white-space:normal!important;
+  overflow:hidden!important;
+}
+.iof-symbol-svg.small{
+  width:23px!important;
+  height:23px!important;
+  min-width:23px!important;
+  max-width:23px!important;
+  font-size:.68rem!important;
+  padding:0!important;
+}
+@media(min-width:760px){
+  .iof-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .iof-preview{grid-template-columns:34px 54px 44px 44px 44px 52px minmax(120px,1fr) 44px!important}
+  .iof-symbol-svg.small{width:28px!important;height:28px!important;min-width:28px!important;max-width:28px!important;font-size:.78rem!important}
+}
+
 </style>
 </head>
 <body>
@@ -4352,10 +4408,29 @@ function iofOfficialSymbol(group,value){
     return (IOF_SYMBOLS[group]&&IOF_SYMBOLS[group][value])||"";
 }
 
+function shortIofTextForSelect(txt){
+    return String(txt||"")
+        .replace("suave / poco profundo","suave / poco prof.")
+        .replace("cubierto de maleza","cubierto maleza")
+        .replace("pedregoso / rocoso","pedregoso")
+        .replace("caducifolio / hoja ancha","caducifolio")
+        .replace("perenne / hoja fina","perenne")
+        .replace("río / curso de agua","río / curso")
+        .replace("cauce de agua / arroyo","cauce / arroyo")
+        .replace("matorral / vegetación espesa","matorral / veg.")
+        .replace("seto / matorral lineal","seto / lineal")
+        .replace("raíz / tocón de árbol","raíz / tocón")
+        .replace("depósito de agua / abrevadero","depósito / abrev.")
+        .replace("edificio / pilar","edificio / pilar")
+        .replace("pasaje / zona cubierta","pasaje / cubierta")
+        .replace("encima / superior / dos niveles","encima / superior")
+        .replace("debajo / inferior / dos niveles","debajo / inferior");
+}
+
 function iofOptionLabel(group,value){
     const item=(IOF_OPTIONS[group]||[]).find(x=>x[0]===value);
     if(!item)return "";
-    const txt=cleanIofLabel(item[1]);
+    const txt=shortIofTextForSelect(cleanIofLabel(item[1]));
     const sym=iofOfficialSymbol(group,value);
     if(!value||txt==="—")return "—";
     return sym?`${sym} ${txt}`:txt;
@@ -4387,8 +4462,7 @@ function renderIofDescriptionsEditor(){
 
     box.innerHTML=ids.map(id=>{
         const p=state.points[id]||{};
-        let d=(state.iofDescriptions&&state.iofDescriptions[id])||{};
-        if(id==="START"||id==="FINISH") d={...d,c:"",d:"",e:"",f:"",g:"",h:"",combo:""};
+        const d=(state.iofDescriptions&&state.iofDescriptions[id])||{};
         return `<div class="iof-row">
             <div class="iof-code">${escapeHtml(id)}</div>
             <div>
@@ -4422,9 +4496,8 @@ function iofSelectHtml(id,field,label,value){
 
 function iofPreviewCells(id){
     ensureIofDescriptions();
-    let d=state.iofDescriptions[id]||{};
+    const d=state.iofDescriptions[id]||{};
     const p=state.points[id]||{};
-    if(id==="START"||id==="FINISH") d={...d,c:"",d:"",e:"",f:"",g:"",h:"",combo:""};
     const code=id==="START"?"▶":id==="FINISH"?"◎":escapeHtml(id);
     const dSymbol=iofSymbol("d",d.d);
     const eSymbol=iofSymbol("e",d.e);
@@ -4492,8 +4565,14 @@ function autofillOfficialIofDescriptions(){
     const randOption=field=>rand(values(field));
     Object.keys(state.points||{}).forEach(id=>{
         const p=state.points[id]||{};
-        if(id==="START"){state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:p.desc||"SALIDA"};return;}
-        if(id==="FINISH"){state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:p.desc||"LLEGADA"};return;}
+        if(id==="START"){
+            state.iofDescriptions[id]={...(state.iofDescriptions[id]||{}),text:(state.iofDescriptions[id]?.text||p.desc||"SALIDA")};
+            return;
+        }
+        if(id==="FINISH"){
+            state.iofDescriptions[id]={...(state.iofDescriptions[id]||{}),text:(state.iofDescriptions[id]?.text||p.desc||"LLEGADA")};
+            return;
+        }
         state.iofDescriptions[id]={c:Math.random()<0.12?randOption("c"):"",d:rand(rand(pools)),e:Math.random()<0.40?randOption("e"):"",f:Math.random()<0.15?randOption("f"):"",g:randOption("g"),h:"",combo:Math.random()<0.08?randOption("combo"):"",text:""};
     });
     renderIofDescriptionsEditor();
