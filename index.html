@@ -1885,6 +1885,19 @@ module.exports = QRCode;
 .point-input-invalid{outline:2px solid rgba(235,100,80,.75)!important;border-color:rgba(235,100,80,.9)!important}
 .point-format-help{font-size:.68rem;color:var(--muted);line-height:1.2;margin-top:4px}
 
+
+/* Exercise verifier */
+.verify-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.verify-card{border-radius:16px;padding:12px;background:rgba(0,0,0,.15);border:1px solid rgba(230,188,122,.22);font-weight:900}
+.verify-card.ok{border-color:rgba(150,220,110,.45);background:rgba(105,165,75,.16)}
+.verify-card.warn{border-color:rgba(230,188,122,.55);background:rgba(230,188,122,.12)}
+.verify-card.err{border-color:rgba(235,100,80,.65);background:rgba(235,100,80,.12)}
+.verify-card small{display:block;margin-top:5px;color:var(--muted);font-weight:800;line-height:1.25}
+.verify-list{margin:10px 0 0;padding-left:18px;line-height:1.35;font-size:.9rem}
+.verify-list li{margin:4px 0}
+.verify-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+@media(max-width:760px){.verify-grid,.verify-actions{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -1935,7 +1948,7 @@ module.exports = QRCode;
     </div>
 </div>
 <div class="nav-row"><button class="btn secondary" onclick="goStep(1)">← ANTERIOR</button><button class="btn green" onclick="confirmStep2()">GENERAR RECORRIDOS →</button></div></section>
-<section id="step3" class="card"><div class="card-header"><h2>🏃 GENERAR RECORRIDOS</h2><button class="btn" onclick="generateRoutes()">✨ GENERAR / REGENERAR</button></div><div class="grid three"><div class="block"><label>Recorridos</label><div class="status" id="routeCountInfo">--</div></div><div class="block"><label>Equilibrio</label><div class="status ok">50% distancia · 50% desnivel</div></div><div class="block"><label>Coincidencias</label><div class="status warn">Se penalizan balizas compartidas.</div></div></div><div id="routeSummary" class="status warn">Todavía no hay recorridos generados.</div>
+<section id="step3" class="card"><div class="card-header"><h2>🏃 GENERAR RECORRIDOS</h2><button class="btn" onclick="generateRoutes()">✨ GENERAR / REGENERAR</button></div><div class="grid one"><div class="block"><label>Recorridos</label><div class="status" id="routeCountInfo">--</div></div></div><div id="routeSummary" class="status warn">Todavía no hay recorridos generados.</div>
 <div id="step3MapPanel" class="block" style="display:none;margin-top:14px;">
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;">
         <div>
@@ -1951,91 +1964,20 @@ module.exports = QRCode;
     </div>
     <div id="step3RouteMap" style="width:100%;height:min(58vh,560px);min-height:380px;border-radius:22px;overflow:hidden;border:2px solid rgba(230,188,122,.42);background:#d9d1b8;"></div>
 </div><div id="routesGrid" class="grid two" style="margin-top:16px"></div><div class="nav-row"><button class="btn secondary" onclick="goStep(2)">← ANTERIOR</button><button class="btn green" onclick="confirmStep3()">GENERAR MATERIAL →</button></div></section>
-<section id="step4" class="card"><div class="card-header"><h2>📦 MATERIAL · PLANOS · QR</h2><button class="btn green" onclick="generateZip()">✨ GENERAR ZIP</button></div><div class="grid two"><div class="block"><label>El ZIP incluirá</label><div class="status ok">Planos HTML por participante, QR de participantes, QR de balizas, JSON del evento, CSV de recorridos y registro base offline.</div></div><div class="block"><label>QR de baliza</label><div class="status">Cada baliza física solo necesita un QR. El participante escanea y la app valida el orden.</div></div></div><div class="block" style="margin-top:16px"><label>Vista rápida QR</label>
-<div class="block" id="organizerQrFlow">
-    <h3>🎬 SALIDA SECUENCIAL DE PARTICIPANTES</h3>
-    <div class="help">Modo organizador: enseña primero el QR del participante y después el QR de SALIDA. Luego pasa al siguiente participante.</div>
-
-    <div class="grid two">
-        <div class="block">
-            <label>Participante actual</label>
-            <select id="startFlowParticipantSelect" onchange="setStartFlowParticipantFromSelect()"></select>
-            <div id="startFlowInfo" class="status warn">Pulsa preparar salida.</div>
-            <div class="btn-row">
-                <button class="btn green" onclick="prepareStartFlow()">🧭 PREPARAR SALIDA</button>
-                <button class="btn" onclick="showParticipantQrForStart()">1️⃣ QR PARTICIPANTE</button>
-                <button class="btn" onclick="showStartQrForParticipant()">2️⃣ QR SALIDA</button>
-                <button class="btn secondary" onclick="nextStartFlowParticipant()">SIGUIENTE →</button>
-            </div>
-        </div>
-
-        <div class="block">
-            <label>QR a enseñar</label>
-            <div id="organizerStartQrBox" style="display:grid;place-items:center;min-height:230px;">Sin QR preparado.</div>
-            <div id="organizerStartPayload" class="help" style="word-break:break-all;"></div>
-        </div>
+<section id="step4" class="card"><div class="card-header"><h2>📦 MATERIAL · PLANOS · QR</h2><button class="btn green" onclick="generateZip()">✨ GENERAR ZIP</button></div><div class="grid one"><div class="block"><label>El ZIP incluirá</label><div class="status ok">Planos HTML por participante, QR de participantes, QR de balizas, JSON del evento, CSV de recorridos y registro base offline.</div></div></div>
+<div class="block" id="exerciseVerifierBlock" style="margin-top:16px;">
+    <h3>✅ VERIFICADOR DEL EJERCICIO</h3>
+    <div class="help">Revisa automáticamente si el ejercicio está listo antes de generar el ZIP: puntos, UTM, descripciones IOF, recorridos, QR, planos y app participante.</div>
+    <div class="verify-actions">
+        <button class="btn green" onclick="runExerciseVerifier(true)">🔍 VERIFICAR TODO</button>
+        <button class="btn secondary" onclick="downloadVerificationReport()">📄 EXPORTAR INFORME</button>
+        <button class="btn" onclick="runExerciseVerifier(false);generateZip()">📦 VERIFICAR Y GENERAR ZIP</button>
     </div>
+    <div id="exerciseVerifierSummary" class="status warn" style="margin-top:12px;">Todavía no se ha verificado el ejercicio.</div>
+    <div id="exerciseVerifierResults" class="verify-grid"></div>
 </div>
 
-<div class="block" id="organizerFinishFlow">
-    <h3>🏁 LLEGADA / CIERRE DE PARTICIPANTE</h3>
-    <div class="help">Selecciona un participante y enseña el QR de LLEGADA para que su móvil cierre el recorrido. Después su móvil deberá mostrarte el QR final de resultado para importarlo.</div>
-
-    <div class="grid two">
-        <div class="block">
-            <label>Participante a cerrar</label>
-            <select id="finishFlowParticipantSelect" onchange="renderFinishFlowQr()"></select>
-            <div id="finishFlowInfo" class="status warn">Selecciona participante y muestra llegada.</div>
-            <div class="btn-row">
-                <button class="btn red" onclick="renderFinishFlowQr()">🏁 MOSTRAR QR LLEGADA</button>
-            </div>
-        </div>
-
-        <div class="block">
-            <label>QR de llegada</label>
-            <div id="organizerFinishQrBox" style="display:grid;place-items:center;min-height:230px;">Sin QR preparado.</div>
-            <div id="organizerFinishPayload" class="help" style="word-break:break-all;"></div>
-        </div>
-    </div>
-</div>
-
-<div class="block" id="organizerResultImportFlow">
-    <h3>📥 IMPORTAR RESULTADO FINAL</h3>
-    <div class="help">Cuando el participante termine, su móvil mostrará un QR final. Escanéalo aquí o pega el texto del resultado para guardarlo en esta app.</div>
-
-    <div class="grid two">
-        <div class="block">
-            <label>Resultado del participante</label>
-            <textarea id="resultImportInput" placeholder="ORI|RESULT|EVENTO|P01|..." style="min-height:120px;"></textarea>
-            <div class="btn-row">
-                <button class="btn green" onclick="startResultQrCamera()">📷 ESCANEAR QR RESULTADO</button>
-                <button class="btn" onclick="importResultFromInput()">📥 IMPORTAR MANUAL</button>
-                <button class="btn red" onclick="clearImportedResults()">🧹 LIMPIAR RESULTADOS</button>
-            </div>
-
-            <div id="resultQrCameraPanel" class="block" style="display:none;margin-top:12px;">
-                <label>LECTOR QR RESULTADO</label>
-                <video id="resultQrVideo" playsinline muted style="width:100%;max-height:360px;border-radius:18px;background:#111;object-fit:cover;"></video>
-                <canvas id="resultQrCanvas" style="display:none;"></canvas>
-                <div id="resultQrCameraStatus" class="status warn" style="margin-top:10px;">Preparando cámara...</div>
-                <div class="btn-row">
-                    <button class="btn red" onclick="stopResultQrCamera()">DETENER CÁMARA</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="block">
-            <label>Resultados importados</label>
-            <div id="importedResultsSummary" class="status warn">Todavía no hay resultados importados.</div>
-            <div id="importedResultsList" class="scan-list"></div>
-            <div class="btn-row">
-                <button class="btn secondary" onclick="downloadImportedResults()">📤 EXPORTAR RESULTADOS</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div id="qrPreview" class="qr-grid"></div></div><div id="zipStatus" class="status warn">Genera primero los recorridos y después el material.</div><div class="nav-row"><button class="btn secondary" onclick="goStep(3)">← ANTERIOR</button><button class="btn green" onclick="goStep(5)">MODO PARTICIPANTE →</button></div></section>
+<div id="zipStatus" class="status warn">Genera primero los recorridos y después el material.</div><div class="nav-row"><button class="btn secondary" onclick="goStep(3)">← ANTERIOR</button><button class="btn green" onclick="goStep(5)">MODO PARTICIPANTE →</button></div></section>
 <section id="step5" class="card">
   <div class="card-header">
     <h2>🏁 RESULTADOS Y CONTROL</h2>
@@ -2126,7 +2068,7 @@ function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
 function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
 function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={};next.START=preserve&&state.points.START?state.points.START:makePoint("START","SALIDA");next.FINISH=preserve&&state.points.FINISH?state.points.FINISH:makePoint("FINISH","LLEGADA");for(let i=1;i<=state.controlCount;i++){const id="B"+String(i).padStart(2,"0");next[id]=preserve&&state.points[id]?state.points[id]:makePoint(id,"BALIZA")}state.points=next}function makePoint(id,type){return{id,type,utm:"",desc:type==="BALIZA"?id:type,lat:null,lon:null,elevation:null}}
-function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){currentAppStep=n;document.querySelectorAll(".card").forEach(c=>c.classList.remove("active"));const target=document.getElementById("step"+n);if(target)target.classList.add("active");document.querySelectorAll(".step-tab").forEach(btn=>{const step=Number(btn.dataset.step);btn.classList.toggle("active",step===n);btn.classList.toggle("done",step<n)});if(n===2){renderIofDescriptionsEditor();validateIofDescriptions();setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers()},200)};if(n===4)renderQrPreview();if(n===5)renderResultsControl();if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});if(!opts.silent)scheduleSaveState()}function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.style.display="none",2600)}
+function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){currentAppStep=n;document.querySelectorAll(".card").forEach(c=>c.classList.remove("active"));const target=document.getElementById("step"+n);if(target)target.classList.add("active");document.querySelectorAll(".step-tab").forEach(btn=>{const step=Number(btn.dataset.step);btn.classList.toggle("active",step===n);btn.classList.toggle("done",step<n)});if(n===2){renderIofDescriptionsEditor();validateIofDescriptions();setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers()},200)};if(n===4){renderQrPreview();runExerciseVerifier(false)};if(n===5)renderResultsControl();if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});if(!opts.silent)scheduleSaveState()}function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.style.display="none",2600)}
 function confirmStep1(){rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();updateParticipantSelect();updateRouteCountInfo();saveState();toast("Configuración guardada");goStep(2)}
 // AUTOFILL TEST POINTS JS START
 function autofillOrientationPoints() {
@@ -3421,7 +3363,7 @@ async function scanResultQrCameraLoop(){
     }
 }
 
-function updateParticipantSelect(){const sel=document.getElementById("participantSelect");if(sel){sel.innerHTML="";for(let i=1;i<=state.participantCount;i++){const pid="P"+String(i).padStart(2,"0"),opt=document.createElement("option");opt.value=pid;opt.textContent=pid;sel.appendChild(opt)}}updateOrganizerParticipantSelects()}function renderQrPreview(){updateOrganizerParticipantSelects();renderImportedResults();const box=document.getElementById("qrPreview");box.innerHTML="";[{label:"Participante P01",payload:participantPayload("P01")},{label:"Baliza B01",payload:controlPayload("B01")},{label:"Salida",payload:controlPayload("START")},{label:"Llegada",payload:controlPayload("FINISH")}].forEach(async item=>{const div=document.createElement("div");div.className="qr-card";div.innerHTML=`<div>${item.label}</div><div style="height:150px;display:grid;place-items:center">Generando...</div><small>${item.payload}</small>`;box.appendChild(div);try{const url=await QRCode.toDataURL(item.payload,{margin:4,width:220,errorCorrectionLevel:'M'});div.innerHTML=`<div>${item.label}</div><img src="${url}"><small>${item.payload}</small>`}catch(e){div.innerHTML=`<div>${item.label}</div><pre>${item.payload}</pre>`}})}function participantPayload(pid){const route=state.routes.find(r=>r.participantId===pid);return `ORI|PARTICIPANT|${state.eventId}|${pid}|${route?.routeId||""}`}function controlPayload(id){return `ORI|CONTROL|${state.eventId}|${id}`}
+function updateParticipantSelect(){const sel=document.getElementById("participantSelect");if(sel){sel.innerHTML="";for(let i=1;i<=state.participantCount;i++){const pid="P"+String(i).padStart(2,"0"),opt=document.createElement("option");opt.value=pid;opt.textContent=pid;sel.appendChild(opt)}}updateOrganizerParticipantSelects()}function renderQrPreview(){updateOrganizerParticipantSelects();renderImportedResults();const box=document.getElementById("qrPreview");if(!box)return;box.innerHTML="";[{label:"Participante P01",payload:participantPayload("P01")},{label:"Baliza B01",payload:controlPayload("B01")},{label:"Salida",payload:controlPayload("START")},{label:"Llegada",payload:controlPayload("FINISH")}].forEach(async item=>{const div=document.createElement("div");div.className="qr-card";div.innerHTML=`<div>${item.label}</div><div style="height:150px;display:grid;place-items:center">Generando...</div><small>${item.payload}</small>`;box.appendChild(div);try{const url=await QRCode.toDataURL(item.payload,{margin:4,width:220,errorCorrectionLevel:'M'});div.innerHTML=`<div>${item.label}</div><img src="${url}"><small>${item.payload}</small>`}catch(e){div.innerHTML=`<div>${item.label}</div><pre>${item.payload}</pre>`}})}function participantPayload(pid){const route=state.routes.find(r=>r.participantId===pid);return `ORI|PARTICIPANT|${state.eventId}|${pid}|${route?.routeId||""}`}function controlPayload(id){return `ORI|CONTROL|${state.eventId}|${id}`}
 function loadParticipantMode(){
     const pid=document.getElementById("participantSelect").value;
     const route=state.routes.find(r=>r.participantId===pid);
@@ -4311,8 +4253,252 @@ function participantOfflineAppHtml(eventData){
     return template.replace("__EVENT_DATA__", JSON.stringify(eventData));
 }
 
-async function generateZip(){
+let lastVerificationReport=null;
+
+function verifierStatus(ok,warn=false){
+    if(ok&&!warn)return "ok";
+    if(ok&&warn)return "warn";
+    return "err";
+}
+
+function addVerificationItem(items,key,title,ok,details=[],warnings=[]){
+    items.push({
+        key,
+        title,
+        ok:!!ok,
+        warnings:Array.isArray(warnings)?warnings:[],
+        details:Array.isArray(details)?details:[String(details||"")],
+        status:verifierStatus(!!ok,Array.isArray(warnings)&&warnings.length>0)
+    });
+}
+
+function routeMetricForRoute(route){
+    const idx=(state.routes||[]).findIndex(r=>r.routeId===route.routeId&&r.participantId===route.participantId);
+    return idx>=0?(state.metrics||[])[idx]:null;
+}
+
+function validateExercise(){
+    const items=[];
+    const points=state.points||{};
+    const pointIds=Object.keys(points);
+    const controlIds=pointIds.filter(id=>id!=="START"&&id!=="FINISH");
+    const routes=state.routes||[];
+    const metrics=state.metrics||[];
+
+    const hasStart=!!points.START;
+    const hasFinish=!!points.FINISH;
+    const expectedPoints=(state.controlCount||0)+2;
+
+    addVerificationItem(
+        items,
+        "config",
+        "Configuración básica",
+        !!state.eventId&&!!state.eventName&&state.participantCount>0&&state.controlCount>0&&state.controlsPerRoute>0,
+        [
+            `Evento: ${state.eventId||"sin ID"}`,
+            `Nombre: ${state.eventName||"sin nombre"}`,
+            `${state.participantCount||0} participante(s)`,
+            `${state.controlCount||0} baliza(s)`,
+            `${state.controlsPerRoute||0} controles por recorrido`
+        ]
+    );
+
+    addVerificationItem(
+        items,
+        "points_count",
+        "Puntos del ejercicio",
+        hasStart&&hasFinish&&controlIds.length===state.controlCount,
+        [
+            `Salida: ${hasStart?"sí":"no"}`,
+            `Llegada: ${hasFinish?"sí":"no"}`,
+            `Balizas: ${controlIds.length}/${state.controlCount||0}`,
+            `Total puntos: ${pointIds.length}/${expectedPoints}`
+        ],
+        controlIds.length!==state.controlCount?[`El número de balizas no coincide con la configuración.`]:[]
+    );
+
+    const invalidBase=pointIds.filter(id=>typeof pointBaseStatus==="function"?!pointBaseStatus(id).ok:!(points[id].utm&&points[id].desc&&Number.isFinite(points[id].lat)&&Number.isFinite(points[id].lon)));
+    addVerificationItem(
+        items,
+        "points_format",
+        "UTM, descripción y coordenadas",
+        invalidBase.length===0&&pointIds.length>0,
+        invalidBase.length?invalidBase.map(id=>{
+            const st=typeof pointBaseStatus==="function"?pointBaseStatus(id):{missing:["datos"]};
+            return `${id}: falta ${st.missing.join(", ")}`;
+        }):[`Todos los puntos tienen UTM válida, descripción y coordenadas.`]
+    );
+
+    const missingElevation=pointIds.filter(id=>points[id].elev==null&&points[id].elevation==null);
+    addVerificationItem(
+        items,
+        "elevations",
+        "Elevaciones y desniveles",
+        missingElevation.length===0&&pointIds.length>0,
+        missingElevation.length?missingElevation.map(id=>`${id}: sin elevación`):[`Elevaciones disponibles para todos los puntos.`],
+        missingElevation.length?[`Si faltan elevaciones, los desniveles pueden no salir reales.`]:[]
+    );
+
+    const incompleteIof=pointIds.filter(id=>typeof isIofComplete==="function"?!isIofComplete(id):false);
+    addVerificationItem(
+        items,
+        "iof",
+        "Descripciones de control IOF",
+        incompleteIof.length===0&&pointIds.length>0,
+        incompleteIof.length?incompleteIof.map(id=>`${id}: pendiente`):[`Todas las descripciones IOF están completas.`]
+    );
+
+    const expectedRoutes=state.participantCount||0;
+    addVerificationItem(
+        items,
+        "routes",
+        "Recorridos generados",
+        routes.length===expectedRoutes&&routes.length>0,
+        [
+            `Recorridos: ${routes.length}/${expectedRoutes}`,
+            `Métricas: ${metrics.length}/${routes.length}`
+        ],
+        routes.length!==expectedRoutes?[`Genera de nuevo recorridos si cambiaste participantes, balizas o controles.`]:[]
+    );
+
+    const badRoutes=routes.filter(route=>{
+        const ids=route.points||[];
+        if(!ids.length)return true;
+        if(ids[0]!=="START")return true;
+        if(ids[ids.length-1]!=="FINISH")return true;
+        const controls=ids.filter(id=>id!=="START"&&id!=="FINISH");
+        if(controls.length!==state.controlsPerRoute)return true;
+        if(new Set(controls).size!==controls.length)return true;
+        return ids.some(id=>!points[id]);
+    });
+    addVerificationItem(
+        items,
+        "route_structure",
+        "Estructura de recorridos",
+        badRoutes.length===0&&routes.length>0,
+        badRoutes.length?badRoutes.map(r=>`${r.participantId||"?"} · ${r.routeId||"?"}: revisar orden/puntos`):[`Todos los recorridos empiezan en START, terminan en FINISH y tienen controles válidos.`]
+    );
+
+    const missingMetrics=routes.filter(route=>{
+        const m=routeMetricForRoute(route);
+        if(!m)return true;
+        return m.distanceKm==null||m.globalM==null||m.positiveM==null||m.negativeM==null;
+    });
+    addVerificationItem(
+        items,
+        "metrics",
+        "Distancia, desnivel y dificultad",
+        missingMetrics.length===0&&routes.length>0,
+        missingMetrics.length?missingMetrics.map(r=>`${r.participantId||"?"} · ${r.routeId||"?"}: métricas incompletas`):[`Todos los recorridos tienen distancia y desnivel calculados.`]
+    );
+
+    const diffCounts={facil:0,media:0,dificil:0};
+    (metrics||[]).forEach(m=>{
+        const d=String(m.difficulty||"").toLowerCase();
+        if(d.includes("fácil")||d.includes("facil"))diffCounts.facil++;
+        else if(d.includes("media"))diffCounts.media++;
+        else if(d.includes("difícil")||d.includes("dificil"))diffCounts.dificil++;
+    });
+    addVerificationItem(
+        items,
+        "difficulty",
+        "Reparto de categorías/dificultad",
+        metrics.length===routes.length&&routes.length>0,
+        [`Fácil: ${diffCounts.facil}`,`Media: ${diffCounts.media}`,`Difícil: ${diffCounts.dificil}`],
+        routes.length&&!metrics.length?[`No hay métricas suficientes para revisar categorías.`]:[]
+    );
+
+    const expectedFiles=[
+        `${routes.length} plano(s) HTML de participante`,
+        `${state.participantCount||0} QR de participante`,
+        `${controlIds.length+2} QR de controles: salida, llegada y balizas`,
+        `App participante offline`,
+        `JSON del evento`,
+        `CSV de recorridos`,
+        `Hoja general IOF HTML/CSV`
+    ];
+    addVerificationItem(
+        items,
+        "zip_material",
+        "Material previsto del ZIP",
+        routes.length>0&&controlIds.length>0&&pointIds.length>0,
+        expectedFiles
+    );
+
+    const appOk=typeof participantOfflineAppHtml==="function";
+    addVerificationItem(
+        items,
+        "participant_app",
+        "App participante",
+        appOk,
+        [appOk?"Plantilla de app participante integrada.":"No se encontró la función de app participante."]
+    );
+
+    const severe=items.filter(i=>!i.ok);
+    const warnings=items.filter(i=>i.warnings&&i.warnings.length);
+    return {
+        eventId:state.eventId,
+        eventName:state.eventName,
+        checkedAt:new Date().toISOString(),
+        ok:severe.length===0,
+        errors:severe.length,
+        warnings:warnings.length,
+        items
+    };
+}
+
+function renderExerciseVerifier(report){
+    const summary=document.getElementById("exerciseVerifierSummary");
+    const results=document.getElementById("exerciseVerifierResults");
+    if(!summary||!results)return;
+
+    summary.className=report.ok?"status ok":"status warn";
+    summary.innerHTML=report.ok
+        ? `✅ Ejercicio listo para generar material. ${report.items.length} comprobaciones correctas.`
+        : `⚠️ Hay ${report.errors} bloque(s) pendiente(s). Revisa antes de imprimir o entregar material.`;
+
+    results.innerHTML=report.items.map(item=>{
+        const icon=item.ok?(item.warnings.length?"⚠️":"✅"):"❌";
+        const cls=item.ok?(item.warnings.length?"warn":"ok"):"err";
+        const details=[...(item.details||[]),...(item.warnings||[]).map(w=>"Aviso: "+w)];
+        return `<div class="verify-card ${cls}">
+            ${icon} ${escapeHtml(item.title)}
+            <small>${details.slice(0,8).map(escapeHtml).join("<br>")}${details.length>8?"<br>...":""}</small>
+        </div>`;
+    }).join("");
+}
+
+function runExerciseVerifier(showToast=true){
+    const report=validateExercise();
+    lastVerificationReport=report;
+    renderExerciseVerifier(report);
+    if(showToast)toast(report.ok?"Ejercicio verificado correctamente":"Verificación con pendientes");
     saveState();
+    return report;
+}
+
+function verificationReportHtml(report){
+    const rows=report.items.map(item=>{
+        const cls=item.ok?(item.warnings.length?"warn":"ok"):"err";
+        const status=item.ok?(item.warnings.length?"AVISO":"OK"):"PENDIENTE";
+        const details=[...(item.details||[]),...(item.warnings||[]).map(w=>"Aviso: "+w)].map(escapeHtml).join("<br>");
+        return `<tr class="${cls}"><td>${escapeHtml(status)}</td><td>${escapeHtml(item.title)}</td><td>${details}</td></tr>`;
+    }).join("");
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Verificación ${escapeHtml(report.eventId||"")}</title><style>body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#111}h1{color:#2d3b1f}table{width:100%;border-collapse:collapse}th,td{border:1px solid #aaa;padding:8px;vertical-align:top}th{background:#eee}.ok{background:#e9ffe2}.warn{background:#fff4d0}.err{background:#ffe0d8}</style></head><body><h1>Verificación del ejercicio · ${escapeHtml(report.eventId||"")}</h1><p><b>Nombre:</b> ${escapeHtml(report.eventName||"")}<br><b>Fecha:</b> ${new Date(report.checkedAt).toLocaleString("es-ES")}<br><b>Estado:</b> ${report.ok?"LISTO":"CON PENDIENTES"}</p><table><thead><tr><th>Estado</th><th>Bloque</th><th>Detalle</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+}
+
+function downloadVerificationReport(){
+    const report=lastVerificationReport||runExerciseVerifier(false);
+    downloadText(`verificacion_${state.eventId||"evento"}.html`,verificationReportHtml(report));
+}
+
+async function generateZip(){
+    const verification=runExerciseVerifier(false);
+    saveState();
+    if(!verification.ok){
+        const go=confirm("La verificación tiene pendientes. ¿Quieres generar el ZIP igualmente?");
+        if(!go)return;
+    }
     if(!state.routes.length) return toast("Genera primero los recorridos");
 
     const zip=new JSZip();
@@ -4325,6 +4511,7 @@ async function generateZip(){
 
     const participantsFolder=zip.folder("Participantes");
     const controlsFolder=zip.folder("QR_Balizas");
+    zip.file("VERIFICACION_EJERCICIO.html", verificationReportHtml(verification));
     const mapsFolder=zip.folder("Planos_HTML");
     mapsFolder.file("Descripciones_IOF_general.html", iofDescriptionsSheetHtml());
     const descRows=[["Baliza","C","D_Elemento","E_Aspecto","F_Dimension","G_Situacion","H_Info","Combinacion","Texto"]];
