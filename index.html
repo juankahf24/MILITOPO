@@ -1971,7 +1971,7 @@ module.exports = QRCode;
     <div class="verify-actions">
         <button class="btn green" onclick="runExerciseVerifier(true)">🔍 VERIFICAR TODO</button>
         <button class="btn secondary" onclick="downloadVerificationReport()">📄 EXPORTAR INFORME</button>
-        <button class="btn" onclick="runExerciseVerifier(false);generateZip()">📦 VERIFICAR Y GENERAR ZIP</button>
+        <button class="btn" onclick="verifyAndGenerateZip()">📦 VERIFICAR Y GENERAR ZIP</button>
     </div>
     <div id="exerciseVerifierSummary" class="status warn" style="margin-top:12px;">Todavía no se ha verificado el ejercicio.</div>
     <div id="exerciseVerifierResults" class="verify-grid"></div>
@@ -4492,79 +4492,150 @@ function downloadVerificationReport(){
     downloadText(`verificacion_${state.eventId||"evento"}.html`,verificationReportHtml(report));
 }
 
-async function generateZip(){
-    const verification=runExerciseVerifier(false);
-    saveState();
+function setZipStatus(kind,msg){
+    const el=document.getElementById("zipStatus");
+    if(!el)return;
+    el.className=`status ${kind||"warn"}`;
+    el.textContent=msg;
+}
+
+async function verifyAndGenerateZip(){
+    const verification=runExerciseVerifier(true);
     if(!verification.ok){
         const go=confirm("La verificación tiene pendientes. ¿Quieres generar el ZIP igualmente?");
-        if(!go)return;
+        if(!go){
+            setZipStatus("warn","ZIP cancelado. Corrige los pendientes o vuelve a confirmar para generar igualmente.");
+            return;
+        }
     }
-    if(!state.routes.length) return toast("Genera primero los recorridos");
-
-    const zip=new JSZip();
-    const eventData=buildEventData();
-
-    zip.file("evento_orientacion.json",JSON.stringify(eventData,null,2));
-    zip.file("recorridos.csv",routesCsv());
-    zip.file("balizas.csv",pointsCsv());
-    zip.file("registros_offline_base.json",JSON.stringify({eventId:state.eventId,logs:state.participantLogs},null,2));
-
-    const participantsFolder=zip.folder("Participantes");
-    const controlsFolder=zip.folder("QR_Balizas");
-    zip.file("VERIFICACION_EJERCICIO.html", verificationReportHtml(verification));
-    const mapsFolder=zip.folder("Planos_HTML");
-    mapsFolder.file("Descripciones_IOF_general.html", iofDescriptionsSheetHtml());
-    const descRows=[["Baliza","C","D_Elemento","E_Aspecto","F_Dimension","G_Situacion","H_Info","Combinacion","Texto"]];
-    Object.keys(state.points||{}).forEach(id=>{const d=(state.iofDescriptions||{})[id]||{};descRows.push([id,iofText("c",d.c),iofText("d",d.d),iofText("e",d.e),iofText("f",d.f),iofText("g",d.g),iofText("h",d.h),iofText("combo",d.combo),d.text||""])});
-    mapsFolder.file("Descripciones_IOF_general.csv", descRows.map(r=>r.map(csvEscape).join(";")).join("\n"));
-    const appFolder=zip.folder("App_Participante");
-    appFolder.file("Militopo_participante_offline.html", participantOfflineAppHtml(eventData));
-
-    let participantQrCount=0;
-    let controlQrCount=0;
-
-    for(const route of state.routes){
-        const payload=participantPayload(route.participantId);
-        const participantData={
-            eventId:state.eventId,
-            participantId:route.participantId,
-            routeId:route.routeId,
-            points:route.points,
-            payload
-        };
-
-        participantsFolder.file(`${route.participantId}_${route.routeId}.json`,JSON.stringify(participantData,null,2));
-        mapsFolder.file(`Plano_${route.participantId}_${route.routeId}.html`,participantPlanHtml(route));
-
-        await addQrFileToZip(participantsFolder, route.participantId, payload, route.participantId);
-        participantQrCount++;
-    }
-
-    const allPoints=Object.values(state.points)
-        .filter(p=>p && p.id && (p.type==="START" || p.type==="FINISH" || p.type==="BALIZA"))
-        .sort((a,b)=>{
-            const order={START:0,BALIZA:1,FINISH:2};
-            const ta=order[a.type]??9;
-            const tb=order[b.type]??9;
-            if(ta!==tb) return ta-tb;
-            return String(a.id).localeCompare(String(b.id),"es",{numeric:true});
-        });
-
-    controlsFolder.file("_payloads_balizas.txt", allPoints.map(p=>`${p.id}: ${controlPayload(p.id)}`).join("\n"));
-
-    for(const p of allPoints){
-        await addQrFileToZip(controlsFolder, p.id, controlPayload(p.id), p.id);
-        controlQrCount++;
-    }
-
-    const blob=await zip.generateAsync({type:"blob"});
-    saveAs(blob,`MILITOPO_ORIENTACION_${state.eventId}.zip`);
-
-    document.getElementById("zipStatus").className="status ok";
-    document.getElementById("zipStatus").textContent=`ZIP generado correctamente. QR participantes: ${participantQrCount}. QR balizas: ${controlQrCount}.`;
-    saveState();
-    toast("ZIP generado");
+    await generateZip({skipVerification:true,verification});
 }
+
+async function generateZip(options={}){
+    try{
+        setZipStatus("warn","Preparando verificación y material...");
+
+        const verification=options.verification||runExerciseVerifier(false);
+        saveState();
+
+        if(!options.skipVerification && !verification.ok){
+            const go=confirm("La verificación tiene pendientes. ¿Quieres generar el ZIP igualmente?");
+            if(!go){
+                setZipStatus("warn","ZIP cancelado. Hay pendientes en la verificación.");
+                return;
+            }
+        }
+
+        if(!state.routes.length){
+            setZipStatus("warn","Genera primero los recorridos.");
+            return toast("Genera primero los recorridos");
+        }
+
+        if(typeof JSZip==="undefined"){
+            setZipStatus("err","No se pudo cargar JSZip. Revisa conexión o recarga la página.");
+            return toast("JSZip no cargado");
+        }
+
+        const zip=new JSZip();
+        const eventData=buildEventData();
+
+        setZipStatus("warn","Añadiendo datos del evento...");
+        zip.file("evento_orientacion.json",JSON.stringify(eventData,null,2));
+        zip.file("recorridos.csv",routesCsv());
+        zip.file("balizas.csv",pointsCsv());
+        zip.file("registros_offline_base.json",JSON.stringify({eventId:state.eventId,logs:state.participantLogs},null,2));
+        zip.file("VERIFICACION_EJERCICIO.html", verificationReportHtml(verification));
+
+        const participantsFolder=zip.folder("Participantes");
+        const controlsFolder=zip.folder("QR_Balizas");
+        const mapsFolder=zip.folder("Planos_HTML");
+        const appFolder=zip.folder("App_Participante");
+
+        setZipStatus("warn","Añadiendo descripciones y app participante...");
+        if(typeof iofDescriptionsSheetHtml==="function"){
+            mapsFolder.file("Descripciones_IOF_general.html", iofDescriptionsSheetHtml());
+        }
+        const descRows=[["Baliza","C","D_Elemento","E_Aspecto","F_Dimension","G_Situacion","H_Info","Combinacion","Texto"]];
+        Object.keys(state.points||{}).forEach(id=>{
+            const d=(state.iofDescriptions||{})[id]||{};
+            descRows.push([id,iofText("c",d.c),iofText("d",d.d),iofText("e",d.e),iofText("f",d.f),iofText("g",d.g),iofText("h",d.h),iofText("combo",d.combo),d.text||""]);
+        });
+        mapsFolder.file("Descripciones_IOF_general.csv", descRows.map(r=>r.map(csvEscape).join(";")).join("\n"));
+
+        if(typeof participantOfflineAppHtml==="function"){
+            appFolder.file("Militopo_participante_offline.html", participantOfflineAppHtml(eventData));
+        }
+
+        let participantQrCount=0;
+        let controlQrCount=0;
+
+        setZipStatus("warn",`Generando planos y QR de participantes... 0/${state.routes.length}`);
+        for(const route of state.routes){
+            const payload=participantPayload(route.participantId);
+            const participantData={
+                eventId:state.eventId,
+                participantId:route.participantId,
+                routeId:route.routeId,
+                points:route.points,
+                payload
+            };
+
+            participantsFolder.file(`${route.participantId}_${route.routeId}.json`,JSON.stringify(participantData,null,2));
+            if(typeof participantPlanHtml==="function"){
+                mapsFolder.file(`Plano_${route.participantId}_${route.routeId}.html`,participantPlanHtml(route));
+            }
+
+            await addQrFileToZip(participantsFolder, route.participantId, payload, route.participantId);
+            participantQrCount++;
+            setZipStatus("warn",`Generando planos y QR de participantes... ${participantQrCount}/${state.routes.length}`);
+        }
+
+        const allPoints=Object.values(state.points)
+            .filter(p=>p && p.id && (p.type==="START" || p.type==="FINISH" || p.type==="BALIZA"))
+            .sort((a,b)=>{
+                const order={START:0,BALIZA:1,FINISH:2};
+                const ta=order[a.type]??9;
+                const tb=order[b.type]??9;
+                if(ta!==tb) return ta-tb;
+                return String(a.id).localeCompare(String(b.id),"es",{numeric:true});
+            });
+
+        controlsFolder.file("_payloads_balizas.txt", allPoints.map(p=>`${p.id}: ${controlPayload(p.id)}`).join("\n"));
+
+        setZipStatus("warn",`Generando QR de balizas... 0/${allPoints.length}`);
+        for(const p of allPoints){
+            await addQrFileToZip(controlsFolder, p.id, controlPayload(p.id), p.id);
+            controlQrCount++;
+            setZipStatus("warn",`Generando QR de balizas... ${controlQrCount}/${allPoints.length}`);
+        }
+
+        setZipStatus("warn","Comprimiendo ZIP...");
+        const blob=await zip.generateAsync({type:"blob"});
+
+        const filename=`MILITOPO_ORIENTACION_${state.eventId}.zip`;
+
+        if(typeof saveAs==="function"){
+            saveAs(blob,filename);
+        }else{
+            const url=URL.createObjectURL(blob);
+            const a=document.createElement("a");
+            a.href=url;
+            a.download=filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500);
+        }
+
+        setZipStatus("ok",`ZIP generado correctamente. QR participantes: ${participantQrCount}. QR balizas: ${controlQrCount}.`);
+        saveState();
+        toast("ZIP generado");
+    }catch(err){
+        console.error("Error generando ZIP:",err);
+        setZipStatus("err",`Error generando ZIP: ${err&&err.message?err.message:err}`);
+        toast("Error generando ZIP");
+    }
+}
+
 
 function buildEventData(){return{version:"orientacion_v1_offline",eventId:state.eventId,eventName:state.eventName,createdAt:new Date().toISOString(),config:{participantCount:state.participantCount,controlCount:state.controlCount,controlsPerRoute:state.controlsPerRoute,maxControlReuse:state.maxControlReuse,balance:{distance:.5,climb:.5},liveReadyInternals:true,liveVisible:false},points:state.points,routes:state.routes,metrics:state.metrics,iofDescriptions:state.iofDescriptions||{}}}function pointsCsv(){const rows=[["ID","TIPO","UTM","LAT","LON","ELEVACION","DESCRIPCION","QR"]];Object.values(state.points).forEach(p=>rows.push([p.id,p.type,p.utm||"",p.lat??"",p.lon??"",p.elevation??"",p.desc||"",controlPayload(p.id)]));return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}function routesCsv(){const rows=[["PARTICIPANTE","RECORRIDO","DISTANCIA_KM","TRAMO_LARGO_KM","DESNIVEL_POSITIVO_M","DESNIVEL_NEGATIVO_M","DESNIVEL_GLOBAL_M","DIFICULTAD","ORDEN"]];state.routes.forEach((r,i)=>{const m=state.metrics[i]||{};rows.push([r.participantId,r.routeId,m.distanceKm,m.longestKm,m.positiveM,m.negativeM,m.globalM,m.difficulty,r.points.join(" > ")])});return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}
 const IOF_OPTIONS={
