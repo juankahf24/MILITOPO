@@ -1790,6 +1790,9 @@ module.exports = QRCode;
   .iof-quick-buttons{grid-template-columns:1fr}
 }
 
+
+.iof-symbol-svg.small{font-family:Arial,Helvetica,sans-serif!important;font-size:.72rem!important;letter-spacing:-.5px!important;padding:0 2px!important;box-sizing:border-box!important}
+
 </style>
 </head>
 <body>
@@ -4316,6 +4319,23 @@ function ensureIofDescriptions(){
     });
 }
 
+const IOF_SYMBOLS={
+    c:{norte:"↑",este:"→",superior:"↥",inferior:"↧",medio:"▥"},
+    d:{
+        terraza:"⌜",espolon_saliente:"╮",vaguada_entrante:"∪",talud:"⌒",cantera:"◔",muro_tierra:"▦",surco_erosion:"⌃",surco_sin_agua:"⌁",colina:"○",cota_monticulo:"●",collado:"⌒⌒",depresion:"⊂",foso_hoyo:"∨",terreno_irregular:"⌁",hormiguero:"✳",
+        cortado_rocoso:"▥",pilar_rocoso:"▲",cueva_gruta:"⌁",roca:"▲",campo_piedras:"▴▴",grupo_piedras:"◭",pedregal:"▦",afloramiento_rocoso:"✳",pasaje_estrecho:"║",trinchera:"⊔",
+        lago:"≋",charca:"∪",hoyo_agua:"∨",rio_curso_agua:"≈",cauce_agua_arroyo:"≈",pantano_estrecho:"⋯",pantano:"▤",terreno_firme_pantano:"▣",fuente_pozo:"⊙",manantial:"⌒",deposito_agua_abrevadero:"▭",
+        campo_abierto:"◇",campo_semiabierto:"◇",esquina_bosque:"◁",claro:"○",matorral_vegetacion_espesa:"▧",seto_matorral_lineal:"⋯",linde_vegetacion:"〉",bosquecillo:"♧",arbol_peculiar:"♤",raiz_tocon:"⊗",
+        carretera:"/",camino_pista:"╱",cortafuegos:"⋱",puente:"╪",linea_electrica:"╳",poste_electrico:"⊗",tunel:"═",muro_tapia:"▰",cerca_valla:"╫",punto_paso:"＋",edificio_pilar:"■",zona_pavimentada:"▧",ruina:"□",tuberia_estructura_elevada:"┬",torre_poste:"┬",plataforma_tiro:"┐",hito_mojon:"⊙",comedero_animales:"↑",carbonera:"△",plataforma_monumento:"△",pasaje_zona_cubierta:"║",escaleras:"▰",area_fuera_limites:"▣",ferrocarril_tranvia:"╬",
+        elemento_especial_x:"×",elemento_especial_o:"○"
+    },
+    e:{bajo:"⌒",suave_poco_profundo:"⌣",profundo:"∪",cubierto_maleza:"▦",despejado_abierto:"□",pedregoso_rocoso:"▲",pantanoso:"═",arenoso:"░",perenne_hoja_fina:"♤",caducifolio_hoja_ancha:"♧",en_ruinas_caido:"⌞"},
+    f:{altura_profundidad:"2,0",tamano:"8×4",altura_pendiente:"1,0/2,5",altura_dos_objetos:"2,0·3,0"},
+    g:{norte_exterior:"○N",borde_este:"○E",sudoeste_interior:"○SW",esquina_norte_dentro:"⌃N",esquina_este_fuera:"〉E",punta_sudoeste:"⌞SW",en_curva:"⌒",extremo_sudoeste:"⌜SW",parte_superior:"▮",parte_inferior:"▯",encima_superior:"⊓",debajo_inferior:"⊔",al_pie:"⊥",al_pie_norte:"⊥N",entre_dos_objetos:"═"},
+    h:{primeros_auxilios:"✚",avituallamiento:"▱",controlador:"♙"},
+    combo:{cruce:"×",union:"Y",union_carreteras:"//",union_rio_pantano_estrecho:"≈⋯",cruce_pistas:"╱×",cruce_cortafuegos_rio:"⋱≈×",entre_bosques_tupidos:"▧▧",entre_roca_monticulo:"▲●"}
+};
+
 function cleanIofLabel(label){
     return String(label||"")
         .replace(/^C\d+\s+/,"")
@@ -4328,21 +4348,26 @@ function cleanIofLabel(label){
         .replace(/^COMB\s+/,"");
 }
 
+function iofOfficialSymbol(group,value){
+    return (IOF_SYMBOLS[group]&&IOF_SYMBOLS[group][value])||"";
+}
+
 function iofOptionLabel(group,value){
     const item=(IOF_OPTIONS[group]||[]).find(x=>x[0]===value);
-    return item?cleanIofLabel(item[1]):"";
+    if(!item)return "";
+    const txt=cleanIofLabel(item[1]);
+    const sym=iofOfficialSymbol(group,value);
+    if(!value||txt==="—")return "—";
+    return sym?`${sym} ${txt}`:txt;
 }
 
-function iofSymbol(group,value){
-    const label=iofOptionLabel(group,value);
-    return label&&label!=="—"?label.split(" ")[0]:"";
+function iofOptionTextOnly(group,value){
+    const item=(IOF_OPTIONS[group]||[]).find(x=>x[0]===value);
+    return item?cleanIofLabel(item[1]).replace(/^—$/,""):"";
 }
 
-function iofText(group,value){
-    const label=iofOptionLabel(group,value);
-    if(!label||label==="—")return "";
-    return label.replace(/^\S+\s*/,"");
-}
+function iofSymbol(group,value){return iofOfficialSymbol(group,value);}
+function iofText(group,value){return iofOptionTextOnly(group,value);}
 
 function syncIofEventName(){const input=document.getElementById("iofEventName");if(input&&input.value.trim()){state.eventName=input.value.trim();const main=document.getElementById("eventName");if(main)main.value=state.eventName;scheduleSaveState()}}
 function iofSelectHtml(id,field,label,value){const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>`<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(txt||"—")}</option>`).join("");return `<div><label>${label}</label><select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`}
@@ -4390,7 +4415,7 @@ function renderIofDescriptionsEditor(){
 
 function iofSelectHtml(id,field,label,value){
     const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>{
-        return `<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(cleanIofLabel(txt||"—"))}</option>`;
+        return `<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(iofOptionLabel(field,val))}</option>`;
     }).join("");
     return `<div><label>${escapeHtml(label)}</label><select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`;
 }
