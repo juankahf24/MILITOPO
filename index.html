@@ -1898,6 +1898,14 @@ module.exports = QRCode;
 .verify-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
 @media(max-width:760px){.verify-grid,.verify-actions{grid-template-columns:1fr}}
 
+
+/* Organizer QR sequence */
+.organizer-flow-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.organizer-qr-box{min-height:310px;border-radius:22px;border:1px solid rgba(230,188,122,.28);background:rgba(0,0,0,.16);display:grid;place-items:center;padding:14px;overflow:hidden}
+.organizer-payload{font-size:.72rem;color:var(--muted);word-break:break-all;margin-top:8px;line-height:1.2}
+.organizer-step-buttons{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px}
+@media(max-width:760px){.organizer-flow-grid{grid-template-columns:1fr}.organizer-step-buttons{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -1965,6 +1973,39 @@ module.exports = QRCode;
     <div id="step3RouteMap" style="width:100%;height:min(58vh,560px);min-height:380px;border-radius:22px;overflow:hidden;border:2px solid rgba(230,188,122,.42);background:#d9d1b8;"></div>
 </div><div id="routesGrid" class="grid two" style="margin-top:16px"></div><div class="nav-row"><button class="btn secondary" onclick="goStep(2)">← ANTERIOR</button><button class="btn green" onclick="confirmStep3()">GENERAR MATERIAL →</button></div></section>
 <section id="step4" class="card"><div class="card-header"><h2>📦 MATERIAL · PLANOS · QR</h2><button class="btn green" onclick="verifyAndGenerateZip()">✨ GENERAR ZIP</button></div><div class="grid one"><div class="block"><label>El ZIP incluirá</label><div class="status ok">Planos HTML por participante, QR de participantes, QR de balizas, JSON del evento, CSV de recorridos y registro base offline.</div></div></div>
+
+<div class="block" id="organizerQrSequenceBlock" style="margin-top:16px;">
+    <h3>🚦 SECUENCIA DE SALIDA Y LLEGADA</h3>
+    <div class="help">Uso del organizador: enseña primero el QR del participante para cargar su recorrido, después el QR de salida para empezar. Al terminar, selecciona el participante y enseña llegada.</div>
+
+    <div class="organizer-flow-grid">
+        <div class="block">
+            <label>Salida organizada</label>
+            <select id="startFlowParticipantSelect" onchange="setStartFlowParticipantFromSelect()"></select>
+            <div class="organizer-step-buttons">
+                <button class="btn green" onclick="prepareStartFlow()">🧭 PREPARAR</button>
+                <button class="btn" onclick="showParticipantQrForStart()">1️⃣ QR PARTICIPANTE</button>
+                <button class="btn" onclick="showStartQrForParticipant()">2️⃣ QR SALIDA</button>
+            </div>
+            <button class="btn secondary" style="margin-top:10px;width:100%;" onclick="nextStartFlowParticipant()">SIGUIENTE PARTICIPANTE →</button>
+            <div id="startFlowInfo" class="status warn" style="margin-top:10px;">Genera recorridos y pulsa preparar.</div>
+            <div id="organizerStartQrBox" class="organizer-qr-box">QR pendiente</div>
+            <div id="organizerStartPayload" class="organizer-payload"></div>
+        </div>
+
+        <div class="block">
+            <label>Llegada organizada</label>
+            <select id="finishFlowParticipantSelect" onchange="renderFinishFlowQr()"></select>
+            <div class="organizer-step-buttons" style="grid-template-columns:1fr;">
+                <button class="btn red" onclick="renderFinishFlowQr()">🏁 QR LLEGADA</button>
+            </div>
+            <div id="finishFlowInfo" class="status warn" style="margin-top:10px;">Selecciona participante y enseña el QR de llegada.</div>
+            <div id="organizerFinishQrBox" class="organizer-qr-box">QR pendiente</div>
+            <div id="organizerFinishPayload" class="organizer-payload"></div>
+        </div>
+    </div>
+</div>
+
 <div class="block" id="exerciseVerifierBlock" style="margin-top:16px;">
     <h3>✅ VERIFICADOR DEL EJERCICIO</h3>
     <div class="help">Revisa automáticamente si el ejercicio está listo antes de generar el ZIP: puntos, UTM, descripciones IOF, recorridos, QR, planos y app participante.</div>
@@ -1977,7 +2018,7 @@ module.exports = QRCode;
     <div id="exerciseVerifierResults" class="verify-grid"></div>
 </div>
 
-<div id="zipStatus" class="status warn">Genera primero los recorridos y después el material.</div><div class="nav-row"><button class="btn secondary" onclick="goStep(3)">← ANTERIOR</button><button class="btn green" onclick="goStep(5)">MODO PARTICIPANTE →</button></div></section>
+<div id="zipStatus" class="status warn">Genera primero los recorridos y después el material.</div><div class="nav-row"><button class="btn secondary" onclick="goStep(3)">← ANTERIOR</button><button class="btn green" onclick="goStep(5)">RESULTADOS →</button></div></section>
 <section id="step5" class="card">
   <div class="card-header">
     <h2>🏁 RESULTADOS Y CONTROL</h2>
@@ -2068,7 +2109,7 @@ function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
 function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
 function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={};next.START=preserve&&state.points.START?state.points.START:makePoint("START","SALIDA");next.FINISH=preserve&&state.points.FINISH?state.points.FINISH:makePoint("FINISH","LLEGADA");for(let i=1;i<=state.controlCount;i++){const id="B"+String(i).padStart(2,"0");next[id]=preserve&&state.points[id]?state.points[id]:makePoint(id,"BALIZA")}state.points=next}function makePoint(id,type){return{id,type,utm:"",desc:type==="BALIZA"?id:type,lat:null,lon:null,elevation:null}}
-function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){currentAppStep=n;document.querySelectorAll(".card").forEach(c=>c.classList.remove("active"));const target=document.getElementById("step"+n);if(target)target.classList.add("active");document.querySelectorAll(".step-tab").forEach(btn=>{const step=Number(btn.dataset.step);btn.classList.toggle("active",step===n);btn.classList.toggle("done",step<n)});if(n===2){renderIofDescriptionsEditor();validateIofDescriptions();setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers()},200)};if(n===4){renderQrPreview();runExerciseVerifier(false)};if(n===5)renderResultsControl();if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});if(!opts.silent)scheduleSaveState()}function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.style.display="none",2600)}
+function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){currentAppStep=n;document.querySelectorAll(".card").forEach(c=>c.classList.remove("active"));const target=document.getElementById("step"+n);if(target)target.classList.add("active");document.querySelectorAll(".step-tab").forEach(btn=>{const step=Number(btn.dataset.step);btn.classList.toggle("active",step===n);btn.classList.toggle("done",step<n)});if(n===2){renderIofDescriptionsEditor();validateIofDescriptions();setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers()},200)};if(n===4){renderQrPreview();updateOrganizerParticipantSelects();runExerciseVerifier(false)};if(n===5)renderResultsControl();if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});if(!opts.silent)scheduleSaveState()}function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.style.display="none",2600)}
 function confirmStep1(){rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();updateParticipantSelect();updateRouteCountInfo();saveState();toast("Configuración guardada");goStep(2)}
 // AUTOFILL TEST POINTS JS START
 function autofillOrientationPoints() {
