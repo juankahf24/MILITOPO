@@ -5425,14 +5425,14 @@ function participantPlanHtml(route){
 html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-serif;color:#111}
 .toolbar{position:sticky;top:0;z-index:1000;background:rgba(255,255,255,.94);padding:8px;border-bottom:1px solid #ddd}
 .toolbar button{border:0;border-radius:999px;background:#d000b8;color:white;font-weight:900;padding:10px 16px}
-.sheet{width:297mm;height:210mm;background:white;margin:0 auto;position:relative;overflow:hidden;box-sizing:border-box;border:6px solid #14a018}
+.sheet{width:297mm;height:210mm;background:#ebe3c8;margin:0 auto;position:relative;overflow:hidden;box-sizing:border-box;border:0}
 .header{height:18mm;background:#16a019;color:white;display:grid;grid-template-columns:22mm 1fr 22mm;align-items:center;gap:5mm;padding:0 9mm;box-sizing:border-box}
 .title{text-align:center;min-width:0}.title h1{margin:0;font-size:27px;letter-spacing:4px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .title h2{margin:3px 0 0;font-size:17px;letter-spacing:2px;font-weight:900}
 .scale{display:none}
 .scale small{display:block;font-size:13px}
-.content{display:grid;grid-template-columns:1fr 58mm;gap:5mm;padding:5mm 7mm 0 7mm;height:169mm;box-sizing:border-box}
-.map-wrap{position:relative;border:3px solid #16a019;background:#e9f2e9;overflow:hidden}
+.content{display:grid;grid-template-columns:1fr 58mm;gap:5mm;padding:5mm 7mm 0 7mm;height:169mm;box-sizing:border-box;background:#ebe3c8}
+.map-wrap{position:relative;border:0;background:#e9ead7;overflow:hidden}
 #map{width:100%;height:100%}
 .iof{border:2px solid #d000b8;color:#d000b8;font-weight:900;background:white;display:flex;flex-direction:column}
 .iof-head{border-bottom:2px solid #d000b8;background:white;color:#d000b8;font-weight:900;font-size:10px;line-height:1.15}
@@ -5442,9 +5442,9 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .iof-table .code{font-size:9px}
 .iof-table .fcell{font-size:8px}.iof-table .gcell{font-size:8px}
 .iof-table .g{font-size:8px;text-align:center;padding-left:0}
-.footer{height:23mm;display:grid;grid-template-columns:70mm 1fr;align-items:end;padding:0 7mm 5mm;box-sizing:border-box;font-size:9px}
-.footer .tech{color:#079000;font-weight:900;line-height:1.25}
-.footer .note{text-align:right;font-weight:800;font-size:10px}
+.footer{height:23mm;display:grid;grid-template-columns:70mm 1fr;align-items:end;padding:0 7mm 5mm;box-sizing:border-box;font-size:9px;background:#ebe3c8;border-top:2px solid #9a7b3f}
+.footer .tech{color:#354126;font-weight:900;line-height:1.25}
+.footer .note{text-align:right;font-weight:800;font-size:10px;color:#2f2a1e}
 
 .crestBox{width:18mm;height:15mm;display:flex;align-items:center;justify-content:center;background:white;border-radius:3px;overflow:hidden}
 .crestBox img{max-width:17mm;max-height:14mm;object-fit:contain}
@@ -5468,7 +5468,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 
 .leaflet-control-attribution{display:none}
 .ctrl-label{color:#d000b8;font-weight:900;font-size:16px;text-shadow:0 0 3px white,0 0 3px white}
-@media print{.toolbar{display:none}.sheet{margin:0;border-width:4px}body{background:white}}
+@media print{.toolbar{display:none}.sheet{margin:0;border:0}body{background:white}}
 </style>
 </head>
 <body>
