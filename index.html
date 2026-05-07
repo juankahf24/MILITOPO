@@ -5245,7 +5245,7 @@ function applyIofTemplateToEmpty(){
     toast("Plantilla oficial aplicada a balizas vacías");
 }
 
-function getIofDescription(id){ensureIofDescriptions();const d=state.iofDescriptions[id]||{},p=state.points[id]||{};return {c:d.c||"",d:d.d||"",e:d.e||"",f:d.f||"",g:d.g||"",h:d.h||"",combo:d.combo||"",text:d.text||p.desc||"",cSymbol:iofSymbol("c",d.c),dSymbol:iofSymbol("d",d.d),eSymbol:iofSymbol("e",d.e),fSymbol:iofSymbol("f",d.f)||iofSymbol("combo",d.combo),gText:iofText("g",d.g)||d.text||p.desc||"",hSymbol:iofSymbol("h",d.h),dText:iofText("d",d.d)||p.desc||"",eText:iofText("e",d.e),fText:iofText("f",d.f)||iofText("combo",d.combo),hText:iofText("h",d.h)}}
+function getIofDescription(id){ensureIofDescriptions();const d=state.iofDescriptions[id]||{},p=state.points[id]||{};return {c:d.c||"",d:d.d||"",e:d.e||"",f:d.f||"",g:d.g||"",h:d.h||"",combo:d.combo||"",text:d.text||p.desc||"",cSymbol:iofSymbol("c",d.c),dSymbol:iofSymbol("d",d.d),eSymbol:iofSymbol("e",d.e),fSymbol:iofSymbol("f",d.f)||iofSymbol("combo",d.combo),gSymbol:iofSymbol("g",d.g),gText:iofText("g",d.g)||d.text||p.desc||"",hSymbol:iofSymbol("h",d.h),dText:iofText("d",d.d)||p.desc||"",eText:iofText("e",d.e),fText:iofText("f",d.f)||iofText("combo",d.combo),hText:iofText("h",d.h)}}
 
 
 function iofSymbolBox(symbol, extraClass=""){
