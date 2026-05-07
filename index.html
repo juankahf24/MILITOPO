@@ -2144,7 +2144,39 @@ module.exports = QRCode;
 const state={eventId:"",eventName:"ENTRENAMIENTO ORIENTACIÓN",
     planScale:10000,
     planEquidistanceM:5,participantCount:10,controlCount:25,controlsPerRoute:8,maxControlReuse:6,points:{},routes:[],metrics:[],elevations:{},participantLogs:{},importedResults:[]};let map=null,layers={},currentLayer=null,markersLayer=null,routeLayer=null,userLocationMarker=null,userAccuracyCircle=null,selectedPointId="START";let currentAppStep=1;let __autoSaveTimer=null;let selectedIofPointId="START";
-function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);fillSelect("controlCount",3,80,25,n=>`${n} balizas`);fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);fillSelect("maxControlReuse",1,100,6,n=>`${n} usos máx.`);state.eventId="ORI_"+new Date().toISOString().slice(0,10).replaceAll("-","")+"_"+Math.random().toString(36).slice(2,7).toUpperCase();document.getElementById("eventId").value=state.eventId;const restored=loadState();syncConfigToUi();rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();renderIofDescriptionsEditor();updateParticipantSelect();updateRouteCountInfo();bindStepTabs();bindStrongAutosave();setTimeout(()=>{initMap();goStep(currentAppStep||1,{silent:true,noScroll:true});if(restored)toast("Evento restaurado automáticamente")},250)}
+
+function createFreshEventId(){
+    return "ORI_"+new Date().toISOString().slice(0,10).replaceAll("-","")+"_"+Math.random().toString(36).slice(2,7).toUpperCase();
+}
+
+function resetStateToFreshEvent(){
+    const freshId=createFreshEventId();
+    state.eventId=freshId;
+    state.eventName="ENTRENAMIENTO ORIENTACIÓN";
+    state.planScale=10000;
+    state.planEquidistanceM=5;
+    state.participantCount=10;
+    state.controlCount=25;
+    state.controlsPerRoute=8;
+    state.maxControlReuse=6;
+    state.points={};
+    state.routes=[];
+    state.metrics=[];
+    state.elevations={};
+    state.participantLogs={};
+    state.importedResults=[];
+    state.iofDescriptions={};
+    state.routeWarnings=[];
+    selectedPointId="START";
+    selectedIofPointId="START";
+    currentAppStep=1;
+    if(typeof hideZipProgress==="function")hideZipProgress();
+    if(typeof stopStep5ResultQrCamera==="function")stopStep5ResultQrCamera();
+    if(typeof stopStep5FinishQrCamera==="function")stopStep5FinishQrCamera();
+    return freshId;
+}
+
+function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);fillSelect("controlCount",3,80,25,n=>`${n} balizas`);fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);fillSelect("maxControlReuse",1,100,6,n=>`${n} usos máx.`);state.eventId=createFreshEventId();document.getElementById("eventId").value=state.eventId;const restored=loadState();syncConfigToUi();rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();renderIofDescriptionsEditor();updateParticipantSelect();updateRouteCountInfo();bindStepTabs();bindStrongAutosave();setTimeout(()=>{initMap();goStep(currentAppStep||1,{silent:true,noScroll:true});if(restored)toast("Evento restaurado automáticamente")},250)}
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
 function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
 function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={};next.START=preserve&&state.points.START?state.points.START:makePoint("START","SALIDA");next.FINISH=preserve&&state.points.FINISH?state.points.FINISH:makePoint("FINISH","LLEGADA");for(let i=1;i<=state.controlCount;i++){const id="B"+String(i).padStart(2,"0");next[id]=preserve&&state.points[id]?state.points[id]:makePoint(id,"BALIZA")}state.points=next}function makePoint(id,type){return{id,type,utm:"",desc:type==="BALIZA"?id:type,lat:null,lon:null,elevation:null}}
@@ -5949,11 +5981,47 @@ function bindStrongAutosave(){
 }
 
 function resetSavedEvent(){
-    if(!confirm("¿Borrar el evento guardado y empezar uno nuevo?"))return;
+    if(!confirm("¿Borrar el evento guardado y empezar un evento totalmente nuevo? Se borrarán puntos, recorridos, descripciones IOF, QR, resultados y registros guardados."))return;
+
+    clearTimeout(__autoSaveTimer);
     localStorage.removeItem(STORAGE_KEY_MAIN);
     localStorage.removeItem(STORAGE_KEY_BACKUP);
     localStorage.removeItem(STORAGE_KEY_LEGACY);
-    location.reload();
+
+    resetStateToFreshEvent();
+
+    const eventIdInput=document.getElementById("eventId");
+    if(eventIdInput)eventIdInput.value=state.eventId;
+    const eventNameInput=document.getElementById("eventName");
+    if(eventNameInput)eventNameInput.value=state.eventName;
+    const iofEventName=document.getElementById("iofEventName");
+    if(iofEventName)iofEventName.value=state.eventName;
+
+    syncConfigToUi();
+    rebuildPointsFromConfig(true);
+    state.routes=[];
+    state.metrics=[];
+    state.routeWarnings=[];
+    state.iofDescriptions={};
+    ensureIofDescriptions();
+
+    renderPointSelectors();
+    renderPointsTable();
+    renderIofDescriptionsEditor();
+    validateIofDescriptions();
+    updateParticipantSelect();
+    updateRouteCountInfo();
+    if(typeof updateOrganizerParticipantSelects==="function")updateOrganizerParticipantSelects();
+    if(typeof renderResultsControl==="function")renderResultsControl();
+    if(typeof renderExerciseVerifier==="function")renderExerciseVerifier(runExerciseVerifier(false));
+
+    if(markersLayer)markersLayer.clearLayers();
+    if(routeLayer)routeLayer.clearLayers();
+    renderMapMarkers();
+
+    saveState();
+    goStep(1,{silent:true});
+    toast("Evento nuevo creado: "+state.eventId);
 }let step5ResultQrCameraStream=null;
 let step5ResultQrCameraRunning=false;
 let step5ResultQrDetector=null;
