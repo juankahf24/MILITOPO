@@ -4625,6 +4625,160 @@ async function verifyAndGenerateZip(){syncPlanScaleFromUiNow();
     return generateZip(verification);
 }
 
+
+async function loadScriptOnce(url,globalCheck){
+    if(globalCheck&&globalCheck())return;
+    await new Promise((resolve,reject)=>{
+        const existing=[...document.scripts].find(s=>s.src===url);
+        if(existing){existing.addEventListener("load",resolve,{once:true});existing.addEventListener("error",reject,{once:true});return;}
+        const s=document.createElement("script");
+        s.src=url;
+        s.onload=resolve;
+        s.onerror=()=>reject(new Error("No se pudo cargar "+url));
+        document.head.appendChild(s);
+    });
+}
+
+async function ensureJsPdf(){
+    if(window.jspdf&&window.jspdf.jsPDF)return window.jspdf.jsPDF;
+    await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",()=>window.jspdf&&window.jspdf.jsPDF);
+    if(!window.jspdf||!window.jspdf.jsPDF)throw new Error("jsPDF no disponible");
+    return window.jspdf.jsPDF;
+}
+
+function planPdfGeometry(route){
+    const routeIndex=(state.routes||[]).findIndex(r=>r.routeId===route.routeId&&r.participantId===route.participantId);
+    const metric=(state.metrics||[])[routeIndex]||{};
+    const routePoints=(route.points||[]).map(id=>state.points[id]).filter(Boolean);
+    const allEventPoints=Object.values(state.points||{}).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+    const pts=allEventPoints.length?allEventPoints:routePoints.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+    const planScale=Number(state.planScale||10000)===7500?7500:10000;
+    const planEquidistance=Number(state.planEquidistanceM||5)||5;
+    const mapX=5,mapY=22,mapW=240,mapH=172,iofX=248,iofW=44;
+    const terrainW=mapW*planScale/1000,terrainH=mapH*planScale/1000;
+    const center=pts.length?{lat:pts.reduce((a,p)=>a+p.lat,0)/pts.length,lon:pts.reduce((a,p)=>a+p.lon,0)/pts.length}:{lat:40.4168,lon:-3.7038};
+    const mPerLat=111320,mPerLon=111320*Math.cos(center.lat*Math.PI/180);
+    const halfLat=(terrainH/2)/mPerLat,halfLon=(terrainW/2)/(mPerLon||1);
+    const bounds={north:center.lat+halfLat,south:center.lat-halfLat,west:center.lon-halfLon,east:center.lon+halfLon};
+    const project=p=>({x:mapX+((p.lon-bounds.west)/(bounds.east-bounds.west))*mapW,y:mapY+((bounds.north-p.lat)/(bounds.north-bounds.south))*mapH});
+    const points=routePoints.map((p,idx)=>{
+        const isStart=p.id==="START",isFinish=p.id==="FINISH";
+        const n=isStart?"S":isFinish?"M":String(routePoints.slice(0,idx+1).filter(q=>q.id!=="START"&&q.id!=="FINISH").length);
+        const pr=Number.isFinite(p.lat)&&Number.isFinite(p.lon)?project(p):{x:mapX+mapW/2,y:mapY+mapH/2};
+        const io=typeof getIofDescription==="function"?getIofDescription(p.id):{};
+        const raw=f=>((state.iofDescriptions||{})[p.id]||{})[f]||"";
+        return {id:p.id,type:isStart?"START":isFinish?"FINISH":"CONTROL",x:pr.x,y:pr.y,order:isStart?"▷":isFinish?"◎":n,markerOrder:n,
+            c:io.cSymbol||raw("c")||"",d:io.dSymbol||raw("d")||"",e:io.eSymbol||raw("e")||"",f:io.fSymbol||io.fText||raw("f")||"",g:io.gSymbol||io.gText||raw("g")||"",h:io.hSymbol||raw("h")||""};
+    });
+    return {route,metric,points,bounds,planScale,planEquidistance,mapX,mapY,mapW,mapH,iofX,iofW,terrainW,terrainH};
+}
+
+function mapantWmsImageUrl(bounds,widthPx=1800,heightPx=1290){
+    const q=new URLSearchParams({
+        SERVICE:"WMS",REQUEST:"GetMap",VERSION:"1.1.1",LAYERS:"mapant",STYLES:"",
+        SRS:"EPSG:4326",BBOX:[bounds.west,bounds.south,bounds.east,bounds.north].join(","),
+        WIDTH:String(widthPx),HEIGHT:String(heightPx),FORMAT:"image/png"
+    });
+    return "https://mapant.es/wms?"+q.toString();
+}
+
+async function imageUrlToDataUrl(url){
+    if(!window._militopoPdfImageCache)window._militopoPdfImageCache={};
+    if(window._militopoPdfImageCache[url])return window._militopoPdfImageCache[url];
+    const res=await fetch(url,{mode:"cors",cache:"force-cache"});
+    if(!res.ok)throw new Error("MAPANT no respondió: "+res.status);
+    const blob=await res.blob();
+    const dataUrl=await new Promise((resolve,reject)=>{
+        const fr=new FileReader();
+        fr.onload=()=>resolve(fr.result);
+        fr.onerror=()=>reject(new Error("No se pudo leer imagen MAPANT"));
+        fr.readAsDataURL(blob);
+    });
+    window._militopoPdfImageCache[url]=dataUrl;
+    return dataUrl;
+}
+
+function drawPdfCourse(doc,points){
+    doc.setDrawColor(208,0,184);
+    doc.setTextColor(208,0,184);
+    doc.setLineWidth(0.42);
+    const gap=p=>p.type==="START"?0:(p.type==="FINISH"?4.8:4.1);
+    for(let i=0;i<points.length-1;i++){
+        const a=points[i],b=points[i+1],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
+        const x1=a.x+dx/d*gap(a),y1=a.y+dy/d*gap(a),x2=b.x-dx/d*gap(b),y2=b.y-dy/d*gap(b);
+        if(Math.hypot(x2-x1,y2-y1)>1)doc.line(x1,y1,x2,y2);
+    }
+    points.forEach((p,i)=>{
+        const x=p.x,y=p.y;
+        if(p.type==="START"){
+            const b=points[i+1]||p,dx=b.x-x,dy=b.y-y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d,px=-uy,py=ux,r=4.2;
+            const bx=x-ux*r*1.45,by=y-uy*r*1.45;
+            doc.line(x,y,bx+px*r*.9,by+py*r*.9);doc.line(x,y,bx-px*r*.9,by-py*r*.9);doc.line(bx+px*r*.9,by+py*r*.9,bx-px*r*.9,by-py*r*.9);
+        }else if(p.type==="FINISH"){
+            doc.circle(x,y,2.9);doc.circle(x,y,4.8);
+        }else{
+            doc.circle(x,y,4.0);
+            doc.setFontSize(13);
+            doc.text(String(p.markerOrder),x+4.8,y-4.3);
+        }
+    });
+}
+
+function drawPdfIof(doc,g){
+    const title=state.eventName||"ENTRENAMIENTO ORIENTACIÓN";
+    const route=g.route, metric=g.metric||{};
+    const routeNumber=String(route.routeId||"").replace(/^R/i,"")||route.routeId||"-";
+    const dist=metric.distanceKm!=null?`${metric.distanceKm} km`:"-";
+    const climb=metric.globalM!=null?`${metric.globalM} m`:"-";
+    let x=g.iofX,y=g.mapY,w=g.iofW;
+    doc.setDrawColor(208,0,184);doc.setTextColor(208,0,184);doc.setLineWidth(.25);doc.setFont("helvetica","bold");
+    doc.rect(x,y,w,150);
+    doc.setFontSize(7);doc.text(title,x+w/2,y+4,{align:"center",maxWidth:w-2});
+    doc.line(x,y+6,w+x,y+6);doc.text(String(metric.difficulty||"-"),x+w/2,y+10,{align:"center"});
+    doc.line(x,y+12,w+x,y+12);
+    doc.setFontSize(6);doc.text(routeNumber,x+w*.16,y+16,{align:"center"});doc.text(dist,x+w*.50,y+16,{align:"center"});doc.text(climb,x+w*.82,y+16,{align:"center"});
+    doc.line(x,y+18,w+x,y+18);
+    const col=[5,10,4.8,4.8,4.8,4.8,4.8,4.8]; const total=col.reduce((a,b)=>a+b,0); const scale=w/total; let cx=x;
+    "ABCDEFGH".split("").forEach((l,idx)=>{const cw=col[idx]*scale;doc.rect(cx,y+18,cw,5);doc.text(l,cx+cw/2,y+21.5,{align:"center"});cx+=cw;});
+    y+=23;doc.setFontSize(6.2);
+    g.points.forEach(p=>{
+        let cx=x; const vals=[p.order,p.type==="START"?"SAL":p.type==="FINISH"?"META":p.id,p.c,p.d,p.e,p.f,p.g,p.h];
+        vals.forEach((v,idx)=>{const cw=col[idx]*scale;doc.rect(cx,y,cw,4.6);doc.text(String(v||""),cx+cw/2,y+3.2,{align:"center",maxWidth:cw-0.5});cx+=cw;});
+        y+=4.6;
+    });
+}
+
+async function participantPlanPdfBlob(route){
+    const jsPDF=await ensureJsPdf();
+    const g=planPdfGeometry(route);
+    const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4",compress:true});
+    doc.setFillColor(235,227,200);doc.rect(0,0,297,210,"F");
+    doc.setFillColor(63,74,44);doc.rect(0,0,297,18,"F");
+    doc.setTextColor(239,230,200);doc.setFont("helvetica","bold");doc.setFontSize(18);
+    doc.text(state.eventName||"ENTRENAMIENTO ORIENTACIÓN",12,8);
+    doc.setFontSize(10);
+    const routeIndex=(state.routes||[]).findIndex(r=>r.routeId===route.routeId&&r.participantId===route.participantId);
+    const metric=(state.metrics||[])[routeIndex]||{};
+    doc.text(`${route.participantId} · ${route.routeId} · ${metric.difficulty||"-"} · E: 1/${g.planScale.toLocaleString("es-ES")} · EQ ${g.planEquidistance} m`,12,14);
+    doc.setTextColor(47,42,30);doc.setFontSize(7);
+    const url=mapantWmsImageUrl(g.bounds);
+    try{
+        const img=await imageUrlToDataUrl(url);
+        doc.addImage(img,"PNG",g.mapX,g.mapY,g.mapW,g.mapH,undefined,"FAST");
+    }catch(e){
+        doc.setFillColor(233,234,215);doc.rect(g.mapX,g.mapY,g.mapW,g.mapH,"F");
+        doc.setTextColor(160,0,0);doc.setFontSize(9);
+        doc.text("No se pudo cargar MAPANT para este PDF: "+(e.message||e),g.mapX+5,g.mapY+10,{maxWidth:g.mapW-10});
+    }
+    drawPdfCourse(doc,g.points);
+    drawPdfIof(doc,g);
+    doc.setTextColor(53,65,38);doc.setFontSize(8);doc.setFont("helvetica","bold");
+    doc.text(`VENTANA COMÚN: ${Math.round(g.terrainW)} m × ${Math.round(g.terrainH)} m`,5,195);
+    doc.text(`1 cm = ${g.planScale===7500?75:100} m`,5,200);
+    return doc.output("blob");
+}
+
+
 async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow();
     const previousButton=document.querySelector('button[onclick="verifyAndGenerateZip()"]');
     try{
@@ -4663,6 +4817,7 @@ async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow()
         const participantsFolder=zip.folder("Participantes");
         const controlsFolder=zip.folder("QR_Balizas");
         const mapsFolder=zip.folder("Planos_HTML");
+        const pdfFolder=zip.folder("Planos_PDF");
         const appFolder=zip.folder("App_Participante");
 
         setZipStatus("warn","Añadiendo descripciones IOF y app participante...");
@@ -4710,6 +4865,17 @@ async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow()
 
             if(typeof participantPlanHtml==="function"){
                 mapsFolder.file(`Plano_${route.participantId}_${route.routeId}.html`,participantPlanHtml(route));
+            }
+
+            if(typeof participantPlanPdfBlob==="function"){
+                try{
+                    setZipStatus("warn",`Generando PDF de plano... ${participantQrCount+1}/${state.routes.length}`);
+                    const pdfBlob=await participantPlanPdfBlob(route);
+                    pdfFolder.file(`Plano_${route.participantId}_${route.routeId}.pdf`,pdfBlob);
+                }catch(pdfErr){
+                    console.warn("PDF plano no generado",route,pdfErr);
+                    pdfFolder.file(`Plano_${route.participantId}_${route.routeId}_ERROR.txt`,`No se pudo generar este PDF. Motivo: ${pdfErr&&pdfErr.message?pdfErr.message:pdfErr}`);
+                }
             }
 
             await addQrFileToZip(participantsFolder,route.participantId,payload,route.participantId);
