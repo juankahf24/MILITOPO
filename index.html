@@ -5493,7 +5493,7 @@ function drawCourse(){
         const a=points[i],b=points[i+1],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
         const g1=gap(a),g2=gap(b);
         const x1=a.x+dx/d*g1,y1=a.y+dy/d*g1,x2=b.x-dx/d*g2,y2=b.y-dy/d*g2;
-        if(Math.hypot(x2-x1,y2-y1)>2)segs.push('<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="#d000b8" stroke-width="4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
+        if(Math.hypot(x2-x1,y2-y1)>2)segs.push('<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="#d000b8" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
     }
     lines.innerHTML=segs.join('');
     markers.innerHTML=points.map((p,i)=>{
@@ -5505,10 +5505,10 @@ function drawCourse(){
             const p1x=tipX,p1y=tipY;
             const p2x=baseCX+px*startRadius*0.9,p2y=baseCY+py*startRadius*0.9;
             const p3x=baseCX-px*startRadius*0.9,p3y=baseCY-py*startRadius*0.9;
-            return '<polygon points="'+p1x.toFixed(1)+','+p1y.toFixed(1)+' '+p2x.toFixed(1)+','+p2y.toFixed(1)+' '+p3x.toFixed(1)+','+p3y.toFixed(1)+'" fill="none" stroke="#d000b8" stroke-width="4" vector-effect="non-scaling-stroke"/>';
+            return '<polygon points="'+p1x.toFixed(1)+','+p1y.toFixed(1)+' '+p2x.toFixed(1)+','+p2y.toFixed(1)+' '+p3x.toFixed(1)+','+p3y.toFixed(1)+'" fill="none" stroke="#d000b8" stroke-width="3" vector-effect="non-scaling-stroke"/>';
         }
-        if(p.type==='FINISH')return '<circle cx="'+x+'" cy="'+y+'" r="12" fill="none" stroke="#d000b8" stroke-width="4" vector-effect="non-scaling-stroke"/><circle cx="'+x+'" cy="'+y+'" r="20" fill="none" stroke="#d000b8" stroke-width="4" vector-effect="non-scaling-stroke"/>';
-        return '<circle cx="'+x+'" cy="'+y+'" r="17" fill="none" stroke="#d000b8" stroke-width="4" vector-effect="non-scaling-stroke"/><text x="'+(x+19)+'" y="'+(y-16)+'" fill="#d000b8" font-size="21" font-weight="900">'+p.markerOrder+'</text>';
+        if(p.type==='FINISH')return '<circle cx="'+x+'" cy="'+y+'" r="12" fill="none" stroke="#d000b8" stroke-width="3" vector-effect="non-scaling-stroke"/><circle cx="'+x+'" cy="'+y+'" r="20" fill="none" stroke="#d000b8" stroke-width="3" vector-effect="non-scaling-stroke"/>';
+        return '<circle cx="'+x+'" cy="'+y+'" r="17" fill="none" stroke="#d000b8" stroke-width="3" vector-effect="non-scaling-stroke"/><text x="'+(x+20)+'" y="'+(y-18)+'" fill="#d000b8" font-size="25" font-weight="900">'+p.markerOrder+'</text>';
     }).join('');
 }
 setTimeout(()=>{map.invalidateSize();map.fitBounds(bounds,{padding:[0,0],animate:false});drawCourse();},250);
