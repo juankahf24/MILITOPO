@@ -5355,6 +5355,32 @@ function participantPlanHtml(route){
     const centerLon=mapPoints.length?mapPoints.reduce((a,p)=>a+p.lon,0)/mapPoints.length:-3.7038;
 
     const pointData=routePoints.map((p,idx)=>{
+        function iofShortF(v){
+            return String(v||"").replace(/[^\d,.\-x×·/ ]/g,"").trim();
+        }
+        function iofSymbolG(v){
+            const s=String(v||"").toLowerCase();
+            if(!s)return "";
+            if(s.includes("norte"))return "↑";
+            if(s.includes("sur"))return "↓";
+            if(s.includes("este"))return "→";
+            if(s.includes("oeste"))return "←";
+            if(s.includes("noreste"))return "↗";
+            if(s.includes("noroeste"))return "↖";
+            if(s.includes("sureste"))return "↘";
+            if(s.includes("suroeste"))return "↙";
+            if(s.includes("borde"))return "◐";
+            if(s.includes("esquina"))return "⌜";
+            if(s.includes("extremo"))return "⊣";
+            if(s.includes("parte superior")||s.includes("encima"))return "⊤";
+            if(s.includes("parte inferior")||s.includes("debajo"))return "⊥";
+            if(s.includes("entre"))return "═";
+            if(s.includes("al pie"))return "⊥";
+            if(s.includes("dentro")||s.includes("interior"))return "●";
+            if(s.includes("fuera")||s.includes("exterior"))return "○";
+            return "";
+        }
+
         const isStart=p.id==="START";
         const isFinish=p.id==="FINISH";
         const order=isStart?"S":isFinish?"M":String(routePoints.slice(0,idx+1).filter(q=>q.id!=="START"&&q.id!=="FINISH").length);
@@ -5364,13 +5390,13 @@ function participantPlanHtml(route){
             lat:p.lat,
             lon:p.lon,
             desc:p.desc||"",
-            order,
+            order:isStart?"▷":isFinish?"◎":order,
             type:isStart?"START":isFinish?"FINISH":"CONTROL",
             c:io.cSymbol||"",
             d:io.dSymbol||"",
             e:io.eSymbol||"",
-            f:io.fSymbol||"",
-            g:io.gText||"",
+            f:iofShortF(io.fSymbol||io.fText||""),
+            g:io.gSymbol||iofSymbolG(io.gText||""),
             h:io.hSymbol||""
         };
     });
@@ -5405,7 +5431,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .iof-table td,.iof-table th{border:1.6px solid #d000b8;height:18px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
 .iof-table th{background:#fff0fb;font-size:9px}
 .iof-table .code{font-size:9px}
-.iof-table .g{font-size:7px;text-align:left;padding-left:2px}
+.iof-table .g{font-size:8px;text-align:center;padding-left:0}
 .footer{height:23mm;display:grid;grid-template-columns:70mm 1fr;align-items:end;padding:0 7mm 5mm;box-sizing:border-box;font-size:9px}
 .footer .tech{color:#079000;font-weight:900;line-height:1.25}
 .footer .note{text-align:right;font-weight:800;font-size:10px}
@@ -5428,7 +5454,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .iof-table .col-a{width:28px}
 .iof-table .col-b{width:42px}
 .iof-table .code{font-size:9px}
-.iof-table .g{font-size:7px;text-align:left;padding-left:2px}
+.iof-table .g{font-size:8px;text-align:center;padding-left:0}
 
 .leaflet-control-attribution{display:none}
 .ctrl-label{color:#d000b8;font-weight:900;font-size:16px;text-shadow:0 0 3px white,0 0 3px white}
@@ -5482,7 +5508,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
                         <td>${escapeHtml(p.d)}</td>
                         <td>${escapeHtml(p.e)}</td>
                         <td>${escapeHtml(p.f)}</td>
-                        <td class="g">${escapeHtml(String(p.g).slice(0,16))}</td>
+                        <td>${escapeHtml(p.g)}</td>
                         <td>${escapeHtml(p.h)}</td>
                     </tr>`).join("")}
                 </tbody>
