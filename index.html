@@ -5376,7 +5376,8 @@ function participantPlanHtml(route){
     const routeIndex=(state.routes||[]).findIndex(r=>r.routeId===route.routeId&&r.participantId===route.participantId);
     const metric=(state.metrics||[])[routeIndex]||{};
     const routePoints=(route.points||[]).map(id=>state.points[id]).filter(Boolean);
-    const mapPoints=routePoints.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+    const allEventPoints=Object.values(state.points||{}).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+    const fallbackPoints=routePoints.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
     const eventTitle=escapeHtml(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
     const participant=escapeHtml(route.participantId||"P--");
     const routeId=escapeHtml(route.routeId||"R--");
@@ -5387,77 +5388,53 @@ function participantPlanHtml(route){
     const planScale=Number(state.planScale||10000)===7500?7500:10000;
     const planEquidistance=Number(state.planEquidistanceM||5)||5;
     const scaleLabel=`1/${planScale.toLocaleString("es-ES")}`;
-    const crestImg="data:image/jpeg;base64,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";
 
-    const centerLat=mapPoints.length?mapPoints.reduce((a,p)=>a+p.lat,0)/mapPoints.length:40.4168;
-    const centerLon=mapPoints.length?mapPoints.reduce((a,p)=>a+p.lon,0)/mapPoints.length:-3.7038;
-    const planMapWidthMm=240;
-    const planMapHeightMm=172;
-    const planTerrainWidthM=planMapWidthMm*planScale/1000;
-    const planTerrainHeightM=planMapHeightMm*planScale/1000;
+    // Bloque del mapa en papel. Mismo tamaño y mismo fondo para todos los participantes.
+    const mapPaperWidthMm=240;
+    const mapPaperHeightMm=172;
+    const terrainWidthM=mapPaperWidthMm*planScale/1000;
+    const terrainHeightM=mapPaperHeightMm*planScale/1000;
+
+    const pts=allEventPoints.length?allEventPoints:fallbackPoints;
+    const center=pts.length?{
+        lat:pts.reduce((a,p)=>a+p.lat,0)/pts.length,
+        lon:pts.reduce((a,p)=>a+p.lon,0)/pts.length
+    }:{lat:40.4168,lon:-3.7038};
+
+    const mPerLat=111320;
+    const mPerLon=111320*Math.cos(center.lat*Math.PI/180);
+    const halfLat=(terrainHeightM/2)/mPerLat;
+    const halfLon=(terrainWidthM/2)/(mPerLon||1);
+    const bounds={north:center.lat+halfLat,south:center.lat-halfLat,west:center.lon-halfLon,east:center.lon+halfLon,centerLat:center.lat,centerLon:center.lon,widthM:terrainWidthM,heightM:terrainHeightM};
+
+    const project=p=>{
+        const x=((p.lon-bounds.west)/(bounds.east-bounds.west))*1000;
+        const y=((bounds.north-p.lat)/(bounds.north-bounds.south))*1000;
+        return {x,y};
+    };
+    const inside=p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&p.lat<=bounds.north&&p.lat>=bounds.south&&p.lon>=bounds.west&&p.lon<=bounds.east;
+    const outOfBounds=pts.filter(p=>!inside(p)).map(p=>p.id);
 
     const pointData=routePoints.map((p,idx)=>{
-        function iofRaw(id,field){
-            const d=(state.iofDescriptions||{})[id]||{};
-            return d[field]||"";
-        }
-        function iofCell(id,field,io){
-            const raw=iofRaw(id,field);
-            if(!raw)return "";
-            const symbol=(io&&io[field+"Symbol"])||"";
-            return symbol || raw;
-        }
-        function iofTextCell(id,field,io){
-            const raw=iofRaw(id,field);
-            if(!raw)return "";
-            const symbol=(io&&io[field+"Symbol"])||"";
-            const text=(io&&io[field+"Text"])||"";
-            return symbol || text || raw;
-        }
-        function iofDimensionCell(id,io){
-            const raw=iofRaw(id,"f");
-            if(!raw)return "";
-            const symbol=(io&&io.fSymbol)||"";
-            const text=(io&&io.fText)||"";
-            return symbol || text || raw;
-        }
-        function iofSituationCell(id,io){
-            const raw=iofRaw(id,"g");
-            if(!raw)return "";
-            const symbol=(io&&io.gSymbol)||"";
-            const text=(io&&io.gText)||"";
-            return symbol || text || raw;
-        }
-        const isStart=p.id==="START";
-        const isFinish=p.id==="FINISH";
-        const order=isStart?"S":isFinish?"M":String(routePoints.slice(0,idx+1).filter(q=>q.id!=="START"&&q.id!=="FINISH").length);
+        function raw(field){return ((state.iofDescriptions||{})[p.id]||{})[field]||""}
         const io=typeof getIofDescription==="function"?getIofDescription(p.id):{};
+        const isStart=p.id==="START", isFinish=p.id==="FINISH";
+        const n=isStart?"S":isFinish?"M":String(routePoints.slice(0,idx+1).filter(q=>q.id!=="START"&&q.id!=="FINISH").length);
+        const pr=Number.isFinite(p.lat)&&Number.isFinite(p.lon)?project(p):{x:500,y:500};
         return {
-            id:p.id,
-            lat:p.lat,
-            lon:p.lon,
-            desc:p.desc||"",
-            order:isStart?"▷":isFinish?"◎":order,
+            id:p.id, lat:p.lat, lon:p.lon, x:pr.x, y:pr.y, inside:inside(p),
+            order:isStart?"▷":isFinish?"◎":n, markerOrder:n,
             type:isStart?"START":isFinish?"FINISH":"CONTROL",
-            c:iofCell(p.id,"c",io),
-            d:iofCell(p.id,"d",io),
-            e:iofCell(p.id,"e",io),
-            f:iofDimensionCell(p.id,io),
-            g:iofSituationCell(p.id,io),
-            h:iofCell(p.id,"h",io),
-            combo:iofCell(p.id,"combo",io),
-            text:((state.iofDescriptions||{})[p.id]||{}).text||""
+            c:(io.cSymbol||raw("c")||""), d:(io.dSymbol||raw("d")||""), e:(io.eSymbol||raw("e")||""),
+            f:(io.fSymbol||io.fText||raw("f")||""), g:(io.gSymbol||io.gText||raw("g")||""), h:(io.hSymbol||raw("h")||"")
         };
     });
 
-    const orderText=escapeHtml((route.points||[]).join(" → "));
     const json=JSON.stringify(pointData).replace(/</g,"\\u003c");
+    const boundsJson=JSON.stringify(bounds).replace(/</g,"\\u003c");
+    const warning=outOfBounds.length?`ATENCIÓN: no caben ${outOfBounds.length} punto(s) a esta escala: ${outOfBounds.join(", ")}`:"Fondo común del evento · escala fija correcta";
 
-    return `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Plano_${participant}_${routeId}</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
@@ -5466,157 +5443,47 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .toolbar{position:sticky;top:0;z-index:1000;background:rgba(255,255,255,.94);padding:8px;border-bottom:1px solid #ddd}
 .toolbar button{border:0;border-radius:999px;background:#d000b8;color:white;font-weight:900;padding:10px 16px}
 .sheet{width:297mm;height:210mm;background:#ebe3c8;margin:0 auto;position:relative;overflow:hidden;box-sizing:border-box;border:0}
-.header{height:18mm;background:#3f4a2c;color:#efe6c8;display:grid;grid-template-columns:22mm 1fr 22mm;align-items:center;gap:5mm;padding:0 9mm;box-sizing:border-box}
-.title{text-align:center;min-width:0}.title h1{margin:0;font-size:27px;letter-spacing:4px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.title h2{margin:3px 0 0;font-size:17px;letter-spacing:2px;font-weight:900}
-.scale{display:none}
-.scale small{display:block;font-size:13px}
+.header{height:18mm;background:#3f4a2c;color:#efe6c8;display:grid;grid-template-columns:1fr auto;align-items:center;padding:0 12mm;box-sizing:border-box}
+.title h1{margin:0;font-size:28px;letter-spacing:5px;font-weight:900}.title h2{margin:4px 0 0;font-size:18px;letter-spacing:3px;font-weight:900}
+.scale{text-align:right;font-weight:900;font-size:20px}.scale small{display:block;font-size:13px}
 .content{display:grid;grid-template-columns:1fr 44mm;gap:3mm;padding:4mm 5mm 0 5mm;height:172mm;box-sizing:border-box;background:#ebe3c8}
 .map-wrap{position:relative;border:0;background:#e9ead7;overflow:hidden}
-#map{width:100%;height:100%}
+#participantPlanMap{width:100%;height:100%}.routeOverlay{position:absolute;inset:0;width:100%;height:100%;z-index:500;pointer-events:none}
 .iof{border:2px solid #d000b8;color:#d000b8;font-weight:900;background:white;display:flex;flex-direction:column}
 .iof-head{border-bottom:2px solid #d000b8;background:white;color:#d000b8;font-weight:900;font-size:8px;line-height:1.08}
-.iof-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8px;color:#d000b8}
-.iof-table td,.iof-table th{border:1.3px solid #d000b8;height:15px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
-.iof-table th{background:#fff0fb;font-size:9px}
-.iof-table .code{font-size:7px}
-.iof-table .fcell{font-size:7px}.iof-table .gcell{font-size:8px}
-.iof-table .g{font-size:8px;text-align:center;padding-left:0}
-.footer{height:20mm;display:grid;grid-template-columns:70mm 1fr;align-items:end;padding:0 5mm 4mm;box-sizing:border-box;font-size:8px;background:#ebe3c8;border-top:2px solid #9a7b3f}
-.footer .tech{color:#354126;font-weight:900;line-height:1.25}
-.footer .note{text-align:right;font-weight:800;font-size:10px;color:#2f2a1e}
-
-.crestBox{width:18mm;height:15mm;display:flex;align-items:center;justify-content:center;background:white;border-radius:3px;overflow:hidden}
-.crestBox img{max-width:17mm;max-height:14mm;object-fit:contain}
-.crestFallback{font-size:17px;font-weight:900;color:#156f15}
-.northBox{width:18mm;height:15mm;display:flex;align-items:center;justify-content:center}
-.northSvg{width:16mm;height:16mm}
-
-
-.iof-title{height:15px;display:flex;align-items:center;justify-content:center;border-bottom:1.3px solid #d000b8;font-size:8px;letter-spacing:.1px;background:#fff;overflow:hidden;white-space:nowrap}
+.iof-title{height:15px;display:flex;align-items:center;justify-content:center;border-bottom:1.3px solid #d000b8;font-size:8px;background:#fff;overflow:hidden;white-space:nowrap}
 .iof-difficulty{height:14px;display:flex;align-items:center;justify-content:center;border-bottom:1.3px solid #d000b8;font-size:8px;background:#fff}
 .iof-metrics{display:grid;grid-template-columns:1fr 1.35fr 1.15fr;height:16px;border-bottom:1.3px solid #d000b8;background:#fff}
-.iof-metrics div{display:flex;align-items:center;justify-content:center;border-right:1.3px solid #d000b8;font-size:8px}
-.iof-metrics div:last-child{border-right:0}
+.iof-metrics div{display:flex;align-items:center;justify-content:center;border-right:1.3px solid #d000b8;font-size:8px}.iof-metrics div:last-child{border-right:0}
 .iof-letters{display:grid;grid-template-columns:18px 31px repeat(6,1fr);height:15px;border-bottom:1.3px solid #d000b8;background:#fff0fb}
-.iof-letters div{display:flex;align-items:center;justify-content:center;border-right:1.3px solid #d000b8;font-size:8px}
-.iof-letters div:last-child{border-right:0}
-.iof-table .col-a{width:18px}
-.iof-table .col-b{width:31px}
-.iof-table .code{font-size:9px}
-.iof-table .g{font-size:8px;text-align:center;padding-left:0}
-
+.iof-letters div{display:flex;align-items:center;justify-content:center;border-right:1.3px solid #d000b8;font-size:8px}.iof-letters div:last-child{border-right:0}
+.iof-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8px;color:#d000b8}.iof-table td{border:1.3px solid #d000b8;height:15px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
+.iof-table .col-a{width:18px}.iof-table .col-b{width:31px}.iof-table .code{font-size:7px}.iof-table .fcell{font-size:7px}.iof-table .gcell{font-size:8px}
+.footer{height:20mm;display:grid;grid-template-columns:96mm 1fr;align-items:end;padding:0 5mm 4mm;box-sizing:border-box;font-size:8px;background:#ebe3c8;border-top:2px solid #9a7b3f}
+.footer .tech{color:#354126;font-weight:900;line-height:1.25}.footer .note{text-align:right;font-weight:800;font-size:10px;color:#2f2a1e}.warn{color:${outOfBounds.length?"#a00000":"#354126"};font-weight:900}
 .leaflet-control-attribution{display:none}
-.ctrl-label{color:#d000b8;font-weight:900;font-size:16px;text-shadow:0 0 3px white,0 0 3px white}
 @media print{.toolbar{display:none}.sheet{margin:0;border:0}body{background:white}}
-</style>
-</head>
-<body>
+</style></head><body>
 <div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div>
-<div class="sheet">
-    <div class="header">
-        <div class="crestBox">${crestImg?`<img src="${crestImg}" alt="Escudo III Bandera Ortiz de Zárate">`:`<div class="crestFallback">III</div>`}</div>
-        <div class="title">
-            <h1>${eventTitle}</h1>
-            <h2>E: ${scaleLabel} &nbsp;&nbsp; EQ: ${planEquidistance} m &nbsp;&nbsp; · &nbsp;&nbsp; ${participant} · ${routeId} · ${difficulty} · ${distance} · ${climb}</h2>
-        </div>
-        <div class="northBox" title="Norte">
-            <svg class="northSvg" viewBox="0 0 100 100" aria-label="Norte">
-                <circle cx="50" cy="50" r="43" fill="#fff7d0" stroke="#111" stroke-width="3"/>
-                <line x1="50" y1="10" x2="50" y2="90" stroke="#111" stroke-width="2"/>
-                <line x1="10" y1="50" x2="90" y2="50" stroke="#111" stroke-width="2"/>
-                <polygon points="50,8 36,58 50,48 64,58" fill="#d0002b" stroke="#111" stroke-width="1.5"/>
-                <text x="50" y="95" text-anchor="middle" font-size="18" font-weight="900" fill="#111">N</text>
-            </svg>
-        </div>
-    </div>
-
-    <div class="content">
-        <div class="map-wrap"><div id="participantPlanMap"></div></div>
-        <div class="iof">
-            <div class="iof-head">
-                <div class="iof-title">${eventTitle}</div>
-                <div class="iof-difficulty">${difficulty}</div>
-                <div class="iof-metrics">
-                    <div>${routeNumber}</div>
-                    <div>${distance}</div>
-                    <div>${climb}</div>
-                </div>
-                <div class="iof-letters">
-                    <div>A</div><div>B</div><div>C</div><div>D</div><div>E</div><div>F</div><div>G</div><div>H</div>
-                </div>
-            </div>
-            <table class="iof-table">
-                <colgroup>
-                    <col class="col-a"><col class="col-b"><col><col><col><col><col><col>
-                </colgroup>
-                <tbody>
-                    ${pointData.map(p=>`<tr>
-                        <td>${escapeHtml(String(p.order))}</td>
-                        <td class="code">${escapeHtml(p.type==="START"?"SALIDA":p.type==="FINISH"?"META":p.id)}</td>
-                        <td>${escapeHtml(p.c)}</td>
-                        <td>${escapeHtml(p.d)}</td>
-                        <td>${escapeHtml(p.e)}</td>
-                        <td class="fcell">${escapeHtml(p.f)}</td>
-                        <td class="gcell">${escapeHtml(p.g)}</td>
-                        <td>${escapeHtml(p.h)}</td>
-                    </tr>`).join("")}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="footer">
-        <div class="tech">
-            FICHA TÉCNICA:<br>
-            EVENTO: ${escapeHtml(state.eventId||"")}<br>
-            RECORRIDO: ${participant} / ${routeId}<br>
-            ORDEN: ${orderText}
-        </div>
-        <div class="note">EL DEPORTE DE ORIENTACIÓN ES RESPETUOSO CON EL MEDIO NATURAL.</div>
-    </div>
-</div>
-
+<div class="sheet"><div class="header"><div class="title"><h1>${eventTitle}</h1><h2>${participant} · ${routeId} · ${difficulty} · ${distance} · ${climb}</h2></div><div class="scale">E: ${scaleLabel}<small>Equidistancia ${planEquidistance} m</small></div></div>
+<div class="content"><div class="map-wrap"><div id="participantPlanMap"></div><svg class="routeOverlay" viewBox="0 0 1000 1000" preserveAspectRatio="none"><polyline id="courseLine" points="" fill="none" stroke="#d000b8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><g id="courseMarkers"></g></svg></div>
+<div class="iof"><div class="iof-head"><div class="iof-title">${eventTitle}</div><div class="iof-difficulty">${difficulty}</div><div class="iof-metrics"><div>${routeNumber}</div><div>${distance}</div><div>${climb}</div></div><div class="iof-letters"><div>A</div><div>B</div><div>C</div><div>D</div><div>E</div><div>F</div><div>G</div><div>H</div></div></div>
+<table class="iof-table"><colgroup><col class="col-a"><col class="col-b"><col><col><col><col><col><col></colgroup><tbody>${pointData.map(p=>`<tr><td>${escapeHtml(String(p.order))}</td><td class="code">${escapeHtml(p.type==="START"?"SALIDA":p.type==="FINISH"?"META":p.id)}</td><td>${escapeHtml(p.c)}</td><td>${escapeHtml(p.d)}</td><td>${escapeHtml(p.e)}</td><td class="fcell">${escapeHtml(p.f)}</td><td class="gcell">${escapeHtml(p.g)}</td><td>${escapeHtml(p.h)}</td></tr>`).join("")}</tbody></table></div></div>
+<div class="footer"><div class="tech">FICHA TÉCNICA · ${scaleLabel} · EQ ${planEquidistance} m<br>VENTANA COMÚN: ${Math.round(terrainWidthM)} m × ${Math.round(terrainHeightM)} m<br>EVENTO: ${escapeHtml(state.eventId||"")} · RECORRIDO: ${participant} / ${routeId}</div><div class="note"><span class="warn">${escapeHtml(warning)}</span><br>El deporte de orientación es respetuoso con el medio natural.</div></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
 <script>
-const points=${json};
-const map=L.map('participantPlanMap',{zoomControl:false,attributionControl:false,preferCanvas:true}).setView([${centerLat},${centerLon}],15);
-
-// Fondo MAPANT principal. Si el servidor no responde, queda OpenTopoMap como respaldo visual.
+const points=${json}; const commonBounds=${boundsJson};
+const map=L.map('participantPlanMap',{zoomControl:false,attributionControl:false,preferCanvas:true,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false}).setView([commonBounds.centerLat,commonBounds.centerLon],15);
 const mapant=L.tileLayer('https://mapant.es/tiles/{z}/{x}/{y}.png',{maxZoom:18,crossOrigin:true});
 const fallback=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{maxZoom:17,crossOrigin:true});
-mapant.on('tileerror',()=>{if(!map.hasLayer(fallback))fallback.addTo(map)});
-mapant.addTo(map);
-
-const latlngs=points.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)).map(p=>[p.lat,p.lon]);
-if(latlngs.length){
-    map.fitBounds(latlngs,{padding:[35,35],maxZoom:16});
-    setTimeout(()=>map.invalidateSize(),200);
+mapant.on('tileerror',()=>{if(!map.hasLayer(fallback))fallback.addTo(map)}); mapant.addTo(map);
+const bounds=[[commonBounds.south,commonBounds.west],[commonBounds.north,commonBounds.east]];
+function drawCourse(){const line=document.getElementById('courseLine'), markers=document.getElementById('courseMarkers'); line.setAttribute('points',points.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')); markers.innerHTML=points.map(p=>{const x=p.x,y=p.y;if(p.type==='START')return '<polygon points="'+x+','+(y-22)+' '+(x-20)+','+(y+16)+' '+(x+20)+','+(y+16)+'" fill="none" stroke="#d000b8" stroke-width="6" vector-effect="non-scaling-stroke"/>'; if(p.type==='FINISH')return '<circle cx="'+x+'" cy="'+y+'" r="18" fill="none" stroke="#d000b8" stroke-width="6" vector-effect="non-scaling-stroke"/><circle cx="'+x+'" cy="'+y+'" r="29" fill="none" stroke="#d000b8" stroke-width="6" vector-effect="non-scaling-stroke"/>'; return '<circle cx="'+x+'" cy="'+y+'" r="24" fill="none" stroke="#d000b8" stroke-width="6" vector-effect="non-scaling-stroke"/><text x="'+(x+26)+'" y="'+(y-22)+'" fill="#d000b8" font-size="28" font-weight="900">'+p.markerOrder+'</text>'}).join('')}
+setTimeout(()=>{map.invalidateSize();map.fitBounds(bounds,{padding:[0,0],animate:false});drawCourse();},250);
+<\/script></body></html>`;
 }
 
-if(latlngs.length>1){
-    L.polyline(latlngs,{color:'#d000b8',weight:4,opacity:.95,lineJoin:'round'}).addTo(map);
-}
 
-function startIcon(){
-    return L.divIcon({className:'',html:'<svg width="38" height="38" viewBox="0 0 38 38"><polygon points="19,3 4,33 34,33" fill="none" stroke="#d000b8" stroke-width="4"/></svg>',iconSize:[38,38],iconAnchor:[19,19]});
-}
-function finishIcon(){
-    return L.divIcon({className:'',html:'<svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="13" fill="none" stroke="#d000b8" stroke-width="4"/><circle cx="23" cy="23" r="20" fill="none" stroke="#d000b8" stroke-width="4"/></svg>',iconSize:[46,46],iconAnchor:[23,23]});
-}
-function controlIcon(n){
-    return L.divIcon({className:'',html:'<svg width="50" height="50" viewBox="0 0 50 50"><circle cx="25" cy="25" r="18" fill="none" stroke="#d000b8" stroke-width="4"/><text x="38" y="14" fill="#d000b8" font-size="18" font-weight="900">'+n+'</text></svg>',iconSize:[50,50],iconAnchor:[25,25]});
-}
-
-points.forEach(p=>{
-    if(!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return;
-    let icon=p.type==='START'?startIcon():p.type==='FINISH'?finishIcon():controlIcon(p.order);
-    L.marker([p.lat,p.lon],{icon,interactive:false}).addTo(map);
-});
-<\/script>
-</body>
-</html>`;
-}
 
 
 
