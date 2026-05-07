@@ -5686,36 +5686,52 @@ const bounds=[[commonBounds.south,commonBounds.west],[commonBounds.north,commonB
 function drawCourse(){
     const lines=document.getElementById('courseLines'), markers=document.getElementById('courseMarkers');
     if(!lines||!markers)return;
-    const startRadius=11, controlRadius=10.5, finishOuter=13.5;
-    const gap=p=>p.type==='START'?0:(p.type==='FINISH'?finishOuter+1.5:controlRadius+1.2);
-    function unitToNext(i){
-        const a=points[i],b=points[i+1]||points[i];
+
+    // Símbolos uniformes y pequeños: el punto real queda en el centro del círculo/meta,
+    // y en el vértice del triángulo de salida.
+    const symbolR=10;
+    const strokeW=2.4;
+    const lineW=2.2;
+    const cutGap=symbolR+2.2;
+
+    function unit(a,b){
         const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
-        return {ux:dx/d,uy:dy/d};
+        return {ux:dx/d,uy:dy/d,dx,dy,d};
     }
+
     const segs=[];
     for(let i=0;i<points.length-1;i++){
-        const a=points[i],b=points[i+1],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
-        const g1=gap(a),g2=gap(b);
-        const x1=a.x+dx/d*g1,y1=a.y+dy/d*g1,x2=b.x-dx/d*g2,y2=b.y-dy/d*g2;
-        if(Math.hypot(x2-x1,y2-y1)>2)segs.push('<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="#d000b8" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
+        const a=points[i],b=points[i+1];
+        const u=unit(a,b);
+        const g1=a.type==='START'?0:cutGap;
+        const g2=cutGap;
+        const x1=a.x+u.ux*g1,y1=a.y+u.uy*g1;
+        const x2=b.x-u.ux*g2,y2=b.y-u.uy*g2;
+        if(Math.hypot(x2-x1,y2-y1)>1){
+            segs.push('<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="#d000b8" stroke-width="'+lineW+'" stroke-linecap="round" vector-effect="non-scaling-stroke"/>');
+        }
     }
     lines.innerHTML=segs.join('');
+
     markers.innerHTML=points.map((p,i)=>{
         const x=p.x,y=p.y;
         if(p.type==='START'){
-            const u=unitToNext(i),px=-u.uy,py=u.ux;
+            const next=points[i+1]||p;
+            const u=unit(p,next);
+            const px=-u.uy,py=u.ux;
             const tipX=x,tipY=y;
-            const baseCX=x-u.ux*startRadius*1.45,baseCY=y-u.uy*startRadius*1.45;
-            const p1x=tipX,p1y=tipY;
-            const p2x=baseCX+px*startRadius*0.9,p2y=baseCY+py*startRadius*0.9;
-            const p3x=baseCX-px*startRadius*0.9,p3y=baseCY-py*startRadius*0.9;
-            return '<polygon points="'+p1x.toFixed(1)+','+p1y.toFixed(1)+' '+p2x.toFixed(1)+','+p2y.toFixed(1)+' '+p3x.toFixed(1)+','+p3y.toFixed(1)+'" fill="none" stroke="#d000b8" stroke-width="3" vector-effect="non-scaling-stroke"/>';
+            const baseCX=x-u.ux*symbolR*1.55,baseCY=y-u.uy*symbolR*1.55;
+            const p2x=baseCX+px*symbolR*.92,p2y=baseCY+py*symbolR*.92;
+            const p3x=baseCX-px*symbolR*.92,p3y=baseCY-py*symbolR*.92;
+            return '<polygon points="'+tipX.toFixed(1)+','+tipY.toFixed(1)+' '+p2x.toFixed(1)+','+p2y.toFixed(1)+' '+p3x.toFixed(1)+','+p3y.toFixed(1)+'" fill="none" stroke="#d000b8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/>';
         }
-        if(p.type==='FINISH')return '<circle cx="'+x+'" cy="'+y+'" r="12" fill="none" stroke="#d000b8" stroke-width="3" vector-effect="non-scaling-stroke"/><circle cx="'+x+'" cy="'+y+'" r="20" fill="none" stroke="#d000b8" stroke-width="3" vector-effect="non-scaling-stroke"/>';
-        return '<circle cx="'+x+'" cy="'+y+'" r="17" fill="none" stroke="#d000b8" stroke-width="3" vector-effect="non-scaling-stroke"/><text x="'+(x+20)+'" y="'+(y-18)+'" fill="#d000b8" font-size="25" font-weight="900">'+p.markerOrder+'</text>';
+        if(p.type==='FINISH'){
+            return '<circle cx="'+x+'" cy="'+y+'" r="'+(symbolR*0.58).toFixed(1)+'" fill="none" stroke="#d000b8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/><circle cx="'+x+'" cy="'+y+'" r="'+symbolR+'" fill="none" stroke="#d000b8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/>';
+        }
+        return '<circle cx="'+x+'" cy="'+y+'" r="'+symbolR+'" fill="none" stroke="#d000b8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/><text x="'+(x+symbolR+4).toFixed(1)+'" y="'+(y-symbolR-2).toFixed(1)+'" fill="#d000b8" font-size="23" font-weight="900">'+p.markerOrder+'</text>';
     }).join('');
 }
+
 setTimeout(()=>{map.invalidateSize();map.fitBounds(bounds,{padding:[0,0],animate:false});drawCourse();},250);
 <\/script></body></html>`;
 }
