@@ -5686,8 +5686,8 @@ const bounds=[[commonBounds.south,commonBounds.west],[commonBounds.north,commonB
 function drawCourse(){
     const lines=document.getElementById('courseLines'), markers=document.getElementById('courseMarkers');
     if(!lines||!markers)return;
-    const startRadius=18, controlRadius=17, finishOuter=20;
-    const gap=p=>p.type==='START'?0:(p.type==='FINISH'?finishOuter+3:controlRadius+2);
+    const startRadius=11, controlRadius=10.5, finishOuter=13.5;
+    const gap=p=>p.type==='START'?0:(p.type==='FINISH'?finishOuter+1.5:controlRadius+1.2);
     function unitToNext(i){
         const a=points[i],b=points[i+1]||points[i];
         const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
