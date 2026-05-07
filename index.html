@@ -5438,10 +5438,7 @@ function renderIofDescriptionsEditor(){
                 ${iofSelectHtml(id,"g","G · situación",d.g)}
                 ${iofSelectHtml(id,"h","H · info extra",d.h)}
                 ${iofSelectHtml(id,"combo","Combinación",d.combo)}
-                <div>
-                    <label>Texto libre</label>
-                    <input value="${escapeHtml(d.text||p.desc||"")}" onchange="updateIofDescription('${id}','text',this.value)" placeholder="Ej: pie norte del cortado">
-                </div>
+
             </div>
             <div id="iofPreview_${id}" class="iof-preview">${iofPreviewCells(id)}</div>
         </div>
@@ -5529,7 +5526,7 @@ function iofPreviewCells(id){
     const fSymbol=iofSymbol("f",d.f)||iofSymbol("combo",d.combo);
     const hSymbol=iofSymbol("h",d.h);
     const cSymbol=iofSymbol("c",d.c);
-    return `<div>A</div><div>${escapeHtml(code)}</div><div>${iofSymbolBox(cSymbol,"small")}</div><div>${iofSymbolBox(dSymbol,"small")}</div><div>${iofSymbolBox(eSymbol,"small")}</div><div>${iofSymbolBox(fSymbol,"small")}</div><div class="iof-text">${escapeHtml(iofText("g",d.g)||d.text||p.desc||"")}</div><div>${iofSymbolBox(hSymbol,"small")}</div>`;
+    return `<div>A</div><div>${escapeHtml(code)}</div><div>${iofSymbolBox(cSymbol,"small")}</div><div>${iofSymbolBox(dSymbol,"small")}</div><div>${iofSymbolBox(eSymbol,"small")}</div><div>${iofSymbolBox(fSymbol,"small")}</div><div class="iof-text">${escapeHtml(iofText("g",d.g)||"")}</div><div>${iofSymbolBox(hSymbol,"small")}</div>`;
 }
 
 function updateIofDescription(id,field,value){
@@ -5645,7 +5642,7 @@ function applyIofTemplateToEmpty(){
     toast("Plantilla oficial aplicada a balizas vacías");
 }
 
-function getIofDescription(id){ensureIofDescriptions();const d=state.iofDescriptions[id]||{},p=state.points[id]||{};return {c:d.c||"",d:d.d||"",e:d.e||"",f:d.f||"",g:d.g||"",h:d.h||"",combo:d.combo||"",text:d.text||p.desc||"",cSymbol:iofSymbol("c",d.c),dSymbol:iofSymbol("d",d.d),eSymbol:iofSymbol("e",d.e),fSymbol:iofSymbol("f",d.f)||iofSymbol("combo",d.combo),gSymbol:iofSymbol("g",d.g),gText:iofText("g",d.g)||d.text||p.desc||"",hSymbol:iofSymbol("h",d.h),dText:iofText("d",d.d)||p.desc||"",eText:iofText("e",d.e),fText:iofText("f",d.f)||iofText("combo",d.combo),hText:iofText("h",d.h)}}
+function getIofDescription(id){ensureIofDescriptions();const d=state.iofDescriptions[id]||{},p=state.points[id]||{};return {c:d.c||"",d:d.d||"",e:d.e||"",f:d.f||"",g:d.g||"",h:d.h||"",combo:d.combo||"",text:d.text||p.desc||"",cSymbol:iofSymbol("c",d.c),dSymbol:iofSymbol("d",d.d),eSymbol:iofSymbol("e",d.e),fSymbol:iofSymbol("f",d.f)||iofSymbol("combo",d.combo),gSymbol:iofSymbol("g",d.g),gText:iofText("g",d.g)||"",hSymbol:iofSymbol("h",d.h),dText:iofText("d",d.d)||p.desc||"",eText:iofText("e",d.e),fText:iofText("f",d.f)||iofText("combo",d.combo),hText:iofText("h",d.h)}}
 
 
 function iofSymbolBox(symbol, extraClass=""){
@@ -5801,7 +5798,7 @@ function participantPlanHtml(route){
             order:isStart?"▷":isFinish?"◎":n, markerOrder:n,
             type:isStart?"START":isFinish?"FINISH":"CONTROL",
             c:(io.cSymbol||raw("c")||""), d:(io.dSymbol||raw("d")||""), e:(io.eSymbol||raw("e")||""),
-            f:(io.fSymbol||io.fText||raw("f")||""), g:(io.gSymbol||io.gText||raw("g")||""), h:(io.hSymbol||raw("h")||"")
+            f:(io.fSymbol||io.fText||raw("f")||""), g:(io.gSymbol||""), h:(io.hSymbol||raw("h")||"")
         };
     });
 
