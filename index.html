@@ -2347,10 +2347,10 @@ function renderPointsTable(){
         tr.innerHTML=`<td><b>${p.id}</b><br>${pointStatusBadgeHtml(p.id)}</td>
             <td>${p.type}</td>
             <td>
-                <input class="${st.utmOk?"":"point-input-invalid"}" value="${escapeHtml(p.utm||"")}" data-data-point-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198">
+                <input class="${st.utmOk?"":"point-input-invalid"}" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198">
                 <div class="point-format-help">Formato exacto: 30T 463941 4106198</div>
             </td>
-            <td><input class="${st.descOk?"":"point-input-invalid"}" value="${escapeHtml(p.desc||"")}" data-data-point-id="${p.id}" data-field="desc"></td>
+            <td><input class="${st.descOk?"":"point-input-invalid"}" value="${escapeHtml(p.desc||"")}" data-id="${p.id}" data-field="desc"></td>
             <td>${st.ok?"✅ Completa":"⚠️ Pendiente"}</td>
             <td><button class="btn secondary" style="min-height:36px;padding:7px 10px" onclick="selectPoint('${p.id}')">Editar</button></td>`;
         tbody.appendChild(tr);
@@ -4884,7 +4884,7 @@ function ensureIofDescriptions(){
 
     Object.keys(state.points||{}).forEach(id=>{
         if(!state.iofDescriptions[id]){
-            state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:"",complete:true};
+            state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:"",complete:false};
         }
         validFields.forEach(field=>{
             if(!isValid(field,state.iofDescriptions[id][field])){
@@ -4977,10 +4977,7 @@ function isIofComplete(id){
     const base=pointBaseStatus(id);
     if(!base.ok)return false;
     const d=state.iofDescriptions[id]||{};
-    if(d.complete===false)return false;
-    if(d.complete===true)return true;
-    if(id==="START"||id==="FINISH")return !!(d.text||state.points[id]?.desc);
-    return !!(d.d||d.text) && !!d.g;
+    return d.complete===true;
 }
 
 function iofDisplayStatus(id){
@@ -5165,11 +5162,11 @@ function autofillRandomIofDescriptions(){
     Object.keys(state.points||{}).forEach(id=>{
         const p=state.points[id]||{};
         if(id==="START"){
-            state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:p.desc||"SALIDA"};
+            state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:p.desc||"SALIDA",complete:true};
             return;
         }
         if(id==="FINISH"){
-            state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:p.desc||"LLEGADA"};
+            state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:p.desc||"LLEGADA",complete:true};
             return;
         }
         const pool=pools[Math.floor(Math.random()*pools.length)];
@@ -5181,7 +5178,8 @@ function autofillRandomIofDescriptions(){
             g:pickRandom(IOF_OPTIONS.g),
             h:"",
             combo:Math.random()<0.10?pickRandom(IOF_OPTIONS.combo):"",
-            text:""
+            text:"",
+            complete:true
         };
     });
     renderIofDescriptionsEditor();
@@ -5204,11 +5202,11 @@ function autofillOfficialIofDescriptions(){
     Object.keys(state.points||{}).forEach(id=>{
         const p=state.points[id]||{};
         if(id==="START"){
-            state.iofDescriptions[id]={...(state.iofDescriptions[id]||{}),text:(state.iofDescriptions[id]?.text||p.desc||"SALIDA")};
+            state.iofDescriptions[id]={...(state.iofDescriptions[id]||{}),text:(state.iofDescriptions[id]?.text||p.desc||"SALIDA"),complete:true};
             return;
         }
         if(id==="FINISH"){
-            state.iofDescriptions[id]={...(state.iofDescriptions[id]||{}),text:(state.iofDescriptions[id]?.text||p.desc||"LLEGADA")};
+            state.iofDescriptions[id]={...(state.iofDescriptions[id]||{}),text:(state.iofDescriptions[id]?.text||p.desc||"LLEGADA"),complete:true};
             return;
         }
         state.iofDescriptions[id]={c:Math.random()<0.12?randOption("c"):"",d:rand(rand(pools)),e:Math.random()<0.40?randOption("e"):"",f:Math.random()<0.15?randOption("f"):"",g:randOption("g"),h:"",combo:Math.random()<0.08?randOption("combo"):"",text:"",complete:true};
@@ -5281,12 +5279,16 @@ function validateIofDescriptions(){
 function clearIofDescriptions(){
     if(!confirm("¿Limpiar todas las descripciones IOF?"))return;
     state.iofDescriptions={};
+    Object.keys(state.points||{}).forEach(id=>{
+        const p=state.points[id]||{};
+        state.iofDescriptions[id]={c:"",d:"",e:"",f:"",g:"",h:"",combo:"",text:(id==="START"?(p.desc||"SALIDA"):id==="FINISH"?(p.desc||"LLEGADA"):""),complete:false};
+    });
     ensureIofDescriptions();
     selectedIofPointId="START";
     renderIofDescriptionsEditor();
     validateIofDescriptions();
     scheduleSaveState();
-    toast("Descripciones limpiadas");
+    toast("Descripciones limpiadas: todos los puntos quedan pendientes");
 }
 
 function downloadIofDescriptionsCsv(){
@@ -5355,32 +5357,37 @@ function participantPlanHtml(route){
     const centerLon=mapPoints.length?mapPoints.reduce((a,p)=>a+p.lon,0)/mapPoints.length:-3.7038;
 
     const pointData=routePoints.map((p,idx)=>{
-        function iofShortF(v){
-            return String(v||"").replace(/[^\d,.\-x×·/ ]/g,"").trim();
+        function iofRaw(id,field){
+            const d=(state.iofDescriptions||{})[id]||{};
+            return d[field]||"";
         }
-        function iofSymbolG(v){
-            const s=String(v||"").toLowerCase();
-            if(!s)return "";
-            if(s.includes("norte"))return "↑";
-            if(s.includes("sur"))return "↓";
-            if(s.includes("este"))return "→";
-            if(s.includes("oeste"))return "←";
-            if(s.includes("noreste"))return "↗";
-            if(s.includes("noroeste"))return "↖";
-            if(s.includes("sureste"))return "↘";
-            if(s.includes("suroeste"))return "↙";
-            if(s.includes("borde"))return "◐";
-            if(s.includes("esquina"))return "⌜";
-            if(s.includes("extremo"))return "⊣";
-            if(s.includes("parte superior")||s.includes("encima"))return "⊤";
-            if(s.includes("parte inferior")||s.includes("debajo"))return "⊥";
-            if(s.includes("entre"))return "═";
-            if(s.includes("al pie"))return "⊥";
-            if(s.includes("dentro")||s.includes("interior"))return "●";
-            if(s.includes("fuera")||s.includes("exterior"))return "○";
-            return "";
+        function iofCell(id,field,io){
+            const raw=iofRaw(id,field);
+            if(!raw)return "";
+            const symbol=(io&&io[field+"Symbol"])||"";
+            return symbol || raw;
         }
-
+        function iofTextCell(id,field,io){
+            const raw=iofRaw(id,field);
+            if(!raw)return "";
+            const symbol=(io&&io[field+"Symbol"])||"";
+            const text=(io&&io[field+"Text"])||"";
+            return symbol || text || raw;
+        }
+        function iofDimensionCell(id,io){
+            const raw=iofRaw(id,"f");
+            if(!raw)return "";
+            const symbol=(io&&io.fSymbol)||"";
+            const text=(io&&io.fText)||"";
+            return symbol || text || raw;
+        }
+        function iofSituationCell(id,io){
+            const raw=iofRaw(id,"g");
+            if(!raw)return "";
+            const symbol=(io&&io.gSymbol)||"";
+            const text=(io&&io.gText)||"";
+            return symbol || text || raw;
+        }
         const isStart=p.id==="START";
         const isFinish=p.id==="FINISH";
         const order=isStart?"S":isFinish?"M":String(routePoints.slice(0,idx+1).filter(q=>q.id!=="START"&&q.id!=="FINISH").length);
@@ -5392,12 +5399,14 @@ function participantPlanHtml(route){
             desc:p.desc||"",
             order:isStart?"▷":isFinish?"◎":order,
             type:isStart?"START":isFinish?"FINISH":"CONTROL",
-            c:io.cSymbol||"",
-            d:io.dSymbol||"",
-            e:io.eSymbol||"",
-            f:iofShortF(io.fSymbol||io.fText||""),
-            g:io.gSymbol||iofSymbolG(io.gText||""),
-            h:io.hSymbol||""
+            c:iofCell(p.id,"c",io),
+            d:iofCell(p.id,"d",io),
+            e:iofCell(p.id,"e",io),
+            f:iofDimensionCell(p.id,io),
+            g:iofSituationCell(p.id,io),
+            h:iofCell(p.id,"h",io),
+            combo:iofCell(p.id,"combo",io),
+            text:((state.iofDescriptions||{})[p.id]||{}).text||""
         };
     });
 
@@ -5431,6 +5440,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .iof-table td,.iof-table th{border:1.6px solid #d000b8;height:18px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
 .iof-table th{background:#fff0fb;font-size:9px}
 .iof-table .code{font-size:9px}
+.iof-table .fcell{font-size:8px}.iof-table .gcell{font-size:8px}
 .iof-table .g{font-size:8px;text-align:center;padding-left:0}
 .footer{height:23mm;display:grid;grid-template-columns:70mm 1fr;align-items:end;padding:0 7mm 5mm;box-sizing:border-box;font-size:9px}
 .footer .tech{color:#079000;font-weight:900;line-height:1.25}
@@ -5507,8 +5517,8 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
                         <td>${escapeHtml(p.c)}</td>
                         <td>${escapeHtml(p.d)}</td>
                         <td>${escapeHtml(p.e)}</td>
-                        <td>${escapeHtml(p.f)}</td>
-                        <td>${escapeHtml(p.g)}</td>
+                        <td class="fcell">${escapeHtml(p.f)}</td>
+                        <td class="gcell">${escapeHtml(p.g)}</td>
                         <td>${escapeHtml(p.h)}</td>
                     </tr>`).join("")}
                 </tbody>
