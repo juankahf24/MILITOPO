@@ -4661,6 +4661,76 @@ async function ensureHtml2Canvas(){
 
 function waitMs(ms){return new Promise(r=>setTimeout(r,ms));}
 
+function mapantWmsImageUrlForExport(bounds,widthPx=2200,heightPx=1580){
+    const q=new URLSearchParams({
+        SERVICE:"WMS",
+        REQUEST:"GetMap",
+        VERSION:"1.1.1",
+        LAYERS:"mapant",
+        STYLES:"",
+        SRS:"EPSG:4326",
+        BBOX:[bounds.west,bounds.south,bounds.east,bounds.north].join(","),
+        WIDTH:String(widthPx),
+        HEIGHT:String(heightPx),
+        FORMAT:"image/png"
+    });
+    return "https://mapant.es/wms?"+q.toString();
+}
+
+async function imageUrlToDataUrlForPdf(url){
+    if(!window._militopoPdfBgCache)window._militopoPdfBgCache={};
+    if(window._militopoPdfBgCache[url])return window._militopoPdfBgCache[url];
+    const res=await fetch(url,{mode:"cors",cache:"force-cache"});
+    if(!res.ok)throw new Error("MAPANT no respondió para fondo PDF: "+res.status);
+    const blob=await res.blob();
+    const dataUrl=await new Promise((resolve,reject)=>{
+        const fr=new FileReader();
+        fr.onload=()=>resolve(fr.result);
+        fr.onerror=()=>reject(new Error("No se pudo convertir el fondo MAPANT a imagen"));
+        fr.readAsDataURL(blob);
+    });
+    window._militopoPdfBgCache[url]=dataUrl;
+    return dataUrl;
+}
+
+async function injectMapantBackgroundIntoPlanFrame(frame){
+    const win=frame.contentWindow;
+    const doc=frame.contentDocument;
+    const bounds=win&&win.militopoPlanExportBounds;
+    const wrap=doc&&doc.querySelector(".map-wrap");
+    if(!bounds||!wrap)throw new Error("No se pudo leer la ventana común del mapa para el PDF");
+    const url=mapantWmsImageUrlForExport(bounds);
+    const dataUrl=await imageUrlToDataUrlForPdf(url);
+
+    let img=doc.getElementById("militopoPdfMapantBackground");
+    if(!img){
+        img=doc.createElement("img");
+        img.id="militopoPdfMapantBackground";
+        img.alt="Fondo MAPANT exportado";
+        img.style.position="absolute";
+        img.style.inset="0";
+        img.style.width="100%";
+        img.style.height="100%";
+        img.style.objectFit="fill";
+        img.style.zIndex="120";
+        img.style.pointerEvents="none";
+        wrap.insertBefore(img,wrap.firstChild);
+    }
+    img.src=dataUrl;
+
+    const mapDiv=doc.querySelector("#participantPlanMap");
+    if(mapDiv){
+        mapDiv.style.opacity="0";
+    }
+
+    await new Promise((resolve,reject)=>{
+        if(img.complete&&img.naturalWidth>0)return resolve();
+        img.onload=()=>resolve();
+        img.onerror=()=>reject(new Error("No cargó la imagen incrustada MAPANT"));
+    });
+}
+
+
 async function waitForPlanFrameReady(frame,timeoutMs=9000){
     const start=Date.now();
     while(Date.now()-start<timeoutMs){
@@ -4702,6 +4772,7 @@ async function participantPlanPdfBlob(route){
             frame.onload=()=>{clearTimeout(t);resolve();};
         });
         await waitForPlanFrameReady(frame);
+        await injectMapantBackgroundIntoPlanFrame(frame);
 
         const docEl=frame.contentDocument;
         const sheet=docEl.querySelector(".sheet")||docEl.body;
@@ -5607,7 +5678,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 <div class="footer"><div class="tech">FICHA TÉCNICA · ${scaleLabel} · EQ ${planEquidistance} m<br>VENTANA COMÚN: ${Math.round(terrainWidthM)} m × ${Math.round(terrainHeightM)} m<br>EVENTO: ${escapeHtml(state.eventId||"")} · RECORRIDO: ${participant} / ${routeId}</div><div class="note"><span class="warn">${escapeHtml(warning)}</span><br>El deporte de orientación es respetuoso con el medio natural.</div></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
 <script>
-const points=${json}; const commonBounds=${boundsJson};
+const points=${json}; const commonBounds=${boundsJson}; window.militopoPlanExportBounds=commonBounds;
 const map=L.map('participantPlanMap',{zoomControl:false,attributionControl:false,preferCanvas:true,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false}).setView([commonBounds.centerLat,commonBounds.centerLon],15);
 const mapant=L.tileLayer.wms('https://mapant.es/wms',{layers:'mapant',format:'image/png',transparent:false,version:'1.3.0',attribution:'© Mapant.es'});
 mapant.addTo(map);
