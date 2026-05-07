@@ -1907,6 +1907,16 @@ module.exports = QRCode;
 @media(max-width:760px){.organizer-flow-grid{grid-template-columns:1fr}.organizer-step-buttons{grid-template-columns:1fr}}
 
 </style>
+
+<style id="zipProgressCss">
+.zip-progress-wrap{margin:14px 0;padding:12px;border:1px solid rgba(208,184,120,.45);border-radius:16px;background:rgba(20,30,18,.34)}
+.zip-progress-title{font-weight:900;letter-spacing:.08em;margin-bottom:8px}
+.zip-progress-bar{height:14px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;border:1px solid rgba(255,255,255,.18)}
+.zip-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,#8fb35a,#d0b878,#8fb35a);background-size:200% 100%;animation:militopoZipMove 1.2s linear infinite;transition:width .25s ease}
+.zip-progress-meta{margin-top:8px;font-size:.88rem;opacity:.9}
+@keyframes militopoZipMove{0%{background-position:0% 0}100%{background-position:200% 0}}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -4880,7 +4890,39 @@ async function buildPrintScaleCalibrationPdfBlob(){
 }
 
 
-async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow();
+
+function ensureZipProgressUi(){
+    let box=document.getElementById("zipProgressBox");
+    if(box)return box;
+    const status=document.getElementById("zipStatus");
+    box=document.createElement("div");
+    box.id="zipProgressBox";
+    box.className="zip-progress-wrap";
+    box.style.display="none";
+    box.innerHTML='<div class="zip-progress-title">GENERANDO ZIP</div><div class="zip-progress-bar"><div id="zipProgressFill" class="zip-progress-fill"></div></div><div id="zipProgressMeta" class="zip-progress-meta">Preparando...</div>';
+    if(status&&status.parentNode){
+        status.parentNode.insertBefore(box,status.nextSibling);
+    }else{
+        document.body.appendChild(box);
+    }
+    return box;
+}
+function updateZipProgress(done,total,label){
+    const box=ensureZipProgressUi();
+    const fill=document.getElementById("zipProgressFill");
+    const meta=document.getElementById("zipProgressMeta");
+    const safeTotal=Math.max(1,total||1);
+    const pct=Math.max(2,Math.min(100,Math.round((done/safeTotal)*100)));
+    box.style.display="block";
+    if(fill)fill.style.width=pct+"%";
+    if(meta)meta.textContent=(label||"Procesando")+" · "+pct+"%";
+}
+function hideZipProgress(){
+    const box=document.getElementById("zipProgressBox");
+    if(box)box.style.display="none";
+}
+
+async function generateZip(verificationFromButton=null){ensureZipProgressUi();updateZipProgress(0,1,'Preparando ZIP');syncPlanScaleFromUiNow();
     const previousButton=document.querySelector('button[onclick="verifyAndGenerateZip()"]');
     try{
         setZipStatus("warn","Preparando ZIP...");
@@ -4903,6 +4945,10 @@ async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow()
             previousButton.textContent="GENERANDO ZIP...";
         }
 
+        const totalZipWork=(state.routes?.length||0)*2+(Object.keys(state.points||{}).length||0)+6;
+        let zipWorkDone=0;
+        updateZipProgress(zipWorkDone,totalZipWork,"Iniciando generación");
+
         const zip=new JSZip();
         const eventData=buildEventData();
 
@@ -4917,7 +4963,6 @@ async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow()
 
         const participantsFolder=zip.folder("Participantes");
         const controlsFolder=zip.folder("QR_Balizas");
-        const mapsFolder=zip.folder("Planos_HTML");
         const pdfFolder=zip.folder("Planos_PDF");
         const appFolder=zip.folder("App_Participante");
         if(typeof buildPrintScaleCalibrationPdfBlob==="function"){
@@ -4930,10 +4975,6 @@ async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow()
         }
 
         setZipStatus("warn","Añadiendo descripciones IOF y app participante...");
-        if(typeof iofDescriptionsSheetHtml==="function"){
-            mapsFolder.file("Descripciones_IOF_general.html",iofDescriptionsSheetHtml());
-        }
-
         const descRows=[["Baliza","C","D_Elemento","E_Aspecto","F_Dimension","G_Situacion","H_Info","Combinacion","Texto"]];
         Object.keys(state.points||{}).forEach(id=>{
             const d=(state.iofDescriptions||{})[id]||{};
@@ -4949,7 +4990,7 @@ async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow()
                 d.text||""
             ]);
         });
-        mapsFolder.file("Descripciones_IOF_general.csv",descRows.map(r=>r.map(csvEscape).join(";")).join("\n"));
+        zip.file("Descripciones_IOF_general.csv",descRows.map(r=>r.map(csvEscape).join(";")).join("\n"));
 
         if(typeof participantOfflineAppHtml==="function"){
             appFolder.file("Militopo_participante_offline.html",participantOfflineAppHtml(eventData));
@@ -4959,7 +5000,8 @@ async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow()
         let controlQrCount=0;
 
         for(const route of state.routes){
-            setZipStatus("warn",`Generando planos y QR de participantes... ${participantQrCount+1}/${state.routes.length}`);
+            updateZipProgress(++zipWorkDone,totalZipWork,`Preparando participante ${participantQrCount+1}/${state.routes.length}`);
+            setZipStatus("warn",`Generando PDF y QR de participantes... ${participantQrCount+1}/${state.routes.length}`);
 
             const payload=participantPayload(route.participantId);
             const participantData={
@@ -4972,12 +5014,9 @@ async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow()
 
             participantsFolder.file(`${route.participantId}_${route.routeId}.json`,JSON.stringify(participantData,null,2));
 
-            if(typeof participantPlanHtml==="function"){
-                mapsFolder.file(`Plano_${route.participantId}_${route.routeId}.html`,participantPlanHtml(route));
-            }
-
             if(typeof participantPlanPdfBlob==="function"){
                 try{
+                    updateZipProgress(++zipWorkDone,totalZipWork,`Generando PDF de plano ${participantQrCount+1}/${state.routes.length}`);
                     setZipStatus("warn",`Generando PDF fiel de plano... ${participantQrCount+1}/${state.routes.length}`);
                     const pdfBlob=await participantPlanPdfBlob(route);
                     pdfFolder.file(`Plano_${route.participantId}_${route.routeId}.pdf`,pdfBlob);
@@ -5005,12 +5044,14 @@ async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow()
         controlsFolder.file("_payloads_balizas.txt",allPoints.map(p=>`${p.id}: ${controlPayload(p.id)}`).join("\n"));
 
         for(const p of allPoints){
+            updateZipProgress(++zipWorkDone,totalZipWork,`Generando QR de baliza ${controlQrCount+1}/${allPoints.length}`);
             setZipStatus("warn",`Generando QR de balizas... ${controlQrCount+1}/${allPoints.length}`);
             await addQrFileToZip(controlsFolder,p.id,controlPayload(p.id),p.id);
             controlQrCount++;
             await new Promise(r=>setTimeout(r,0));
         }
 
+        updateZipProgress(totalZipWork-1,totalZipWork,"Comprimiendo ZIP");
         setZipStatus("warn","Comprimiendo ZIP...");
         const blob=await zip.generateAsync({type:"blob"});
 
@@ -5028,11 +5069,13 @@ async function generateZip(verificationFromButton=null){syncPlanScaleFromUiNow()
             setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500);
         }
 
+        updateZipProgress(totalZipWork,totalZipWork,"ZIP generado correctamente");
         setZipStatus("ok",`ZIP generado correctamente. QR participantes: ${participantQrCount}. QR balizas: ${controlQrCount}.`);
         saveState();
         toast("ZIP generado");
     }catch(err){
         console.error("Error generando ZIP:",err);
+        updateZipProgress(1,1,"Error generando ZIP");
         setZipStatus("err",`Error generando ZIP: ${err&&err.message?err.message:err}`);
         toast("Error generando ZIP");
     }finally{
@@ -5760,7 +5803,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 <div class="content"><div class="map-wrap"><div id="participantPlanMap"></div><svg class="routeOverlay" viewBox="0 0 1000 1000" preserveAspectRatio="none"><g id="courseLines"></g><g id="courseMarkers"></g></svg><div class="realScaleCheck"><div class="realScaleBar"></div>1 cm = ${scaleCheckMeters} m<small>${scaleLabel}</small></div></div>
 <div class="iof"><div class="iof-head"><div class="iof-title">${eventTitle}</div><div class="iof-difficulty">${difficulty}</div><div class="iof-metrics"><div>${routeNumber}</div><div>${distance}</div><div>${climb}</div></div><div class="iof-letters"><div>A</div><div>B</div><div>C</div><div>D</div><div>E</div><div>F</div><div>G</div><div>H</div></div></div>
 <table class="iof-table"><colgroup><col class="col-a"><col class="col-b"><col><col><col><col><col><col></colgroup><tbody>${pointData.map(p=>`<tr><td>${escapeHtml(String(p.order))}</td><td class="code">${escapeHtml(p.type==="START"?"SALIDA":p.type==="FINISH"?"META":p.id)}</td><td>${escapeHtml(p.c)}</td><td>${escapeHtml(p.d)}</td><td>${escapeHtml(p.e)}</td><td class="fcell">${escapeHtml(p.f)}</td><td class="gcell">${escapeHtml(p.g)}</td><td>${escapeHtml(p.h)}</td></tr>`).join("")}</tbody></table></div></div>
-<div class="footer"><div class="tech">FICHA TÉCNICA:<br>Evento: ${escapeHtml(state.eventId||"")}<br>Plano: MAPANT<br>Escala: ${scaleLabel}<br>Equidistancia: ${planEquidistance} m<br>Ventana común: ${Math.round(terrainWidthM)} m × ${Math.round(terrainHeightM)} m · ${windowAreaKm2.toFixed(2)} km²<br>Centro UTM: ${escapeHtml(centerUtm)}<br>Recorrido: ${participant} / ${routeId}</div><div class="note">El deporte de orientación es respetuoso con el medio natural, cuida la naturaleza.</div></div></div>
+<div class="footer"><div class="tech">FICHA TÉCNICA:<br>Evento: ${escapeHtml(state.eventId||"")}<br>Plano: MAPANT<br>Escala: ${scaleLabel}<br>Equidistancia: ${planEquidistance} m<br>Ventana común: ${Math.round(terrainWidthM)} m × ${Math.round(terrainHeightM)} m = ${windowAreaKm2.toFixed(2)} km²<br>Centro UTM: ${escapeHtml(centerUtm)}<br>Recorrido: ${participant} / ${routeId}</div><div class="note">El deporte de orientación es respetuoso con el medio natural, cuida la naturaleza.</div></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
 <script>
 const points=${json}; const commonBounds=${boundsJson}; window.militopoPlanExportBounds=commonBounds;
