@@ -2347,10 +2347,10 @@ function renderPointsTable(){
         tr.innerHTML=`<td><b>${p.id}</b><br>${pointStatusBadgeHtml(p.id)}</td>
             <td>${p.type}</td>
             <td>
-                <input class="${st.utmOk?"":"point-input-invalid"}" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198">
+                <input class="${st.utmOk?"":"point-input-invalid"}" value="${escapeHtml(p.utm||"")}" data-data-point-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198">
                 <div class="point-format-help">Formato exacto: 30T 463941 4106198</div>
             </td>
-            <td><input class="${st.descOk?"":"point-input-invalid"}" value="${escapeHtml(p.desc||"")}" data-id="${p.id}" data-field="desc"></td>
+            <td><input class="${st.descOk?"":"point-input-invalid"}" value="${escapeHtml(p.desc||"")}" data-data-point-id="${p.id}" data-field="desc"></td>
             <td>${st.ok?"✅ Completa":"⚠️ Pendiente"}</td>
             <td><button class="btn secondary" style="min-height:36px;padding:7px 10px" onclick="selectPoint('${p.id}')">Editar</button></td>`;
         tbody.appendChild(tr);
@@ -4964,7 +4964,7 @@ function iofSymbol(group,value){return iofOfficialSymbol(group,value);}
 function iofText(group,value){return iofOptionTextOnly(group,value);}
 
 function syncIofEventName(){const input=document.getElementById("iofEventName");if(input&&input.value.trim()){state.eventName=input.value.trim();const main=document.getElementById("eventName");if(main)main.value=state.eventName;scheduleSaveState()}}
-function iofSelectHtml(id,field,label,value){const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>`<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(txt||"—")}</option>`).join("");return `<div><label>${label}</label><select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`}
+
 function iofPointIds(){
     return Object.keys(state.points||{}).sort((a,b)=>{
         const order=id=>id==="START"?0:id==="FINISH"?9999:Number(String(id).replace(/\D/g,""))||5000;
@@ -5345,6 +5345,7 @@ function participantPlanHtml(route){
     const eventTitle=escapeHtml(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
     const participant=escapeHtml(route.participantId||"P--");
     const routeId=escapeHtml(route.routeId||"R--");
+    const routeNumber=escapeHtml(String(route.routeId||"").replace(/^R/i,"")||route.routeId||"-");
     const difficulty=escapeHtml(metric.difficulty||"-");
     const distance=metric.distanceKm!=null?`${metric.distanceKm} km`:"-";
     const climb=metric.globalM!=null?`${metric.globalM} m`:"-";
@@ -5399,8 +5400,8 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .map-wrap{position:relative;border:3px solid #16a019;background:#e9f2e9;overflow:hidden}
 #map{width:100%;height:100%}
 .iof{border:2px solid #d000b8;color:#d000b8;font-weight:900;background:white;display:flex;flex-direction:column}
-.iof-head{text-align:center;border-bottom:2px solid #d000b8;padding:4px 2px;font-size:12px;line-height:1.25;background:#fff0fb}
-.iof-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px}
+.iof-head{border-bottom:2px solid #d000b8;background:white;color:#d000b8;font-weight:900;font-size:10px;line-height:1.15}
+.iof-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10px;color:#d000b8}
 .iof-table td,.iof-table th{border:1.6px solid #d000b8;height:18px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
 .iof-table th{background:#fff0fb;font-size:9px}
 .iof-table .code{font-size:9px}
@@ -5414,6 +5415,20 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .crestFallback{font-size:17px;font-weight:900;color:#156f15}
 .northBox{width:18mm;height:15mm;display:flex;align-items:center;justify-content:center}
 .northSvg{width:16mm;height:16mm}
+
+
+.iof-title{height:18px;display:flex;align-items:center;justify-content:center;border-bottom:1.6px solid #d000b8;font-size:11px;letter-spacing:.2px;background:#fff}
+.iof-difficulty{height:17px;display:flex;align-items:center;justify-content:center;border-bottom:1.6px solid #d000b8;font-size:10px;background:#fff}
+.iof-metrics{display:grid;grid-template-columns:1fr 1.35fr 1.15fr;height:19px;border-bottom:1.6px solid #d000b8;background:#fff}
+.iof-metrics div{display:flex;align-items:center;justify-content:center;border-right:1.6px solid #d000b8;font-size:10px}
+.iof-metrics div:last-child{border-right:0}
+.iof-letters{display:grid;grid-template-columns:28px 42px repeat(6,1fr);height:18px;border-bottom:1.6px solid #d000b8;background:#fff0fb}
+.iof-letters div{display:flex;align-items:center;justify-content:center;border-right:1.6px solid #d000b8;font-size:10px}
+.iof-letters div:last-child{border-right:0}
+.iof-table .col-a{width:28px}
+.iof-table .col-b{width:42px}
+.iof-table .code{font-size:9px}
+.iof-table .g{font-size:7px;text-align:left;padding-left:2px}
 
 .leaflet-control-attribution{display:none}
 .ctrl-label{color:#d000b8;font-weight:900;font-size:16px;text-shadow:0 0 3px white,0 0 3px white}
@@ -5441,15 +5456,24 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
     </div>
 
     <div class="content">
-        <div class="map-wrap"><div id="map"></div></div>
+        <div class="map-wrap"><div id="participantPlanMap"></div></div>
         <div class="iof">
             <div class="iof-head">
-                ${eventTitle}<br>
-                ${difficulty} · ${distance} · ${climb}<br>
-                ${participant} · ${routeId}
+                <div class="iof-title">${eventTitle}</div>
+                <div class="iof-difficulty">${difficulty}</div>
+                <div class="iof-metrics">
+                    <div>${routeNumber}</div>
+                    <div>${distance}</div>
+                    <div>${climb}</div>
+                </div>
+                <div class="iof-letters">
+                    <div>A</div><div>B</div><div>C</div><div>D</div><div>E</div><div>F</div><div>G</div><div>H</div>
+                </div>
             </div>
             <table class="iof-table">
-                <thead><tr><th>Nº</th><th>Cód.</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th><th>H</th></tr></thead>
+                <colgroup>
+                    <col class="col-a"><col class="col-b"><col><col><col><col><col><col>
+                </colgroup>
                 <tbody>
                     ${pointData.map(p=>`<tr>
                         <td>${escapeHtml(String(p.order))}</td>
@@ -5480,7 +5504,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
 <script>
 const points=${json};
-const map=L.map('map',{zoomControl:false,attributionControl:false,preferCanvas:true}).setView([${centerLat},${centerLon}],15);
+const map=L.map('participantPlanMap',{zoomControl:false,attributionControl:false,preferCanvas:true}).setView([${centerLat},${centerLon}],15);
 
 // Fondo MAPANT principal. Si el servidor no responde, queda OpenTopoMap como respaldo visual.
 const mapant=L.tileLayer('https://mapant.es/tiles/{z}/{x}/{y}.png',{maxZoom:18,crossOrigin:true});
