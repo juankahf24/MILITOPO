@@ -1916,6 +1916,16 @@ module.exports = QRCode;
 .organizer-step-buttons{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px}
 @media(max-width:760px){.organizer-flow-grid{grid-template-columns:1fr}.organizer-step-buttons{grid-template-columns:1fr}}
 
+
+.iof-c-svg path,.iof-c-svg line,.iof-c-svg circle{
+  stroke:currentColor;
+  stroke-width:8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  fill:none;
+}
+.iof-c-svg circle{fill:currentColor;stroke:none}
+
 </style>
 
 <style id="zipProgressCss">
@@ -5294,12 +5304,12 @@ const IOF_SYMBOLS={
     c:{
         norte:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 86V16"/><path d="M32 34L50 16L68 34"/></svg>',
         este:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 50H84"/><path d="M66 32L84 50L66 68"/></svg>',
-        sureste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M24 24L76 76"/><path d="M50 76H76V50"/></svg>',
+        sureste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 50H84"/><path d="M66 32L84 50L66 68"/></svg>',
         sur:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 14V84"/><path d="M32 66L50 84L68 66"/></svg>',
         oeste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M86 50H16"/><path d="M34 32L16 50L34 68"/></svg>',
-        noreste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M24 76L76 24"/><path d="M50 24H76V50"/></svg>',
-        sudoeste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M76 24L24 76"/><path d="M24 50V76H50"/></svg>',
-        noroeste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M76 76L24 24"/><path d="M24 50V24H50"/></svg>',
+        noreste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 50H84"/><path d="M66 32L84 50L66 68"/></svg>',
+        sudoeste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M86 50H16"/><path d="M34 32L16 50L34 68"/></svg>',
+        noroeste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M86 50H16"/><path d="M34 32L16 50L34 68"/></svg>',
         superior:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><line x1="18" y1="28" x2="82" y2="28"/><line x1="18" y1="72" x2="82" y2="72"/><circle cx="50" cy="28" r="8"/></svg>',
         inferior:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><line x1="18" y1="28" x2="82" y2="28"/><line x1="18" y1="72" x2="82" y2="72"/><circle cx="50" cy="72" r="8"/></svg>',
         medio:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><line x1="26" y1="18" x2="26" y2="82"/><line x1="50" y1="18" x2="50" y2="82"/><line x1="74" y1="18" x2="74" y2="82"/><circle cx="50" cy="50" r="8"/></svg>'
