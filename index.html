@@ -1713,6 +1713,9 @@ module.exports = QRCode;
 .iof-symbol-svg.small .iof-c-svg{width:18px;height:18px;color:#111}
 
 .iof-mini-help{font-size:.72rem;color:var(--muted);line-height:1.25;margin-top:6px}
+.iof-c-label-fixed{display:flex!important;align-items:center!important;gap:0!important}
+.iof-c-label-fixed .iof-c-letter{font-family:Arial,Helvetica,sans-serif!important;font-weight:900!important;font-size:1em!important;line-height:1!important;display:inline-block!important;min-width:.8em!important;color:inherit!important}
+
 .iof-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
 @media(max-width:850px){.iof-actions{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.iof-actions{grid-template-columns:1fr}}
@@ -5440,8 +5443,8 @@ function iofSelectHtml(id,field,label,value){
     const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>{
         return `<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(iofOptionLabel(field,val))}</option>`;
     }).join("");
-    const safeLabel=field==="c"?"C · SIMILAR":label;
-    return `<div><label>${escapeHtml(safeLabel)}</label><select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`;
+    const labelHtml=field==="c"?`<label class="iof-c-label-fixed"><span class="iof-c-letter">C</span><span> · SIMILAR</span></label>`:`<label>${escapeHtml(label)}</label>`;
+    return `<div>${labelHtml}<select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`;
 }
 
 function renderIofStatus(){
