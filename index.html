@@ -1713,12 +1713,6 @@ module.exports = QRCode;
 .iof-symbol-svg.small .iof-c-svg{width:18px;height:18px;color:#111}
 
 .iof-mini-help{font-size:.72rem;color:var(--muted);line-height:1.25;margin-top:6px}
-.iof-select-line{display:flex;align-items:center;gap:8px}
-.iof-select-line select{flex:1;min-width:0}
-.iof-select-symbol-preview{width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:#f5e6c8;border:1px solid rgba(230,188,122,.65);border-radius:12px;flex:0 0 auto}
-.iof-select-symbol-preview .iof-symbol-svg{border:0;background:transparent;width:34px;height:34px}
-.iof-select-symbol-preview .iof-symbol-svg.small .iof-c-svg{width:30px;height:30px}
-
 .iof-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
 @media(max-width:850px){.iof-actions{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.iof-actions{grid-template-columns:1fr}}
@@ -5425,7 +5419,7 @@ function renderIofDescriptionsEditor(){
         <div class="iof-code">${escapeHtml(id)}</div>
         <div>
             <div class="iof-fields">
-                ${iofSelectHtml(id,"c","C · similar",d.c)}
+                ${iofSelectHtml(id,"c","C · SIMILAR",d.c)}
                 ${iofSelectHtml(id,"d","D · elemento",d.d)}
                 ${iofSelectHtml(id,"e","E · aspecto",d.e)}
                 ${iofSelectHtml(id,"f","F · dimensión",d.f)}
@@ -5446,9 +5440,7 @@ function iofSelectHtml(id,field,label,value){
     const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>{
         return `<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(iofOptionLabel(field,val))}</option>`;
     }).join("");
-    const selectedSymbol=field==="c"?iofSymbol("c",value):"";
-    const symbolPreview=field==="c"?`<div id="iofCSelectPreview_${id}" class="iof-select-symbol-preview">${iofSymbolBox(selectedSymbol,"small")}</div>`:"";
-    return `<div class="${field==="c"?"iof-select-with-symbol":""}"><label>${escapeHtml(label)}</label><div class="iof-select-line">${symbolPreview}<select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div></div>`;
+    return `<div><label>${escapeHtml(label)}</label><select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`;
 }
 
 function renderIofStatus(){
@@ -5531,10 +5523,6 @@ function updateIofDescription(id,field,value){
     if(field!=="complete") state.iofDescriptions[id].complete=false;
     const preview=document.getElementById("iofPreview_"+id);
     if(preview)preview.innerHTML=iofPreviewCells(id);
-    if(field==="c"){
-        const cPreview=document.getElementById("iofCSelectPreview_"+id);
-        if(cPreview)cPreview.innerHTML=iofSymbolBox(iofSymbol("c",value),"small");
-    }
     renderIofStatus();
     renderIofPointSelector();
     scheduleSaveState();
