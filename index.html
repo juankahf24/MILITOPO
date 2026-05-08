@@ -1713,9 +1713,9 @@ module.exports = QRCode;
 .iof-symbol-svg.small .iof-c-svg{width:18px;height:18px;color:#111}
 
 .iof-mini-help{font-size:.72rem;color:var(--muted);line-height:1.25;margin-top:6px}
-.iof-c-label-fixed{display:flex!important;align-items:center!important;gap:5px!important;text-transform:none!important;letter-spacing:1px!important}
-.iof-c-letter-svg{width:15px!important;height:15px!important;display:inline-block!important;flex:0 0 auto!important;color:inherit!important;overflow:visible!important}
-.iof-c-dot{font-weight:900!important;margin:0 1px!important}
+.iof-c-label-fixed{display:flex!important;align-items:center!important;gap:4px!important;text-transform:none!important;letter-spacing:1px!important;padding-left:2px!important}
+.iof-c-letter-svg{width:11px!important;height:11px!important;display:inline-block!important;flex:0 0 auto!important;color:inherit!important;overflow:visible!important;transform:translateX(2px)!important}
+.iof-c-dot{font-weight:900!important;margin:0 1px 0 3px!important}
 
 .iof-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
 @media(max-width:850px){.iof-actions{grid-template-columns:1fr 1fr}}
@@ -5444,7 +5444,7 @@ function iofSelectHtml(id,field,label,value){
     const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>{
         return `<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(iofOptionLabel(field,val))}</option>`;
     }).join("");
-    const cSvg=`<svg class="iof-c-letter-svg" viewBox="0 0 28 28" aria-label="C" role="img"><path d="M20.5 6.5C18.8 4.9 16.6 4 14 4C8.8 4 5 8.1 5 14C5 19.9 8.8 24 14 24C16.7 24 18.9 23.1 20.6 21.4" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"/></svg>`;
+    const cSvg=`<svg class="iof-c-letter-svg" viewBox="0 0 28 28" aria-label="C" role="img"><path d="M19.2 7.7C17.9 6.6 16.2 6 14.3 6C10.4 6 7.7 9.2 7.7 14C7.7 18.8 10.4 22 14.3 22C16.3 22 18 21.4 19.3 20.3" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>`;
     const labelHtml=field==="c"?`<label class="iof-c-label-fixed">${cSvg}<span class="iof-c-dot">·</span><span>SIMILAR</span></label>`:`<label>${escapeHtml(label)}</label>`;
     return `<div>${labelHtml}<select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`;
 }
