@@ -5123,10 +5123,16 @@ const IOF_OPTIONS={
     c:[
         ["","—"],
         ["norte","C1 el del norte"],
-        ["sureste","C2 el del sureste"],
-        ["superior","C3 el superior"],
-        ["inferior","C4 el inferior"],
-        ["medio","C5 el del medio"]
+        ["este","C2 el del este"],
+        ["sureste","C3 el del sureste"],
+        ["sur","C4 el del sur"],
+        ["oeste","C5 el del oeste"],
+        ["noreste","C6 el del noreste"],
+        ["sudoeste","C7 el del sudoeste"],
+        ["noroeste","C8 el del noroeste"],
+        ["superior","C9 el superior"],
+        ["inferior","C10 el inferior"],
+        ["medio","C11 el del medio"]
     ],
     d:[
         ["","—"],
@@ -5285,7 +5291,19 @@ function ensureIofDescriptions(){
 }
 
 const IOF_SYMBOLS={
-    c:{norte:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-label="El del norte"><line x1="50" y1="84" x2="50" y2="20"/><polyline points="24,45 50,18 76,45"/></svg>',sureste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-label="El del sureste"><line x1="22" y1="22" x2="76" y2="76"/><polyline points="76,48 78,78 48,76"/></svg>',superior:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-label="El superior"><line x1="18" y1="36" x2="82" y2="36"/><circle cx="50" cy="36" r="8"/><line x1="18" y1="66" x2="82" y2="66"/></svg>',inferior:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-label="El inferior"><line x1="18" y1="34" x2="82" y2="34"/><line x1="18" y1="64" x2="82" y2="64"/><circle cx="50" cy="64" r="8"/></svg>',medio:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-label="El del medio"><line x1="25" y1="18" x2="25" y2="82"/><line x1="50" y1="18" x2="50" y2="82"/><line x1="75" y1="18" x2="75" y2="82"/><circle cx="50" cy="50" r="8"/></svg>'},
+    c:{
+        norte:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 86V16"/><path d="M32 34L50 16L68 34"/></svg>',
+        este:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 50H84"/><path d="M66 32L84 50L66 68"/></svg>',
+        sureste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M24 24L76 76"/><path d="M50 76H76V50"/></svg>',
+        sur:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 14V84"/><path d="M32 66L50 84L68 66"/></svg>',
+        oeste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M86 50H16"/><path d="M34 32L16 50L34 68"/></svg>',
+        noreste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M24 76L76 24"/><path d="M50 24H76V50"/></svg>',
+        sudoeste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M76 24L24 76"/><path d="M24 50V76H50"/></svg>',
+        noroeste:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><path d="M76 76L24 24"/><path d="M24 50V24H50"/></svg>',
+        superior:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><line x1="18" y1="28" x2="82" y2="28"/><line x1="18" y1="72" x2="82" y2="72"/><circle cx="50" cy="28" r="8"/></svg>',
+        inferior:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><line x1="18" y1="28" x2="82" y2="28"/><line x1="18" y1="72" x2="82" y2="72"/><circle cx="50" cy="72" r="8"/></svg>',
+        medio:'<svg class="iof-c-svg" viewBox="0 0 100 100" aria-hidden="true"><line x1="26" y1="18" x2="26" y2="82"/><line x1="50" y1="18" x2="50" y2="82"/><line x1="74" y1="18" x2="74" y2="82"/><circle cx="50" cy="50" r="8"/></svg>'
+    },
     d:{
         terraza:"⌜",espolon_saliente:"╮",vaguada_entrante:"∪",talud:"⌒",cantera:"◔",muro_tierra:"▦",surco_erosion:"⌃",surco_sin_agua:"⌁",colina:"○",cota_monticulo:"●",collado:"⌒⌒",depresion:"⊂",foso_hoyo:"∨",terreno_irregular:"⌁",hormiguero:"✳",
         cortado_rocoso:"▥",pilar_rocoso:"▲",cueva_gruta:"⌁",roca:"▲",campo_piedras:"▴▴",grupo_piedras:"◭",pedregal:"▦",afloramiento_rocoso:"✳",pasaje_estrecho:"║",trinchera:"⊔",
@@ -5314,7 +5332,6 @@ function cleanIofLabel(label){
 }
 
 function iofOfficialSymbol(group,value){
-    if(group==="c"&&value==="este")value="sureste";
     return (IOF_SYMBOLS[group]&&IOF_SYMBOLS[group][value])||"";
 }
 
