@@ -5440,7 +5440,8 @@ function iofSelectHtml(id,field,label,value){
     const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>{
         return `<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(iofOptionLabel(field,val))}</option>`;
     }).join("");
-    return `<div><label>${escapeHtml(label)}</label><select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`;
+    const safeLabel=field==="c"?"C · SIMILAR":label;
+    return `<div><label>${escapeHtml(safeLabel)}</label><select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`;
 }
 
 function renderIofStatus(){
