@@ -5364,13 +5364,21 @@ function shortIofTextForSelect(txt){
         .replace("debajo / inferior / dos niveles","debajo / inferior");
 }
 
+
+function iofSelectOptionSymbol(group,value){
+    if(group==="c"){
+        const m={norte:"↑",este:"→",sureste:"↘",sur:"↓",oeste:"←",noreste:"↗",sudoeste:"↙",noroeste:"↖",superior:"●─",inferior:"─●",medio:"│●│",derecha:"││●",izquierda:"●││"};
+        return m[value]||"";
+    }
+    return iofOfficialSymbol(group,value);
+}
+
 function iofOptionLabel(group,value){
     const item=(IOF_OPTIONS[group]||[]).find(x=>x[0]===value);
     if(!item)return "";
     const txt=shortIofTextForSelect(cleanIofLabel(item[1]));
-    const sym=iofOfficialSymbol(group,value);
     if(!value||txt==="—")return "—";
-    if(String(sym||"").trim().startsWith("<svg"))return txt;
+    const sym=iofSelectOptionSymbol(group,value);
     return sym?`${sym} ${txt}`:txt;
 }
 
