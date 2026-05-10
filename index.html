@@ -1933,6 +1933,17 @@ module.exports = QRCode;
 .iof-svg path,.iof-svg line,.iof-svg rect,.iof-svg circle,.iof-svg ellipse,.iof-svg polygon{
 stroke:currentColor;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .iof-svg.filled rect,.iof-svg.filled polygon,.iof-svg.filled circle{fill:currentColor;stroke:none}
+
+.iof-custom-symbol-editor{margin-top:14px;border:1px solid rgba(230,188,122,.35);border-radius:16px;padding:12px;background:rgba(255,255,255,.035)}
+.iof-custom-symbol-editor summary{cursor:pointer;font-weight:900;color:var(--accent);list-style:none}
+.iof-custom-symbol-editor summary::-webkit-details-marker{display:none}
+.iof-custom-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+.iof-custom-preview{height:88px;border:1px solid rgba(230,188,122,.35);border-radius:14px;background:#f5e6c8;color:#111;display:flex;align-items:center;justify-content:center}
+.iof-custom-preview svg{width:64px;height:64px}
+.iof-custom-symbol-editor textarea{min-height:110px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem}
+.iof-custom-buttons{display:flex;gap:8px;flex-wrap:wrap}
+@media(min-width:760px){.iof-custom-grid{grid-template-columns:1fr 1fr}.iof-custom-buttons{grid-column:1/-1}}
+
 </style>
 
 <style id="zipProgressCss">
@@ -2203,7 +2214,8 @@ function resetStateToFreshEvent(){
     return freshId;
 }
 
-function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);fillSelect("controlCount",3,80,25,n=>`${n} balizas`);fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);fillSelect("maxControlReuse",1,100,6,n=>`${n} usos máx.`);state.eventId=createFreshEventId();document.getElementById("eventId").value=state.eventId;const restored=loadState();syncConfigToUi();rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();renderIofDescriptionsEditor();updateParticipantSelect();updateRouteCountInfo();bindStepTabs();bindStrongAutosave();setTimeout(()=>{initMap();goStep(currentAppStep||1,{silent:true,noScroll:true});if(restored)toast("Evento restaurado automáticamente")},250)}
+function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);fillSelect("controlCount",3,80,25,n=>`${n} balizas`);fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);fillSelect("maxControlReuse",1,100,6,n=>`${n} usos máx.`);state.eventId=createFreshEventId();document.getElementById("eventId").value=state.eventId;const restored=loadCustomIofSymbols();
+loadState();syncConfigToUi();rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();renderIofDescriptionsEditor();updateParticipantSelect();updateRouteCountInfo();bindStepTabs();bindStrongAutosave();setTimeout(()=>{initMap();goStep(currentAppStep||1,{silent:true,noScroll:true});if(restored)toast("Evento restaurado automáticamente")},250)}
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
 function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
 function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={};next.START=preserve&&state.points.START?state.points.START:makePoint("START","SALIDA");next.FINISH=preserve&&state.points.FINISH?state.points.FINISH:makePoint("FINISH","LLEGADA");for(let i=1;i<=state.controlCount;i++){const id="B"+String(i).padStart(2,"0");next[id]=preserve&&state.points[id]?state.points[id]:makePoint(id,"BALIZA")}state.points=next}function makePoint(id,type){return{id,type,utm:"",desc:type==="BALIZA"?id:type,lat:null,lon:null,elevation:null}}
@@ -5136,6 +5148,10 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
 
 
 function buildEventData(){return{version:"orientacion_v1_offline",eventId:state.eventId,eventName:state.eventName,createdAt:new Date().toISOString(),config:{participantCount:state.participantCount,controlCount:state.controlCount,controlsPerRoute:state.controlsPerRoute,maxControlReuse:state.maxControlReuse,balance:{distance:.5,climb:.5},liveReadyInternals:true,liveVisible:false},points:state.points,routes:state.routes,metrics:state.metrics,iofDescriptions:state.iofDescriptions||{}}}function pointsCsv(){const rows=[["ID","TIPO","UTM","LAT","LON","ELEVACION","DESCRIPCION","QR"]];Object.values(state.points).forEach(p=>rows.push([p.id,p.type,p.utm||"",p.lat??"",p.lon??"",p.elevation??"",p.desc||"",controlPayload(p.id)]));return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}function routesCsv(){const rows=[["PARTICIPANTE","RECORRIDO","DISTANCIA_KM","TRAMO_LARGO_KM","DESNIVEL_POSITIVO_M","DESNIVEL_NEGATIVO_M","DESNIVEL_GLOBAL_M","DIFICULTAD","ORDEN"]];state.routes.forEach((r,i)=>{const m=state.metrics[i]||{};rows.push([r.participantId,r.routeId,m.distanceKm,m.longestKm,m.positiveM,m.negativeM,m.globalM,m.difficulty,r.points.join(" > ")])});return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}
+
+const STORAGE_KEY_IOF_D_CUSTOM_SYMBOLS="militopo_iof_d_custom_symbols_v1";
+let customIofSymbols={d:{}};
+
 const IOF_OPTIONS={
     c:[
         ["","—"],
@@ -5372,6 +5388,8 @@ function cleanIofLabel(label){
 }
 
 function iofOfficialSymbol(group,value){
+    const custom=(customIofSymbols&&customIofSymbols[group]&&customIofSymbols[group][value])||"";
+    if(custom)return custom;
     return (IOF_SYMBOLS[group]&&IOF_SYMBOLS[group][value])||"";
 }
 
@@ -5421,6 +5439,130 @@ function iofOptionTextOnly(group,value){
 
 function iofSymbol(group,value){return iofOfficialSymbol(group,value);}
 function iofText(group,value){return iofOptionTextOnly(group,value);}
+
+
+function loadCustomIofSymbols(){
+    try{
+        const raw=localStorage.getItem(STORAGE_KEY_IOF_D_CUSTOM_SYMBOLS);
+        const parsed=raw?JSON.parse(raw):null;
+        if(parsed&&typeof parsed==="object"){
+            customIofSymbols={d:{...(parsed.d||{})}};
+        }
+    }catch(e){console.warn("No se pudo cargar biblioteca SVG IOF:",e);customIofSymbols={d:{}}}
+}
+function saveCustomIofSymbols(){
+    try{
+        localStorage.setItem(STORAGE_KEY_IOF_D_CUSTOM_SYMBOLS,JSON.stringify(customIofSymbols||{d:{}}));
+        return true;
+    }catch(e){console.warn("No se pudo guardar biblioteca SVG IOF:",e);return false}
+}
+function sanitizeCustomSvg(svg){
+    const s=String(svg||"").trim();
+    if(!s)return "";
+    if(!/^<svg[\s>]/i.test(s)||!/<\/svg>$/i.test(s))throw new Error("Debe empezar por <svg y terminar en </svg>");
+    if(/<script|on\w+\s*=|javascript:/i.test(s))throw new Error("SVG bloqueado por seguridad");
+    return s;
+}
+function currentDOptionValue(){
+    ensureIofDescriptions();
+    const d=(state.iofDescriptions&&state.iofDescriptions[selectedIofPointId])||{};
+    return d.d||((IOF_OPTIONS.d||[]).find(x=>x[0])||[""])[0];
+}
+function renderDsvgLibraryEditor(){
+    const box=document.getElementById("iofDsvgLibraryEditor");
+    if(!box)return;
+    const options=(IOF_OPTIONS.d||[]).filter(x=>x[0]).map(([val,txt])=>{
+        const label=cleanIofLabel(txt);
+        return `<option value="${escapeHtml(val)}" ${val===currentDOptionValue()?"selected":""}>${escapeHtml(label)}</option>`;
+    }).join("");
+    const val=currentDOptionValue();
+    const current=iofOfficialSymbol("d",val)||"";
+    const defaultSvg=(IOF_SYMBOLS.d&&IOF_SYMBOLS.d[val])||"";
+    const custom=(customIofSymbols.d&&customIofSymbols.d[val])||"";
+    box.innerHTML=`<details class="iof-custom-symbol-editor">
+        <summary>✏️ Biblioteca fija de símbolos SVG · D ELEMENTO</summary>
+        <div class="iof-mini-help">Edita un símbolo una sola vez. Queda guardado para esa descripción y se usará siempre en desplegable, tablilla previa y PDF.</div>
+        <div class="iof-custom-grid">
+            <div>
+                <label>Símbolo D</label>
+                <select id="customDsymbolSelect" onchange="loadDsymbolSvgForEdit(this.value)">${options}</select>
+                <label style="margin-top:10px">SVG personalizado</label>
+                <textarea id="customDsymbolSvg" placeholder="<svg viewBox=&quot;0 0 100 100&quot;>...</svg>">${escapeHtml(custom||defaultSvg||"")}</textarea>
+            </div>
+            <div>
+                <label>Vista previa</label>
+                <div id="customDsymbolPreview" class="iof-custom-preview">${current&&current.startsWith("<svg")?current:escapeHtml(current)}</div>
+            </div>
+            <div class="iof-custom-buttons">
+                <button type="button" class="btn secondary" onclick="previewDsymbolSvg()">Vista previa</button>
+                <button type="button" class="btn" onclick="saveDsymbolSvg()">Guardar símbolo definitivo</button>
+                <button type="button" class="btn secondary" onclick="resetDsymbolSvg()">Restaurar este símbolo</button>
+                <button type="button" class="btn secondary" onclick="exportDsymbolLibrary()">Exportar biblioteca</button>
+                <button type="button" class="btn secondary" onclick="document.getElementById('importDsymbolLibraryInput').click()">Importar biblioteca</button>
+                <input id="importDsymbolLibraryInput" type="file" accept="application/json,.json" style="display:none" onchange="importDsymbolLibrary(this.files&&this.files[0])">
+            </div>
+        </div>
+    </details>`;
+}
+function loadDsymbolSvgForEdit(value){
+    const ta=document.getElementById("customDsymbolSvg");
+    const prev=document.getElementById("customDsymbolPreview");
+    const svg=(customIofSymbols.d&&customIofSymbols.d[value])||(IOF_SYMBOLS.d&&IOF_SYMBOLS.d[value])||"";
+    if(ta)ta.value=svg;
+    if(prev)prev.innerHTML=svg&&String(svg).trim().startsWith("<svg")?svg:escapeHtml(svg);
+}
+function previewDsymbolSvg(){
+    const sel=document.getElementById("customDsymbolSelect");
+    const ta=document.getElementById("customDsymbolSvg");
+    const prev=document.getElementById("customDsymbolPreview");
+    if(!ta||!prev)return;
+    try{
+        const svg=sanitizeCustomSvg(ta.value);
+        prev.innerHTML=svg;
+    }catch(e){toast(e.message||"SVG no válido")}
+}
+function saveDsymbolSvg(){
+    const sel=document.getElementById("customDsymbolSelect");
+    const ta=document.getElementById("customDsymbolSvg");
+    if(!sel||!ta)return;
+    try{
+        const svg=sanitizeCustomSvg(ta.value);
+        customIofSymbols.d=customIofSymbols.d||{};
+        customIofSymbols.d[sel.value]=svg;
+        saveCustomIofSymbols();
+        renderIofDescriptionsEditor();
+        renderMapMarkers();
+        scheduleSaveState();
+        toast("Símbolo D guardado fijo");
+    }catch(e){toast(e.message||"SVG no válido")}
+}
+function resetDsymbolSvg(){
+    const sel=document.getElementById("customDsymbolSelect");
+    if(!sel)return;
+    if(customIofSymbols.d)delete customIofSymbols.d[sel.value];
+    saveCustomIofSymbols();
+    renderIofDescriptionsEditor();
+    scheduleSaveState();
+    toast("Símbolo D restaurado");
+}
+function exportDsymbolLibrary(){
+    const data=JSON.stringify(customIofSymbols||{d:{}},null,2);
+    downloadText("biblioteca_simbolos_D_IOF.json",data);
+}
+function importDsymbolLibrary(file){
+    if(!file)return;
+    const r=new FileReader();
+    r.onload=()=>{
+        try{
+            const parsed=JSON.parse(String(r.result||"{}"));
+            customIofSymbols={d:{...(parsed.d||{})}};
+            saveCustomIofSymbols();
+            renderIofDescriptionsEditor();
+            toast("Biblioteca SVG importada");
+        }catch(e){toast("No se pudo importar la biblioteca")}
+    };
+    r.readAsText(file);
+}
 
 function syncIofEventName(){const input=document.getElementById("iofEventName");if(input&&input.value.trim()){state.eventName=input.value.trim();const main=document.getElementById("eventName");if(main)main.value=state.eventName;scheduleSaveState()}}
 
@@ -5499,10 +5641,11 @@ function renderIofDescriptionsEditor(){
                 ${iofSelectHtml(id,"combo","Combinación",d.combo)}
 
             </div>
-            <div id="iofPreview_${id}" class="iof-preview">${iofPreviewCells(id)}</div>
+            <div id="iofPreview_${id}" class="iof-preview">${iofPreviewCells(id)}</div><div id="iofDsvgLibraryEditor"></div>
         </div>
     </div>`;
 
+    renderDsvgLibraryEditor();
     renderIofStatus();
     if(typeof validateIofDescriptions==="function") validateIofDescriptions();
 }
