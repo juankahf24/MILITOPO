@@ -1944,6 +1944,18 @@ stroke:currentColor;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoi
 .iof-custom-buttons{display:flex;gap:8px;flex-wrap:wrap}
 @media(min-width:760px){.iof-custom-grid{grid-template-columns:1fr 1fr}.iof-custom-buttons{grid-column:1/-1}}
 
+
+/* Clasificación paso 6: columnas ajustadas */
+#classificationTable.table-wrap{overflow-x:auto}
+#classificationTable .results-table{min-width:980px;width:100%;table-layout:auto}
+#classificationTable .results-table th:nth-child(5),
+#classificationTable .results-table td:nth-child(5){min-width:180px;white-space:normal}
+#classificationTable .results-table th:nth-child(6),
+#classificationTable .results-table td:nth-child(6){min-width:210px;white-space:normal}
+#classificationTable .results-table th:nth-child(7),
+#classificationTable .results-table td:nth-child(7){width:86px;min-width:86px;max-width:96px;white-space:nowrap;text-align:center}
+#classificationTable .result-chip{font-size:.78rem;padding:4px 6px}
+
 </style>
 
 <style id="zipProgressCss">
@@ -6484,7 +6496,7 @@ async function downloadClassificationExcel(){
         return `<row r="${r}">${cells}</row>`;
     }).join("");
 
-    const widths=rows[0].map((_,i)=>`<col min="${i+1}" max="${i+1}" width="${i===0?10:i===1?18:i===2?14:i===3?14:i===4?14:i===5?12:28}" customWidth="1"/>`).join("");
+    const widths=[10,18,14,14,24,30,10].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
 
     const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
