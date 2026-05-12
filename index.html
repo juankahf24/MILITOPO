@@ -1956,6 +1956,29 @@ stroke:currentColor;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoi
 #classificationTable .results-table td:nth-child(7){width:86px;min-width:86px;max-width:96px;white-space:nowrap;text-align:center}
 #classificationTable .result-chip{font-size:.78rem;padding:4px 6px}
 
+
+/* Clasificación: texto centrado y colores por rango */
+#classificationTable .results-table th,
+#classificationTable .results-table td{
+  text-align:center!important;
+  vertical-align:middle!important;
+}
+#classificationTable .results-table tr.rank-top1 td{background:#fff2cc!important;color:#24170a!important;font-weight:900}
+#classificationTable .results-table tr.rank-top2 td{background:#e7e6e6!important;color:#111!important;font-weight:900}
+#classificationTable .results-table tr.rank-top3 td{background:#fce5cd!important;color:#24170a!important;font-weight:900}
+#classificationTable .results-table tr.rank-004-010 td{background:#d9ead3!important;color:#10250e!important}
+#classificationTable .results-table tr.rank-011-020 td{background:#d0e0e3!important;color:#0d2730!important}
+#classificationTable .results-table tr.rank-021-030 td{background:#d9d2e9!important;color:#211735!important}
+#classificationTable .results-table tr.rank-031-040 td{background:#ead1dc!important;color:#351523!important}
+#classificationTable .results-table tr.rank-041-050 td{background:#fff2cc!important;color:#2e2100!important}
+#classificationTable .results-table tr.rank-051-060 td{background:#cfe2f3!important;color:#10263a!important}
+#classificationTable .results-table tr.rank-061-070 td{background:#f4cccc!important;color:#3a1010!important}
+#classificationTable .results-table tr.rank-071-080 td{background:#d9ead3!important;color:#10250e!important}
+#classificationTable .results-table tr.rank-081-090 td{background:#d0e0e3!important;color:#0d2730!important}
+#classificationTable .results-table tr.rank-091-100 td{background:#d9d2e9!important;color:#211735!important}
+#classificationTable .results-table tr.rank-other td{background:#eeeeee!important;color:#111!important}
+#classificationTable .results-table tr.rank-warn td{background:#f4cccc!important;color:#3a1010!important}
+
 </style>
 
 <style id="zipProgressCss">
@@ -6339,6 +6362,46 @@ function sortedImportedResults(){
     });
 }
 
+function classificationRankClass(rank,completed){
+    if(!completed)return "rank-warn";
+    const n=Number(rank)||0;
+    if(n===1)return "rank-top1";
+    if(n===2)return "rank-top2";
+    if(n===3)return "rank-top3";
+    if(n>=4&&n<=10)return "rank-004-010";
+    if(n>=11&&n<=20)return "rank-011-020";
+    if(n>=21&&n<=30)return "rank-021-030";
+    if(n>=31&&n<=40)return "rank-031-040";
+    if(n>=41&&n<=50)return "rank-041-050";
+    if(n>=51&&n<=60)return "rank-051-060";
+    if(n>=61&&n<=70)return "rank-061-070";
+    if(n>=71&&n<=80)return "rank-071-080";
+    if(n>=81&&n<=90)return "rank-081-090";
+    if(n>=91&&n<=100)return "rank-091-100";
+    return "rank-other";
+}
+function classificationXlsxStyle(rank,completed){
+    const cls=classificationRankClass(rank,completed);
+    const m={
+        "rank-top1":2,
+        "rank-top2":3,
+        "rank-top3":4,
+        "rank-004-010":5,
+        "rank-011-020":6,
+        "rank-021-030":7,
+        "rank-031-040":8,
+        "rank-041-050":9,
+        "rank-051-060":10,
+        "rank-061-070":11,
+        "rank-071-080":5,
+        "rank-081-090":6,
+        "rank-091-100":7,
+        "rank-other":12,
+        "rank-warn":11
+    };
+    return m[cls]||12;
+}
+
 function renderClassificationTable(){
     const box=document.getElementById("classificationTable");
     if(!box)return;
@@ -6354,13 +6417,14 @@ function renderClassificationTable(){
         <thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo</th><th>Controles completados</th><th>Controles pendientes</th><th>Estado</th></tr></thead>
         <tbody>${rows.map(r=>{
             if(r.completed)rank++;
+            const displayRank=r.completed?rank:"--";
             const ms=resultMs(r);
             const time=ms!==null?formatDuration(ms):"--";
             const controls=(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
             const missing=(r.missingControls||[]).join(", ");
-            const cls=r.completed?"ok":((r.missingControls||[]).length?"bad":"warn");
+            const cls=classificationRankClass(displayRank,r.completed);
             return `<tr class="${cls}">
-                <td>${r.completed?rank:"--"}</td>
+                <td>${displayRank}</td>
                 <td>${escapeHtml(r.participantId)}</td>
                 <td>${escapeHtml(r.routeId||"--")}</td>
                 <td>${time}</td>
@@ -6488,10 +6552,11 @@ async function downloadClassificationExcel(){
 
     const sheetRows=rows.map((row,ri)=>{
         const r=ri+1;
+        const completed=row[6]==="OK";
+        const styleId=ri===0?1:classificationXlsxStyle(row[0],completed);
         const cells=row.map((cell,ci)=>{
             const ref=colName(ci+1)+r;
-            const style=ri===0?' s="1"':"";
-            return `<c r="${ref}" t="inlineStr"${style}><is><t>${escXml(cell)}</t></is></c>`;
+            return `<c r="${ref}" t="inlineStr" s="${styleId}"><is><t>${escXml(cell)}</t></is></c>`;
         }).join("");
         return `<row r="${r}">${cells}</row>`;
     }).join("");
@@ -6522,13 +6587,33 @@ async function downloadClassificationExcel(){
  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`;
 
+    const fills=[
+        "FFFFFF","D9EAD3","FFF2CC","E7E6E6","FCE5CD","D9EAD3","D0E0E3","D9D2E9","EAD1DC","FFF2CC","CFE2F3","F4CCCC","EEEEEE"
+    ].map(c=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`).join("");
+
+    const xfs=[
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="1" fillId="1" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="1" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="1" fillId="4" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="0" fillId="5" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="0" fillId="6" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="0" fillId="7" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="0" fillId="8" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="0" fillId="9" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="0" fillId="10" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="0" fillId="11" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>',
+        '<xf numFmtId="0" fontId="0" fillId="12" borderId="0" xfId="0" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+    ].join("");
+
     const stylesXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
  <fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
- <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9EAD3"/><bgColor indexed="64"/></patternFill></fill></fills>
+ <fills count="13"><fill><patternFill patternType="none"/></fill>${fills}</fills>
  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
- <cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>
+ <cellXfs count="13">${xfs}</cellXfs>
 </styleSheet>`;
 
     const contentTypesXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
