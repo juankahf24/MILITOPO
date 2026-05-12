@@ -6448,58 +6448,107 @@ function classificationRowsForExport(){
     return rows;
 }
 
-function downloadClassificationExcel(){
+async function downloadClassificationExcel(){
     const rows=classificationRowsForExport();
     if(rows.length<=1)return toast("No hay clasificación para exportar");
 
-    const esc=v=>String(v??"")
+    if(typeof JSZip==="undefined"){
+        toast("No se pudo crear XLSX: JSZip no está cargado");
+        return;
+    }
+
+    const escXml=v=>String(v??"")
         .replace(/&/g,"&amp;")
         .replace(/</g,"&lt;")
         .replace(/>/g,"&gt;")
-        .replace(/"/g,"&quot;");
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&apos;");
 
-    const xml=`<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
- <Styles>
-  <Style ss:ID="Header">
-   <Font ss:Bold="1"/>
-   <Interior ss:Color="#D9EAD3" ss:Pattern="Solid"/>
-  </Style>
- </Styles>
- <Worksheet ss:Name="Clasificacion">
-  <Table>
-   ${rows.map((row,ri)=>`
-    <Row>
-      ${row.map(cell=>`<Cell ${ri===0?'ss:StyleID="Header"':''}><Data ss:Type="String">${esc(cell)}</Data></Cell>`).join("")}
-    </Row>`).join("")}
-  </Table>
- </Worksheet>
-</Workbook>`;
+    const colName=n=>{
+        let s="";
+        while(n>0){
+            const m=(n-1)%26;
+            s=String.fromCharCode(65+m)+s;
+            n=Math.floor((n-1)/26);
+        }
+        return s;
+    };
 
-    const blob=new Blob([xml],{
-        type:"application/vnd.ms-excel;charset=utf-8"
+    const sheetRows=rows.map((row,ri)=>{
+        const r=ri+1;
+        const cells=row.map((cell,ci)=>{
+            const ref=colName(ci+1)+r;
+            const style=ri===0?' s="1"':"";
+            return `<c r="${ref}" t="inlineStr"${style}><is><t>${escXml(cell)}</t></is></c>`;
+        }).join("");
+        return `<row r="${r}">${cells}</row>`;
+    }).join("");
+
+    const widths=rows[0].map((_,i)=>`<col min="${i+1}" max="${i+1}" width="${i===0?10:i===1?18:i===2?14:i===3?14:i===4?14:i===5?12:28}" customWidth="1"/>`).join("");
+
+    const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+ <cols>${widths}</cols>
+ <sheetData>${sheetRows}</sheetData>
+</worksheet>`;
+
+    const workbookXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+ <sheets><sheet name="Clasificacion" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+
+    const relsXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+ <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+    const workbookRelsXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+ <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+ <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+    const stylesXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+ <fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
+ <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9EAD3"/><bgColor indexed="64"/></patternFill></fill></fills>
+ <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+ <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+ <cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>
+</styleSheet>`;
+
+    const contentTypesXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+ <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+ <Default Extension="xml" ContentType="application/xml"/>
+ <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+ <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+ <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+    const zip=new JSZip();
+    zip.file("[Content_Types].xml",contentTypesXml);
+    zip.folder("_rels").file(".rels",relsXml);
+    zip.folder("xl").file("workbook.xml",workbookXml);
+    zip.folder("xl").folder("_rels").file("workbook.xml.rels",workbookRelsXml);
+    zip.folder("xl").folder("worksheets").file("sheet1.xml",sheetXml);
+    zip.folder("xl").file("styles.xml",stylesXml);
+
+    const blob=await zip.generateAsync({
+        type:"blob",
+        mimeType:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     });
 
-    const filename=`clasificacion_${state.eventId||"militopo"}.xls`;
-
-    if(typeof saveAs==="function"){
-        saveAs(blob,filename);
-    }else{
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");
-        a.href=url;
-        a.download=filename;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(()=>{
-            URL.revokeObjectURL(url);
-            a.remove();
-        },1500);
-    }
+    const filename=`clasificacion_${state.eventId||"militopo"}.xlsx`;
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1500);
 }
 
 function downloadImportedResultsCsv(){
