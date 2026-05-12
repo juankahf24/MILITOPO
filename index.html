@@ -6339,7 +6339,7 @@ function renderClassificationTable(){
 
     let rank=0;
     box.innerHTML=`<table class="results-table">
-        <thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo</th><th>Estado</th><th>Controles</th><th>Pendientes</th></tr></thead>
+        <thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo</th><th>Controles completados</th><th>Controles pendientes</th><th>Estado</th></tr></thead>
         <tbody>${rows.map(r=>{
             if(r.completed)rank++;
             const ms=resultMs(r);
@@ -6352,9 +6352,9 @@ function renderClassificationTable(){
                 <td>${escapeHtml(r.participantId)}</td>
                 <td>${escapeHtml(r.routeId||"--")}</td>
                 <td>${time}</td>
-                <td><span class="result-chip">${r.completed?"✅ OK":"⚠️ AVISO"}</span></td>
                 <td>${controls}</td>
                 <td>${escapeHtml(missing||"--")}</td>
+                <td><span class="result-chip">${r.completed?"✅ OK":"⚠️ AVISO"}</span></td>
             </tr>`;
         }).join("")}</tbody>
     </table>`;
@@ -6429,7 +6429,7 @@ function importStep5ResultFromInput(){
 
 
 function classificationRowsForExport(){
-    const rows=[["Puesto","Participante","Recorrido","Tiempo","Estado","Controles","Pendientes"]];
+    const rows=[["Puesto","Participante","Recorrido","Tiempo","Controles completados","Controles pendientes","Estado"]];
     let rank=0;
     sortedImportedResults().forEach(r=>{
         if(r.completed)rank++;
@@ -6440,9 +6440,9 @@ function classificationRowsForExport(){
             r.participantId||"",
             r.routeId||"--",
             ms!==null?formatDuration(ms):"--",
-            r.completed?"OK":"AVISO",
             controls,
-            (r.missingControls||[]).join(", ")||"--"
+            (r.missingControls||[]).join(", ")||"--",
+            r.completed?"OK":"AVISO"
         ]);
     });
     return rows;
