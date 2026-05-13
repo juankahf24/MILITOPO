@@ -1988,6 +1988,26 @@ stroke:currentColor;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoi
 .iof-table .iof-g-svg path,.iof-table .iof-g-svg line,.iof-table .iof-g-svg rect,.iof-table .iof-g-svg circle,.iof-table .iof-g-svg ellipse,.iof-table .iof-g-svg polygon{fill:none;stroke:currentColor;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
 .iof-table .iof-g-svg .fill,.iof-table .iof-g-svg.filled rect,.iof-table .iof-g-svg.filled polygon,.iof-table .iof-g-svg.filled circle{fill:currentColor;stroke:none}
 
+
+/* Tablilla previa IOF homogénea */
+.iof-preview{
+  grid-template-columns:34px 56px repeat(6,minmax(38px,1fr))!important;
+  align-items:stretch!important;
+}
+.iof-preview>div{
+  min-width:0!important;
+  overflow:hidden!important;
+  background:rgba(255,255,255,.035);
+}
+.iof-preview .iof-symbol-svg.small{
+  width:24px!important;
+  height:24px!important;
+  flex:0 0 24px!important;
+}
+@media(max-width:850px){
+  .iof-preview{grid-template-columns:28px 48px repeat(6,minmax(34px,1fr))!important}
+}
+
 </style>
 
 <style id="zipProgressCss">
@@ -2261,8 +2281,8 @@ function resetStateToFreshEvent(){
     return freshId;
 }
 
-function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);fillSelect("controlCount",3,80,25,n=>`${n} balizas`);fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);fillSelect("maxControlReuse",1,100,6,n=>`${n} usos máx.`);state.eventId=createFreshEventId();document.getElementById("eventId").value=state.eventId;const restored=loadCustomIofSymbols();
-loadState();syncConfigToUi();rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();renderIofDescriptionsEditor();updateParticipantSelect();updateRouteCountInfo();bindStepTabs();bindStrongAutosave();setTimeout(()=>{initMap();goStep(currentAppStep||1,{silent:true,noScroll:true});if(restored)toast("Evento restaurado automáticamente")},250)}
+function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);fillSelect("controlCount",3,80,25,n=>`${n} balizas`);fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);fillSelect("maxControlReuse",1,100,6,n=>`${n} usos máx.`);state.eventId=createFreshEventId();document.getElementById("eventId").value=state.eventId;loadCustomIofSymbols();
+const restored=loadState();syncConfigToUi();rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();renderIofDescriptionsEditor();updateParticipantSelect();updateRouteCountInfo();bindStepTabs();bindStrongAutosave();setTimeout(()=>{initMap();goStep(currentAppStep||1,{silent:true,noScroll:true});if(restored)toast(`Evento restaurado · paso ${currentAppStep||1}`)},250)}
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
 function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
 function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={};next.START=preserve&&state.points.START?state.points.START:makePoint("START","SALIDA");next.FINISH=preserve&&state.points.FINISH?state.points.FINISH:makePoint("FINISH","LLEGADA");for(let i=1;i<=state.controlCount;i++){const id="B"+String(i).padStart(2,"0");next[id]=preserve&&state.points[id]?state.points[id]:makePoint(id,"BALIZA")}state.points=next}function makePoint(id,type){return{id,type,utm:"",desc:type==="BALIZA"?id:type,lat:null,lon:null,elevation:null}}
@@ -5849,14 +5869,14 @@ function markCurrentIofPending(){
 function iofPreviewCells(id){
     ensureIofDescriptions();
     const d=state.iofDescriptions[id]||{};
-    const p=state.points[id]||{};
     const code=id==="START"?"▶":id==="FINISH"?"◎":escapeHtml(id);
+    const cSymbol=iofSymbol("c",d.c);
     const dSymbol=iofSymbol("d",d.d);
     const eSymbol=iofSymbol("e",d.e);
     const fSymbol=iofSymbol("f",d.f)||iofSymbol("combo",d.combo);
+    const gSymbol=iofSymbol("g",d.g);
     const hSymbol=iofSymbol("h",d.h);
-    const cSymbol=iofSymbol("c",d.c);
-    return `<div>A</div><div>${escapeHtml(code)}</div><div>${iofSymbolBox(cSymbol,"small")}</div><div>${iofSymbolBox(dSymbol,"small")}</div><div>${iofSymbolBox(eSymbol,"small")}</div><div>${iofSymbolBox(fSymbol,"small")}</div><div class="iof-text">${escapeHtml(iofText("g",d.g)||"")}</div><div>${iofSymbolBox(hSymbol,"small")}</div>`;
+    return `<div>A</div><div>${escapeHtml(code)}</div><div>${iofSymbolBox(cSymbol,"small")}</div><div>${iofSymbolBox(dSymbol,"small")}</div><div>${iofSymbolBox(eSymbol,"small")}</div><div>${iofSymbolBox(fSymbol,"small")}</div><div>${iofSymbolBox(gSymbol,"small")}</div><div>${iofSymbolBox(hSymbol,"small")}</div>`;
 }
 
 function updateIofDescription(id,field,value){
@@ -6253,6 +6273,7 @@ function cloneStateForSave(){
     try{syncConfigFromUi()}catch(e){}
     const copy=JSON.parse(JSON.stringify(state));
     if(!copy.importedResults)copy.importedResults=[];
+    copy.currentStep=currentAppStep||1;
     return copy;
 }
 
@@ -6287,7 +6308,7 @@ function loadState(){
 
         if(parsed&&parsed.state){
             Object.assign(state,parsed.state);
-            currentAppStep=Number(parsed.currentStep||1);selectedIofPointId=parsed.selectedIofPointId||selectedIofPointId||"START";
+            currentAppStep=Math.min(6,Math.max(1,Number(parsed.currentStep||1)||1));selectedIofPointId=parsed.selectedIofPointId||selectedIofPointId||"START";
             if(!state.importedResults)state.importedResults=[];
             return true;
         }
@@ -6296,7 +6317,7 @@ function loadState(){
         if(legacy){
             Object.assign(state,legacy);
             if(!state.importedResults)state.importedResults=[];
-            currentAppStep=Number(legacy.currentStep||1)||1;
+            currentAppStep=Math.min(6,Math.max(1,Number(legacy.currentStep||1)||1));
             return true;
         }
     }catch(e){
