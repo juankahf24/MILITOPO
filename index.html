@@ -2282,11 +2282,11 @@ function resetStateToFreshEvent(){
 }
 
 function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);fillSelect("controlCount",3,80,25,n=>`${n} balizas`);fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);fillSelect("maxControlReuse",1,100,6,n=>`${n} usos máx.`);state.eventId=createFreshEventId();document.getElementById("eventId").value=state.eventId;loadCustomIofSymbols();
-const restored=loadState();syncConfigToUi();rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();renderIofDescriptionsEditor();updateParticipantSelect();updateRouteCountInfo();bindStepTabs();bindStrongAutosave();setTimeout(()=>{initMap();goStep(currentAppStep||1,{silent:true,noScroll:true});if(restored)toast(`Evento restaurado · paso ${currentAppStep||1}`)},250)}
+const restored=loadState();const restoredStep=normalizeAppStep(currentAppStep||loadLastStepFallback());syncConfigToUi();rebuildPointsFromConfig(true);currentAppStep=restoredStep;renderPointSelectors();renderPointsTable();renderIofDescriptionsEditor();updateParticipantSelect();updateRouteCountInfo();bindStepTabs();bindStrongAutosave();setTimeout(()=>{initMap();goStep(restoredStep,{silent:true,noScroll:true});if(restored)toast(`Evento restaurado · paso ${restoredStep}`)},250)}
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
 function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
 function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={};next.START=preserve&&state.points.START?state.points.START:makePoint("START","SALIDA");next.FINISH=preserve&&state.points.FINISH?state.points.FINISH:makePoint("FINISH","LLEGADA");for(let i=1;i<=state.controlCount;i++){const id="B"+String(i).padStart(2,"0");next[id]=preserve&&state.points[id]?state.points[id]:makePoint(id,"BALIZA")}state.points=next}function makePoint(id,type){return{id,type,utm:"",desc:type==="BALIZA"?id:type,lat:null,lon:null,elevation:null}}
-function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){if(typeof hideZipProgress==='function')hideZipProgress();currentAppStep=n;document.querySelectorAll(".card").forEach(c=>c.classList.remove("active"));const target=document.getElementById("step"+n);if(target)target.classList.add("active");document.querySelectorAll(".step-tab").forEach(btn=>{const step=Number(btn.dataset.step);btn.classList.toggle("active",step===n);btn.classList.toggle("done",step<n)});if(n===2){renderIofDescriptionsEditor();validateIofDescriptions();setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers()},200)};if(n===4){runExerciseVerifier(false)};if(n===5){updateOrganizerParticipantSelects();prepareStartFlow()}if(n===6)renderResultsControl();if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});if(!opts.silent)scheduleSaveState()}function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.style.display="none",2600)}
+function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){if(typeof hideZipProgress==='function')hideZipProgress();currentAppStep=normalizeAppStep(n);saveCurrentStepNow();document.querySelectorAll(".card").forEach(c=>c.classList.remove("active"));const target=document.getElementById("step"+currentAppStep);if(target)target.classList.add("active");document.querySelectorAll(".step-tab").forEach(btn=>{const step=Number(btn.dataset.step);btn.classList.toggle("active",step===currentAppStep);btn.classList.toggle("done",step<currentAppStep)});if(currentAppStep===2){renderIofDescriptionsEditor();validateIofDescriptions();setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers()},200)};if(currentAppStep===4){runExerciseVerifier(false)};if(currentAppStep===5){updateOrganizerParticipantSelects();prepareStartFlow()}if(currentAppStep===6)renderResultsControl();if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});if(!opts.silent)scheduleSaveState()}function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.style.display="block";clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>el.style.display="none",2600)}
 
 
 function syncPlanScaleFromUiNow(){
@@ -6268,6 +6268,18 @@ setTimeout(()=>{map.invalidateSize();map.fitBounds(bounds,{padding:[0,0],animate
 const STORAGE_KEY_MAIN="militopo_orientacion_autosave_v2";
 const STORAGE_KEY_BACKUP="militopo_orientacion_autosave_backup_v2";
 const STORAGE_KEY_LEGACY="militopo_orientacion_v1";
+const STORAGE_KEY_LAST_STEP="militopo_orientacion_last_step_v2";
+
+function normalizeAppStep(n){
+    n=Number(n);
+    return Number.isFinite(n)?Math.min(6,Math.max(1,Math.round(n))):1;
+}
+function saveCurrentStepNow(){
+    try{localStorage.setItem(STORAGE_KEY_LAST_STEP,String(normalizeAppStep(currentAppStep||1)))}catch(e){}
+}
+function loadLastStepFallback(){
+    try{return normalizeAppStep(localStorage.getItem(STORAGE_KEY_LAST_STEP)||1)}catch(e){return 1}
+}
 
 function cloneStateForSave(){
     try{syncConfigFromUi()}catch(e){}
@@ -6279,9 +6291,11 @@ function cloneStateForSave(){
 
 function saveState(){
     try{
+        currentAppStep=normalizeAppStep(currentAppStep||1);
+        saveCurrentStepNow();
         const payload={
             savedAt:new Date().toISOString(),
-            currentStep:currentAppStep||1,
+            currentStep:currentAppStep,
             selectedIofPointId:selectedIofPointId||"START",
             state:cloneStateForSave()
         };
@@ -6308,8 +6322,10 @@ function loadState(){
 
         if(parsed&&parsed.state){
             Object.assign(state,parsed.state);
-            currentAppStep=Math.min(6,Math.max(1,Number(parsed.currentStep||1)||1));selectedIofPointId=parsed.selectedIofPointId||selectedIofPointId||"START";
+            currentAppStep=normalizeAppStep(parsed.currentStep||state.currentStep||loadLastStepFallback());
+            selectedIofPointId=parsed.selectedIofPointId||selectedIofPointId||"START";
             if(!state.importedResults)state.importedResults=[];
+            saveCurrentStepNow();
             return true;
         }
 
@@ -6317,7 +6333,8 @@ function loadState(){
         if(legacy){
             Object.assign(state,legacy);
             if(!state.importedResults)state.importedResults=[];
-            currentAppStep=Math.min(6,Math.max(1,Number(legacy.currentStep||1)||1));
+            currentAppStep=normalizeAppStep(legacy.currentStep||loadLastStepFallback());
+            saveCurrentStepNow();
             return true;
         }
     }catch(e){
@@ -6342,6 +6359,7 @@ function resetSavedEvent(){
     localStorage.removeItem(STORAGE_KEY_MAIN);
     localStorage.removeItem(STORAGE_KEY_BACKUP);
     localStorage.removeItem(STORAGE_KEY_LEGACY);
+    localStorage.removeItem(STORAGE_KEY_LAST_STEP);
 
     resetStateToFreshEvent();
 
