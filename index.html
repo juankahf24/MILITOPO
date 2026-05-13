@@ -2281,8 +2281,37 @@ function resetStateToFreshEvent(){
     return freshId;
 }
 
-function init(){fillSelect("participantCount",1,100,10,n=>`${n} participantes`);fillSelect("controlCount",3,80,25,n=>`${n} balizas`);fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);fillSelect("maxControlReuse",1,100,6,n=>`${n} usos máx.`);state.eventId=createFreshEventId();document.getElementById("eventId").value=state.eventId;loadCustomIofSymbols();
-const restored=loadState();const restoredStep=normalizeAppStep(currentAppStep||loadLastStepFallback());syncConfigToUi();rebuildPointsFromConfig(true);currentAppStep=restoredStep;renderPointSelectors();renderPointsTable();renderIofDescriptionsEditor();updateParticipantSelect();updateRouteCountInfo();bindStepTabs();bindStrongAutosave();setTimeout(()=>{initMap();goStep(restoredStep,{silent:true,noScroll:true});if(restored)toast(`Evento restaurado · paso ${restoredStep}`)},250)}
+function init(){
+    fillSelect("participantCount",1,100,10,n=>`${n} participantes`);
+    fillSelect("controlCount",3,80,25,n=>`${n} balizas`);
+    fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);
+    fillSelect("maxControlReuse",1,100,6,n=>`${n} usos máx.`);
+    state.eventId=createFreshEventId();
+    document.getElementById("eventId").value=state.eventId;
+    loadCustomIofSymbols();
+
+    const restoreInfo=loadState();
+    const restored=!!(restoreInfo&&restoreInfo.restored);
+    const restoredStep=normalizeAppStep((restoreInfo&&restoreInfo.step)||loadLastStepFallback());
+
+    syncConfigToUi();
+    rebuildPointsFromConfig(true);
+    currentAppStep=restoredStep;
+
+    renderPointSelectors();
+    renderPointsTable();
+    renderIofDescriptionsEditor();
+    updateParticipantSelect();
+    updateRouteCountInfo();
+    bindStepTabs();
+    bindStrongAutosave();
+
+    setTimeout(()=>{
+        initMap();
+        goStep(restoredStep,{silent:true,noScroll:true});
+        if(restored)toast(`Evento restaurado · paso ${restoredStep}`);
+    },250);
+}
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
 function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
 function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={};next.START=preserve&&state.points.START?state.points.START:makePoint("START","SALIDA");next.FINISH=preserve&&state.points.FINISH?state.points.FINISH:makePoint("FINISH","LLEGADA");for(let i=1;i<=state.controlCount;i++){const id="B"+String(i).padStart(2,"0");next[id]=preserve&&state.points[id]?state.points[id]:makePoint(id,"BALIZA")}state.points=next}function makePoint(id,type){return{id,type,utm:"",desc:type==="BALIZA"?id:type,lat:null,lon:null,elevation:null}}
@@ -6317,30 +6346,33 @@ function scheduleSaveState(){
 
 function loadState(){
     try{
-        let raw=localStorage.getItem(STORAGE_KEY_MAIN)||localStorage.getItem(STORAGE_KEY_BACKUP);
-        let parsed=raw?JSON.parse(raw):null;
+        const raw=localStorage.getItem(STORAGE_KEY_MAIN)||localStorage.getItem(STORAGE_KEY_BACKUP);
+        const parsed=raw?JSON.parse(raw):null;
 
         if(parsed&&parsed.state){
             Object.assign(state,parsed.state);
             currentAppStep=normalizeAppStep(parsed.currentStep||state.currentStep||loadLastStepFallback());
             selectedIofPointId=parsed.selectedIofPointId||selectedIofPointId||"START";
             if(!state.importedResults)state.importedResults=[];
-            saveCurrentStepNow();
-            return true;
+            return {restored:true,step:currentAppStep};
         }
 
-        const legacy=JSON.parse(localStorage.getItem(STORAGE_KEY_LEGACY)||"null");
+        const legacyRaw=localStorage.getItem(STORAGE_KEY_LEGACY);
+        const legacy=legacyRaw?JSON.parse(legacyRaw):null;
         if(legacy){
             Object.assign(state,legacy);
             if(!state.importedResults)state.importedResults=[];
             currentAppStep=normalizeAppStep(legacy.currentStep||loadLastStepFallback());
-            saveCurrentStepNow();
-            return true;
+            return {restored:true,step:currentAppStep};
         }
+
+        currentAppStep=normalizeAppStep(loadLastStepFallback());
+        return {restored:false,step:currentAppStep};
     }catch(e){
         console.warn("Restauración falló:",e);
+        currentAppStep=normalizeAppStep(loadLastStepFallback());
+        return {restored:false,step:currentAppStep};
     }
-    return false;
 }
 
 function bindStrongAutosave(){
