@@ -1979,6 +1979,15 @@ stroke:currentColor;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoi
 #classificationTable .results-table tr.rank-other td{background:#eeeeee!important;color:#111!important}
 #classificationTable .results-table tr.rank-warn td{background:#f4cccc!important;color:#3a1010!important}
 
+.iof-g-svg{width:100%;height:100%;display:block}
+.iof-g-svg path,.iof-g-svg line,.iof-g-svg rect,.iof-g-svg circle,.iof-g-svg ellipse,.iof-g-svg polygon{fill:none;stroke:currentColor;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+.iof-g-svg .fill,.iof-g-svg.filled rect,.iof-g-svg.filled polygon,.iof-g-svg.filled circle{fill:currentColor;stroke:none}
+.iof-symbol-svg .iof-g-svg{width:22px;height:22px;color:#111}
+.iof-symbol-svg.small .iof-g-svg{width:18px;height:18px;color:#111}
+.iof-table .iof-g-svg{width:13px;height:13px;color:#d000b8;vertical-align:middle}
+.iof-table .iof-g-svg path,.iof-table .iof-g-svg line,.iof-table .iof-g-svg rect,.iof-table .iof-g-svg circle,.iof-table .iof-g-svg ellipse,.iof-table .iof-g-svg polygon{fill:none;stroke:currentColor;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+.iof-table .iof-g-svg .fill,.iof-table .iof-g-svg.filled rect,.iof-table .iof-g-svg.filled polygon,.iof-table .iof-g-svg.filled circle{fill:currentColor;stroke:none}
+
 </style>
 
 <style id="zipProgressCss">
@@ -2644,7 +2653,22 @@ function deleteOrientationPopupPoint(pointId){
 }
 // ORIENTATION POINT POPUP JS END
 
-function renderMapMarkers(){if(!markersLayer)return;markersLayer.clearLayers();routeLayer?.clearLayers();Object.values(state.points).forEach(p=>{if(p.lat===null||p.lon===null)return;const icon=L.divIcon({html:`<div class="${iconClassForType(p.type)}">${p.type==="BALIZA"?p.id.replace("B",""):""}</div>`,className:"",iconSize:[22,22],iconAnchor:[11,11]});const marker=L.marker([p.lat,p.lon],{icon,draggable:true}).bindTooltip(`${p.id}`,{permanent:true,direction:"right",className:"marker-label"}).on("dragend",ev=>{const ll=ev.target.getLatLng();p.lat=ll.lat;p.lon=ll.lng;p.utm=latLonToUtm(ll.lat,ll.lng);p.elevation=null;selectedPointId=p.id;renderPointsTable();loadSelectedPointFields();saveState();marker.setPopupContent(buildOrientationPointPopup(p.id))}).on("click",()=>openOrientationPointPopup(marker,p.id)).addTo(markersLayer);marker.bindPopup(buildOrientationPointPopup(p.id),{className:"orientation-point-popup",closeButton:true,autoPan:true,maxWidth:330})})}function iconClassForType(type){return type==="SALIDA"?"ori-start-icon":type==="LLEGADA"?"ori-finish-icon":"ori-control-icon"}function zoomSelectedPoint(){const p=state.points[selectedPointId];if(!map||!p||p.lat===null)return;map.setView([p.lat,p.lon],16)}function fitAllPoints(){if(!map)return;const latlngs=Object.values(state.points).filter(p=>p.lat!==null).map(p=>[p.lat,p.lon]);if(latlngs.length)map.fitBounds(latlngs,{padding:[30,30]})}function useMyLocation(){
+function renderMapMarkers(){if(!markersLayer)return;markersLayer.clearLayers();routeLayer?.clearLayers();Object.values(state.points).forEach(p=>{if(p.lat===null||p.lon===null)return;const icon=L.divIcon({html:`<div class="${iconClassForType(p.type)}">${p.type==="BALIZA"?p.id.replace("B",""):""}</div>`,className:"",iconSize:[22,22],iconAnchor:[11,11]});const marker=L.marker([p.lat,p.lon],{icon,draggable:true}).bindTooltip(`${p.id}`,{permanent:true,direction:"right",className:"marker-label"}).on("dragend",ev=>{const ll=ev.target.getLatLng();p.lat=ll.lat;p.lon=ll.lng;p.utm=latLonToUtm(ll.lat,ll.lng);p.elevation=null;selectedPointId=p.id;renderPointsTable();loadSelectedPointFields();saveState();marker.setPopupContent(buildOrientationPointPopup(p.id))}).on("click",()=>openOrientationPointPopup(marker,p.id)).addTo(markersLayer);marker.bindPopup(buildOrientationPointPopup(p.id),{className:"orientation-point-popup",closeButton:true,autoPan:true,maxWidth:330})})}function iconClassForType(type){return type==="SALIDA"?"ori-start-icon":type==="LLEGADA"?"ori-finish-icon":"ori-control-icon"}function zoomSelectedPoint(){const p=state.points[selectedPointId];if(!map||!p||p.lat===null)return;map.setView([p.lat,p.lon],16)}function fitAllPoints(){if(!map)return;const latlngs=Object.values(state.points).filter(p=>p.lat!==null).map(p=>[p.lat,p.lon]);if(latlngs.length)map.fitBounds(latlngs,{padding:[
+        ["lado_noreste","Lado Noreste"],
+        ["borde_sureste","Borde Sureste"],
+        ["parte_oeste","Parte oeste"],
+        ["esquina_este_interior","Esquina este (dentro / interior)"],
+        ["esquina_sur_exterior","Esquina Sur (fuera / exterior)"],
+        ["punta_suroeste","Punta suroeste"],
+        ["noroeste_fin","Noroeste Fin"],
+        ["parte_superior","Parte superior"],
+        ["parte_inferior","Parte inferior"],
+        ["encima","Encima"],
+        ["al_pie_sin_direccion","Al pie (sin dirección)"],
+        ["al_pie_noreste","Al pie Noreste"],
+        ["debajo","Debajo"],
+        ["entre","Entre"]
+    ]})}function useMyLocation(){
     if(!navigator.geolocation){toast("Geolocalización no disponible");return}
     if(!map){toast("Mapa no disponible");return}
     navigator.geolocation.getCurrentPosition(pos=>{
@@ -5442,7 +5466,22 @@ const IOF_SYMBOLS={
     },
     e:{bajo:'<svg class="iof-e-svg" viewBox="0 0 100 100" aria-label="Bajo"><path d="M18 58 Q50 34 82 58"/></svg>',suave_poco_profundo:'<svg class="iof-e-svg" viewBox="0 0 100 100" aria-label="Suave / Poco profundo"><path d="M18 44 Q50 68 82 44"/></svg>',profundo:'<svg class="iof-e-svg" viewBox="0 0 100 100" aria-label="Profundo"><path d="M28 18 C28 18 28 30 28 42 C28 72 38 86 50 86 C62 86 72 72 72 42 C72 30 72 18 72 18"/></svg>',cubierto_maleza:'<svg class="iof-e-svg" viewBox="0 0 100 100" aria-label="Cubierto de maleza"><path d="M25 18V82M38 18V82M50 18V82M62 18V82M75 18V82M18 25H82M18 38H82M18 50H82M18 62H82M18 75H82"/></svg>',despejado_abierto:'<svg class="iof-e-svg" viewBox="0 0 100 100" aria-label="Abierto"><circle cx="28" cy="28" r="4"/><circle cx="50" cy="22" r="4"/><circle cx="72" cy="28" r="4"/><circle cx="78" cy="50" r="4"/><circle cx="72" cy="72" r="4"/><circle cx="50" cy="78" r="4"/><circle cx="28" cy="72" r="4"/><circle cx="22" cy="50" r="4"/></svg>',pedregoso_rocoso:'<svg class="iof-e-svg filled" viewBox="0 0 100 100" aria-label="Rocoso, Pedregoso"><polygon points="30,22 15,52 45,52"/><polygon points="70,22 55,52 85,52"/><polygon points="50,52 35,82 65,82"/></svg>',pantanoso:'<svg class="iof-e-svg" viewBox="0 0 100 100" aria-label="Pantanoso"><path d="M28 30H72M28 50H72M28 70H72"/></svg>',arenoso:'<svg class="iof-e-svg" viewBox="0 0 100 100" aria-label="Arenoso"><circle cx="24" cy="20" r="3"/><circle cx="40" cy="18" r="3"/><circle cx="56" cy="20" r="3"/><circle cx="72" cy="18" r="3"/><circle cx="30" cy="32" r="3"/><circle cx="48" cy="32" r="3"/><circle cx="66" cy="32" r="3"/><circle cx="22" cy="46" r="3"/><circle cx="40" cy="46" r="3"/><circle cx="58" cy="46" r="3"/><circle cx="76" cy="46" r="3"/><circle cx="30" cy="60" r="3"/><circle cx="48" cy="60" r="3"/><circle cx="66" cy="60" r="3"/><circle cx="24" cy="74" r="3"/><circle cx="42" cy="76" r="3"/><circle cx="60" cy="74" r="3"/><circle cx="76" cy="76" r="3"/></svg>',perenne_hoja_fina:'<svg class="iof-e-svg" viewBox="0 0 100 100" aria-label="Hoja Perenne"><path d="M50 15L25 58H75Z"/><path d="M50 36L30 72H70Z"/><path d="M50 70V90"/></svg>',caducifolio_hoja_ancha:'<svg class="iof-e-svg" viewBox="0 0 100 100" aria-label="Hoja Caduca"><path d="M50 78C45 88 36 85 40 75C25 82 14 68 27 58C9 51 18 32 36 39C31 19 54 12 58 33C72 19 88 36 76 51C94 58 84 78 66 70C67 85 55 89 50 78Z"/><path d="M50 72V90"/></svg>',en_ruinas_caido:'<svg class="iof-e-svg" viewBox="0 0 100 100" aria-label="En ruinas / Caído"><path d="M25 85V38 C25 18 47 13 58 32 L76 62"/><path d="M76 62H52"/><path d="M76 62V38"/></svg>'},
     f:{altura_profundidad:"2,0",tamano:"8×4",altura_pendiente:"1,0/2,5",altura_dos_objetos:"2,0·3,0"},
-    g:{norte_exterior:"○N",borde_este:"○E",sudoeste_interior:"○SW",esquina_norte_dentro:"⌃N",esquina_este_fuera:"〉E",punta_sudoeste:"⌞SW",en_curva:"⌒",extremo_sudoeste:"⌜SW",parte_superior:"▮",parte_inferior:"▯",encima_superior:"⊓",debajo_inferior:"⊔",al_pie:"⊥",al_pie_norte:"⊥N",entre_dos_objetos:"═"},
+    g:{
+        lado_noreste:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Lado Noreste"><circle cx="43" cy="55" r="23"/><circle cx="66" cy="33" r="7" class="fill"/></svg>',
+        borde_sureste:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Borde Sureste"><circle cx="43" cy="53" r="23"/><path d="M58 68L72 82"/></svg>',
+        parte_oeste:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Parte oeste"><circle cx="50" cy="50" r="25"/><circle cx="35" cy="50" r="6" class="fill"/></svg>',
+        esquina_este_interior:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Esquina este (dentro / interior)"><path d="M35 25L65 50L35 75"/><circle cx="43" cy="50" r="6" class="fill"/></svg>',
+        esquina_sur_exterior:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Esquina Sur (fuera / exterior)"><path d="M28 35L50 62L72 35"/><circle cx="50" cy="78" r="6" class="fill"/></svg>',
+        punta_suroeste:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Punta suroeste"><path d="M65 30L35 70L78 52"/><circle cx="25" cy="75" r="6" class="fill"/></svg>',
+        noroeste_fin:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Noroeste Fin"><path d="M72 78L30 30"/><path d="M25 38L38 25L55 32"/></svg>',
+        parte_superior:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Parte superior"><path d="M35 20V80M65 20V80"/><circle cx="50" cy="26" r="7" class="fill"/></svg>',
+        parte_inferior:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Parte inferior"><path d="M35 20V80M65 20V80"/><circle cx="50" cy="74" r="7" class="fill"/></svg>',
+        encima:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Encima"><path d="M35 80V40H65V80"/><circle cx="50" cy="25" r="7" class="fill"/></svg>',
+        al_pie_sin_direccion:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Al pie (sin dirección)"><path d="M34 22V78H70"/><circle cx="58" cy="65" r="7" class="fill"/></svg>',
+        al_pie_noreste:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Al pie Noreste"><circle cx="38" cy="65" r="24"/><path d="M62 24V48H82"/></svg>',
+        debajo:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Debajo"><path d="M25 25V55M25 25H75M75 25V55"/><circle cx="50" cy="70" r="7" class="fill"/></svg>',
+        entre:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Entre"><path d="M20 35H80M20 70H80"/><circle cx="50" cy="52" r="7" class="fill"/></svg>'
+    },
     h:{primeros_auxilios:"✚",avituallamiento:"▱",controlador:"♙"},
     combo:{cruce:"×",union:"Y",union_carreteras:"//",union_rio_pantano_estrecho:"≈⋯",cruce_pistas:"╱×",cruce_cortafuegos_rio:"⋱≈×",entre_bosques_tupidos:"▧▧",entre_roca_monticulo:"▲●"}
 };
@@ -5492,6 +5531,7 @@ function iofSelectOptionSymbol(group,value){
     }
     if(group==="e"){const m={bajo:"⌒",suave_poco_profundo:"⌣",profundo:"∪",cubierto_maleza:"▦",despejado_abierto:"⠿",pedregoso_rocoso:"▲▲▲",pantanoso:"≡",arenoso:"⠿",perenne_hoja_fina:"♠",caducifolio_hoja_ancha:"♣",en_ruinas_caido:"↴"};return m[value]||"";}
     if(group==="d"){const m={edificio:'■',area_pavimentada:'▧',ruina:'□',tuberia_pista_bobsleigh_rastro_estructura:'↗',torre_poste:'┬',plataforma_tiro:'┌',mojon_delimitador_cairn:'⊙',pesebre_comedero:'↑',carbonera_plataforma:'△',monumento_estatua:'△',paso_zona_cubierta:'Π',escalera:'▰',area_fuera_limites:'▣',carretera:'/',pista_camino:'╱',cortafuegos:'⋱',puente:'╪',linea_electrica:'╳',torre_linea_electrica:'⊗',tunel:'═',muro_piedra:'●●',cerca_valla:'⌐',punto_cruce:'╫',campo_abierto:'◇',campo_semiabierto:'◌',esquina_bosque:'↙',claro:'○',matorral_vegetacion_espesa:'▧',seto_matorral_lineal:'○○',limite_vegetacion:'〉',bosquecillo:'♤',arbol_prominente_caracteristico:'♤',raiz_tocon_arbol:'⊗',campo_piedras:'▲▲',grupo_piedras:'▲▲',terreno_pedregoso:'▦',afloramiento_rocoso:'✳',paso_estrecho:'][',trinchera:'∪',terraza:'♈',espolon:'♈',vaguada:'∩',terraplen_talud_tierra:'⌒',cantera:'◔',lago:'≈○',charca:'≈∪',hoyo_agua:'≈∨',rio_corriente_curso_agua:'≈',cauce_agua_secundario_arroyo:'≋',pantano_estrecho:'⋱',pantano:'≡',tierra_firme_pantano:'▤',pozo:'○',manantial:'≈',tanque_agua_abrevadero:'≈▭',depresion:'⊂',depresion_pequena:'∪',foso_hoyo:'∨',terreno_suelo_accidentado:'∪∪',hormiguero_monticulo_termitas:'✳',muro_tierra:'╬',surco_erosion:'∧',surco_pequeno_erosion:'⋰',colina:'○',monticulo:'●',collado:')(',cortado_risco:'┬',pilar_roca:'▲',cueva:'✳',roca:'▲'};return m[value]||"";}
+    if(group==="g"){const m={lado_noreste:'○•',borde_sureste:'○╲',parte_oeste:'•○',esquina_este_interior:'•›',esquina_sur_exterior:'∨•',punta_suroeste:'•<',noroeste_fin:'⌜',parte_superior:'‖•',parte_inferior:'‖̣',encima:'•∩',al_pie_sin_direccion:'L•',al_pie_noreste:'○⌜',debajo:'∩•',entre:'─•─'};return m[value]||"";}
     return iofOfficialSymbol(group,value);
 }
 
