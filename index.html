@@ -5187,8 +5187,9 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
 
 function buildEventData(){return{version:"orientacion_v1_offline",eventId:state.eventId,eventName:state.eventName,createdAt:new Date().toISOString(),config:{participantCount:state.participantCount,controlCount:state.controlCount,controlsPerRoute:state.controlsPerRoute,maxControlReuse:state.maxControlReuse,balance:{distance:.5,climb:.5},liveReadyInternals:true,liveVisible:false},points:state.points,routes:state.routes,metrics:state.metrics,iofDescriptions:state.iofDescriptions||{}}}function pointsCsv(){const rows=[["ID","TIPO","UTM","LAT","LON","ELEVACION","DESCRIPCION","QR"]];Object.values(state.points).forEach(p=>rows.push([p.id,p.type,p.utm||"",p.lat??"",p.lon??"",p.elevation??"",p.desc||"",controlPayload(p.id)]));return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}function routesCsv(){const rows=[["PARTICIPANTE","RECORRIDO","DISTANCIA_KM","TRAMO_LARGO_KM","DESNIVEL_POSITIVO_M","DESNIVEL_NEGATIVO_M","DESNIVEL_GLOBAL_M","DIFICULTAD","ORDEN"]];state.routes.forEach((r,i)=>{const m=state.metrics[i]||{};rows.push([r.participantId,r.routeId,m.distanceKm,m.longestKm,m.positiveM,m.negativeM,m.globalM,m.difficulty,r.points.join(" > ")])});return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}
 
+const STORAGE_KEY_IOF_CUSTOM_SYMBOLS="militopo_iof_custom_symbols_v2";
 const STORAGE_KEY_IOF_D_CUSTOM_SYMBOLS="militopo_iof_d_custom_symbols_v1";
-let customIofSymbols={d:{}};
+let customIofSymbols={d:{},e:{},g:{}};
 
 const IOF_OPTIONS={
     c:[
@@ -5514,16 +5515,20 @@ function iofText(group,value){return iofOptionTextOnly(group,value);}
 
 function loadCustomIofSymbols(){
     try{
-        const raw=localStorage.getItem(STORAGE_KEY_IOF_D_CUSTOM_SYMBOLS);
+        const raw=localStorage.getItem(STORAGE_KEY_IOF_CUSTOM_SYMBOLS);
         const parsed=raw?JSON.parse(raw):null;
         if(parsed&&typeof parsed==="object"){
-            customIofSymbols={d:{...(parsed.d||{})}};
+            customIofSymbols={d:{...(parsed.d||{})},e:{...(parsed.e||{})},g:{...(parsed.g||{})}};
+        }else{
+            const legacyRaw=localStorage.getItem(STORAGE_KEY_IOF_D_CUSTOM_SYMBOLS);
+            const legacy=legacyRaw?JSON.parse(legacyRaw):null;
+            customIofSymbols={d:{...(legacy&&legacy.d||{})},e:{},g:{}};
         }
-    }catch(e){console.warn("No se pudo cargar biblioteca SVG IOF:",e);customIofSymbols={d:{}}}
+    }catch(e){console.warn("No se pudo cargar biblioteca SVG IOF:",e);customIofSymbols={d:{},e:{},g:{}}}
 }
 function saveCustomIofSymbols(){
     try{
-        localStorage.setItem(STORAGE_KEY_IOF_D_CUSTOM_SYMBOLS,JSON.stringify(customIofSymbols||{d:{}}));
+        localStorage.setItem(STORAGE_KEY_IOF_CUSTOM_SYMBOLS,JSON.stringify(customIofSymbols||{d:{},e:{},g:{}}));
         return true;
     }catch(e){console.warn("No se pudo guardar biblioteca SVG IOF:",e);return false}
 }
@@ -5534,102 +5539,112 @@ function sanitizeCustomSvg(svg){
     if(/<script|on\w+\s*=|javascript:/i.test(s))throw new Error("SVG bloqueado por seguridad");
     return s;
 }
-function currentDOptionValue(){
+
+function currentIofOptionValue(group){
     ensureIofDescriptions();
     const d=(state.iofDescriptions&&state.iofDescriptions[selectedIofPointId])||{};
-    return d.d||((IOF_OPTIONS.d||[]).find(x=>x[0])||[""])[0];
+    return d[group]||((IOF_OPTIONS[group]||[]).find(x=>x[0])||[""])[0];
 }
-function renderDsvgLibraryEditor(){
-    const box=document.getElementById("iofDsvgLibraryEditor");
+function groupTitleForCustomEditor(group){
+    if(group==="e")return "E ASPECTO";
+    if(group==="g")return "G LOCALIZACIÓN";
+    return group.toUpperCase();
+}
+function renderCustomIofSymbolEditors(){
+    const box=document.getElementById("iofCustomSvgEditors");
     if(!box)return;
-    const options=(IOF_OPTIONS.d||[]).filter(x=>x[0]).map(([val,txt])=>{
+    box.innerHTML=["e","g"].map(group=>renderCustomIofSymbolEditor(group)).join("");
+}
+function renderCustomIofSymbolEditor(group){
+    const options=(IOF_OPTIONS[group]||[]).filter(x=>x[0]).map(([val,txt])=>{
         const label=cleanIofLabel(txt);
-        return `<option value="${escapeHtml(val)}" ${val===currentDOptionValue()?"selected":""}>${escapeHtml(label)}</option>`;
+        return `<option value="${escapeHtml(val)}" ${val===currentIofOptionValue(group)?"selected":""}>${escapeHtml(label)}</option>`;
     }).join("");
-    const val=currentDOptionValue();
-    const current=iofOfficialSymbol("d",val)||"";
-    const defaultSvg=(IOF_SYMBOLS.d&&IOF_SYMBOLS.d[val])||"";
-    const custom=(customIofSymbols.d&&customIofSymbols.d[val])||"";
-    box.innerHTML=`<details class="iof-custom-symbol-editor">
-        <summary>✏️ Biblioteca fija de símbolos SVG · D ELEMENTO</summary>
+    const val=currentIofOptionValue(group);
+    const current=iofOfficialSymbol(group,val)||"";
+    const defaultSvg=(IOF_SYMBOLS[group]&&IOF_SYMBOLS[group][val])||"";
+    const custom=(customIofSymbols[group]&&customIofSymbols[group][val])||"";
+    const title=groupTitleForCustomEditor(group);
+    return `<details class="iof-custom-symbol-editor">
+        <summary>✏️ Biblioteca fija de símbolos SVG · ${title}</summary>
         <div class="iof-mini-help">Edita un símbolo una sola vez. Queda guardado para esa descripción y se usará siempre en desplegable, tablilla previa y PDF.</div>
         <div class="iof-custom-grid">
             <div>
-                <label>Símbolo D</label>
-                <select id="customDsymbolSelect" onchange="loadDsymbolSvgForEdit(this.value)">${options}</select>
+                <label>Símbolo ${escapeHtml(group.toUpperCase())}</label>
+                <select id="custom_${group}_symbolSelect" onchange="loadCustomIofSymbolForEdit('${group}',this.value)">${options}</select>
                 <label style="margin-top:10px">SVG personalizado</label>
-                <textarea id="customDsymbolSvg" placeholder="<svg viewBox=&quot;0 0 100 100&quot;>...</svg>">${escapeHtml(custom||defaultSvg||"")}</textarea>
+                <textarea id="custom_${group}_symbolSvg" placeholder="<svg viewBox=&quot;0 0 100 100&quot;>...</svg>">${escapeHtml(custom||defaultSvg||"")}</textarea>
             </div>
             <div>
                 <label>Vista previa</label>
-                <div id="customDsymbolPreview" class="iof-custom-preview">${current&&current.startsWith("<svg")?current:escapeHtml(current)}</div>
+                <div id="custom_${group}_symbolPreview" class="iof-custom-preview">${current&&current.startsWith("<svg")?current:escapeHtml(current)}</div>
             </div>
             <div class="iof-custom-buttons">
-                <button type="button" class="btn secondary" onclick="previewDsymbolSvg()">Vista previa</button>
-                <button type="button" class="btn" onclick="saveDsymbolSvg()">Guardar símbolo definitivo</button>
-                <button type="button" class="btn secondary" onclick="resetDsymbolSvg()">Restaurar este símbolo</button>
-                <button type="button" class="btn secondary" onclick="exportDsymbolLibrary()">Exportar biblioteca</button>
-                <button type="button" class="btn secondary" onclick="document.getElementById('importDsymbolLibraryInput').click()">Importar biblioteca</button>
-                <input id="importDsymbolLibraryInput" type="file" accept="application/json,.json" style="display:none" onchange="importDsymbolLibrary(this.files&&this.files[0])">
+                <button type="button" class="btn secondary" onclick="previewCustomIofSymbol('${group}')">Vista previa</button>
+                <button type="button" class="btn" onclick="saveCustomIofSymbol('${group}')">Guardar símbolo definitivo</button>
+                <button type="button" class="btn secondary" onclick="resetCustomIofSymbol('${group}')">Restaurar este símbolo</button>
+                <button type="button" class="btn secondary" onclick="exportCustomIofLibrary('${group}')">Exportar biblioteca ${escapeHtml(group.toUpperCase())}</button>
+                <button type="button" class="btn secondary" onclick="document.getElementById('import_${group}_symbolLibraryInput').click()">Importar biblioteca ${escapeHtml(group.toUpperCase())}</button>
+                <input id="import_${group}_symbolLibraryInput" type="file" accept="application/json,.json" style="display:none" onchange="importCustomIofLibrary('${group}',this.files&&this.files[0])">
             </div>
         </div>
     </details>`;
 }
-function loadDsymbolSvgForEdit(value){
-    const ta=document.getElementById("customDsymbolSvg");
-    const prev=document.getElementById("customDsymbolPreview");
-    const svg=(customIofSymbols.d&&customIofSymbols.d[value])||(IOF_SYMBOLS.d&&IOF_SYMBOLS.d[value])||"";
+function loadCustomIofSymbolForEdit(group,value){
+    const ta=document.getElementById(`custom_${group}_symbolSvg`);
+    const prev=document.getElementById(`custom_${group}_symbolPreview`);
+    const svg=(customIofSymbols[group]&&customIofSymbols[group][value])||(IOF_SYMBOLS[group]&&IOF_SYMBOLS[group][value])||"";
     if(ta)ta.value=svg;
     if(prev)prev.innerHTML=svg&&String(svg).trim().startsWith("<svg")?svg:escapeHtml(svg);
 }
-function previewDsymbolSvg(){
-    const sel=document.getElementById("customDsymbolSelect");
-    const ta=document.getElementById("customDsymbolSvg");
-    const prev=document.getElementById("customDsymbolPreview");
+function previewCustomIofSymbol(group){
+    const ta=document.getElementById(`custom_${group}_symbolSvg`);
+    const prev=document.getElementById(`custom_${group}_symbolPreview`);
     if(!ta||!prev)return;
     try{
         const svg=sanitizeCustomSvg(ta.value);
         prev.innerHTML=svg;
     }catch(e){toast(e.message||"SVG no válido")}
 }
-function saveDsymbolSvg(){
-    const sel=document.getElementById("customDsymbolSelect");
-    const ta=document.getElementById("customDsymbolSvg");
+function saveCustomIofSymbol(group){
+    const sel=document.getElementById(`custom_${group}_symbolSelect`);
+    const ta=document.getElementById(`custom_${group}_symbolSvg`);
     if(!sel||!ta)return;
     try{
         const svg=sanitizeCustomSvg(ta.value);
-        customIofSymbols.d=customIofSymbols.d||{};
-        customIofSymbols.d[sel.value]=svg;
+        customIofSymbols[group]=customIofSymbols[group]||{};
+        customIofSymbols[group][sel.value]=svg;
         saveCustomIofSymbols();
         renderIofDescriptionsEditor();
         renderMapMarkers();
         scheduleSaveState();
-        toast("Símbolo D guardado fijo");
+        toast(`Símbolo ${group.toUpperCase()} guardado fijo`);
     }catch(e){toast(e.message||"SVG no válido")}
 }
-function resetDsymbolSvg(){
-    const sel=document.getElementById("customDsymbolSelect");
+function resetCustomIofSymbol(group){
+    const sel=document.getElementById(`custom_${group}_symbolSelect`);
     if(!sel)return;
-    if(customIofSymbols.d)delete customIofSymbols.d[sel.value];
+    if(customIofSymbols[group])delete customIofSymbols[group][sel.value];
     saveCustomIofSymbols();
     renderIofDescriptionsEditor();
     scheduleSaveState();
-    toast("Símbolo D restaurado");
+    toast(`Símbolo ${group.toUpperCase()} restaurado`);
 }
-function exportDsymbolLibrary(){
-    const data=JSON.stringify(customIofSymbols||{d:{}},null,2);
-    downloadText("biblioteca_simbolos_D_IOF.json",data);
+function exportCustomIofLibrary(group){
+    const data=JSON.stringify({type:"MILITOPO_IOF_SYMBOL_LIBRARY",version:1,group,symbols:{[group]:customIofSymbols[group]||{}}},null,2);
+    downloadText(`biblioteca_simbolos_${group.toUpperCase()}_IOF.json`,data);
 }
-function importDsymbolLibrary(file){
+function importCustomIofLibrary(group,file){
     if(!file)return;
     const r=new FileReader();
     r.onload=()=>{
         try{
             const parsed=JSON.parse(String(r.result||"{}"));
-            customIofSymbols={d:{...(parsed.d||{})}};
+            const imported=(parsed.symbols&&parsed.symbols[group])||parsed[group]||{};
+            customIofSymbols[group]={...(customIofSymbols[group]||{}),...imported};
             saveCustomIofSymbols();
             renderIofDescriptionsEditor();
-            toast("Biblioteca SVG importada");
+            toast(`Biblioteca SVG ${group.toUpperCase()} importada`);
         }catch(e){toast("No se pudo importar la biblioteca")}
     };
     r.readAsText(file);
@@ -5712,11 +5727,11 @@ function renderIofDescriptionsEditor(){
                 ${iofSelectHtml(id,"combo","Combinación",d.combo)}
 
             </div>
-            <div id="iofPreview_${id}" class="iof-preview">${iofPreviewCells(id)}</div><div id="iofDsvgLibraryEditor"></div>
+            <div id="iofPreview_${id}" class="iof-preview">${iofPreviewCells(id)}</div><div id="iofCustomSvgEditors"></div>
         </div>
     </div>`;
 
-    renderDsvgLibraryEditor();
+    renderCustomIofSymbolEditors();
     renderIofStatus();
     if(typeof validateIofDescriptions==="function") validateIofDescriptions();
 }
