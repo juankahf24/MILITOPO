@@ -2008,6 +2008,65 @@ stroke:currentColor;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoi
   .iof-preview{grid-template-columns:28px 48px repeat(6,minmax(34px,1fr))!important}
 }
 
+
+
+/* AJUSTE V2 · Tablilla previa IOF completa A-H en móvil */
+#iofDescriptionsEditor .iof-preview,
+.iof-preview{
+  box-sizing:border-box!important;
+  width:100%!important;
+  max-width:100%!important;
+  display:grid!important;
+  grid-template-columns:24px 38px repeat(6,minmax(24px,1fr))!important;
+  gap:0!important;
+  overflow:hidden!important;
+  border:1px solid rgba(230,188,122,.55)!important;
+  border-radius:13px!important;
+}
+#iofDescriptionsEditor .iof-preview>div,
+.iof-preview>div{
+  box-sizing:border-box!important;
+  min-width:0!important;
+  min-height:36px!important;
+  padding:3px 2px!important;
+  overflow:hidden!important;
+}
+#iofDescriptionsEditor .iof-preview>div:nth-child(1),
+.iof-preview>div:nth-child(1){font-size:.72rem!important;letter-spacing:0!important}
+#iofDescriptionsEditor .iof-preview>div:nth-child(2),
+.iof-preview>div:nth-child(2){font-size:.74rem!important;letter-spacing:0!important;white-space:nowrap!important}
+#iofDescriptionsEditor .iof-preview .iof-symbol-svg.small,
+.iof-preview .iof-symbol-svg.small{
+  width:21px!important;
+  height:21px!important;
+  min-width:21px!important;
+  max-width:21px!important;
+  flex:0 0 21px!important;
+  font-size:.58rem!important;
+}
+#iofDescriptionsEditor .iof-preview .iof-symbol-svg.small svg,
+.iof-preview .iof-symbol-svg.small svg{
+  width:17px!important;
+  height:17px!important;
+}
+@media(max-width:430px){
+  #iofDescriptionsEditor .iof-preview,
+  .iof-preview{grid-template-columns:20px 34px repeat(6,minmax(22px,1fr))!important}
+  #iofDescriptionsEditor .iof-preview>div,
+  .iof-preview>div{min-height:34px!important;padding:2px 1px!important}
+  #iofDescriptionsEditor .iof-preview .iof-symbol-svg.small,
+  .iof-preview .iof-symbol-svg.small{width:19px!important;height:19px!important;min-width:19px!important;max-width:19px!important;flex-basis:19px!important}
+  #iofDescriptionsEditor .iof-preview .iof-symbol-svg.small svg,
+  .iof-preview .iof-symbol-svg.small svg{width:16px!important;height:16px!important}
+}
+
+
+
+/* AJUSTE V2 · Tabla base de puntos sin columna Acción */
+.points-table-wrap{overflow-x:auto!important}
+.points-base-table{min-width:620px!important;width:100%!important}
+@media(max-width:760px){.points-base-table{min-width:560px!important}}
+
 </style>
 
 <style id="zipProgressCss">
@@ -2041,7 +2100,7 @@ stroke:currentColor;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoi
                 </div>
             </div>
 </div><div class="block"><label>Identificador interno</label><input id="eventId" readonly><div class="help">Preparado para una futura sincronización, sin mostrar nada en vivo.</div></div><div class="block"><label>Participantes / recorridos</label><select id="participantCount"></select></div><div class="block"><label>Balizas totales</label><select id="controlCount"></select></div><div class="block"><label>Balizas por recorrido</label><select id="controlsPerRoute"></select></div><div class="block"><label>Máximo uso por baliza</label><select id="maxControlReuse"></select><div class="help">Limita que una misma baliza aparezca en demasiados recorridos.</div></div></div><div class="nav-row"><span></span><button class="btn green" onclick="confirmStep1()">CONFIRMAR Y PASAR AL MAPA →</button><button class="btn red" onclick="resetSavedEvent()">🆕 BORRAR EVENTO GUARDADO</button></div></section>
-<section id="step2" class="card"><div class="card-header"><h2>🗺️ EDITAR BALIZAS Y MAPA</h2><div class="mode-pill">Salida · Llegada · Balizas con etiqueta</div></div><div class="grid two"><div class="block"><label>Baliza a editar sobre el plano</label><select id="selectedPoint"></select><div class="btn-row"><button class="btn secondary" onclick="zoomSelectedPoint()">🔎 ZOOM A SELECCIÓN</button><button class="btn" onclick="useMyLocation()">📍 MI UBICACIÓN</button></div></div><div class="block"><label>Buscar zona del mapa</label><div class="map-tools"><input id="searchBox" placeholder="Lugar, dirección o coordenada UTM"><button class="btn" onclick="searchPlace()">🔍 BUSCAR</button><button class="btn secondary" onclick="fitAllPoints()">🧭 VER TODO</button></div></div></div><div class="block autofill-test-panel"><label>Herramientas rápidas de prueba</label><div class="btn-row"><button class="btn green" onclick="autofillOrientationPoints()">✨ AUTORRELLENAR TODOS LOS PUNTOS</button><button class="btn red" onclick="clearAllOrientationPoints()">🧹 LIMPIAR TODOS LOS PUNTOS</button></div><div class="help">Solo para pruebas: rellena salida, llegada y balizas alrededor de una zona base para generar recorridos rápidamente.</div></div><div class="layer-pills"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button></div><div id="map"></div><div class="grid two" style="margin-top:16px"><div class="block"><label>Coordenada UTM de la selección</label><input id="selectedUtm" placeholder="30T 451520 4780100"><div class="btn-row"><button class="btn green" onclick="saveSelectedPoint()">💾 GUARDAR PUNTO</button><button class="btn red" onclick="clearSelectedPoint()">🧹 LIMPIAR PUNTO</button></div></div><div class="block"><label>Importar coordenadas</label><textarea id="importText" rows="6" placeholder="CSV o texto: ID,UTM&#10;B01,30T 451520 4780100&#10;B02,30T 451700 4780200"></textarea><div class="btn-row"><button class="btn" onclick="importTextPoints()">📥 IMPORTAR TEXTO / EXCEL CSV</button><button class="btn secondary" onclick="exportPointsCsv()">📤 EXPORTAR CSV</button><button class="btn green" onclick="document.getElementById('atakGpxFile').click()">📡 IMPORTAR GPX ATAK POR ID</button></div><input type="file" id="atakGpxFile" onchange="importAtakGpxById(event)" style="display:none"><input type="file" id="gpxFile" accept=".gpx,.kml,.xml,.txt" onchange="importGpxKmlFile(event)" style="margin-top:12px"><div class="help">ATAK GPX: el nombre/descripción del waypoint debe ser START, FINISH o B01, B02, etc. Solo actualiza el punto cuyo ID coincida.</div></div></div><div class="block" style="margin-top:16px"><label>Tabla editable de salida, llegada y balizas</label><div class="table-wrap"><table><thead><tr><th>ID</th><th>Tipo</th><th>Coordenada UTM</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="pointsTable"></tbody></table></div></div>
+<section id="step2" class="card"><div class="card-header"><h2>🗺️ EDITAR BALIZAS Y MAPA</h2><div class="mode-pill">Salida · Llegada · Balizas con etiqueta</div></div><div class="grid two"><div class="block"><label>Baliza a editar sobre el plano</label><select id="selectedPoint"></select><div class="btn-row"><button class="btn secondary" onclick="zoomSelectedPoint()">🔎 ZOOM A SELECCIÓN</button><button class="btn" onclick="useMyLocation()">📍 MI UBICACIÓN</button></div></div><div class="block"><label>Buscar zona del mapa</label><div class="map-tools"><input id="searchBox" placeholder="Lugar, dirección o coordenada UTM"><button class="btn" onclick="searchPlace()">🔍 BUSCAR</button><button class="btn secondary" onclick="fitAllPoints()">🧭 VER TODO</button></div></div></div><div class="block autofill-test-panel"><label>Herramientas rápidas de prueba</label><div class="btn-row"><button class="btn green" onclick="autofillOrientationPoints()">✨ AUTORRELLENAR TODOS LOS PUNTOS</button><button class="btn red" onclick="clearAllOrientationPoints()">🧹 LIMPIAR TODOS LOS PUNTOS</button></div><div class="help">Solo para pruebas: rellena salida, llegada y balizas alrededor de una zona base para generar recorridos rápidamente.</div></div><div class="layer-pills"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button></div><div id="map"></div><div class="grid two" style="margin-top:16px"><div class="block"><label>Coordenada UTM de la selección</label><input id="selectedUtm" placeholder="30T 451520 4780100"><div class="btn-row"><button class="btn green" onclick="saveSelectedPoint()">💾 GUARDAR PUNTO</button><button class="btn red" onclick="clearSelectedPoint()">🧹 LIMPIAR PUNTO</button></div></div><div class="block"><label>Importar coordenadas</label><textarea id="importText" rows="6" placeholder="CSV o texto: ID,UTM&#10;B01,30T 451520 4780100&#10;B02,30T 451700 4780200"></textarea><div class="btn-row"><button class="btn" onclick="importTextPoints()">📥 IMPORTAR TEXTO / EXCEL CSV</button><button class="btn secondary" onclick="exportPointsCsv()">📤 EXPORTAR CSV</button><button class="btn green" onclick="document.getElementById('atakGpxFile').click()">📡 IMPORTAR GPX ATAK POR ID</button></div><input type="file" id="atakGpxFile" onchange="importAtakGpxById(event)" style="display:none"><input type="file" id="gpxFile" accept=".gpx,.kml,.xml,.txt" onchange="importGpxKmlFile(event)" style="margin-top:12px"><div class="help">ATAK GPX: el nombre/descripción del waypoint debe ser START, FINISH o B01, B02, etc. Solo actualiza el punto cuyo ID coincida.</div></div></div><div class="block" style="margin-top:16px"><label>Tabla editable de salida, llegada y balizas</label><div class="table-wrap points-table-wrap"><table class="points-base-table"><thead><tr><th>ID</th><th>Tipo</th><th>Coordenada UTM</th><th>Estado</th></tr></thead><tbody id="pointsTable"></tbody></table></div></div>
 <div class="block" id="iofDescriptionsBlock" style="margin-top:16px">
   <h3>📋 DESCRIPCIONES DE CONTROL · IOF</h3>
   <div class="help">Rellena aquí la descripción profesional de cada baliza antes de generar el ZIP. Las columnas A-H siguen la estructura de orientación: A número de control, B código, C cuál de objetos similares, D elemento, E aspecto, F dimensión/combinación, G situación exacta de la baliza y H información extra.</div>
@@ -2621,8 +2680,7 @@ function renderPointsTable(){
         tr.innerHTML=`<td><b>${p.id}</b><br>${pointStatusBadgeHtml(p.id)}</td>
             <td>${p.type}</td>
             <td><input class="${st.utmOk?"":"point-input-invalid"}" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>
-            <td>${st.ok?"✅ Completa":"⚠️ Pendiente"}</td>
-            <td><button class="btn secondary" style="min-height:36px;padding:7px 10px" onclick="selectPoint('${p.id}')">Editar</button></td>`;
+            <td>${st.ok?"✅ Completa":"⚠️ Pendiente"}</td>`;
         tbody.appendChild(tr);
     });
     tbody.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{
@@ -5560,7 +5618,14 @@ const IOF_OPTIONS={
         ["al_pie_noroeste","Al pie noroeste"],
         ["al_pie_sureste","Al pie sureste"],
         ["al_pie_sudoeste","Al pie sudoeste"],
-        ["noroeste_fin","Noroeste Fin"],
+        ["norte_fin","Norte fin"],
+        ["noreste_fin","Noreste fin"],
+        ["este_fin","Este fin"],
+        ["sureste_fin","Sureste fin"],
+        ["sur_fin","Sur fin"],
+        ["suroeste_fin","Suroeste fin"],
+        ["oeste_fin","Oeste fin"],
+        ["noroeste_fin","Noroeste fin"],
         ["parte_superior","Parte superior"],
         ["parte_inferior","Parte inferior"],
         ["encima","Encima"],
@@ -5719,7 +5784,14 @@ const IOF_SYMBOLS={
         al_pie_noroeste:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Al pie noroeste"><circle cx="62" cy="65" r="24"/><path d="M38 24V48H18"/></svg>',
         al_pie_sureste:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Al pie sureste"><circle cx="38" cy="35" r="24"/><path d="M62 76V52H82"/></svg>',
         al_pie_sudoeste:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Al pie sudoeste"><circle cx="62" cy="35" r="24"/><path d="M38 76V52H18"/></svg>',
-        noroeste_fin:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Noroeste Fin"><path d="M72 78L30 30"/><path d="M25 38L38 25L55 32"/></svg>',
+        norte_fin:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Norte fin"><path d="M50 82L50 24"/><path d="M38 35L50 20L62 35"/></svg>',
+        noreste_fin:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Noreste fin"><path d="M28 78L70 30"/><path d="M62 25L75 38L68 55"/></svg>',
+        este_fin:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Este fin"><path d="M18 50L76 50"/><path d="M65 38L80 50L65 62"/></svg>',
+        sureste_fin:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Sureste fin"><path d="M28 22L70 70"/><path d="M62 75L75 62L68 45"/></svg>',
+        sur_fin:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Sur fin"><path d="M50 18L50 76"/><path d="M38 65L50 80L62 65"/></svg>',
+        suroeste_fin:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Suroeste fin"><path d="M72 22L30 70"/><path d="M38 75L25 62L32 45"/></svg>',
+        oeste_fin:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Oeste fin"><path d="M82 50L24 50"/><path d="M35 38L20 50L35 62"/></svg>',
+        noroeste_fin:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Noroeste fin"><path d="M72 78L30 30"/><path d="M25 38L38 25L55 32"/></svg>',
         parte_superior:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Parte superior"><path d="M35 20V80M65 20V80"/><circle cx="50" cy="26" r="7" class="fill"/></svg>',
         parte_inferior:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Parte inferior"><path d="M35 20V80M65 20V80"/><circle cx="50" cy="74" r="7" class="fill"/></svg>',
         encima:'<svg class="iof-g-svg" viewBox="0 0 100 100" aria-label="Encima"><path d="M35 80V40H65V80"/><circle cx="50" cy="25" r="7" class="fill"/></svg>',
