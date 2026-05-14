@@ -2041,7 +2041,7 @@ stroke:currentColor;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoi
                 </div>
             </div>
 </div><div class="block"><label>Identificador interno</label><input id="eventId" readonly><div class="help">Preparado para una futura sincronización, sin mostrar nada en vivo.</div></div><div class="block"><label>Participantes / recorridos</label><select id="participantCount"></select></div><div class="block"><label>Balizas totales</label><select id="controlCount"></select></div><div class="block"><label>Balizas por recorrido</label><select id="controlsPerRoute"></select></div><div class="block"><label>Máximo uso por baliza</label><select id="maxControlReuse"></select><div class="help">Limita que una misma baliza aparezca en demasiados recorridos.</div></div></div><div class="nav-row"><span></span><button class="btn green" onclick="confirmStep1()">CONFIRMAR Y PASAR AL MAPA →</button><button class="btn red" onclick="resetSavedEvent()">🆕 BORRAR EVENTO GUARDADO</button></div></section>
-<section id="step2" class="card"><div class="card-header"><h2>🗺️ EDITAR BALIZAS Y MAPA</h2><div class="mode-pill">Salida · Llegada · Balizas con etiqueta</div></div><div class="grid two"><div class="block"><label>Baliza a editar sobre el plano</label><select id="selectedPoint"></select><div class="btn-row"><button class="btn secondary" onclick="zoomSelectedPoint()">🔎 ZOOM A SELECCIÓN</button><button class="btn" onclick="useMyLocation()">📍 MI UBICACIÓN</button></div></div><div class="block"><label>Buscar zona del mapa</label><div class="map-tools"><input id="searchBox" placeholder="Lugar, dirección o coordenada UTM"><button class="btn" onclick="searchPlace()">🔍 BUSCAR</button><button class="btn secondary" onclick="fitAllPoints()">🧭 VER TODO</button></div></div></div><div class="block autofill-test-panel"><label>Herramientas rápidas de prueba</label><div class="btn-row"><button class="btn green" onclick="autofillOrientationPoints()">✨ AUTORRELLENAR TODOS LOS PUNTOS</button><button class="btn red" onclick="clearAllOrientationPoints()">🧹 LIMPIAR TODOS LOS PUNTOS</button></div><div class="help">Solo para pruebas: rellena salida, llegada y balizas alrededor de una zona base para generar recorridos rápidamente.</div></div><div class="layer-pills"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button></div><div id="map"></div><div class="grid two" style="margin-top:16px"><div class="block"><label>Coordenada UTM de la selección</label><input id="selectedUtm" placeholder="30T 451520 4780100"><div class="btn-row"><button class="btn green" onclick="saveSelectedPoint()">💾 GUARDAR PUNTO</button><button class="btn red" onclick="clearSelectedPoint()">🧹 LIMPIAR PUNTO</button></div></div><div class="block"><label>Importar coordenadas</label><textarea id="importText" rows="6" placeholder="CSV o texto: ID,UTM&#10;B01,30T 451520 4780100&#10;B02,30T 451700 4780200"></textarea><div class="btn-row"><button class="btn" onclick="importTextPoints()">📥 IMPORTAR TEXTO / EXCEL CSV</button><button class="btn secondary" onclick="exportPointsCsv()">📤 EXPORTAR CSV</button></div><input type="file" id="gpxFile" accept=".gpx,.kml,.xml,.txt" onchange="importGpxKmlFile(event)" style="margin-top:12px"><div class="help">Base preparada para GPX/KML/ATAK. Importa puntos si el archivo contiene coordenadas.</div></div></div><div class="block" style="margin-top:16px"><label>Tabla editable de salida, llegada y balizas</label><div class="table-wrap"><table><thead><tr><th>ID</th><th>Tipo</th><th>Coordenada UTM</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="pointsTable"></tbody></table></div></div>
+<section id="step2" class="card"><div class="card-header"><h2>🗺️ EDITAR BALIZAS Y MAPA</h2><div class="mode-pill">Salida · Llegada · Balizas con etiqueta</div></div><div class="grid two"><div class="block"><label>Baliza a editar sobre el plano</label><select id="selectedPoint"></select><div class="btn-row"><button class="btn secondary" onclick="zoomSelectedPoint()">🔎 ZOOM A SELECCIÓN</button><button class="btn" onclick="useMyLocation()">📍 MI UBICACIÓN</button></div></div><div class="block"><label>Buscar zona del mapa</label><div class="map-tools"><input id="searchBox" placeholder="Lugar, dirección o coordenada UTM"><button class="btn" onclick="searchPlace()">🔍 BUSCAR</button><button class="btn secondary" onclick="fitAllPoints()">🧭 VER TODO</button></div></div></div><div class="block autofill-test-panel"><label>Herramientas rápidas de prueba</label><div class="btn-row"><button class="btn green" onclick="autofillOrientationPoints()">✨ AUTORRELLENAR TODOS LOS PUNTOS</button><button class="btn red" onclick="clearAllOrientationPoints()">🧹 LIMPIAR TODOS LOS PUNTOS</button></div><div class="help">Solo para pruebas: rellena salida, llegada y balizas alrededor de una zona base para generar recorridos rápidamente.</div></div><div class="layer-pills"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button></div><div id="map"></div><div class="grid two" style="margin-top:16px"><div class="block"><label>Coordenada UTM de la selección</label><input id="selectedUtm" placeholder="30T 451520 4780100"><div class="btn-row"><button class="btn green" onclick="saveSelectedPoint()">💾 GUARDAR PUNTO</button><button class="btn red" onclick="clearSelectedPoint()">🧹 LIMPIAR PUNTO</button></div></div><div class="block"><label>Importar coordenadas</label><textarea id="importText" rows="6" placeholder="CSV o texto: ID,UTM&#10;B01,30T 451520 4780100&#10;B02,30T 451700 4780200"></textarea><div class="btn-row"><button class="btn" onclick="importTextPoints()">📥 IMPORTAR TEXTO / EXCEL CSV</button><button class="btn secondary" onclick="exportPointsCsv()">📤 EXPORTAR CSV</button><button class="btn green" onclick="document.getElementById('atakGpxFile').click()">📡 IMPORTAR GPX ATAK POR ID</button></div><input type="file" id="atakGpxFile" accept=".gpx,.xml" onchange="importAtakGpxById(event)" style="display:none"><input type="file" id="gpxFile" accept=".gpx,.kml,.xml,.txt" onchange="importGpxKmlFile(event)" style="margin-top:12px"><div class="help">ATAK GPX: el nombre/descripción del waypoint debe ser START, FINISH o B01, B02, etc. Solo actualiza el punto cuyo ID coincida.</div></div></div><div class="block" style="margin-top:16px"><label>Tabla editable de salida, llegada y balizas</label><div class="table-wrap"><table><thead><tr><th>ID</th><th>Tipo</th><th>Coordenada UTM</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="pointsTable"></tbody></table></div></div>
 <div class="block" id="iofDescriptionsBlock" style="margin-top:16px">
   <h3>📋 DESCRIPCIONES DE CONTROL · IOF</h3>
   <div class="help">Rellena aquí la descripción profesional de cada baliza antes de generar el ZIP. Las columnas A-H siguen la estructura de orientación: A número de control, B código, C cuál de objetos similares, D elemento, E aspecto, F dimensión/combinación, G situación exacta de la baliza y H información extra.</div>
@@ -3256,7 +3256,110 @@ function drawRoute(idx){
 }
 function updateRouteCountInfo(){document.getElementById("routeCountInfo").textContent=`${state.participantCount} recorridos`}
 function importTextPoints(){const raw=document.getElementById("importText").value.trim();if(!raw)return;const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);let count=0;lines.forEach(line=>{const parts=line.split(/[,;]/).map(x=>x.trim());if(parts.length<2)return;const id=parts[0].toUpperCase(),utm=parts[1].toUpperCase(),desc=parts.slice(2).join(" ")||id;if(!state.points[id])return;const ll=utmToLatLon(utm);if(!ll)return;Object.assign(state.points[id],{utm:normalizeUtm(utm),lat:ll.lat,lon:ll.lon,desc});count++});renderPointsTable();renderMapMarkers();saveState();toast(`${count} puntos importados`)}function exportPointsCsv(){const rows=[["ID","TIPO","UTM"]];Object.values(state.points).forEach(p=>rows.push([p.id,p.type,p.utm||""]));downloadText("balizas_orientacion.csv",rows.map(r=>r.map(csvEscape).join(",")).join("\n"))}
-function importGpxKmlFile(event){const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const txt=String(reader.result||""),found=[],wptRegex=/<(?:wpt|Placemark)[\s\S]*?(?:lat="([^"]+)"\s+lon="([^"]+)"|<coordinates>([^<]+)<\/coordinates>)[\s\S]*?(?:<name>([^<]+)<\/name>)?/gi;let m;while((m=wptRegex.exec(txt))){let lat,lon;if(m[1]&&m[2]){lat=Number(m[1]);lon=Number(m[2])}else if(m[3]){const coords=m[3].trim().split(",").map(Number);lon=coords[0];lat=coords[1]}const name=(m[4]||"").trim().toUpperCase();if(Number.isFinite(lat)&&Number.isFinite(lon))found.push({lat,lon,name})}const emptyControls=Object.values(state.points).filter(p=>p.type==="BALIZA"&&p.lat===null);found.forEach((f,i)=>{const target=state.points[f.name]||emptyControls[i];if(!target)return;target.lat=f.lat;target.lon=f.lon;target.utm=latLonToUtm(f.lat,f.lon);target.desc=target.desc||target.id});renderPointsTable();renderMapMarkers();saveState();toast(`${found.length} puntos leídos del archivo`)};reader.readAsText(file)}
+function normalizeImportPointId(value){
+    let s=String(value||"").trim().toUpperCase();
+    s=s.replace(/^\s*(PUNTO|POINT|BALIZA|CONTROL|CTRL|WP|WPT)\s*[-_: ]\s*/i,"").trim().toUpperCase();
+    if(s==="SALIDA")s="START";
+    if(s==="LLEGADA"||s==="META")s="FINISH";
+    const b=s.match(/\bB\s*0*([0-9]{1,3})\b/);
+    if(b)return "B"+String(Number(b[1])).padStart(2,"0");
+    const exact=s.match(/\b(START|FINISH|B[0-9]{2,3})\b/);
+    return exact?exact[1]:"";
+}
+function extractTextTag(block,tag){
+    const m=block.match(new RegExp("<"+tag+"[^>]*>([\\\\s\\\\S]*?)<\\\\/"+tag+">","i"));
+    return m?String(m[1]||"").replace(/<!\\[CDATA\\[|\\]\\]>/g,"").trim():"";
+}
+function parseAtakGpxWaypoints(txt){
+    const out=[];
+    const wptRegex=/<wpt\b([^>]*)>([\s\S]*?)<\/wpt>/gi;
+    let m;
+    while((m=wptRegex.exec(txt))){
+        const attrs=m[1]||"";
+        const body=m[2]||"";
+        const latM=attrs.match(/\blat=["']([^"']+)["']/i);
+        const lonM=attrs.match(/\blon=["']([^"']+)["']/i);
+        const lat=latM?Number(latM[1]):NaN;
+        const lon=lonM?Number(lonM[1]):NaN;
+        const name=extractTextTag(body,"name");
+        const desc=extractTextTag(body,"desc")||extractTextTag(body,"cmt");
+        const rawId=name||desc;
+        const id=normalizeImportPointId(rawId);
+        if(Number.isFinite(lat)&&Number.isFinite(lon)){
+            out.push({id,lat,lon,name,desc});
+        }
+    }
+    return out;
+}
+function applyImportedPointById(item){
+    const id=normalizeImportPointId(item.id||item.name||item.desc);
+    if(!id||!state.points[id])return false;
+    const p=state.points[id];
+    p.lat=item.lat;
+    p.lon=item.lon;
+    p.utm=latLonToUtm(item.lat,item.lon);
+    p.desc=p.id;
+    p.elevation=null;
+    return true;
+}
+function finishAtakImport(imported,total,unmatched){
+    renderPointSelectors();
+    renderPointsTable();
+    renderMapMarkers();
+    renderIofDescriptionsEditor();
+    updateParticipantSelect();
+    updateRouteCountInfo();
+    setTimeout(()=>{if(map){map.invalidateSize();fitAllPoints()}},180);
+    saveState();
+    const msg=`GPX ATAK importado: ${imported}/${total} puntos actualizados${unmatched?` · ${unmatched} sin ID válido`:``}`;
+    toast(msg);
+    if(typeof setRestoreStatus==="function")setRestoreStatus(msg,imported?"ok":"warn");
+}
+function importAtakGpxById(event){
+    const file=event.target.files&&event.target.files[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+        const txt=String(reader.result||"");
+        const waypoints=parseAtakGpxWaypoints(txt);
+        let imported=0;
+        let unmatched=0;
+        waypoints.forEach(w=>{
+            if(applyImportedPointById(w))imported++;
+            else unmatched++;
+        });
+        finishAtakImport(imported,waypoints.length,unmatched);
+        event.target.value="";
+    };
+    reader.readAsText(file);
+}
+function importGpxKmlFile(event){
+    const file=event.target.files&&event.target.files[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+        const txt=String(reader.result||"");
+        let found=parseAtakGpxWaypoints(txt);
+        if(!found.length){
+            const kmlRegex=/<Placemark[\s\S]*?<\/Placemark>/gi;
+            const blocks=txt.match(kmlRegex)||[];
+            found=blocks.map(block=>{
+                const name=extractTextTag(block,"name");
+                const desc=extractTextTag(block,"description");
+                const cm=block.match(/<coordinates>([^<]+)<\/coordinates>/i);
+                if(!cm)return null;
+                const parts=cm[1].trim().split(/[,\s]+/).map(Number);
+                const lon=parts[0],lat=parts[1];
+                return Number.isFinite(lat)&&Number.isFinite(lon)?{id:normalizeImportPointId(name||desc),lat,lon,name,desc}:null;
+            }).filter(Boolean);
+        }
+        let imported=0,unmatched=0;
+        found.forEach(w=>{if(applyImportedPointById(w))imported++;else unmatched++;});
+        finishAtakImport(imported,found.length,unmatched);
+        event.target.value="";
+    };
+    reader.readAsText(file);
+}
 let organizerStartIndex=0;
 
 function updateOrganizerParticipantSelects(){
