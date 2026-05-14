@@ -2316,7 +2316,7 @@ function init(){
             ? `✅ Evento restaurado · paso ${restoredStep} · origen: ${restoreInfo.reason}`
             : `ℹ️ No había evento guardado completo · paso inicial ${restoredStep} · origen: ${restoreInfo.reason}`;
         setRestoreStatus(msg,restored?"ok":"warn");
-        if(restored)toast(`Evento restaurado · paso ${restoredStep}`);
+        if(restored){toast(`Evento restaurado · paso ${restoredStep}`);setTimeout(()=>toast(`Evento restaurado · paso ${restoredStep}`),700);}
     },250);
 }
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
@@ -2383,8 +2383,6 @@ function autofillOrientationPoints() {
     syncConfigFromUi();
     rebuildPointsFromConfig(true);
 
-    // Zona de prueba: entorno del Acuartelamiento Santa Bárbara, Javalí Nuevo (Murcia).
-    // Centro aproximado para pruebas de orientación fuera de Sierra Nevada.
     const baseLat = 38.0416;
     const baseLon = -1.2026;
     const controls = Object.values(state.points).filter(p => p.type === "BALIZA");
@@ -2451,13 +2449,23 @@ function autofillOrientationPoints() {
     renderPointSelectors();
     renderPointsTable();
     renderMapMarkers();
-    fitAllPoints();
+    updateParticipantSelect();
+    updateRouteCountInfo();
+
+    setTimeout(()=>{
+        if(map){
+            map.invalidateSize();
+            fitAllPoints();
+        }
+    },180);
+
     saveState();
-    toast("Puntos de prueba colocados cerca de Santa Bárbara, Javalí Nuevo");
+    toast(`Puntos rellenados: salida, llegada y ${controls.length} balizas`);
+    if(typeof setRestoreStatus==="function")setRestoreStatus(`✅ Puntos rellenados y mapa centrado (${controls.length} balizas)`,"ok");
 }
 
 function clearAllOrientationPoints() {
-    Object.values(state.points).forEach(p => {
+    Object.values(state.points||{}).forEach(p => {
         p.utm = "";
         p.lat = null;
         p.lon = null;
@@ -2468,21 +2476,34 @@ function clearAllOrientationPoints() {
     state.routes = [];
     state.metrics = [];
     state.participantLogs = {};
+    state.routeWarnings = [];
     selectedPointId = "START";
 
     renderPointSelectors();
     renderPointsTable();
     renderMapMarkers();
-    renderRoutes();
+    if(typeof renderRoutes==="function")renderRoutes();
     updateParticipantSelect();
-    document.getElementById("routeSummary").className = "status warn";
-    document.getElementById("routeSummary").textContent = "Todavía no hay recorridos generados.";
-    document.getElementById("routesGrid").innerHTML = "";
-    document.getElementById("qrPreview").innerHTML = "";
-    document.getElementById("zipStatus").className = "status warn";
-    document.getElementById("zipStatus").textContent = "Genera primero los recorridos y después el material.";
+    updateRouteCountInfo();
+
+    const routeSummary=document.getElementById("routeSummary");
+    if(routeSummary){
+        routeSummary.className = "status warn";
+        routeSummary.textContent = "Todavía no hay recorridos generados.";
+    }
+    const routesGrid=document.getElementById("routesGrid");
+    if(routesGrid)routesGrid.innerHTML = "";
+    const qrPreview=document.getElementById("qrPreview");
+    if(qrPreview)qrPreview.innerHTML = "";
+    const zipStatus=document.getElementById("zipStatus");
+    if(zipStatus){
+        zipStatus.className = "status warn";
+        zipStatus.textContent = "Genera primero los recorridos y después el material.";
+    }
+
     saveState();
-    toast("Todos los puntos han sido limpiados");
+    toast("Puntos limpiados correctamente");
+    if(typeof setRestoreStatus==="function")setRestoreStatus("🧹 Puntos limpiados correctamente","ok");
 }
 // AUTOFILL TEST POINTS JS END
 
@@ -2740,22 +2761,15 @@ function deleteOrientationPopupPoint(pointId){
 }
 // ORIENTATION POINT POPUP JS END
 
-function renderMapMarkers(){if(!markersLayer)return;markersLayer.clearLayers();routeLayer?.clearLayers();Object.values(state.points).forEach(p=>{if(p.lat===null||p.lon===null)return;const icon=L.divIcon({html:`<div class="${iconClassForType(p.type)}">${p.type==="BALIZA"?p.id.replace("B",""):""}</div>`,className:"",iconSize:[22,22],iconAnchor:[11,11]});const marker=L.marker([p.lat,p.lon],{icon,draggable:true}).bindTooltip(`${p.id}`,{permanent:true,direction:"right",className:"marker-label"}).on("dragend",ev=>{const ll=ev.target.getLatLng();p.lat=ll.lat;p.lon=ll.lng;p.utm=latLonToUtm(ll.lat,ll.lng);p.elevation=null;selectedPointId=p.id;renderPointsTable();loadSelectedPointFields();saveState();marker.setPopupContent(buildOrientationPointPopup(p.id))}).on("click",()=>openOrientationPointPopup(marker,p.id)).addTo(markersLayer);marker.bindPopup(buildOrientationPointPopup(p.id),{className:"orientation-point-popup",closeButton:true,autoPan:true,maxWidth:330})})}function iconClassForType(type){return type==="SALIDA"?"ori-start-icon":type==="LLEGADA"?"ori-finish-icon":"ori-control-icon"}function zoomSelectedPoint(){const p=state.points[selectedPointId];if(!map||!p||p.lat===null)return;map.setView([p.lat,p.lon],16)}function fitAllPoints(){if(!map)return;const latlngs=Object.values(state.points).filter(p=>p.lat!==null).map(p=>[p.lat,p.lon]);if(latlngs.length)map.fitBounds(latlngs,{padding:[
-        ["lado_noreste","Lado Noreste"],
-        ["borde_sureste","Borde Sureste"],
-        ["parte_oeste","Parte oeste"],
-        ["esquina_este_interior","Esquina este (dentro / interior)"],
-        ["esquina_sur_exterior","Esquina Sur (fuera / exterior)"],
-        ["punta_suroeste","Punta suroeste"],
-        ["noroeste_fin","Noroeste Fin"],
-        ["parte_superior","Parte superior"],
-        ["parte_inferior","Parte inferior"],
-        ["encima","Encima"],
-        ["al_pie_sin_direccion","Al pie (sin dirección)"],
-        ["al_pie_noreste","Al pie Noreste"],
-        ["debajo","Debajo"],
-        ["entre","Entre"]
-    ]})}function useMyLocation(){
+function renderMapMarkers(){if(!markersLayer)return;markersLayer.clearLayers();routeLayer?.clearLayers();Object.values(state.points).forEach(p=>{if(p.lat===null||p.lon===null)return;const icon=L.divIcon({html:`<div class="${iconClassForType(p.type)}">${p.type==="BALIZA"?p.id.replace("B",""):""}</div>`,className:"",iconSize:[22,22],iconAnchor:[11,11]});const marker=L.marker([p.lat,p.lon],{icon,draggable:true}).bindTooltip(`${p.id}`,{permanent:true,direction:"right",className:"marker-label"}).on("dragend",ev=>{const ll=ev.target.getLatLng();p.lat=ll.lat;p.lon=ll.lng;p.utm=latLonToUtm(ll.lat,ll.lng);p.elevation=null;selectedPointId=p.id;renderPointsTable();loadSelectedPointFields();saveState();marker.setPopupContent(buildOrientationPointPopup(p.id))}).on("click",()=>openOrientationPointPopup(marker,p.id)).addTo(markersLayer);marker.bindPopup(buildOrientationPointPopup(p.id),{className:"orientation-point-popup",closeButton:true,autoPan:true,maxWidth:330})})}function iconClassForType(type){return type==="SALIDA"?"ori-start-icon":type==="LLEGADA"?"ori-finish-icon":"ori-control-icon"}function zoomSelectedPoint(){const p=state.points[selectedPointId];if(!map||!p||p.lat===null)return;map.setView([p.lat,p.lon],16)}function fitAllPoints(){
+    if(!map)return;
+    const latlngs=Object.values(state.points||{})
+        .filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon))
+        .map(p=>[p.lat,p.lon]);
+    if(latlngs.length){
+        map.fitBounds(latlngs,{padding:[42,42],maxZoom:17});
+    }
+}function useMyLocation(){
     if(!navigator.geolocation){toast("Geolocalización no disponible");return}
     if(!map){toast("Mapa no disponible");return}
     navigator.geolocation.getCurrentPosition(pos=>{
@@ -5673,14 +5687,14 @@ function currentIofOptionValue(group){
     return ((IOF_OPTIONS[group]||[]).find(x=>x[0])||[""])[0];
 }
 function groupTitleForCustomEditor(group){
-    if(group==="e")return "E ASPECTO";
     if(group==="g")return "G LOCALIZACIÓN";
+    if(group==="h")return "H OTRA INFORMACIÓN";
     return group.toUpperCase();
 }
 function renderCustomIofSymbolEditors(){
     const box=document.getElementById("iofCustomSvgEditors");
     if(!box)return;
-    box.innerHTML=["e","g"].map(group=>renderCustomIofSymbolEditor(group)).join("");
+    box.innerHTML=["g","h"].map(group=>renderCustomIofSymbolEditor(group)).join("");
 }
 function renderCustomIofSymbolEditor(group){
     const options=(IOF_OPTIONS[group]||[]).filter(x=>x[0]).map(([val,txt])=>{
