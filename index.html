@@ -2068,11 +2068,12 @@ stroke:currentColor;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoi
 @media(max-width:760px){.points-base-table{min-width:560px!important}}
 
 
-/* IOF SVG color normalization for previews and generated PDF */
-.iof-symbol-svg svg,.iof-preview svg{color:#d000b8!important}
-.iof-symbol-svg svg path,.iof-symbol-svg svg line,.iof-symbol-svg svg polyline,.iof-symbol-svg svg rect,.iof-symbol-svg svg circle,.iof-symbol-svg svg ellipse,.iof-symbol-svg svg polygon,
-.iof-preview svg path,.iof-preview svg line,.iof-preview svg polyline,.iof-preview svg rect,.iof-preview svg circle,.iof-preview svg ellipse,.iof-preview svg polygon{stroke:currentColor!important}
-.iof-symbol-svg svg image,.iof-preview svg image{filter:brightness(0) saturate(100%) invert(17%) sepia(91%) saturate(5797%) hue-rotate(299deg) brightness(92%) contrast(121%)!important;opacity:.98!important}
+/* IOF SVG color normalization: SOLO en la tablilla previa IOF */
+.iof-preview .iof-symbol-svg svg,.iof-preview svg{color:#d000b8!important}
+.iof-preview .iof-symbol-svg svg path,.iof-preview .iof-symbol-svg svg line,.iof-preview .iof-symbol-svg svg polyline,.iof-preview .iof-symbol-svg svg rect,.iof-preview .iof-symbol-svg svg circle,.iof-preview .iof-symbol-svg svg ellipse,.iof-preview .iof-symbol-svg svg polygon,
+.iof-preview svg path,.iof-preview svg line,.iof-preview svg polyline,.iof-preview svg rect,.iof-preview svg circle,.iof-preview svg ellipse,.iof-preview svg polygon{stroke:#d000b8!important}
+.iof-preview svg .fill,.iof-preview svg.filled rect,.iof-preview svg.filled polygon,.iof-preview svg.filled circle,.iof-preview svg.filled ellipse,.iof-preview svg [data-fill="1"]{fill:#d000b8!important;stroke:none!important}
+.iof-preview svg image{filter:brightness(0) saturate(100%) invert(17%) sepia(91%) saturate(5797%) hue-rotate(299deg) brightness(92%) contrast(121%)!important;opacity:.98!important}
 </style>
 
 <style id="zipProgressCss">
@@ -5918,22 +5919,53 @@ const IOF_PDF_SYMBOL_COLOR = "#d000b8";
 function normalizeIofSvgColor(svg){
     let s=String(svg||"").trim();
     if(!s.startsWith("<svg")) return s;
-    if(s.includes("data-militopo-iof-color-normalized")) return s;
-    s=s.replace(/^<svg\b/i, '<svg data-militopo-iof-color-normalized="1"');
-    if(/<svg[^>]*style=/i.test(s)){
-        s=s.replace(/(<svg[^>]*style=["'])([^"']*)(["'])/i, `$1color:${IOF_PDF_SYMBOL_COLOR}!important;$2$3`);
-    }else{
-        s=s.replace(/<svg([^>]*)>/i, `<svg$1 style="color:${IOF_PDF_SYMBOL_COLOR}!important">`);
+
+    const color=IOF_PDF_SYMBOL_COLOR;
+    const imageFilter="brightness(0) saturate(100%) invert(17%) sepia(91%) saturate(5797%) hue-rotate(299deg) brightness(92%) contrast(121%)";
+
+    // No se inserta ningún <style> dentro del SVG: así no puede teñir textos ni interfaz de la app.
+    s=s.replace(/<style[\s\S]*?<\/style>/gi,"");
+    s=s.replace(/\sdata-militopo-iof-color-normalized=(["']).*?\1/gi,"");
+    const rootMatch=s.match(/^<svg\b([^>]*)>/i);
+    const rootAttrs=rootMatch?rootMatch[1]:"";
+    const rootClass=(rootAttrs.match(/\sclass=(["'])(.*?)\1/i)||[])[2]||"";
+
+    function addOrAppendStyle(attrs, styleText){
+        if(/\sstyle=(["'])/i.test(attrs)){
+            return attrs.replace(/(\sstyle=(["'])(.*?))(\2)/i, (m,p,q,body,end)=>`${p};${styleText}${end}`);
+        }
+        return `${attrs} style="${styleText}"`;
     }
-    const style=`<style>
-        :root,svg{color:${IOF_PDF_SYMBOL_COLOR}!important}
-        path,line,polyline,rect,circle,ellipse,polygon{stroke:currentColor!important}
-        path:not(.fill),line:not(.fill),polyline:not(.fill),rect:not(.fill),circle:not(.fill),ellipse:not(.fill),polygon:not(.fill){fill:none!important}
-        .fill,.filled,.filled rect,.filled polygon,.filled circle,.filled ellipse,[data-fill="1"]{fill:currentColor!important;stroke:none!important}
-        text{fill:currentColor!important;stroke:none!important}
-        image{filter:brightness(0) saturate(100%) invert(17%) sepia(91%) saturate(5797%) hue-rotate(299deg) brightness(92%) contrast(121%)!important;opacity:.98!important}
-    </style>`;
-    s=s.replace(/<svg([^>]*)>/i, m=>m+style);
+
+    s=s.replace(/^<svg\b([^>]*)>/i, (m,attrs)=>{
+        attrs=addOrAppendStyle(attrs, `color:${color}!important`);
+        return `<svg data-militopo-iof-color-normalized="1"${attrs}>`;
+    });
+
+    s=s.replace(/<(path|line|polyline|rect|circle|ellipse|polygon|text|tspan)\b([^>]*)>/gi, (m,tag,attrs="")=>{
+        const t=String(tag).toLowerCase();
+        const elemClass=(attrs.match(/\sclass=(["'])(.*?)\1/i)||[])[2]||"";
+        const explicitFill=(attrs.match(/\sfill=(["']?)([^"'\s>]+)\1/i)||[])[2]||"";
+        const styleFill=(attrs.match(/\sstyle=(["'])(.*?)\1/i)||[])[2]||"";
+        const hasRealFill=explicitFill && !/^(none|transparent)$/i.test(explicitFill);
+        const styleHasRealFill=/fill\s*:\s*(?!none\b|transparent\b)/i.test(styleFill);
+        const officialFilled=(/\b(fill|filled)\b/i.test(elemClass) || /\sdata-fill=(["']?)1\1/i.test(attrs));
+        const cFilled=/\biof-c-svg\b/i.test(rootClass) && t==="circle";
+        const eFilled=/\biof-e-svg\b/i.test(rootClass) && (t==="circle"||t==="polygon");
+        const textFilled=(t==="text"||t==="tspan");
+        const forceFill=officialFilled || cFilled || eFilled || textFilled || hasRealFill || styleHasRealFill;
+        const styleText=forceFill
+            ? `fill:${color}!important;stroke:none!important;color:${color}!important`
+            : `fill:none!important;stroke:${color}!important;color:${color}!important`;
+        attrs=addOrAppendStyle(attrs, styleText);
+        return `<${tag}${attrs}>`;
+    });
+
+    s=s.replace(/<image\b([^>]*)>/gi, (m,attrs="")=>{
+        attrs=addOrAppendStyle(attrs, `filter:${imageFilter}!important;opacity:.98!important`);
+        return `<image${attrs}>`;
+    });
+
     return s;
 }
 function renderIofAnySymbol(value){
