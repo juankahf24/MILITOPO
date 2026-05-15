@@ -2070,8 +2070,10 @@ stroke:currentColor;stroke-width:6;fill:none;stroke-linecap:round;stroke-linejoi
 
 /* IOF SVG color normalization for previews and generated PDF */
 .iof-symbol-svg svg,.iof-preview svg{color:#d000b8!important}
-.iof-symbol-svg svg path,.iof-symbol-svg svg line,.iof-symbol-svg svg polyline,.iof-symbol-svg svg rect,.iof-symbol-svg svg circle,.iof-symbol-svg svg ellipse,.iof-symbol-svg svg polygon,
-.iof-preview svg path,.iof-preview svg line,.iof-preview svg polyline,.iof-preview svg rect,.iof-preview svg circle,.iof-preview svg ellipse,.iof-preview svg polygon{stroke:currentColor!important}
+.iof-symbol-svg svg *,.iof-preview svg *{color:#d000b8!important}
+.iof-symbol-svg svg path,.iof-symbol-svg svg line,.iof-symbol-svg svg polyline,.iof-symbol-svg svg rect,.iof-symbol-svg svg circle,.iof-symbol-svg svg ellipse,.iof-symbol-svg svg polygon,.iof-symbol-svg svg text,.iof-symbol-svg svg tspan,
+.iof-preview svg path,.iof-preview svg line,.iof-preview svg polyline,.iof-preview svg rect,.iof-preview svg circle,.iof-preview svg ellipse,.iof-preview svg polygon,.iof-preview svg text,.iof-preview svg tspan{stroke:currentColor!important}
+.iof-symbol-svg svg text,.iof-symbol-svg svg tspan,.iof-preview svg text,.iof-preview svg tspan{fill:currentColor!important;stroke:none!important}
 .iof-symbol-svg svg image,.iof-preview svg image{filter:brightness(0) saturate(100%) invert(17%) sepia(91%) saturate(5797%) hue-rotate(299deg) brightness(92%) contrast(121%)!important;opacity:.98!important}
 </style>
 
@@ -5915,25 +5917,43 @@ function iofSymbol(group,value){return iofOfficialSymbol(group,value);}
 function iofText(group,value){return iofOptionTextOnly(group,value);}
 
 const IOF_PDF_SYMBOL_COLOR = "#d000b8";
+const IOF_PINK_FILTER = "brightness(0) saturate(100%) invert(17%) sepia(91%) saturate(5797%) hue-rotate(299deg) brightness(92%) contrast(121%)";
 function normalizeIofSvgColor(svg){
     let s=String(svg||"").trim();
     if(!s.startsWith("<svg")) return s;
-    if(s.includes("data-militopo-iof-color-normalized")) return s;
+
+    // Fuerza los SVG IOF al mismo rosa, incluso cuando vienen de biblioteca personalizada
+    // con stroke/fill negros, estilos internos o imágenes incrustadas.
     s=s.replace(/^<svg\b/i, '<svg data-militopo-iof-color-normalized="1"');
     if(/<svg[^>]*style=/i.test(s)){
         s=s.replace(/(<svg[^>]*style=["'])([^"']*)(["'])/i, `$1color:${IOF_PDF_SYMBOL_COLOR}!important;$2$3`);
     }else{
         s=s.replace(/<svg([^>]*)>/i, `<svg$1 style="color:${IOF_PDF_SYMBOL_COLOR}!important">`);
     }
+
+    // Normaliza atributos directos de color. Conserva fill="none" y stroke="none".
+    s=s.replace(/\s(stroke|fill)=(['"])(?!none\b|transparent\b)[^'"]*\2/gi, (m,attr,q)=>` ${attr}=${q}currentColor${q}`);
+    s=s.replace(/\scolor=(['"])[^'"]*\1/gi, ` color="${IOF_PDF_SYMBOL_COLOR}"`);
+    s=s.replace(/style=(['"])(.*?)\1/gis, (m,q,css)=>{
+        let c=css;
+        c=c.replace(/color\s*:\s*[^;]+;?/gi, `color:${IOF_PDF_SYMBOL_COLOR}!important;`);
+        c=c.replace(/stroke\s*:\s*(?!none\b|transparent\b)[^;]+;?/gi, 'stroke:currentColor!important;');
+        c=c.replace(/fill\s*:\s*(?!none\b|transparent\b)[^;]+;?/gi, 'fill:currentColor!important;');
+        c=c.replace(/filter\s*:\s*[^;]+;?/gi, `filter:${IOF_PINK_FILTER}!important;`);
+        if(!/color\s*:/i.test(c)) c=`color:${IOF_PDF_SYMBOL_COLOR}!important;`+c;
+        return `style=${q}${c}${q}`;
+    });
+
     const style=`<style>
-        :root,svg{color:${IOF_PDF_SYMBOL_COLOR}!important}
-        path,line,polyline,rect,circle,ellipse,polygon{stroke:currentColor!important}
-        path:not(.fill),line:not(.fill),polyline:not(.fill),rect:not(.fill),circle:not(.fill),ellipse:not(.fill),polygon:not(.fill){fill:none!important}
-        .fill,.filled,.filled rect,.filled polygon,.filled circle,.filled ellipse,[data-fill="1"]{fill:currentColor!important;stroke:none!important}
-        text{fill:currentColor!important;stroke:none!important}
-        image{filter:brightness(0) saturate(100%) invert(17%) sepia(91%) saturate(5797%) hue-rotate(299deg) brightness(92%) contrast(121%)!important;opacity:.98!important}
+        :root,svg,*{color:${IOF_PDF_SYMBOL_COLOR}!important}
+        path,line,polyline,rect,circle,ellipse,polygon,use,text,tspan{stroke:currentColor!important;color:${IOF_PDF_SYMBOL_COLOR}!important}
+        path:not(.fill):not(.filled),line:not(.fill):not(.filled),polyline:not(.fill):not(.filled),rect:not(.fill):not(.filled),circle:not(.fill):not(.filled),ellipse:not(.fill):not(.filled),polygon:not(.fill):not(.filled){fill:none!important}
+        .fill,.filled,.filled path,.filled line,.filled polyline,.filled rect,.filled polygon,.filled circle,.filled ellipse,[data-fill="1"]{fill:currentColor!important;stroke:none!important}
+        text,tspan{fill:currentColor!important;stroke:none!important}
+        image{filter:${IOF_PINK_FILTER}!important;opacity:.98!important}
     </style>`;
-    s=s.replace(/<svg([^>]*)>/i, m=>m+style);
+    // Se inyecta al final del SVG para ganar a estilos internos anteriores.
+    s=s.replace(/<\/svg>\s*$/i, style+'</svg>');
     return s;
 }
 function renderIofAnySymbol(value){
@@ -6473,7 +6493,7 @@ function iofDescriptionsSheetHtml(){
             <td>${escapeHtml(io.text||"")}</td>
         </tr>`;
     }).join("");
-    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Descripciones_${state.eventId}</title><style>@page{size:A4 portrait;margin:8mm}body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#eee;color:#111}.page{background:#fff;max-width:1120px;margin:0 auto;padding:18px}.title{font-size:36px;font-weight:900;color:#c000a0}.meta{margin:8px 0 16px;font-size:14px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:6px;vertical-align:middle}th{background:#f4d7ef;color:#6d005d}.symbol{font-size:18px;text-align:center;font-weight:900}.symbol .iof-c-svg{width:22px;height:22px;color:#111;display:inline-block;vertical-align:middle}.symbol .iof-c-svg path,.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.symbol .iof-c-svg{width:26px;height:26px;color:#111}.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.toolbar{margin:10px 0 14px}.toolbar button{border:0;border-radius:999px;background:#c000a0;color:white;font-weight:800;padding:9px 13px}@media print{body{background:white}.page{max-width:none;padding:0}.toolbar{display:none}.title{font-size:28px}table{font-size:10px}}</style></head><body><div class="page"><div class="title">Descripciones de control · ${escapeHtml(state.eventName||"Orientación")}</div><div class="meta"><b>Evento:</b> ${escapeHtml(state.eventId)} · <b>Formato:</b> IOF A-H · <b>Fecha:</b> ${new Date().toLocaleDateString("es-ES")}</div><div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div><table><thead><tr><th>A<br>Nº</th><th>B<br>Código</th><th>C</th><th>D<br>Símbolo</th><th>D<br>Elemento</th><th>E<br>Aspecto</th><th>F<br>Dim.</th><th>G<br>Situación</th><th>H<br>Info</th><th>Texto</th></tr></thead><tbody>${rows}</tbody></table></div></body></html>`;
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Descripciones_${state.eventId}</title><style>@page{size:A4 portrait;margin:8mm}body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#eee;color:#111}.page{background:#fff;max-width:1120px;margin:0 auto;padding:18px}.title{font-size:36px;font-weight:900;color:#c000a0}.meta{margin:8px 0 16px;font-size:14px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:6px;vertical-align:middle}th{background:#f4d7ef;color:#6d005d}.symbol{font-size:18px;text-align:center;font-weight:900}.symbol svg,.symbol svg *{color:#d000b8!important}.symbol svg{width:22px;height:22px;color:#d000b8!important;display:inline-block;vertical-align:middle}.symbol svg path,.symbol svg line,.symbol svg polyline,.symbol svg rect,.symbol svg circle,.symbol svg ellipse,.symbol svg polygon,.symbol svg text,.symbol svg tspan{stroke:currentColor!important;color:#d000b8!important}.symbol svg text,.symbol svg tspan{fill:currentColor!important;stroke:none!important}.symbol svg image{filter:brightness(0) saturate(100%) invert(17%) sepia(91%) saturate(5797%) hue-rotate(299deg) brightness(92%) contrast(121%)!important;opacity:.98!important}.symbol .iof-c-svg{width:22px;height:22px;color:#d000b8;display:inline-block;vertical-align:middle}.symbol .iof-c-svg path,.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.symbol .iof-c-svg{width:26px;height:26px;color:#111}.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.toolbar{margin:10px 0 14px}.toolbar button{border:0;border-radius:999px;background:#c000a0;color:white;font-weight:800;padding:9px 13px}@media print{body{background:white}.page{max-width:none;padding:0}.toolbar{display:none}.title{font-size:28px}table{font-size:10px}}</style></head><body><div class="page"><div class="title">Descripciones de control · ${escapeHtml(state.eventName||"Orientación")}</div><div class="meta"><b>Evento:</b> ${escapeHtml(state.eventId)} · <b>Formato:</b> IOF A-H · <b>Fecha:</b> ${new Date().toLocaleDateString("es-ES")}</div><div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div><table><thead><tr><th>A<br>Nº</th><th>B<br>Código</th><th>C</th><th>D<br>Símbolo</th><th>D<br>Elemento</th><th>E<br>Aspecto</th><th>F<br>Dim.</th><th>G<br>Situación</th><th>H<br>Info</th><th>Texto</th></tr></thead><tbody>${rows}</tbody></table></div></body></html>`;
 }
 
 function openIofDescriptionsSheet(){
@@ -6585,7 +6605,9 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .leaflet-control-attribution{display:none}
 @media print{.toolbar{display:none}.sheet{margin:0;border:0}body{background:white}}
 .iof-table .iof-c-svg,.symCell .iof-c-svg{width:13px;height:13px;color:#d000b8;display:inline-block;vertical-align:middle}.iof-table .iof-c-svg path,.iof-table .iof-c-svg line,.iof-table .iof-c-svg polyline,.symCell .iof-c-svg path,.symCell .iof-c-svg line,.symCell .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.iof-table .iof-c-svg circle,.symCell .iof-c-svg circle{fill:currentColor;stroke:none}.iof-table .iof-g-svg{width:13px;height:13px;color:#d000b8;vertical-align:middle}.iof-table .iof-g-svg path,.iof-table .iof-g-svg line,.iof-table .iof-g-svg rect,.iof-table .iof-g-svg circle,.iof-table .iof-g-svg ellipse,.iof-table .iof-g-svg polygon{fill:none;stroke:currentColor;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}.iof-table .iof-g-svg .fill{fill:currentColor;stroke:none}.iof-table svg,.iof-table .iof-c-svg,.iof-table .iof-d-svg,.iof-table .iof-e-svg,.iof-table .iof-g-svg{width:13px!important;height:13px!important;color:#d000b8!important;display:inline-block!important;vertical-align:middle!important}
-.iof-table svg path,.iof-table svg line,.iof-table svg polyline,.iof-table svg rect,.iof-table svg circle,.iof-table svg ellipse,.iof-table svg polygon{stroke:currentColor!important}
+.iof-table svg,.iof-table svg *{color:#d000b8!important}
+.iof-table svg path,.iof-table svg line,.iof-table svg polyline,.iof-table svg rect,.iof-table svg circle,.iof-table svg ellipse,.iof-table svg polygon,.iof-table svg text,.iof-table svg tspan{stroke:currentColor!important;color:#d000b8!important}
+.iof-table svg text,.iof-table svg tspan{fill:currentColor!important;stroke:none!important}
 .iof-table svg image{filter:brightness(0) saturate(100%) invert(17%) sepia(91%) saturate(5797%) hue-rotate(299deg) brightness(92%) contrast(121%)!important;opacity:.98!important}
 </style></head><body>
 <div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div>
