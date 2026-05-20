@@ -907,6 +907,55 @@ let MODULOS = 8;
         try { return await QRCode.toDataURL(texto, { width: 200, margin: 2 }); } catch(e) { return null; }
     }
 
+
+    function insertarTagWorksheet(xml, tagName, tagCompleta, antesDe) {
+        const re = new RegExp(`<${tagName}[^>]*\\/>`);
+        if (re.test(xml)) return xml.replace(re, tagCompleta);
+
+        for (const nombre of antesDe) {
+            const idx = xml.search(new RegExp(`<${nombre}(\\s|>|\\/)`));
+            if (idx !== -1) return xml.slice(0, idx) + tagCompleta + xml.slice(idx);
+        }
+
+        const fin = xml.indexOf('</worksheet>');
+        if (fin !== -1) return xml.slice(0, fin) + tagCompleta + xml.slice(fin);
+        return xml;
+    }
+
+    function asegurarAjustePaginaEnWorksheet(xml) {
+        if (/<sheetPr[^>]*\/>/.test(xml)) {
+            return xml.replace(/<sheetPr([^>]*)\/>/, '<sheetPr$1><pageSetUpPr fitToPage="1"/></sheetPr>');
+        }
+
+        if (/<sheetPr[^>]*>/.test(xml)) {
+            if (/<pageSetUpPr[^>]*\/>/.test(xml)) {
+                return xml.replace(/<pageSetUpPr[^>]*\/>/, '<pageSetUpPr fitToPage="1"/>');
+            }
+            return xml.replace('</sheetPr>', '<pageSetUpPr fitToPage="1"/></sheetPr>');
+        }
+
+        return xml.replace(/(<worksheet[^>]*>)/, '$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+    }
+
+    async function prepararXlsxBalizaParaImpresionA4(excelData) {
+        try {
+            const zipExcel = await JSZip.loadAsync(excelData);
+            const hoja = zipExcel.file('xl/worksheets/sheet1.xml');
+            if (!hoja) return excelData;
+
+            let xml = await hoja.async('string');
+            xml = asegurarAjustePaginaEnWorksheet(xml);
+            xml = insertarTagWorksheet(xml, 'printOptions', '<printOptions horizontalCentered="1"/>', ['pageMargins', 'pageSetup', 'headerFooter', 'drawing']);
+            xml = insertarTagWorksheet(xml, 'pageMargins', '<pageMargins left="0.18" right="0.18" top="0.30" bottom="0.30" header="0.10" footer="0.10"/>', ['pageSetup', 'headerFooter', 'drawing']);
+            xml = insertarTagWorksheet(xml, 'pageSetup', '<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>', ['headerFooter', 'drawing']);
+
+            zipExcel.file('xl/worksheets/sheet1.xml', xml);
+            return await zipExcel.generateAsync({ type: 'arraybuffer' });
+        } catch (e) {
+            return excelData;
+        }
+    }
+
     async function generarGPX() {
         let puntosConCoord = [];
         for (let [id, data] of Object.entries(puntosData)) {
@@ -1863,9 +1912,8 @@ let MODULOS = 8;
         organizadoresFolder.file("Resultados de recorridos.xlsx", XSR.write(wbResultados, { bookType: 'xlsx', type: 'array' }));        setProgress(40, "Generando archivos de balizas...");
         let balizasFolder = zip.folder("Balizas");
         let normalFolder = balizasFolder.folder("topografica_normal (con brujula)");
-        let movilFolder = balizasFolder.folder("topografica_con_movil");
         let puntosArray = Object.keys(puntosData);
-        let qrCount = 0;
+        let balizasGeneradas = 0;
         for (let pid of puntosArray) {
             let lista = balizas.get(pid) || [];
             let pd = puntosData[pid] || { descripcion: "" };
@@ -1885,12 +1933,14 @@ let MODULOS = 8;
             // Rehecha desde cero con estilos consistentes
             let ws = XSB.utils.aoa_to_sheet(filasFmt);
             ws['!cols'] = [
+                { wch: 11 },
                 { wch: 14 },
-                { wch: 16 },
-                { wch: 40 },
-                { wch: 46 },
-                { wch: 22 }
+                { wch: 28 },
+                { wch: 34 },
+                { wch: 13 }
             ];
+            ws['!margins'] = { left: 0.18, right: 0.18, top: 0.30, bottom: 0.30, header: 0.10, footer: 0.10 };
+            ws['!pageSetup'] = { paperSize: 9, orientation: "portrait", fitToWidth: 1, fitToHeight: 0 };
             ws['!rows'] = [
                 { hpt: 34 },
                 { hpt: 30 },
@@ -1921,7 +1971,7 @@ let MODULOS = 8;
                         alignment: {
                             horizontal: "center",
                             vertical: "center",
-                            wrapText: false,
+                            wrapText: C === 3,
                             textRotation: 0
                         },
                         font: {
@@ -1948,7 +1998,7 @@ let MODULOS = 8;
                 s: {
                     border: borderGray,
                     font: { name: "Arial", bold: true, sz: 16, color: { rgb: "000000" } },
-                    alignment: { horizontal: "center", vertical: "center", wrapText: false, textRotation: 0 },
+                    alignment: { horizontal: "center", vertical: "center", wrapText: true, textRotation: 0 },
                     fill: { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
                 }
             };
@@ -1959,7 +2009,7 @@ let MODULOS = 8;
                     ws[a].s = Object.assign({}, ws[a].s || {}, {
                         border: borderGray,
                         font: { name: "Arial", bold: true, sz: 12, color: { rgb: "000000" } },
-                        alignment: { horizontal: "center", vertical: "center", wrapText: false, textRotation: 0 },
+                        alignment: { horizontal: "center", vertical: "center", wrapText: c === 3, textRotation: 0 },
                         fill: { patternType: "solid", fgColor: { rgb: "E3E3E3" } }
                     });
                 }
@@ -1971,7 +2021,7 @@ let MODULOS = 8;
                     ws[a].s = Object.assign({}, ws[a].s || {}, {
                         border: borderGray,
                         font: { name: "Arial", bold: true, sz: r === 0 ? 16 : 12, color: { rgb: "000000" } },
-                        alignment: { horizontal: "center", vertical: "center", wrapText: false, textRotation: 0 },
+                        alignment: { horizontal: "center", vertical: "center", wrapText: r === 0 ? true : false, textRotation: 0 },
                         fill: { patternType: "solid", fgColor: { rgb: r === 0 ? "D9D9D9" : (r === 1 ? "E3E3E3" : "EAEAEA") } }
                     });
                 }
@@ -1980,13 +2030,11 @@ let MODULOS = 8;
             let wb = XSB.utils.book_new();
             XSB.utils.book_append_sheet(wb, ws, "Baliza");
             let excelData = XSB.write(wb, { bookType: 'xlsx', type: 'array' });
+            excelData = await prepararXlsxBalizaParaImpresionA4(excelData);
             normalFolder.file(`Baliza_${pid}.xlsx`, excelData);
 
-            let infoQR = `Punto: ${pid}\nCoordenadas: ${pd.coordsUTM}\nDescripción: ${pd.descripcion}`;
-            let qrDataUrl = await generarQRDataURL(infoQR);
-            if (qrDataUrl) movilFolder.file(`QR_${pid}.png`, qrDataUrl.split(',')[1], { base64: true });
-            qrCount++;
-            setProgress(40 + Math.floor((qrCount / puntosArray.length) * 30), `Generando balizas... (${qrCount}/${puntosArray.length})`);
+            balizasGeneradas++;
+            setProgress(40 + Math.floor((balizasGeneradas / puntosArray.length) * 30), `Generando balizas normales... (${balizasGeneradas}/${puntosArray.length})`);
         }
 
         setProgress(70, "Creando hojas de recorrido...");
@@ -2034,7 +2082,7 @@ let MODULOS = 8;
                         alignment: {
                             horizontal: "center",
                             vertical: "center",
-                            wrapText: false,
+                            wrapText: C === 3,
                             textRotation: 0
                         },
                         font: {
