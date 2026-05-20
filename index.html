@@ -61,6 +61,45 @@
         <div class="step" data-step="3">PASO 3 · GENERAR RECORRIDOS</div>
     </div>
 
+    <section id="topoVisualHud" class="topo-command-hud" aria-label="Panel visual de la rama Topográfica">
+        <div class="topo-hud-orb" aria-hidden="true">
+            <span class="topo-hud-orb-ring"></span>
+            <span class="topo-hud-orb-core">✦</span>
+        </div>
+        <div class="topo-hud-main">
+            <div class="topo-hud-kicker">Rama activa · Topografía</div>
+            <h2>Centro táctico de recorridos</h2>
+            <p>Configura módulos, edita balizas en mapa IGN y genera documentación final desde una interfaz más visual y rápida.</p>
+            <div class="topo-hud-progress" aria-hidden="true">
+                <span id="topoHudProgressFill"></span>
+            </div>
+        </div>
+        <div class="topo-hud-stats" aria-label="Estado rápido">
+            <div class="topo-hud-stat">
+                <span class="topo-hud-stat-icon">📦</span>
+                <strong id="topoHudModulos">8</strong>
+                <small>Módulos</small>
+            </div>
+            <div class="topo-hud-stat">
+                <span class="topo-hud-stat-icon">📍</span>
+                <strong id="topoHudPuntos">40</strong>
+                <small>Puntos</small>
+            </div>
+            <div class="topo-hud-stat">
+                <span class="topo-hud-stat-icon">✅</span>
+                <strong id="topoHudProgreso">0%</strong>
+                <small>Progreso</small>
+            </div>
+        </div>
+        <div class="topo-hud-actions" aria-label="Accesos rápidos topográficos">
+            <button type="button" class="topo-action-btn" data-topo-action="step1"><span>⚙️</span> Configurar</button>
+            <button type="button" class="topo-action-btn" data-topo-action="step2"><span>📍</span> Puntos</button>
+            <button type="button" class="topo-action-btn" data-topo-action="map"><span>🗺️</span> Mapa</button>
+            <button type="button" class="topo-action-btn primary" data-topo-action="step3"><span>✨</span> Generar</button>
+        </div>
+    </section>
+
+
     <div id="step1" class="step-content active">
         <div class="card">
             <div class="card-header"><h2>✦ CONFIGURACIÓN DE LA ESTRUCTURA ✦</h2></div>

@@ -2967,11 +2967,13 @@ let MODULOS = 8;
         const step2 = document.getElementById("step2");
         const step3 = document.getElementById("step3");
         const oriShell = document.getElementById("orientacionShell");
+        const topoHud = document.getElementById("topoVisualHud");
         if (mainSteps) mainSteps.style.display = "";
         if (step1) step1.style.display = "";
         if (step2) step2.style.display = "";
         if (step3) step3.style.display = "";
         if (oriShell) oriShell.style.display = "none";
+        if (topoHud) topoHud.style.display = "";
         updateHeaderModeTabs();
         goToStep(1);
     }
@@ -2991,12 +2993,14 @@ let MODULOS = 8;
         const step2 = document.getElementById("step2");
         const step3 = document.getElementById("step3");
         const oriShell = document.getElementById("orientacionShell");
+        const topoHud = document.getElementById("topoVisualHud");
         const qrSelect = document.getElementById("qrModeEnabled");
         if (mainSteps) mainSteps.style.display = "none";
         if (step1) step1.style.display = "none";
         if (step2) step2.style.display = "none";
         if (step3) step3.style.display = "none";
         if (oriShell) oriShell.style.display = "";
+        if (topoHud) topoHud.style.display = "none";
         if (qrSelect) qrSelect.value = "1";
         fillOrientationMirrors();
         updateHeaderModeTabs();
@@ -3032,6 +3036,7 @@ let MODULOS = 8;
             else if (idx + 1 > step) s.classList.remove("completed");
         });
         currentStep = step;
+        if (typeof updateTopoVisualState === "function") updateTopoVisualState();
         if (step === 2) actualizarDashboard();
         if (step === 3) renderResumenTecnicoPrevio();
     }
@@ -3328,3 +3333,129 @@ let MODULOS = 8;
         if (routeDetailsPanelVisible) renderRouteDetailsPanel(routeDetailsLastResumen);
     }
     /* ROUTE DETAILS PANEL JS END */
+
+
+/* ==========================================================
+   MILITOPO TOPÓGRAFICA · MICROINTERACCIONES VISUALES
+   No modifica generación, coordenadas ni exportación.
+   ========================================================== */
+function updateTopoVisualState() {
+    const hud = document.getElementById("topoVisualHud");
+    if (!hud) return;
+
+    const modSelect = document.getElementById("numModulosSelect");
+    const puntosSelect = document.getElementById("puntosPorModuloSelect");
+    const modulos = parseInt(modSelect?.value || window.MODULOS || MODULOS || 0, 10) || 0;
+    const puntosPorModulo = parseInt(puntosSelect?.value || window.PUNTOS_POR_MODULO || PUNTOS_POR_MODULO || 0, 10) || 0;
+    const total = modulos * puntosPorModulo;
+    const totalPuntosText = document.getElementById("totalPuntos")?.textContent?.trim();
+    const progresoText = document.getElementById("porcentajePuntos")?.textContent?.trim();
+    const activeStep = currentStep || 1;
+
+    const hudMod = document.getElementById("topoHudModulos");
+    const hudPuntos = document.getElementById("topoHudPuntos");
+    const hudProgreso = document.getElementById("topoHudProgreso");
+    const hudProgressFill = document.getElementById("topoHudProgressFill");
+
+    if (hudMod) hudMod.textContent = String(modulos || "--");
+    if (hudPuntos) hudPuntos.textContent = totalPuntosText && totalPuntosText !== "0" ? totalPuntosText : String(total || "--");
+
+    let progressValue = 0;
+    if (progresoText && progresoText.includes("%")) {
+        progressValue = parseInt(progresoText.replace(/[^0-9]/g, ""), 10) || 0;
+    } else {
+        progressValue = activeStep === 1 ? 8 : activeStep === 2 ? 42 : 76;
+    }
+    if (activeStep === 3 && progressValue < 82) progressValue = 82;
+    progressValue = Math.max(0, Math.min(100, progressValue));
+
+    if (hudProgreso) hudProgreso.textContent = `${progressValue}%`;
+    if (hudProgressFill) hudProgressFill.style.width = `${progressValue}%`;
+
+    document.querySelectorAll(".topo-action-btn").forEach(btn => {
+        const action = btn.getAttribute("data-topo-action");
+        btn.classList.toggle("is-current", action === `step${activeStep}`);
+    });
+}
+
+function setupTopoVisualEnhancements() {
+    document.body.classList.add("mt-visual-ready");
+
+    document.querySelectorAll(".topo-action-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const action = btn.getAttribute("data-topo-action");
+            if (action === "step1") goToStep(1);
+            if (action === "step2") goToStep(2);
+            if (action === "step3") goToStep(3);
+            if (action === "map") {
+                goToStep(2);
+                setTimeout(() => document.getElementById("mapBtn")?.click(), 180);
+            }
+            updateTopoVisualState();
+        });
+    });
+
+    const rippleSelectors = ".btn, .btn-instr-header, .layer-btn, .points-action-tab, .branch-tab, .startup-enter-btn, .modern-info-btn, .topo-action-btn, .search-container button";
+    document.addEventListener("pointerdown", (event) => {
+        const target = event.target.closest(rippleSelectors);
+        if (!target || target.disabled) return;
+        const rect = target.getBoundingClientRect();
+        const ripple = document.createElement("span");
+        ripple.className = "mt-ripple";
+        ripple.style.left = `${event.clientX - rect.left}px`;
+        ripple.style.top = `${event.clientY - rect.top}px`;
+        target.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 680);
+    }, { passive: true });
+
+    const tiltSelectors = ".startup-mode-card, .option-card, .file-card, .stat-card, .tech-item";
+    const canTilt = window.matchMedia && window.matchMedia("(pointer: fine)").matches && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (canTilt) {
+        document.querySelectorAll(tiltSelectors).forEach(card => {
+            card.addEventListener("pointermove", (event) => {
+                const rect = card.getBoundingClientRect();
+                const x = (event.clientX - rect.left) / rect.width - 0.5;
+                const y = (event.clientY - rect.top) / rect.height - 0.5;
+                card.style.transform = `perspective(900px) rotateX(${(-y * 4).toFixed(2)}deg) rotateY(${(x * 5).toFixed(2)}deg) translateY(-4px)`;
+            });
+            card.addEventListener("pointerleave", () => {
+                card.style.transform = "";
+            });
+        });
+    }
+
+    const revealTargets = ".card, .option-card, .dashboard, .modulo-item, .file-card, .tech-summary, .route-details-panel";
+    if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add("is-visible");
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.08 });
+        document.querySelectorAll(revealTargets).forEach(el => {
+            el.classList.add("mt-reveal");
+            observer.observe(el);
+        });
+    }
+
+    ["numModulosSelect", "puntosPorModuloSelect", "coordTypeConfig", "numRecorridos"].forEach(id => {
+        document.getElementById(id)?.addEventListener("change", () => {
+            updateTopoVisualState();
+            const el = document.getElementById(id);
+            el?.classList.remove("mt-soft-pop");
+            void el?.offsetWidth;
+            el?.classList.add("mt-soft-pop");
+        });
+    });
+
+    ["confirmStep1", "confirmStep2", "backToStep1", "backToStep2", "generarBtn", "autofillPuntosBtn", "clearPuntosTopBtn"].forEach(id => {
+        document.getElementById(id)?.addEventListener("click", () => setTimeout(updateTopoVisualState, 120));
+    });
+
+    updateTopoVisualState();
+    window.setInterval(updateTopoVisualState, 1600);
+}
+
+document.addEventListener("DOMContentLoaded", setupTopoVisualEnhancements);
