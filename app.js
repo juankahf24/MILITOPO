@@ -2871,9 +2871,11 @@ let MODULOS = 8;
     }
 
     function showOrientationPending() {
+        const overlay = document.getElementById("startupModeOverlay");
+        const overlayVisible = overlay && overlay.style.display !== "none";
         const notice = document.getElementById("startupPendingNotice");
         const card = document.getElementById("startupOriCard");
-        if (notice) {
+        if (notice && overlayVisible) {
             notice.hidden = false;
             notice.scrollIntoView({ behavior: "smooth", block: "nearest" });
         } else if (typeof toast === "function") {
@@ -2881,14 +2883,14 @@ let MODULOS = 8;
         } else {
             alert("Orientación está preparada, pero todavía no está activa.");
         }
-        if (card) {
+        if (card && overlayVisible) {
             card.classList.remove("pending-pulse");
             void card.offsetWidth;
             card.classList.add("pending-pulse");
         }
     }
 
-    function markUnsavedChangesfunction markUnsavedChanges() {
+    function markUnsavedChanges() {
         hasUnsavedChanges = true;
     }
 
