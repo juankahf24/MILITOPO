@@ -908,52 +908,91 @@ let MODULOS = 8;
     }
 
 
-    function insertarTagWorksheet(xml, tagName, tagCompleta, antesDe) {
-        const re = new RegExp(`<${tagName}[^>]*\\/>`);
-        if (re.test(xml)) return xml.replace(re, tagCompleta);
+    function eliminarTagWorksheet(xml, tagName) {
+        const re = new RegExp(`<${tagName}\\b[^>]*(?:\\/>|>[\\s\\S]*?<\\/${tagName}>)`, 'g');
+        return xml.replace(re, '');
+    }
 
-        for (const nombre of antesDe) {
+    function insertarBloqueImpresionWorksheet(xml, bloque) {
+        const anclas = [
+            'headerFooter', 'rowBreaks', 'colBreaks', 'customProperties',
+            'cellWatches', 'ignoredErrors', 'smartTags', 'drawing', 'drawingHF',
+            'picture', 'oleObjects', 'controls', 'webPublishItems', 'tableParts', 'extLst'
+        ];
+
+        for (const nombre of anclas) {
             const idx = xml.search(new RegExp(`<${nombre}(\\s|>|\\/)`));
-            if (idx !== -1) return xml.slice(0, idx) + tagCompleta + xml.slice(idx);
+            if (idx !== -1) return xml.slice(0, idx) + bloque + xml.slice(idx);
         }
 
         const fin = xml.indexOf('</worksheet>');
-        if (fin !== -1) return xml.slice(0, fin) + tagCompleta + xml.slice(fin);
+        if (fin !== -1) return xml.slice(0, fin) + bloque + xml.slice(fin);
         return xml;
     }
 
-    function asegurarAjustePaginaEnWorksheet(xml) {
-        if (/<sheetPr[^>]*\/>/.test(xml)) {
-            return xml.replace(/<sheetPr([^>]*)\/>/, '<sheetPr$1><pageSetUpPr fitToPage="1"/></sheetPr>');
-        }
+    function aplicarAjustePaginaSeguroEnWorksheet(xml) {
+        // Se eliminan posibles etiquetas generadas previamente para evitar duplicados,
+        // que son los que pueden provocar el aviso de recuperación de Excel.
+        xml = eliminarTagWorksheet(xml, 'printOptions');
+        xml = eliminarTagWorksheet(xml, 'pageMargins');
+        xml = eliminarTagWorksheet(xml, 'pageSetup');
+        xml = eliminarTagWorksheet(xml, 'sheetPr');
 
-        if (/<sheetPr[^>]*>/.test(xml)) {
-            if (/<pageSetUpPr[^>]*\/>/.test(xml)) {
-                return xml.replace(/<pageSetUpPr[^>]*\/>/, '<pageSetUpPr fitToPage="1"/>');
-            }
-            return xml.replace('</sheetPr>', '<pageSetUpPr fitToPage="1"/></sheetPr>');
-        }
+        xml = xml.replace(
+            /(<worksheet\b[^>]*>)/,
+            '$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>'
+        );
 
-        return xml.replace(/(<worksheet[^>]*>)/, '$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+        const bloqueImpresion = [
+            '<printOptions horizontalCentered="1"/>',
+            '<pageMargins left="0.20" right="0.20" top="0.30" bottom="0.30" header="0.10" footer="0.10"/>',
+            '<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>'
+        ].join('');
+
+        return insertarBloqueImpresionWorksheet(xml, bloqueImpresion);
     }
 
-    async function prepararXlsxBalizaParaImpresionA4(excelData) {
+    async function prepararXlsxParaImpresionA4Vertical(excelData) {
         try {
             const zipExcel = await JSZip.loadAsync(excelData);
-            const hoja = zipExcel.file('xl/worksheets/sheet1.xml');
-            if (!hoja) return excelData;
+            const hojas = zipExcel.folder('xl/worksheets');
+            if (!hojas) return excelData;
 
-            let xml = await hoja.async('string');
-            xml = asegurarAjustePaginaEnWorksheet(xml);
-            xml = insertarTagWorksheet(xml, 'printOptions', '<printOptions horizontalCentered="1"/>', ['pageMargins', 'pageSetup', 'headerFooter', 'drawing']);
-            xml = insertarTagWorksheet(xml, 'pageMargins', '<pageMargins left="0.18" right="0.18" top="0.30" bottom="0.30" header="0.10" footer="0.10"/>', ['pageSetup', 'headerFooter', 'drawing']);
-            xml = insertarTagWorksheet(xml, 'pageSetup', '<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>', ['headerFooter', 'drawing']);
+            const promesas = [];
+            hojas.forEach((relativePath, file) => {
+                if (!/^sheet\d+\.xml$/i.test(relativePath)) return;
+                promesas.push((async () => {
+                    let xml = await file.async('string');
+                    xml = aplicarAjustePaginaSeguroEnWorksheet(xml);
+                    zipExcel.file(`xl/worksheets/${relativePath}`, xml);
+                })());
+            });
 
-            zipExcel.file('xl/worksheets/sheet1.xml', xml);
+            await Promise.all(promesas);
             return await zipExcel.generateAsync({ type: 'arraybuffer' });
         } catch (e) {
+            console.warn('No se pudieron reforzar los ajustes de impresión A4:', e);
             return excelData;
         }
+    }
+
+    function aplicarImpresionA4Vertical(ws) {
+        if (!ws) return ws;
+        ws['!margins'] = { left: 0.20, right: 0.20, top: 0.30, bottom: 0.30, header: 0.10, footer: 0.10 };
+        ws['!pageSetup'] = { paperSize: 9, orientation: 'portrait', fitToWidth: 1, fitToHeight: 0 };
+        return ws;
+    }
+
+    function limpiarCeldasInternasDeMerges(ws, XLSXRef) {
+        if (!ws || !Array.isArray(ws['!merges']) || !XLSXRef?.utils) return;
+        ws['!merges'].forEach(m => {
+            for (let r = m.s.r; r <= m.e.r; r++) {
+                for (let c = m.s.c; c <= m.e.c; c++) {
+                    if (r === m.s.r && c === m.s.c) continue;
+                    delete ws[XLSXRef.utils.encode_cell({ r, c })];
+                }
+            }
+        });
     }
 
     async function generarGPX() {
@@ -2027,10 +2066,13 @@ let MODULOS = 8;
                 }
             }
 
+            aplicarImpresionA4Vertical(ws);
+            limpiarCeldasInternasDeMerges(ws, XSB);
+
             let wb = XSB.utils.book_new();
             XSB.utils.book_append_sheet(wb, ws, "Baliza");
             let excelData = XSB.write(wb, { bookType: 'xlsx', type: 'array' });
-            excelData = await prepararXlsxBalizaParaImpresionA4(excelData);
+            excelData = await prepararXlsxParaImpresionA4Vertical(excelData);
             normalFolder.file(`Baliza_${pid}.xlsx`, excelData);
 
             balizasGeneradas++;
@@ -2053,7 +2095,15 @@ let MODULOS = 8;
             const XSH = window.XLSXStyle || window.XLSX;
             const filasHojaFmt = filasHoja.map(row => row.map(v => (v === null || v === undefined) ? "" : String(v)));
             let ws = XSH.utils.aoa_to_sheet(filasHojaFmt);
-            ws['!cols'] = [{ wch: 10 }, { wch: 14 }, { wch: 38 }, { wch: 45 }, { wch: 14 }];
+            ws['!cols'] = [
+                { wch: 9 },
+                { wch: 12 },
+                { wch: 26 },
+                { wch: 34 },
+                { wch: 12 }
+            ];
+            aplicarImpresionA4Vertical(ws);
+
             let alturas = [];
             alturas.push({ hpt: 34 });
             alturas.push({ hpt: 30 });
@@ -2092,9 +2142,9 @@ let MODULOS = 8;
                             color: { rgb: "000000" }
                         },
                         fill: isTitleRow
-                            ? { patternType: "solid", fgColor: { rgb: "FFFFFF" } }
+                            ? { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
                             : (isHeaderRow
-                                ? { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
+                                ? { patternType: "solid", fgColor: { rgb: "E3E3E3" } }
                                 : (isFirstCol
                                     ? { patternType: "solid", fgColor: { rgb: "EAEAEA" } }
                                     : { patternType: "solid", fgColor: { rgb: "FFFFFF" } }))
@@ -2117,9 +2167,14 @@ let MODULOS = 8;
                 });
             }
 
+            aplicarImpresionA4Vertical(ws);
+            limpiarCeldasInternasDeMerges(ws, XSH);
+
             let wbSingle = XSH.utils.book_new();
             XSH.utils.book_append_sheet(wbSingle, ws, `Hoja_${nombre}`);
-            hojasFolder.file(`Hoja_${nombre}.xlsx`, XSH.write(wbSingle, { bookType: 'xlsx', type: 'array' }));
+            let hojaData = XSH.write(wbSingle, { bookType: 'xlsx', type: 'array' });
+            hojaData = await prepararXlsxParaImpresionA4Vertical(hojaData);
+            hojasFolder.file(`Hoja_${nombre}.xlsx`, hojaData);
         }
 
         setProgress(95, "Comprimiendo archivos...");
