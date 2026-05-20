@@ -3340,62 +3340,92 @@ let MODULOS = 8;
    No modifica generación, coordenadas ni exportación.
    ========================================================== */
 function updateTopoVisualState() {
-    const hud = document.getElementById("topoVisualHud");
-    if (!hud) return;
+    const panel = document.getElementById("topoVisualHud");
+    if (!panel) return;
 
     const modSelect = document.getElementById("numModulosSelect");
     const puntosSelect = document.getElementById("puntosPorModuloSelect");
-    const modulos = parseInt(modSelect?.value || window.MODULOS || MODULOS || 0, 10) || 0;
-    const puntosPorModulo = parseInt(puntosSelect?.value || window.PUNTOS_POR_MODULO || PUNTOS_POR_MODULO || 0, 10) || 0;
+    const modulos = parseInt(modSelect?.value || (typeof MODULOS !== "undefined" ? MODULOS : 0) || 0, 10) || 0;
+    const puntosPorModulo = parseInt(puntosSelect?.value || (typeof PUNTOS_POR_MODULO !== "undefined" ? PUNTOS_POR_MODULO : 0) || 0, 10) || 0;
     const total = modulos * puntosPorModulo;
-    const totalPuntosText = document.getElementById("totalPuntos")?.textContent?.trim();
-    const progresoText = document.getElementById("porcentajePuntos")?.textContent?.trim();
     const activeStep = currentStep || 1;
+
+    let analisis = null;
+    try {
+        if (typeof obtenerAnalisisPuntos === "function") analisis = obtenerAnalisisPuntos();
+    } catch (e) { analisis = null; }
+
+    const completados = Number(analisis?.completados || 0);
+    const totalAnalisis = Number(analisis?.total || total || 0);
+    const porcentajePuntos = Math.max(0, Math.min(100, Number(analisis?.porcentaje || 0)));
+
+    let progressValue = 10;
+    if (activeStep === 1) progressValue = 12;
+    if (activeStep === 2) progressValue = 25 + Math.round(porcentajePuntos * 0.55);
+    if (activeStep === 3) progressValue = porcentajePuntos >= 100 ? 90 : Math.max(80, 25 + Math.round(porcentajePuntos * 0.55));
+
+    const generatedText = [
+        document.getElementById("zipNotification")?.textContent || "",
+        document.getElementById("resultadosGen")?.textContent || ""
+    ].join(" ").toLowerCase();
+    if (activeStep === 3 && (generatedText.includes("completado") || generatedText.includes("descargado") || generatedText.includes("zip generado"))) {
+        progressValue = 100;
+    }
+    progressValue = Math.max(0, Math.min(100, progressValue));
 
     const hudMod = document.getElementById("topoHudModulos");
     const hudPuntos = document.getElementById("topoHudPuntos");
     const hudProgreso = document.getElementById("topoHudProgreso");
     const hudProgressFill = document.getElementById("topoHudProgressFill");
+    const st1 = document.getElementById("workflowStatus1");
+    const st2 = document.getElementById("workflowStatus2");
+    const st3 = document.getElementById("workflowStatus3");
 
     if (hudMod) hudMod.textContent = String(modulos || "--");
-    if (hudPuntos) hudPuntos.textContent = totalPuntosText && totalPuntosText !== "0" ? totalPuntosText : String(total || "--");
-
-    let progressValue = 0;
-    if (progresoText && progresoText.includes("%")) {
-        progressValue = parseInt(progresoText.replace(/[^0-9]/g, ""), 10) || 0;
-    } else {
-        progressValue = activeStep === 1 ? 8 : activeStep === 2 ? 42 : 76;
-    }
-    if (activeStep === 3 && progressValue < 82) progressValue = 82;
-    progressValue = Math.max(0, Math.min(100, progressValue));
-
+    if (hudPuntos) hudPuntos.textContent = String(totalAnalisis || total || "--");
     if (hudProgreso) hudProgreso.textContent = `${progressValue}%`;
     if (hudProgressFill) hudProgressFill.style.width = `${progressValue}%`;
 
-    document.querySelectorAll(".topo-action-btn").forEach(btn => {
-        const action = btn.getAttribute("data-topo-action");
-        btn.classList.toggle("is-current", action === `step${activeStep}`);
+    if (st1) st1.textContent = activeStep > 1
+        ? `Confirmado: ${modulos || "--"} módulos × ${puntosPorModulo || "--"} puntos`
+        : "Define módulos, puntos y formato";
+    if (st2) st2.textContent = totalAnalisis
+        ? `${completados}/${totalAnalisis} puntos completados · ${porcentajePuntos}%`
+        : "Sin puntos cargados todavía";
+    if (st3) st3.textContent = activeStep === 3
+        ? (porcentajePuntos >= 100 ? "Preparado para generar el ZIP final" : "Revisa puntos antes de generar")
+        : "Se activa al llegar al último paso";
+
+    document.querySelectorAll(".workflow-card[data-workflow-step]").forEach(card => {
+        const stepNum = parseInt(card.getAttribute("data-workflow-step") || "0", 10);
+        const completed = stepNum === 1 ? activeStep > 1 : stepNum === 2 ? (porcentajePuntos >= 100 && completados > 0) : progressValue >= 100;
+        card.classList.toggle("is-active", stepNum === activeStep);
+        card.classList.toggle("is-completed", completed);
+        card.classList.toggle("is-pending", stepNum > activeStep && !completed);
     });
 }
 
 function setupTopoVisualEnhancements() {
     document.body.classList.add("mt-visual-ready");
 
-    document.querySelectorAll(".topo-action-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const action = btn.getAttribute("data-topo-action");
-            if (action === "step1") goToStep(1);
-            if (action === "step2") goToStep(2);
-            if (action === "step3") goToStep(3);
-            if (action === "map") {
-                goToStep(2);
-                setTimeout(() => document.getElementById("mapBtn")?.click(), 180);
-            }
+    document.querySelectorAll(".step[data-step]").forEach(stepEl => {
+        stepEl.setAttribute("role", "button");
+        stepEl.setAttribute("tabindex", "0");
+        const go = () => {
+            const stepNum = parseInt(stepEl.getAttribute("data-step") || "1", 10);
+            if (Number.isFinite(stepNum)) goToStep(stepNum);
             updateTopoVisualState();
+        };
+        stepEl.addEventListener("click", go);
+        stepEl.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                go();
+            }
         });
     });
 
-    const rippleSelectors = ".btn, .btn-instr-header, .layer-btn, .points-action-tab, .branch-tab, .startup-enter-btn, .modern-info-btn, .topo-action-btn, .search-container button";
+    const rippleSelectors = ".btn, .btn-instr-header, .layer-btn, .points-action-tab, .branch-tab, .startup-enter-btn, .modern-info-btn, .step, .search-container button";
     document.addEventListener("pointerdown", (event) => {
         const target = event.target.closest(rippleSelectors);
         if (!target || target.disabled) return;
@@ -3408,7 +3438,7 @@ function setupTopoVisualEnhancements() {
         setTimeout(() => ripple.remove(), 680);
     }, { passive: true });
 
-    const tiltSelectors = ".startup-mode-card, .option-card, .file-card, .stat-card, .tech-item";
+    const tiltSelectors = ".startup-mode-card, .option-card, .file-card, .stat-card, .tech-item, .workflow-card";
     const canTilt = window.matchMedia && window.matchMedia("(pointer: fine)").matches && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (canTilt) {
         document.querySelectorAll(tiltSelectors).forEach(card => {
@@ -3416,7 +3446,7 @@ function setupTopoVisualEnhancements() {
                 const rect = card.getBoundingClientRect();
                 const x = (event.clientX - rect.left) / rect.width - 0.5;
                 const y = (event.clientY - rect.top) / rect.height - 0.5;
-                card.style.transform = `perspective(900px) rotateX(${(-y * 4).toFixed(2)}deg) rotateY(${(x * 5).toFixed(2)}deg) translateY(-4px)`;
+                card.style.transform = `perspective(900px) rotateX(${(-y * 3).toFixed(2)}deg) rotateY(${(x * 4).toFixed(2)}deg) translateY(-3px)`;
             });
             card.addEventListener("pointerleave", () => {
                 card.style.transform = "";
@@ -3424,7 +3454,7 @@ function setupTopoVisualEnhancements() {
         });
     }
 
-    const revealTargets = ".card, .option-card, .dashboard, .modulo-item, .file-card, .tech-summary, .route-details-panel";
+    const revealTargets = ".card, .option-card, .dashboard, .modulo-item, .file-card, .tech-summary, .route-details-panel, .topo-workflow-panel";
     if ("IntersectionObserver" in window) {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {

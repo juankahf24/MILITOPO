@@ -55,50 +55,80 @@
         </div>
     </div>
 
-    <div class="steps-container">
-        <div class="step" data-step="1">PASO 1 · CONFIGURAR ESTRUCTURA</div>
-        <div class="step" data-step="2">PASO 2 · EDITAR PUNTOS</div>
-        <div class="step" data-step="3">PASO 3 · GENERAR RECORRIDOS</div>
+    <div class="steps-container workflow-steps" aria-label="Pasos principales de Topográfica">
+        <div class="step" data-step="1">
+            <span class="step-number">01</span>
+            <span class="step-icon">⚙️</span>
+            <span class="step-copy">
+                <strong>Configurar</strong>
+                <small>Módulos, puntos y coordenadas</small>
+            </span>
+        </div>
+        <div class="step" data-step="2">
+            <span class="step-number">02</span>
+            <span class="step-icon">📍</span>
+            <span class="step-copy">
+                <strong>Editar puntos</strong>
+                <small>Mapa IGN o carga manual</small>
+            </span>
+        </div>
+        <div class="step" data-step="3">
+            <span class="step-number">03</span>
+            <span class="step-icon">📦</span>
+            <span class="step-copy">
+                <strong>Generar</strong>
+                <small>Recorridos y ZIP final</small>
+            </span>
+        </div>
     </div>
 
-    <section id="topoVisualHud" class="topo-command-hud" aria-label="Panel visual de la rama Topográfica">
-        <div class="topo-hud-orb" aria-hidden="true">
-            <span class="topo-hud-orb-ring"></span>
-            <span class="topo-hud-orb-core">✦</span>
-        </div>
-        <div class="topo-hud-main">
-            <div class="topo-hud-kicker">Rama activa · Topografía</div>
-            <h2>Centro táctico de recorridos</h2>
-            <p>Configura módulos, edita balizas en mapa IGN y genera documentación final desde una interfaz más visual y rápida.</p>
-            <div class="topo-hud-progress" aria-hidden="true">
-                <span id="topoHudProgressFill"></span>
+    <section id="topoVisualHud" class="topo-workflow-panel" aria-label="Progreso guiado de la rama Topográfica">
+        <div class="topo-workflow-header">
+            <div class="topo-workflow-compass" aria-hidden="true">🧭</div>
+            <div class="topo-workflow-title">
+                <div class="topo-hud-kicker">Rama activa · Topográfica</div>
+                <h2>Procedimiento del ejercicio</h2>
+                <p>Sigue el flujo en orden: primero estructura, después puntos y por último generación del paquete final.</p>
             </div>
-        </div>
-        <div class="topo-hud-stats" aria-label="Estado rápido">
-            <div class="topo-hud-stat">
-                <span class="topo-hud-stat-icon">📦</span>
-                <strong id="topoHudModulos">8</strong>
-                <small>Módulos</small>
-            </div>
-            <div class="topo-hud-stat">
-                <span class="topo-hud-stat-icon">📍</span>
-                <strong id="topoHudPuntos">40</strong>
-                <small>Puntos</small>
-            </div>
-            <div class="topo-hud-stat">
-                <span class="topo-hud-stat-icon">✅</span>
+            <div class="topo-workflow-percent" aria-live="polite">
                 <strong id="topoHudProgreso">0%</strong>
-                <small>Progreso</small>
+                <span>avance</span>
             </div>
         </div>
-        <div class="topo-hud-actions" aria-label="Accesos rápidos topográficos">
-            <button type="button" class="topo-action-btn" data-topo-action="step1"><span>⚙️</span> Configurar</button>
-            <button type="button" class="topo-action-btn" data-topo-action="step2"><span>📍</span> Puntos</button>
-            <button type="button" class="topo-action-btn" data-topo-action="map"><span>🗺️</span> Mapa</button>
-            <button type="button" class="topo-action-btn primary" data-topo-action="step3"><span>✨</span> Generar</button>
+
+        <div class="topo-workflow-bar" aria-hidden="true">
+            <span id="topoHudProgressFill"></span>
+        </div>
+
+        <div class="topo-workflow-cards" aria-label="Estado de cada fase">
+            <article class="workflow-card" data-workflow-step="1">
+                <span class="workflow-card-icon">⚙️</span>
+                <div>
+                    <strong>1. Configurar estructura</strong>
+                    <small id="workflowStatus1">Pendiente de confirmar</small>
+                </div>
+            </article>
+            <article class="workflow-card" data-workflow-step="2">
+                <span class="workflow-card-icon">📍</span>
+                <div>
+                    <strong>2. Completar puntos</strong>
+                    <small id="workflowStatus2">0 puntos revisados</small>
+                </div>
+            </article>
+            <article class="workflow-card" data-workflow-step="3">
+                <span class="workflow-card-icon">📦</span>
+                <div>
+                    <strong>3. Generar archivos</strong>
+                    <small id="workflowStatus3">Listo cuando los puntos estén completos</small>
+                </div>
+            </article>
+        </div>
+
+        <div class="topo-workflow-metrics" aria-label="Resumen de estructura">
+            <div><span>📦</span><strong id="topoHudModulos">8</strong><small>Módulos</small></div>
+            <div><span>📍</span><strong id="topoHudPuntos">40</strong><small>Puntos totales</small></div>
         </div>
     </section>
-
 
     <div id="step1" class="step-content active">
         <div class="card">

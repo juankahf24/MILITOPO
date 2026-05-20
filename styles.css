@@ -4154,3 +4154,301 @@ body.dark .layer-selector { background: rgba(255,255,255,.06); }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+/* ==========================================================
+   AJUSTE UX · FLUJO TOPOGRÁFICO GUIADO E INTUITIVO
+   Sustituye el panel de accesos rápidos por avance por pasos.
+   ========================================================== */
+.workflow-steps.steps-container {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px !important;
+    padding: 10px !important;
+    border-radius: 30px !important;
+    background:
+        linear-gradient(135deg, rgba(22,32,22,.90), rgba(42,58,32,.86)) !important;
+    border: 1px solid rgba(230,188,122,.24) !important;
+    box-shadow: 0 18px 44px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.10) !important;
+}
+.workflow-steps .step {
+    min-height: 82px;
+    display: grid !important;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    text-align: left !important;
+    padding: 14px 16px !important;
+    border-radius: 24px !important;
+    color: rgba(255,248,234,.78) !important;
+    border: 1px solid rgba(255,245,200,.13) !important;
+    background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.035)) !important;
+    cursor: pointer;
+    isolation: isolate;
+}
+.workflow-steps .step.completed::after { content: none !important; }
+.workflow-steps .step-number {
+    width: 34px;
+    height: 34px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 13px;
+    font-family: var(--mt-font-tech, monospace);
+    font-size: .78rem;
+    font-weight: 900;
+    color: #26190b;
+    background: linear-gradient(180deg, rgba(255,225,164,.95), rgba(219,164,80,.92));
+    box-shadow: 0 10px 22px rgba(219,164,80,.20);
+}
+.workflow-steps .step-icon {
+    width: 42px;
+    height: 42px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 17px;
+    background: rgba(0,0,0,.18);
+    border: 1px solid rgba(255,245,200,.16);
+    font-size: 1.18rem;
+}
+.workflow-steps .step-copy {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+.workflow-steps .step-copy strong {
+    color: #fff8ea;
+    font-size: .95rem;
+    line-height: 1.05;
+    letter-spacing: .15px;
+}
+.workflow-steps .step-copy small {
+    color: rgba(255,248,234,.62);
+    font-size: .70rem;
+    line-height: 1.2;
+    white-space: normal;
+}
+.workflow-steps .step.active {
+    color: #1d160b !important;
+    border-color: rgba(255,225,164,.62) !important;
+    background:
+        radial-gradient(circle at 18% 0%, rgba(255,255,255,.42), transparent 35%),
+        linear-gradient(180deg, #f3c985, #dba450) !important;
+    box-shadow: 0 16px 34px rgba(219,164,80,.30), inset 0 1px 0 rgba(255,255,255,.34) !important;
+}
+.workflow-steps .step.active .step-copy strong,
+.workflow-steps .step.active .step-copy small { color: #24190b !important; }
+.workflow-steps .step.active .step-icon { background: rgba(255,255,255,.32); border-color: rgba(36,25,11,.10); }
+.workflow-steps .step.completed {
+    color: #f8ffe9 !important;
+    background: linear-gradient(180deg, rgba(107,140,62,.94), rgba(67,94,45,.94)) !important;
+    border-color: rgba(190,238,150,.28) !important;
+}
+.workflow-steps .step.completed .step-number {
+    background: linear-gradient(180deg, #dff6c4, #8bb56a);
+}
+.workflow-steps .step.completed .step-number::before { content: '✓'; }
+.workflow-steps .step.completed .step-number { font-size: 0; }
+.workflow-steps .step.completed .step-number::before { font-size: .95rem; }
+.workflow-steps .step:hover { transform: translateY(-2px); border-color: rgba(230,188,122,.42) !important; }
+
+.topo-workflow-panel {
+    position: relative;
+    margin: -2px 0 26px;
+    padding: 22px;
+    border-radius: 34px;
+    overflow: hidden;
+    isolation: isolate;
+    color: #fff8e8;
+    background:
+        radial-gradient(circle at 10% 0%, rgba(230,188,122,.24), transparent 28%),
+        radial-gradient(circle at 100% 20%, rgba(139,181,106,.18), transparent 32%),
+        linear-gradient(135deg, rgba(36,50,31,.95), rgba(18,26,17,.97));
+    border: 1px solid rgba(255,245,200,.20);
+    box-shadow: 0 24px 64px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.10);
+}
+.topo-workflow-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(120deg, rgba(255,255,255,.10), transparent 32%, rgba(255,255,255,.035)),
+        repeating-linear-gradient(135deg, rgba(255,255,255,.032) 0 10px, transparent 10px 20px);
+    pointer-events: none;
+    z-index: -1;
+}
+.topo-workflow-header {
+    display: grid;
+    grid-template-columns: auto minmax(0,1fr) auto;
+    gap: 16px;
+    align-items: center;
+}
+.topo-workflow-compass {
+    width: 68px;
+    height: 68px;
+    display: grid;
+    place-items: center;
+    border-radius: 24px;
+    background: rgba(0,0,0,.18);
+    border: 1px solid rgba(255,245,200,.18);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 14px 32px rgba(0,0,0,.18);
+    font-size: 2rem;
+}
+.topo-workflow-title h2 {
+    margin: 8px 0 4px;
+    color: #fff8e8;
+    font-size: clamp(1.45rem, 2.8vw, 2.1rem);
+    line-height: 1.02;
+    font-weight: 900;
+}
+.topo-workflow-title p {
+    margin: 0;
+    color: rgba(255,248,232,.73);
+    font-size: .92rem;
+    line-height: 1.45;
+    max-width: 780px;
+}
+.topo-workflow-percent {
+    min-width: 124px;
+    padding: 13px 16px;
+    border-radius: 24px;
+    text-align: center;
+    background: rgba(255,255,255,.085);
+    border: 1px solid rgba(255,245,200,.15);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.09);
+}
+.topo-workflow-percent strong {
+    display: block;
+    color: #e6bc7a;
+    font-family: var(--mt-font-tech, monospace);
+    font-size: 1.75rem;
+    line-height: 1;
+}
+.topo-workflow-percent span {
+    display: block;
+    margin-top: 5px;
+    color: rgba(255,248,232,.62);
+    font-family: var(--mt-font-tech, monospace);
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+}
+.topo-workflow-bar {
+    height: 12px;
+    margin: 18px 0 16px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.25);
+    overflow: hidden;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.26);
+}
+.topo-workflow-bar span {
+    display: block;
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #8bb56a, #e6bc7a, #dba450);
+    box-shadow: 0 0 22px rgba(230,188,122,.34);
+    transition: width .55s cubic-bezier(.2,.8,.2,1);
+}
+.topo-workflow-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+.workflow-card {
+    display: grid;
+    grid-template-columns: auto minmax(0,1fr);
+    gap: 12px;
+    align-items: center;
+    min-height: 92px;
+    padding: 14px;
+    border-radius: 24px;
+    background: rgba(255,255,255,.075);
+    border: 1px solid rgba(255,245,200,.13);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    transition: transform .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.workflow-card-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 17px;
+    background: rgba(0,0,0,.18);
+    border: 1px solid rgba(255,245,200,.16);
+    font-size: 1.25rem;
+}
+.workflow-card strong {
+    display: block;
+    color: #fff8e8;
+    font-size: .88rem;
+    line-height: 1.2;
+}
+.workflow-card small {
+    display: block;
+    margin-top: 5px;
+    color: rgba(255,248,232,.62);
+    font-family: var(--mt-font-tech, monospace);
+    font-size: .68rem;
+    line-height: 1.35;
+}
+.workflow-card.is-active {
+    border-color: rgba(230,188,122,.55);
+    background: linear-gradient(180deg, rgba(230,188,122,.20), rgba(230,188,122,.08));
+    box-shadow: 0 14px 30px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.13);
+}
+.workflow-card.is-completed {
+    border-color: rgba(139,181,106,.55);
+    background: linear-gradient(180deg, rgba(139,181,106,.22), rgba(139,181,106,.10));
+}
+.workflow-card.is-completed .workflow-card-icon::after {
+    content: '✓';
+    position: absolute;
+    transform: translate(18px, -18px);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #1d2c16;
+    background: #cfeeb5;
+    font-size: .70rem;
+    font-weight: 900;
+}
+.topo-workflow-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+.topo-workflow-metrics div {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 12px;
+    border-radius: 18px;
+    background: rgba(0,0,0,.14);
+    border: 1px solid rgba(255,245,200,.11);
+}
+.topo-workflow-metrics span { font-size: 1rem; }
+.topo-workflow-metrics strong { color: #e6bc7a; font-family: var(--mt-font-tech, monospace); }
+.topo-workflow-metrics small { color: rgba(255,248,232,.64); font-family: var(--mt-font-tech, monospace); font-size: .68rem; text-transform: uppercase; }
+
+.topo-command-hud { display: none; }
+
+@media (max-width: 980px) {
+    .workflow-steps.steps-container { grid-template-columns: 1fr; position: relative; top: 0; }
+    .workflow-steps .step { min-height: 74px; }
+    .topo-workflow-header { grid-template-columns: auto minmax(0,1fr); }
+    .topo-workflow-percent { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: center; gap: 8px; }
+    .topo-workflow-percent span { margin-top: 0; }
+    .topo-workflow-cards { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+    .topo-workflow-panel { padding: 16px; border-radius: 26px; }
+    .topo-workflow-compass { width: 54px; height: 54px; border-radius: 20px; font-size: 1.55rem; }
+    .topo-workflow-title h2 { font-size: 1.28rem; }
+    .topo-workflow-title p { font-size: .80rem; }
+    .topo-workflow-metrics { grid-template-columns: 1fr; }
+    .workflow-steps .step { grid-template-columns: auto minmax(0,1fr); gap: 10px; }
+    .workflow-steps .step-number { grid-row: 1 / span 2; }
+    .workflow-steps .step-icon { display: none; }
+}
