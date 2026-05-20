@@ -1071,6 +1071,328 @@ let MODULOS = 8;
     }
 
 
+    /* PDF PRINT-READY DOCUMENTS START */
+    function normalizarTextoPdf(valor) {
+        if (valor === null || valor === undefined) return "";
+        return String(valor).replace(/\s+/g, " ").trim();
+    }
+
+    function crearDocumentoPdfA4(orientation = 'portrait') {
+        const { jsPDF } = window.jspdf;
+        const orientacion = orientation === 'landscape' ? 'l' : 'p';
+        return new jsPDF(orientacion, 'mm', 'a4', true);
+    }
+
+    function altoLineaPdf(fontSize, factor = 1.18) {
+        return fontSize * 0.352778 * factor;
+    }
+
+    function aplicarColorRellenoPdf(doc, color) {
+        const c = Array.isArray(color) ? color : [255, 255, 255];
+        doc.setFillColor(c[0], c[1], c[2]);
+    }
+
+    function aplicarColorTextoPdf(doc, color) {
+        const c = Array.isArray(color) ? color : [0, 0, 0];
+        doc.setTextColor(c[0], c[1], c[2]);
+    }
+
+    function prepararAnchosPdf(doc, colWidths, margin) {
+        const pageW = doc.internal.pageSize.getWidth();
+        const disponible = pageW - (margin * 2);
+        const total = colWidths.reduce((a, b) => a + b, 0) || disponible;
+        return colWidths.map(w => (w * disponible) / total);
+    }
+
+    function dibujarTituloPdf(doc, titulo, y, opciones = {}) {
+        const pageW = doc.internal.pageSize.getWidth();
+        const margin = opciones.margin ?? 8;
+        const disponible = pageW - margin * 2;
+        const fontSize = opciones.fontSize ?? 12;
+        const padding = opciones.padding ?? 3;
+        const subtitulo = opciones.subtitulo ? normalizarTextoPdf(opciones.subtitulo) : "";
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(fontSize);
+        const lineas = doc.splitTextToSize(normalizarTextoPdf(titulo), disponible - padding * 2);
+        const lineHeight = altoLineaPdf(fontSize, 1.16);
+        let h = Math.max(13, lineas.length * lineHeight + padding * 2);
+        if (subtitulo) h += 5;
+        doc.setDrawColor(70, 84, 50);
+        doc.setLineWidth(0.2);
+        doc.setFillColor(62, 78, 45);
+        doc.rect(margin, y, disponible, h, 'FD');
+        doc.setTextColor(255, 246, 232);
+        doc.text(lineas, pageW / 2, y + padding + lineHeight * 0.75, { align: 'center' });
+        if (subtitulo) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(230, 188, 122);
+            doc.text(subtitulo, pageW / 2, y + h - 3.2, { align: 'center' });
+        }
+        doc.setTextColor(0, 0, 0);
+        return y + h + 3;
+    }
+
+    function dibujarBloqueNombrePdf(doc, y, nombre, opciones = {}) {
+        const margin = opciones.margin ?? 8;
+        const pageW = doc.internal.pageSize.getWidth();
+        const disponible = pageW - margin * 2;
+        const h = opciones.height ?? 12;
+        doc.setDrawColor(185, 185, 185);
+        doc.setFillColor(247, 247, 247);
+        doc.rect(margin, y, disponible, h, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.text(nombre, margin + 3, y + 7.8);
+        return y + h + 3;
+    }
+
+    function renderTablaPdf(doc, opciones) {
+        const margin = opciones.margin ?? 8;
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        const rows = (opciones.rows || []).map(row => row.map(normalizarTextoPdf));
+        if (!rows.length) return;
+
+        const headerRows = opciones.headerRows ?? 1;
+        const colWidths = prepararAnchosPdf(doc, opciones.colWidths || Array(rows[0].length).fill(10), margin);
+        const paddingX = opciones.paddingX ?? 1.4;
+        const paddingY = opciones.paddingY ?? 1.5;
+        const bodyFontSize = opciones.bodyFontSize ?? 8;
+        const headerFontSize = opciones.headerFontSize ?? bodyFontSize;
+        const minRowHeight = opciones.minRowHeight ?? 8;
+        const alignments = opciones.alignments || [];
+        const title = opciones.title || "";
+        const subtitle = opciones.subtitle || "";
+        let y = opciones.startY ?? margin;
+
+        function medirFila(row, isHeader) {
+            const fs = isHeader ? headerFontSize : bodyFontSize;
+            doc.setFont('helvetica', isHeader ? 'bold' : 'normal');
+            doc.setFontSize(fs);
+            const lineHeight = altoLineaPdf(fs, isHeader ? 1.12 : 1.16);
+            const lineas = row.map((cell, idx) => doc.splitTextToSize(cell, Math.max(2, colWidths[idx] - paddingX * 2)));
+            const maxLineas = Math.max(1, ...lineas.map(l => l.length || 1));
+            const h = Math.max(minRowHeight, (maxLineas * lineHeight) + paddingY * 2);
+            return { h, lineas, lineHeight, fs };
+        }
+
+        function dibujarFila(row, rowIndex, isHeader) {
+            const medicion = medirFila(row, isHeader);
+            const h = Math.min(medicion.h, pageH - margin * 2);
+            let x = margin;
+            const rowFill = isHeader
+                ? (opciones.headerFill || [217, 217, 217])
+                : (opciones.rowFillCallback ? opciones.rowFillCallback(row, rowIndex - headerRows, rowIndex) : null);
+
+            for (let c = 0; c < colWidths.length; c++) {
+                const w = colWidths[c];
+                const cellFill = opciones.cellFillCallback ? opciones.cellFillCallback(row, c, rowIndex - headerRows, rowIndex) : null;
+                aplicarColorRellenoPdf(doc, cellFill || rowFill || [255, 255, 255]);
+                doc.setDrawColor(172, 172, 172);
+                doc.setLineWidth(0.18);
+                doc.rect(x, y, w, h, 'FD');
+                doc.setFont('helvetica', isHeader ? 'bold' : (c === 0 && opciones.boldFirstCol ? 'bold' : 'normal'));
+                doc.setFontSize(isHeader ? headerFontSize : bodyFontSize);
+                aplicarColorTextoPdf(doc, opciones.textColorCallback ? (opciones.textColorCallback(row, c, rowIndex - headerRows, rowIndex) || [0,0,0]) : [0,0,0]);
+                const al = alignments[c] || 'center';
+                const lineasCell = medicion.lineas[c] || [''];
+                let textX = x + w / 2;
+                const textY = y + paddingY + medicion.lineHeight * 0.78;
+                const opts = { maxWidth: Math.max(2, w - paddingX * 2), align: al };
+                if (al === 'left') textX = x + paddingX;
+                if (al === 'right') textX = x + w - paddingX;
+                doc.text(lineasCell, textX, textY, opts);
+                x += w;
+            }
+            doc.setTextColor(0, 0, 0);
+            y += h;
+        }
+
+        function nuevoEncabezadoPagina(cont) {
+            if (cont) doc.addPage();
+            y = cont ? margin : (opciones.startY ?? margin);
+            if (title) y = dibujarTituloPdf(doc, cont ? `${title} · continuación` : title, y, {
+                margin,
+                fontSize: opciones.titleFontSize ?? 12,
+                subtitulo: cont ? "" : subtitle
+            });
+            for (let i = 0; i < headerRows; i++) dibujarFila(rows[i], i, true);
+        }
+
+        nuevoEncabezadoPagina(false);
+        for (let r = headerRows; r < rows.length; r++) {
+            const h = medirFila(rows[r], false).h;
+            if (y + h > pageH - margin) nuevoEncabezadoPagina(true);
+            dibujarFila(rows[r], r, false);
+        }
+    }
+
+    function calcularMarcadoresResultados(metricasRecorridos) {
+        function getHighlightCounts(total) {
+            if (total <= 10) return { montana: Math.min(1, total), faciles: Math.min(2, total), dificiles: Math.min(2, total) };
+            if (total <= 25) return { montana: Math.min(2, total), faciles: Math.min(4, total), dificiles: Math.min(4, total) };
+            if (total <= 50) return { montana: Math.min(5, total), faciles: Math.min(7, total), dificiles: Math.min(7, total) };
+            return { montana: Math.min(8, total), faciles: Math.min(15, total), dificiles: Math.min(15, total) };
+        }
+        function normalizarResultado(value, values) {
+            const validos = values.filter(v => Number.isFinite(v));
+            if (!validos.length) return 0;
+            const min = Math.min(...validos);
+            const max = Math.max(...validos);
+            if (max === min) return 0;
+            return (value - min) / (max - min);
+        }
+        const ranking = (metricasRecorridos || []).map((m, idx) => ({
+            idx,
+            distancia: Number(m.distanciaKm || 0),
+            positivo: Number(m.desnivelPositivo || 0),
+            global: Number(m.desnivelGlobal || 0),
+            negativo: Number(m.desnivelNegativo || 0)
+        }));
+        const valoresDistancia = ranking.map(x => x.distancia);
+        const valoresPositivo = ranking.map(x => x.positivo);
+        const valoresGlobal = ranking.map(x => x.global);
+        const valoresNegativo = ranking.map(x => x.negativo);
+        ranking.forEach(x => {
+            x.score =
+                (normalizarResultado(x.distancia, valoresDistancia) * 0.40) +
+                (normalizarResultado(x.positivo, valoresPositivo) * 0.40) +
+                (normalizarResultado(x.global, valoresGlobal) * 0.15) +
+                (normalizarResultado(x.negativo, valoresNegativo) * 0.05);
+        });
+        const counts = getHighlightCounts(ranking.length);
+        const usados = new Set();
+        const montanaSet = new Set(ranking.slice().sort((a, b) => b.positivo - a.positivo || b.score - a.score).slice(0, counts.montana).map(x => x.idx));
+        montanaSet.forEach(idx => usados.add(idx));
+        const facilesSet = new Set();
+        ranking.slice().sort((a, b) => a.score - b.score || a.positivo - b.positivo).forEach(x => {
+            if (facilesSet.size >= counts.faciles || usados.has(x.idx)) return;
+            facilesSet.add(x.idx); usados.add(x.idx);
+        });
+        const dificilesSet = new Set();
+        ranking.slice().sort((a, b) => b.score - a.score || b.positivo - a.positivo).forEach(x => {
+            if (dificilesSet.size >= counts.dificiles || usados.has(x.idx)) return;
+            dificilesSet.add(x.idx); usados.add(x.idx);
+        });
+        return { montanaSet, facilesSet, dificilesSet };
+    }
+
+    function generarPdfBaliza(pid, titulo, filasFmt) {
+        const doc = crearDocumentoPdfA4('portrait');
+        renderTablaPdf(doc, {
+            title: titulo,
+            subtitle: "A4 vertical · listo para imprimir al 100%",
+            rows: filasFmt.slice(1),
+            colWidths: [20, 26, 56, 72, 20],
+            margin: 8,
+            headerRows: 1,
+            bodyFontSize: 7.6,
+            headerFontSize: 7.6,
+            minRowHeight: 9,
+            boldFirstCol: true,
+            alignments: ['center', 'center', 'center', 'left', 'center'],
+            headerFill: [227, 227, 227]
+        });
+        return doc.output('arraybuffer');
+    }
+
+    function generarPdfHojaRecorrido(nombre, filasHojaFmt) {
+        const doc = crearDocumentoPdfA4('portrait');
+        let y = 8;
+        y = dibujarTituloPdf(doc, `HOJA DE RECORRIDO: ${nombre}`, y, {
+            margin: 8,
+            fontSize: 13,
+            subtitulo: "A4 vertical · listo para imprimir al 100%"
+        });
+        y = dibujarBloqueNombrePdf(doc, y, "NOMBRE:", { margin: 8, height: 13 });
+        renderTablaPdf(doc, {
+            rows: filasHojaFmt.slice(1),
+            colWidths: [16, 22, 56, 78, 22],
+            margin: 8,
+            startY: y,
+            headerRows: 1,
+            bodyFontSize: 8.6,
+            headerFontSize: 8.6,
+            minRowHeight: 12,
+            boldFirstCol: true,
+            alignments: ['center', 'center', 'center', 'left', 'center'],
+            headerFill: [227, 227, 227]
+        });
+        return doc.output('arraybuffer');
+    }
+
+    function generarPdfRecorridosCompletos(tablaCodigosFmt) {
+        const doc = crearDocumentoPdfA4('portrait');
+        const modulos = Math.max(1, (tablaCodigosFmt[0] || []).length - 1);
+        const fontSize = modulos <= 8 ? 7.8 : (modulos <= 12 ? 6.8 : (modulos <= 16 ? 5.9 : 5.2));
+        renderTablaPdf(doc, {
+            title: "RECORRIDOS COMPLETOS CON CÓDIGO",
+            subtitle: "A4 vertical · listo para imprimir al 100%",
+            rows: tablaCodigosFmt,
+            colWidths: [22, ...Array(modulos).fill((194 - 22) / modulos)],
+            margin: 8,
+            headerRows: 1,
+            bodyFontSize: fontSize,
+            headerFontSize: fontSize,
+            minRowHeight: modulos > 14 ? 7 : 8,
+            boldFirstCol: true,
+            alignments: ['center', ...Array(modulos).fill('center')],
+            headerFill: [227, 227, 227]
+        });
+        return doc.output('arraybuffer');
+    }
+
+    function generarPdfResultadosRecorridos(filasResultadosFmt, metricasRecorridos) {
+        const doc = crearDocumentoPdfA4('landscape');
+        const marcas = calcularMarcadoresResultados(metricasRecorridos);
+        const rows = filasResultadosFmt.map((row, idx) => {
+            const copia = row.slice();
+            if (idx > 0) {
+                const mi = idx - 1;
+                let suf = "";
+                if (marcas.montanaSet.has(mi)) suf = " *M";
+                else if (marcas.dificilesSet.has(mi)) suf = " *D";
+                else if (marcas.facilesSet.has(mi)) suf = " *F";
+                if (suf && !String(copia[0] || "").includes(suf)) copia[0] = `${copia[0]}${suf}`;
+            }
+            return copia;
+        });
+        renderTablaPdf(doc, {
+            title: "RESULTADOS DE RECORRIDOS",
+            subtitle: "A4 horizontal · tabla ancha lista para imprimir al 100% · *M montaña · *D difícil · *F fácil",
+            rows,
+            colWidths: [17, 28, 25, 25, 21, 23, 32, 31, 31, 31, 21],
+            margin: 6,
+            headerRows: 1,
+            bodyFontSize: 7.1,
+            headerFontSize: 6.8,
+            minRowHeight: 8.5,
+            boldFirstCol: true,
+            alignments: ['center', 'left', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'],
+            headerFill: [217, 217, 217],
+            rowFillCallback: (row, dataIndex) => {
+                if (dataIndex < 0) return null;
+                if (marcas.montanaSet.has(dataIndex)) return [217, 210, 233];
+                if (marcas.dificilesSet.has(dataIndex)) return [244, 204, 204];
+                if (marcas.facilesSet.has(dataIndex)) return [217, 234, 211];
+                return [255, 255, 255];
+            },
+            cellFillCallback: (row, col, dataIndex) => {
+                if (dataIndex < 0 || col !== 10) return null;
+                const dificultad = String(row[10] || "").toUpperCase();
+                if (dificultad === "BAJA") return [217, 234, 211];
+                if (dificultad === "MEDIA") return [255, 242, 204];
+                if (dificultad === "ALTA") return [244, 204, 204];
+                return null;
+            }
+        });
+        return doc.output('arraybuffer');
+    }
+    /* PDF PRINT-READY DOCUMENTS END */
+
+
     function haversineMeters(lat1, lon1, lat2, lon2) {
         const R = 6371000;
         const toRad = d => d * Math.PI / 180;
@@ -1590,7 +1912,7 @@ let MODULOS = 8;
             codigos.push(m);
         }
 
-        setProgress(20, "Creando archivos Excel...");
+        setProgress(20, "Creando documentos PDF listos para imprimir...");
         let balizas = new Map();
         for (let idx = 0; idx < recorridos.length; idx++) {
             let rec = recorridos[idx], codMap = codigos[idx];
@@ -1622,73 +1944,9 @@ let MODULOS = 8;
             }
             tablaCodigos.push(fila);
         }
-        const XSC = window.XLSXStyle || window.XLSX;
         const tablaCodigosFmt = tablaCodigos.map(row => row.map(v => (v === null || v === undefined) ? "" : String(v)));
-
-        let wsCodigos = XSC.utils.aoa_to_sheet(tablaCodigosFmt);
-        wsCodigos['!cols'] = [14, ...Array(MODULOS).fill(20)].map(w => ({ wch: w }));
-        wsCodigos['!rows'] = [{ hpt: 30 }, ...Array(tablaCodigosFmt.length - 1).fill({ hpt: 26 })];
-
-        try {
-            const rangoCod = XSC.utils.decode_range(wsCodigos['!ref']);
-            for (let R = rangoCod.s.r; R <= rangoCod.e.r; R++) {
-                for (let C = rangoCod.s.c; C <= rangoCod.e.c; C++) {
-                    const addr = XSC.utils.encode_cell({ r: R, c: C });
-                    if (!wsCodigos[addr]) wsCodigos[addr] = { t: 's', v: '' };
-
-                    wsCodigos[addr].t = 's';
-                    wsCodigos[addr].v = String(wsCodigos[addr].v ?? '');
-
-                    const isHeaderRow = R === 0;
-                    const isFirstCol = C === 0;
-
-                    wsCodigos[addr].s = {
-                        border: {
-                            top: { style: 'thin', color: { rgb: 'B7B7B7' } },
-                            bottom: { style: 'thin', color: { rgb: 'B7B7B7' } },
-                            left: { style: 'thin', color: { rgb: 'B7B7B7' } },
-                            right: { style: 'thin', color: { rgb: 'B7B7B7' } }
-                        },
-                        alignment: {
-                            horizontal: 'center',
-                            vertical: 'center',
-                            textRotation: 0,
-                            wrapText: false
-                        },
-                        font: {
-                            name: 'Arial',
-                            bold: (isHeaderRow || isFirstCol),
-                            sz: isHeaderRow ? 12 : (isFirstCol ? 12 : 11),
-                            color: { rgb: '000000' }
-                        },
-                        fill: isHeaderRow
-                            ? { patternType: 'solid', fgColor: { rgb: 'D9D9D9' } }
-                            : (isFirstCol
-                                ? { patternType: 'solid', fgColor: { rgb: 'EAEAEA' } }
-                                : { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } })
-                    };
-                }
-            }
-
-            for (let r = 0; r < tablaCodigosFmt.length; r++) {
-                const a = XSC.utils.encode_cell({ r, c: 0 });
-                if (wsCodigos[a] && wsCodigos[a].s) {
-                    wsCodigos[a].s.alignment = {
-                        horizontal: 'center',
-                        vertical: 'center',
-                        textRotation: 0,
-                        wrapText: false
-                    };
-                }
-            }
-        } catch (e) {}
-
-        aplicarImpresionA4Vertical(wsCodigos);
-        let wbCodigos = XSC.utils.book_new();
-        XSC.utils.book_append_sheet(wbCodigos, wsCodigos, "Recorridos");
-        let codigosData = XSC.write(wbCodigos, { bookType: 'xlsx', type: 'array' });
-        codigosData = await prepararXlsxParaImpresionA4Vertical(codigosData);
-        organizadoresFolder.file("Recorridos completos con código.xlsx", codigosData);
+        const codigosPdf = generarPdfRecorridosCompletos(tablaCodigosFmt);
+        organizadoresFolder.file("Recorridos completos con código.pdf", codigosPdf, { binary: true });
 
         const metricasRecorridos = await calcularMetricasRecorridos(recorridos);
         const dificultadesRecorridos = clasificarDificultades(metricasRecorridos);
@@ -1725,256 +1983,10 @@ let MODULOS = 8;
             ]);
         }
 
-        const XS = window.XLSXStyle || window.XLSX;
-
-        function applyStyles(ws, numericCols) {
-            const range = XS.utils.decode_range(ws['!ref']);
-            for (let r = range.s.r; r <= range.e.r; r++) {
-                for (let c = range.s.c; c <= range.e.c; c++) {
-                    const addr = XS.utils.encode_cell({r:r,c:c});
-                    if (!ws[addr]) ws[addr] = { t: 's', v: '' };
-                    const isHeader = r === 0;
-                    const isFirstCol = c === 0;
-                    let align = 'center';
-                    if (!isHeader && isFirstCol) align = 'left';
-                    if (!isHeader && numericCols.includes(c)) align = 'right';
-                    ws[addr].s = {
-                        font: (isHeader || isFirstCol) ? { bold: true } : {},
-                        alignment: { horizontal: align, vertical: 'center', wrapText: true },
-                        border: {
-                            top: { style: 'thin', color: { rgb: 'BFBFBF' } },
-                            bottom: { style: 'thin', color: { rgb: 'BFBFBF' } },
-                            left: { style: 'thin', color: { rgb: 'BFBFBF' } },
-                            right: { style: 'thin', color: { rgb: 'BFBFBF' } }
-                        }
-                    };
-                }
-            }
-        }
-
-        const wbResultados = XS.utils.book_new();
-
-        const XSR = window.XLSXStyle || window.XLSX;
-
-        const filasResultadosFmt = filasResultados.map((row, r) =>
-            row.map((v) => (v === null || v === undefined) ? "" : String(v))
-        );
-
-        const wsNormal = XSR.utils.aoa_to_sheet(filasResultadosFmt);
-        wsNormal['!cols'] = [
-            { wch: 14 }, // Recorrido
-            { wch: 18 }, // Nombre
-            { wch: 18 }, // Hora salida
-            { wch: 18 }, // Hora llegada
-            { wch: 18 }, // Puntos obtenidos
-            { wch: 16 }, // Tiempo total
-            { wch: 22 }, // Distancia total
-            { wch: 24 }, // Desnivel positivo
-            { wch: 24 }, // Desnivel negativo
-            { wch: 22 }, // Desnivel global
-            { wch: 16 }  // Dificultad
-        ];
-        wsNormal['!rows'] = [{ hpt: 30 }, ...Array(filasResultadosFmt.length - 1).fill({ hpt: 26 })];
-
-        try {
-            const range = XSR.utils.decode_range(wsNormal['!ref']);
-            for (let r = range.s.r; r <= range.e.r; r++) {
-                for (let c = range.s.c; c <= range.e.c; c++) {
-                    const addr = XSR.utils.encode_cell({ r, c });
-                    if (!wsNormal[addr]) wsNormal[addr] = { t: 's', v: '' };
-
-                    wsNormal[addr].t = 's';
-
-                    const isHeaderRow = r === 0;
-                    const isFirstCol = c === 0;
-                    const isHighlighted = isHeaderRow || isFirstCol;
-
-                    wsNormal[addr].s = {
-                        border: {
-                            top: { style: 'thin', color: { rgb: 'B7B7B7' } },
-                            bottom: { style: 'thin', color: { rgb: 'B7B7B7' } },
-                            left: { style: 'thin', color: { rgb: 'B7B7B7' } },
-                            right: { style: 'thin', color: { rgb: 'B7B7B7' } }
-                        },
-                        alignment: {
-                            horizontal: 'center',
-                            vertical: 'center',
-                            textRotation: 0,
-                            wrapText: false
-                        },
-                        font: {
-                            name: 'Arial',
-                            bold: isHighlighted,
-                            sz: isHeaderRow ? 12 : (isFirstCol ? 12 : 11),
-                            color: { rgb: '000000' }
-                        },
-                        fill: isHeaderRow
-                            ? { patternType: 'solid', fgColor: { rgb: 'D9D9D9' } }
-                            : (isFirstCol
-                                ? { patternType: 'solid', fgColor: { rgb: 'EAEAEA' } }
-                                : { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } })
-                    };
-                }
-            }
-
-            /* RESULT HIGHLIGHT COUNTS START
-               Colores por cantidad de recorridos:
-               - hasta 10: 1 lila montaña, 2 verdes fáciles, 2 rojos difíciles
-               - 11 a 25: 2 lila, 4 verdes, 4 rojos
-               - 26 a 50: 5 lila, 7 verdes, 7 rojos
-               - 51 a 100: 8 lila, 15 verdes, 15 rojos
-
-               Lila = mayor desnivel positivo acumulado.
-               Verde = menor dificultad por fórmula 40/40/15/5.
-               Rojo = mayor dificultad por fórmula 40/40/15/5.
-            */
-            function getHighlightCounts(total) {
-                if (total <= 10) return { montana: Math.min(1, total), faciles: Math.min(2, total), dificiles: Math.min(2, total) };
-                if (total <= 25) return { montana: Math.min(2, total), faciles: Math.min(4, total), dificiles: Math.min(4, total) };
-                if (total <= 50) return { montana: Math.min(5, total), faciles: Math.min(7, total), dificiles: Math.min(7, total) };
-                return { montana: Math.min(8, total), faciles: Math.min(15, total), dificiles: Math.min(15, total) };
-            }
-
-            function normalizarResultado(value, values) {
-                const validos = values.filter(v => Number.isFinite(v));
-                if (!validos.length) return 0;
-                const min = Math.min(...validos);
-                const max = Math.max(...validos);
-                if (max === min) return 0;
-                return (value - min) / (max - min);
-            }
-
-            const rankingResultados = metricasRecorridos.map((m, idx) => ({
-                idx,
-                distancia: Number(m.distanciaKm || 0),
-                positivo: Number(m.desnivelPositivo || 0),
-                global: Number(m.desnivelGlobal || 0),
-                negativo: Number(m.desnivelNegativo || 0)
-            }));
-
-            const valoresDistancia = rankingResultados.map(x => x.distancia);
-            const valoresPositivo = rankingResultados.map(x => x.positivo);
-            const valoresGlobal = rankingResultados.map(x => x.global);
-            const valoresNegativo = rankingResultados.map(x => x.negativo);
-
-            rankingResultados.forEach(x => {
-                x.score =
-                    (normalizarResultado(x.distancia, valoresDistancia) * 0.40) +
-                    (normalizarResultado(x.positivo, valoresPositivo) * 0.40) +
-                    (normalizarResultado(x.global, valoresGlobal) * 0.15) +
-                    (normalizarResultado(x.negativo, valoresNegativo) * 0.05);
-            });
-
-            const counts = getHighlightCounts(rankingResultados.length);
-            const usados = new Set();
-
-            const montanaSet = new Set(
-                rankingResultados
-                    .slice()
-                    .sort((a, b) => b.positivo - a.positivo || b.score - a.score)
-                    .slice(0, counts.montana)
-                    .map(x => x.idx)
-            );
-            montanaSet.forEach(idx => usados.add(idx));
-
-            const facilesSet = new Set();
-            rankingResultados
-                .slice()
-                .sort((a, b) => a.score - b.score || a.positivo - b.positivo)
-                .forEach(x => {
-                    if (facilesSet.size >= counts.faciles) return;
-                    if (usados.has(x.idx)) return;
-                    facilesSet.add(x.idx);
-                    usados.add(x.idx);
-                });
-
-            const dificilesSet = new Set();
-            rankingResultados
-                .slice()
-                .sort((a, b) => b.score - a.score || b.positivo - a.positivo)
-                .forEach(x => {
-                    if (dificilesSet.size >= counts.dificiles) return;
-                    if (usados.has(x.idx)) return;
-                    dificilesSet.add(x.idx);
-                    usados.add(x.idx);
-                });
-            /* RESULT HIGHLIGHT COUNTS END */
-
-            for (let r = 1; r < filasResultadosFmt.length; r++) {
-                const dificultad = String(filasResultadosFmt[r][10] || "").toUpperCase();
-                const metricIdx = r - 1;
-
-                // centrar absolutamente toda la fila
-                for (let c = 0; c <= 10; c++) {
-                    const addr = XSR.utils.encode_cell({ r, c });
-                    if (!wsNormal[addr]) continue;
-                    wsNormal[addr].s.alignment = {
-                        horizontal: 'center',
-                        vertical: 'center',
-                        textRotation: 0,
-                        wrapText: false
-                    };
-                }
-
-                // Color por dificultad
-                const diffAddr = XSR.utils.encode_cell({ r, c: 10 });
-                if (wsNormal[diffAddr]) {
-                    let fillDiff = null;
-                    if (dificultad === "BAJA") fillDiff = { patternType: 'solid', fgColor: { rgb: 'D9EAD3' } };
-                    else if (dificultad === "MEDIA") fillDiff = { patternType: 'solid', fgColor: { rgb: 'FFF2CC' } };
-                    else if (dificultad === "ALTA") fillDiff = { patternType: 'solid', fgColor: { rgb: 'F4CCCC' } };
-                    if (fillDiff) {
-                        wsNormal[diffAddr].s.fill = fillDiff;
-                        wsNormal[diffAddr].s.font = Object.assign({}, wsNormal[diffAddr].s.font || {}, {
-                            bold: true,
-                            color: { rgb: '000000' }
-                        });
-                    }
-                }
-
-                const esMontana = montanaSet.has(metricIdx);
-                const esFacil = facilesSet.has(metricIdx);
-                const esDificil = dificilesSet.has(metricIdx);
-
-                if (esMontana || esFacil || esDificil) {
-                    for (let c = 0; c <= 10; c++) {
-                        const addr = XSR.utils.encode_cell({ r, c });
-                        if (!wsNormal[addr]) continue;
-
-                        let fillFila = null;
-                        if (esMontana) fillFila = { patternType: 'solid', fgColor: { rgb: 'D9D2E9' } };
-                        else if (esDificil) fillFila = { patternType: 'solid', fgColor: { rgb: 'F4CCCC' } };
-                        else if (esFacil) fillFila = { patternType: 'solid', fgColor: { rgb: 'D9EAD3' } };
-
-                        if (c !== 10) {
-                            wsNormal[addr].s.fill = fillFila || wsNormal[addr].s.fill;
-                        }
-                        wsNormal[addr].s.font = Object.assign({}, wsNormal[addr].s.font || {}, {
-                            bold: true,
-                            color: { rgb: '000000' }
-                        });
-                    }
-
-                    const recAddr = XSR.utils.encode_cell({ r, c: 0 });
-                    if (wsNormal[recAddr]) {
-                        let suf = "";
-                        if (esMontana) suf = " ⛰";
-                        else if (esDificil) suf = " ⬆";
-                        else if (esFacil) suf = " ⬇";
-                        if (suf && !String(wsNormal[recAddr].v).includes(suf)) {
-                            wsNormal[recAddr].v = String(wsNormal[recAddr].v) + suf;
-                        }
-                    }
-                }
-            }
-        } catch (e) {}
-
-        aplicarImpresionA4Horizontal(wsNormal);
-        XSR.utils.book_append_sheet(wbResultados, wsNormal, "Resultados");
-        let resultadosData = XSR.write(wbResultados, { bookType: 'xlsx', type: 'array' });
-        resultadosData = await prepararXlsxParaImpresionA4Horizontal(resultadosData);
-        organizadoresFolder.file("Resultados de recorridos.xlsx", resultadosData);
-        setProgress(40, "Generando archivos de balizas...");
+        const filasResultadosFmt = filasResultados.map(row => row.map(v => (v === null || v === undefined) ? "" : String(v)));
+        const resultadosPdf = generarPdfResultadosRecorridos(filasResultadosFmt, metricasRecorridos);
+        organizadoresFolder.file("Resultados de recorridos.pdf", resultadosPdf, { binary: true });
+        setProgress(40, "Generando balizas en PDF...");
         let balizasFolder = zip.folder("Balizas");
         let normalFolder = balizasFolder.folder("topografica_normal (con brujula)");
         let puntosArray = Object.keys(puntosData);
@@ -1992,120 +2004,15 @@ let MODULOS = 8;
                 }
             }
             let filas = [[titulo], tabla[0], ...tabla.slice(1)];
-            const XSB = window.XLSXStyle || window.XLSX;
             const filasFmt = filas.map(row => row.map(v => (v === null || v === undefined) ? "" : String(v)));
-
-            // Rehecha desde cero con estilos consistentes
-            let ws = XSB.utils.aoa_to_sheet(filasFmt);
-            ws['!cols'] = [
-                { wch: 11 },
-                { wch: 14 },
-                { wch: 28 },
-                { wch: 34 },
-                { wch: 13 }
-            ];
-            ws['!margins'] = { left: 0.18, right: 0.18, top: 0.30, bottom: 0.30, header: 0.10, footer: 0.10 };
-            ws['!pageSetup'] = { paperSize: 9, orientation: "portrait", fitToWidth: 1, fitToHeight: 0 };
-            ws['!rows'] = [
-                { hpt: 34 },
-                { hpt: 30 },
-                ...Array(Math.max(0, filasFmt.length - 2)).fill({ hpt: 26 })
-            ];
-            ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }];
-
-            const borderGray = {
-                top: { style: "thin", color: { rgb: "B7B7B7" } },
-                bottom: { style: "thin", color: { rgb: "B7B7B7" } },
-                left: { style: "thin", color: { rgb: "B7B7B7" } },
-                right: { style: "thin", color: { rgb: "B7B7B7" } }
-            };
-
-            const rangeBal = XSB.utils.decode_range(ws['!ref']);
-            for (let R = rangeBal.s.r; R <= rangeBal.e.r; R++) {
-                for (let C = rangeBal.s.c; C <= rangeBal.e.c; C++) {
-                    const addr = XSB.utils.encode_cell({ r: R, c: C });
-                    if (!ws[addr]) ws[addr] = { t: 's', v: '' };
-                    ws[addr].t = 's';
-
-                    const isTitleRow = R === 0;
-                    const isHeaderRow = R === 1;
-                    const isFirstCol = C === 0;
-
-                    ws[addr].s = {
-                        border: borderGray,
-                        alignment: {
-                            horizontal: "center",
-                            vertical: "center",
-                            wrapText: C === 3,
-                            textRotation: 0
-                        },
-                        font: {
-                            name: "Arial",
-                            bold: isTitleRow || isHeaderRow || isFirstCol,
-                            sz: isTitleRow ? 16 : ((isHeaderRow || isFirstCol) ? 12 : 11),
-                            color: { rgb: "000000" }
-                        },
-                        fill: isTitleRow
-                            ? { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
-                            : (isHeaderRow
-                                ? { patternType: "solid", fgColor: { rgb: "E3E3E3" } }
-                                : (isFirstCol
-                                    ? { patternType: "solid", fgColor: { rgb: "EAEAEA" } }
-                                    : { patternType: "solid", fgColor: { rgb: "FFFFFF" } }))
-                    };
-                }
-            }
-
-            // Refuerzo explícito de A1, fila 2 y columna A
-            ws['A1'] = {
-                t: 's',
-                v: titulo,
-                s: {
-                    border: borderGray,
-                    font: { name: "Arial", bold: true, sz: 16, color: { rgb: "000000" } },
-                    alignment: { horizontal: "center", vertical: "center", wrapText: true, textRotation: 0 },
-                    fill: { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
-                }
-            };
-
-            for (let c = 0; c < 5; c++) {
-                const a = XSB.utils.encode_cell({ r: 1, c });
-                if (ws[a]) {
-                    ws[a].s = Object.assign({}, ws[a].s || {}, {
-                        border: borderGray,
-                        font: { name: "Arial", bold: true, sz: 12, color: { rgb: "000000" } },
-                        alignment: { horizontal: "center", vertical: "center", wrapText: c === 3, textRotation: 0 },
-                        fill: { patternType: "solid", fgColor: { rgb: "E3E3E3" } }
-                    });
-                }
-            }
-
-            for (let r = 0; r < filasFmt.length; r++) {
-                const a = XSB.utils.encode_cell({ r, c: 0 });
-                if (ws[a]) {
-                    ws[a].s = Object.assign({}, ws[a].s || {}, {
-                        border: borderGray,
-                        font: { name: "Arial", bold: true, sz: r === 0 ? 16 : 12, color: { rgb: "000000" } },
-                        alignment: { horizontal: "center", vertical: "center", wrapText: r === 0 ? true : false, textRotation: 0 },
-                        fill: { patternType: "solid", fgColor: { rgb: r === 0 ? "D9D9D9" : (r === 1 ? "E3E3E3" : "EAEAEA") } }
-                    });
-                }
-            }
-
-            aplicarImpresionA4Vertical(ws);
-            limpiarCeldasInternasDeMerges(ws, XSB);
-
-            let wb = XSB.utils.book_new();
-            XSB.utils.book_append_sheet(wb, ws, "Baliza");
-            let excelData = XSB.write(wb, { bookType: 'xlsx', type: 'array' });
-            excelData = await prepararXlsxParaImpresionA4Vertical(excelData);
-            normalFolder.file(`Baliza_${pid}.xlsx`, excelData);
+            const balizaPdf = generarPdfBaliza(pid, titulo, filasFmt);
+            normalFolder.file(`Baliza_${pid}.pdf`, balizaPdf, { binary: true });
 
             balizasGeneradas++;
-            setProgress(40 + Math.floor((balizasGeneradas / puntosArray.length) * 30), `Generando balizas normales... (${balizasGeneradas}/${puntosArray.length})`);
+            setProgress(40 + Math.floor((balizasGeneradas / puntosArray.length) * 30), `Generando balizas normales en PDF... (${balizasGeneradas}/${puntosArray.length})`);
         }
 
-        setProgress(70, "Creando hojas de recorrido...");
+        setProgress(70, "Creando hojas de recorrido en PDF...");
         let hojasFolder = zip.folder("Hojas_Recorrido");
         for (let r = 0; r < recorridos.length; r++) {
             let nombre = `R${String(r + 1).padStart(2, '0')}`;
@@ -2118,89 +2025,9 @@ let MODULOS = 8;
             ];
             for (let i = 2; i <= MODULOS; i++) filasHoja.push([i + "º", "", "", "", ""]);
 
-            const XSH = window.XLSXStyle || window.XLSX;
             const filasHojaFmt = filasHoja.map(row => row.map(v => (v === null || v === undefined) ? "" : String(v)));
-            let ws = XSH.utils.aoa_to_sheet(filasHojaFmt);
-            ws['!cols'] = [
-                { wch: 9 },
-                { wch: 12 },
-                { wch: 26 },
-                { wch: 34 },
-                { wch: 12 }
-            ];
-            aplicarImpresionA4Vertical(ws);
-
-            let alturas = [];
-            alturas.push({ hpt: 34 });
-            alturas.push({ hpt: 30 });
-            for (let i = 2; i < filasHojaFmt.length; i++) alturas.push({ hpt: 28 });
-            ws['!rows'] = alturas;
-
-            let rango = XSH.utils.decode_range(ws['!ref']);
-            for (let R = rango.s.r; R <= rango.e.r; R++) {
-                for (let C = rango.s.c; C <= rango.e.c; C++) {
-                    let addr = XSH.utils.encode_cell({ r: R, c: C });
-                    if (!ws[addr]) ws[addr] = { t: 's', v: '' };
-                    ws[addr].t = 's';
-
-                    const isTitleRow = R === 0;
-                    const isHeaderRow = R === 1;
-                    const isFirstCol = C === 0;
-                    const isHighlighted = isHeaderRow || isFirstCol;
-
-                    ws[addr].s = {
-                        border: {
-                            top: { style: "thin", color: { rgb: "B7B7B7" } },
-                            bottom: { style: "thin", color: { rgb: "B7B7B7" } },
-                            left: { style: "thin", color: { rgb: "B7B7B7" } },
-                            right: { style: "thin", color: { rgb: "B7B7B7" } }
-                        },
-                        alignment: {
-                            horizontal: "center",
-                            vertical: "center",
-                            wrapText: C === 3,
-                            textRotation: 0
-                        },
-                        font: {
-                            name: "Arial",
-                            bold: isTitleRow || isHighlighted,
-                            sz: isTitleRow ? 14 : (isHighlighted ? 12 : 11),
-                            color: { rgb: "000000" }
-                        },
-                        fill: isTitleRow
-                            ? { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
-                            : (isHeaderRow
-                                ? { patternType: "solid", fgColor: { rgb: "E3E3E3" } }
-                                : (isFirstCol
-                                    ? { patternType: "solid", fgColor: { rgb: "EAEAEA" } }
-                                    : { patternType: "solid", fgColor: { rgb: "FFFFFF" } }))
-                    };
-                }
-            }
-            if (!ws['!merges']) ws['!merges'] = [];
-            ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } });
-            ws['!merges'].push({ s: { r: 0, c: 3 }, e: { r: 0, c: 4 } });
-
-            const nombreHeaderAddr = XSH.utils.encode_cell({ r: 0, c: 3 });
-            if (ws[nombreHeaderAddr]) {
-                ws[nombreHeaderAddr].s = Object.assign({}, ws[nombreHeaderAddr].s || {}, {
-                    alignment: {
-                        horizontal: "left",
-                        vertical: "center",
-                        wrapText: false,
-                        textRotation: 0
-                    }
-                });
-            }
-
-            aplicarImpresionA4Vertical(ws);
-            limpiarCeldasInternasDeMerges(ws, XSH);
-
-            let wbSingle = XSH.utils.book_new();
-            XSH.utils.book_append_sheet(wbSingle, ws, `Hoja_${nombre}`);
-            let hojaData = XSH.write(wbSingle, { bookType: 'xlsx', type: 'array' });
-            hojaData = await prepararXlsxParaImpresionA4Vertical(hojaData);
-            hojasFolder.file(`Hoja_${nombre}.xlsx`, hojaData);
+            const hojaPdf = generarPdfHojaRecorrido(nombre, filasHojaFmt);
+            hojasFolder.file(`Hoja_${nombre}.pdf`, hojaPdf, { binary: true });
         }
 
         setProgress(95, "Comprimiendo archivos...");
