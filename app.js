@@ -930,9 +930,10 @@ let MODULOS = 8;
         return xml;
     }
 
-    function aplicarAjustePaginaSeguroEnWorksheet(xml) {
+    function aplicarAjustePaginaSeguroEnWorksheet(xml, orientation = 'portrait') {
         // Se eliminan posibles etiquetas generadas previamente para evitar duplicados,
         // que son los que pueden provocar el aviso de recuperación de Excel.
+        const orientacion = orientation === 'landscape' ? 'landscape' : 'portrait';
         xml = eliminarTagWorksheet(xml, 'printOptions');
         xml = eliminarTagWorksheet(xml, 'pageMargins');
         xml = eliminarTagWorksheet(xml, 'pageSetup');
@@ -946,14 +947,15 @@ let MODULOS = 8;
         const bloqueImpresion = [
             '<printOptions horizontalCentered="1"/>',
             '<pageMargins left="0.20" right="0.20" top="0.30" bottom="0.30" header="0.10" footer="0.10"/>',
-            '<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>'
+            `<pageSetup paperSize="9" orientation="${orientacion}" fitToWidth="1" fitToHeight="0"/>`
         ].join('');
 
         return insertarBloqueImpresionWorksheet(xml, bloqueImpresion);
     }
 
-    async function prepararXlsxParaImpresionA4Vertical(excelData) {
+    async function prepararXlsxParaImpresionA4(excelData, orientation = 'portrait') {
         try {
+            const orientacion = orientation === 'landscape' ? 'landscape' : 'portrait';
             const zipExcel = await JSZip.loadAsync(excelData);
             const hojas = zipExcel.folder('xl/worksheets');
             if (!hojas) return excelData;
@@ -963,7 +965,7 @@ let MODULOS = 8;
                 if (!/^sheet\d+\.xml$/i.test(relativePath)) return;
                 promesas.push((async () => {
                     let xml = await file.async('string');
-                    xml = aplicarAjustePaginaSeguroEnWorksheet(xml);
+                    xml = aplicarAjustePaginaSeguroEnWorksheet(xml, orientacion);
                     zipExcel.file(`xl/worksheets/${relativePath}`, xml);
                 })());
             });
@@ -976,11 +978,28 @@ let MODULOS = 8;
         }
     }
 
-    function aplicarImpresionA4Vertical(ws) {
+    async function prepararXlsxParaImpresionA4Vertical(excelData) {
+        return prepararXlsxParaImpresionA4(excelData, 'portrait');
+    }
+
+    async function prepararXlsxParaImpresionA4Horizontal(excelData) {
+        return prepararXlsxParaImpresionA4(excelData, 'landscape');
+    }
+
+    function aplicarImpresionA4(ws, orientation = 'portrait') {
         if (!ws) return ws;
+        const orientacion = orientation === 'landscape' ? 'landscape' : 'portrait';
         ws['!margins'] = { left: 0.20, right: 0.20, top: 0.30, bottom: 0.30, header: 0.10, footer: 0.10 };
-        ws['!pageSetup'] = { paperSize: 9, orientation: 'portrait', fitToWidth: 1, fitToHeight: 0 };
+        ws['!pageSetup'] = { paperSize: 9, orientation: orientacion, fitToWidth: 1, fitToHeight: 0 };
         return ws;
+    }
+
+    function aplicarImpresionA4Vertical(ws) {
+        return aplicarImpresionA4(ws, 'portrait');
+    }
+
+    function aplicarImpresionA4Horizontal(ws) {
+        return aplicarImpresionA4(ws, 'landscape');
     }
 
     function limpiarCeldasInternasDeMerges(ws, XLSXRef) {
@@ -1664,9 +1683,12 @@ let MODULOS = 8;
             }
         } catch (e) {}
 
+        aplicarImpresionA4Vertical(wsCodigos);
         let wbCodigos = XSC.utils.book_new();
         XSC.utils.book_append_sheet(wbCodigos, wsCodigos, "Recorridos");
-        organizadoresFolder.file("Recorridos completos con código.xlsx", XSC.write(wbCodigos, { bookType: 'xlsx', type: 'array' }));
+        let codigosData = XSC.write(wbCodigos, { bookType: 'xlsx', type: 'array' });
+        codigosData = await prepararXlsxParaImpresionA4Vertical(codigosData);
+        organizadoresFolder.file("Recorridos completos con código.xlsx", codigosData);
 
         const metricasRecorridos = await calcularMetricasRecorridos(recorridos);
         const dificultadesRecorridos = clasificarDificultades(metricasRecorridos);
@@ -1947,8 +1969,12 @@ let MODULOS = 8;
             }
         } catch (e) {}
 
+        aplicarImpresionA4Horizontal(wsNormal);
         XSR.utils.book_append_sheet(wbResultados, wsNormal, "Resultados");
-        organizadoresFolder.file("Resultados de recorridos.xlsx", XSR.write(wbResultados, { bookType: 'xlsx', type: 'array' }));        setProgress(40, "Generando archivos de balizas...");
+        let resultadosData = XSR.write(wbResultados, { bookType: 'xlsx', type: 'array' });
+        resultadosData = await prepararXlsxParaImpresionA4Horizontal(resultadosData);
+        organizadoresFolder.file("Resultados de recorridos.xlsx", resultadosData);
+        setProgress(40, "Generando archivos de balizas...");
         let balizasFolder = zip.folder("Balizas");
         let normalFolder = balizasFolder.folder("topografica_normal (con brujula)");
         let puntosArray = Object.keys(puntosData);
