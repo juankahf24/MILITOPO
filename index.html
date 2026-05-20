@@ -41,65 +41,21 @@
                     <span class="theme-opt" data-theme="dark">🌙 NOCHE</span>
                 </div>
             </div>
-        
-                                <div id="headerModeTabs" style="margin-top:12px; padding:0 16px; width:100%; box-sizing:border-box;">
-            <div style="
-                display:flex;
-                flex-direction:column;
-                gap:6px;
-                width:100%;
-                box-sizing:border-box;
-                padding:8px;
-                border-radius:18px;
-                background:rgba(52,61,42,0.62);
-                border:1px solid rgba(207,184,120,0.22);
-                box-shadow:0 8px 18px rgba(0,0,0,0.14);">
-                <button id="headerTopoTab" class="btn btn-secondary" style="
-                    width:100%;
-                    min-width:0;
-                    border-radius:12px;
-                    background:linear-gradient(180deg, #7f9d61, #667f4f);
-                    color:#fff;
-                    border-color:#b8c78e;
-                    font-weight:800;
-                    font-size:0.84rem;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    gap:7px;
-                    white-space:nowrap;
-                    padding:9px 8px;
-                    line-height:1;
-                    box-sizing:border-box;
-                    overflow:hidden;">
-                    <span style="font-size:0.95rem; line-height:1; flex:0 0 auto;">🗺️</span>
-                    <span style="overflow:hidden; text-overflow:ellipsis; min-width:0;">Topográfica</span>
+            <div id="headerModeTabs" class="branch-tabs" aria-label="Selector de rama MILITOPO">
+                <button id="headerTopoTab" type="button" class="branch-tab active" data-branch="topografica">
+                    <span class="branch-tab-icon">🗺️</span>
+                    <span class="branch-tab-text">Topográfica</span>
                 </button>
-                <button id="headerOriTab" class="btn btn-secondary" style="
-                    width:100%;
-                    min-width:0;
-                    border-radius:12px;
-                    background:linear-gradient(180deg, #667b57, #536347);
-                    color:#fff;
-                    border-color:#a7b58d;
-                    font-weight:800;
-                    font-size:0.84rem;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    gap:7px;
-                    white-space:nowrap;
-                    padding:9px 8px;
-                    line-height:1;
-                    box-sizing:border-box;
-                    overflow:hidden;">
-                    <span style="font-size:0.95rem; line-height:1; flex:0 0 auto;">🏃</span>
-                    <span style="overflow:hidden; text-overflow:ellipsis; min-width:0;">Orientación</span>
+                <button id="headerOriTab" type="button" class="branch-tab pending" data-branch="orientacion" aria-disabled="true">
+                    <span class="branch-tab-icon">🧭</span>
+                    <span class="branch-tab-text">Orientación</span>
+                    <span class="branch-tab-badge">Pendiente</span>
                 </button>
             </div>
         </div>
+    </div>
 
-<div class="steps-container">
+    <div class="steps-container">
         <div class="step" data-step="1">PASO 1 · CONFIGURAR ESTRUCTURA</div>
         <div class="step" data-step="2">PASO 2 · EDITAR PUNTOS</div>
         <div class="step" data-step="3">PASO 3 · GENERAR RECORRIDOS</div>
@@ -232,163 +188,68 @@
 
 
 
-<div id="startupModeOverlay" style="
-    position: fixed;
-    inset: 0;
-    z-index: 99999;
-    background:
-        radial-gradient(circle at top, rgba(196,214,155,0.08), transparent 24%),
-        radial-gradient(circle at bottom right, rgba(120,145,86,0.10), transparent 26%),
-        linear-gradient(180deg, rgba(28,36,24,0.985), rgba(44,56,36,0.985)),
-        repeating-linear-gradient(135deg, rgba(88,102,70,0.08) 0px, rgba(88,102,70,0.08) 10px, rgba(58,70,46,0.08) 10px, rgba(58,70,46,0.08) 20px);
-    display: block;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 28px 20px 40px 20px;
-">
-    <div style="width:min(1120px, 100%); margin:0 auto; min-height:100%; display:flex; flex-direction:column; justify-content:center;">
-        <div style="text-align:center; margin-bottom:26px;">
-            <div style="
-                display:inline-block;
-                padding:8px 16px;
-                border:1px solid rgba(176,195,136,0.26);
-                border-radius:999px;
-                background:rgba(151,173,111,0.14);
-                color:#e5edd5;
-                font-size:0.82rem;
-                font-weight:700;
-                letter-spacing:0.5px;
-                text-transform:uppercase;
-                margin-bottom:16px;">Modo de acceso</div>
-            <div style="
-                font-size:2.45rem;
-                font-weight:900;
-                color:#ffffff;
-                letter-spacing:0.6px;
-                text-transform:uppercase;
-                text-shadow:0 6px 24px rgba(0,0,0,0.35);">MILITOPO</div>
-            <div style="
-                margin-top:10px;
-                color:#d8e6f7;
-                font-family:monospace;
-                font-size:0.98rem;
-                letter-spacing:0.25px;">
-                Selecciona el entorno de trabajo con el que quieres operar
+
+<div id="startupModeOverlay" class="startup-overlay" role="dialog" aria-modal="true" aria-labelledby="startupTitle">
+    <div class="startup-backdrop-grid" aria-hidden="true"></div>
+    <div class="startup-shell">
+        <div class="startup-hero">
+            <div class="startup-kicker">Sistema modular</div>
+            <div class="startup-logo-wrap">
+                <img class="startup-logo" src="https://i.postimg.cc/RFmGrHdD/IMG-4917.jpg" alt="Logo MILITOPO">
+            </div>
+            <h1 id="startupTitle">MILITOPO</h1>
+            <p>Elige la rama de trabajo. Topográfica queda operativa; Orientación queda preparada para integrar el código cuando lo tengas cerrado.</p>
+        </div>
+
+        <div class="startup-mode-grid" aria-label="Ramas disponibles">
+            <div id="startupTopoCard" class="startup-mode-card startup-mode-card-topo" role="button" tabindex="0" aria-label="Entrar en rama Topográfica">
+                <div class="startup-card-glow" aria-hidden="true"></div>
+                <div class="startup-card-head">
+                    <div class="startup-card-icon">🗺️</div>
+                    <div>
+                        <div class="startup-card-label">Rama activa</div>
+                        <h2>Topográfica</h2>
+                    </div>
+                </div>
+                <p>Gestiona módulos, puntos, balizas, recorridos, hojas, GPX, PDF y ZIP final desde el sistema actual.</p>
+                <div class="startup-chip-row">
+                    <span>Módulos</span>
+                    <span>Balizas</span>
+                    <span>Recorridos</span>
+                    <span>Exportación ZIP</span>
+                </div>
+                <button id="startupTopoBtn" type="button" class="startup-enter-btn">Entrar en Topográfica <span>→</span></button>
+            </div>
+
+            <div id="startupOriCard" class="startup-mode-card startup-mode-card-orientacion is-pending" role="button" tabindex="0" aria-label="Rama Orientación pendiente de activar" aria-disabled="true">
+                <div class="startup-card-glow" aria-hidden="true"></div>
+                <div class="startup-card-head">
+                    <div class="startup-card-icon">🧭</div>
+                    <div>
+                        <div class="startup-card-label">Rama preparada</div>
+                        <h2>Orientación</h2>
+                    </div>
+                </div>
+                <p>Entrada reservada para incorporar después tu otro código de orientación sin tocar ni mezclar la rama topográfica.</p>
+                <div class="startup-chip-row">
+                    <span>Participantes</span>
+                    <span>QR</span>
+                    <span>Validación</span>
+                    <span>Resultados</span>
+                </div>
+                <div class="startup-pending-panel">
+                    <strong>En preparación</strong>
+                    <span>Aún no está activa. Cuando cierres orientación, se conectará aquí.</span>
+                </div>
+                <button id="startupOriBtn" type="button" class="startup-enter-btn startup-enter-btn-pending">Orientación pendiente</button>
             </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
-            <div id="startupTopoCard" style="
-                position:relative;
-                overflow:hidden;
-                border-radius:26px;
-                padding:26px;
-                background:
-                    linear-gradient(180deg, rgba(43,58,43,0.96), rgba(28,39,30,0.97));
-                border:1px solid rgba(138,177,118,0.30);
-                box-shadow:
-                    0 20px 40px rgba(0,0,0,0.28),
-                    inset 0 1px 0 rgba(255,255,255,0.08);
-                cursor:pointer;">
-                <div style="
-                    position:absolute; top:0; right:0; width:140px; height:140px;
-                    background:radial-gradient(circle, rgba(138,177,118,0.18), transparent 68%);
-                    transform:translate(30%,-30%);"></div>
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:14px;
-                    margin-top:2px;
-                    margin-bottom:16px;">
-                    <div style="
-                        width:58px; height:58px; border-radius:18px;
-                        display:flex; align-items:center; justify-content:center;
-                        background:rgba(138,177,118,0.14);
-                        border:1px solid rgba(138,177,118,0.24);
-                        font-size:1.55rem;
-                        flex:0 0 auto;">🗺️</div>
-                    <div style="
-                        font-size:1.55rem;
-                        font-weight:900;
-                        color:#ffffff;
-                        letter-spacing:0.4px;
-                        line-height:1.1;">
-                        Topográfica
-                    </div>
-                </div>
-                <div style="margin-top:10px; color:#dbe7f7; line-height:1.55; font-size:0.98rem;">
-                    Preparación clásica de puntos, balizas, recorridos, hojas y resultados topográficos.
-                </div>
-                <div style="margin-top:18px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <span style="padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#e7f0ff; font-size:0.78rem;">Puntos</span>
-                    <span style="padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#e7f0ff; font-size:0.78rem;">Balizas</span>
-                    <span style="padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#e7f0ff; font-size:0.78rem;">Recorridos</span>
-                </div>
-                <button id="startupTopoBtn" class="btn btn-success" style="
-                    margin-top:22px; width:100%;
-                    background:linear-gradient(180deg, #7ea061, #5f7f49);
-                    border-color:#a7c48f;
-                    color:#fff;
-                    box-shadow:0 10px 24px rgba(95,127,73,0.28);">Entrar en Topográfica</button>
-            </div>
-
-            <div id="startupOriCard" style="
-                position:relative;
-                overflow:hidden;
-                border-radius:26px;
-                padding:26px;
-                background:
-                    linear-gradient(180deg, rgba(43,58,43,0.96), rgba(28,39,30,0.97));
-                border:1px solid rgba(138,177,118,0.30);
-                box-shadow:
-                    0 20px 40px rgba(0,0,0,0.28),
-                    inset 0 1px 0 rgba(255,255,255,0.08);
-                cursor:pointer;">
-                <div style="
-                    position:absolute; top:0; right:0; width:140px; height:140px;
-                    background:radial-gradient(circle, rgba(138,177,118,0.18), transparent 68%);
-                    transform:translate(30%,-30%);"></div>
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:14px;
-                    margin-top:2px;
-                    margin-bottom:16px;">
-                    <div style="
-                        width:58px; height:58px; border-radius:18px;
-                        display:flex; align-items:center; justify-content:center;
-                        background:rgba(138,177,118,0.14);
-                        border:1px solid rgba(138,177,118,0.24);
-                        font-size:1.55rem;
-                        flex:0 0 auto;">🏃</div>
-                    <div style="
-                        font-size:1.55rem;
-                        font-weight:900;
-                        color:#ffffff;
-                        letter-spacing:0.4px;
-                        line-height:1.1;">
-                        Orientación
-                    </div>
-                </div>
-                <div style="margin-top:10px; color:#e1eadb; line-height:1.55; font-size:0.98rem;">
-                    Preparación de orientación con participantes, control QR y validación del recorrido en orden.
-                </div>
-                <div style="margin-top:18px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <span style="padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#eff6e9; font-size:0.78rem;">Participantes</span>
-                    <span style="padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#eff6e9; font-size:0.78rem;">QR</span>
-                    <span style="padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.08); color:#eff6e9; font-size:0.78rem;">Control</span>
-                </div>
-                <button id="startupOriBtn" class="btn btn-secondary" style="
-                    margin-top:22px; width:100%;
-                    background:linear-gradient(180deg, #7ea061, #5f7f49);
-                    border-color:#a7c48f;
-                    color:#fff;
-                    box-shadow:0 10px 24px rgba(95,127,73,0.28);">Entrar en Orientación</button>
-            </div>
+        <div id="startupPendingNotice" class="startup-notice" hidden>
+            🧭 Orientación está preparada como segunda rama, pero todavía no se abre para no mezclar código incompleto con Topográfica.
         </div>
     </div>
 </div>
-
 
 <div id="orientacionShell" style="display:none;">
     <div class="steps-container">
@@ -401,7 +262,7 @@
         <div class="card">
             <div class="card-header"><h2>🏃 CONFIGURACIÓN DE ORIENTACIÓN</h2></div>
             <div class="config-info" style="margin-bottom:14px;">
-                Este modo queda separado del topográfico. Aquí prepararás una carrera de orientación con identificación previa de participantes mediante QR y validación del recorrido en <strong>orden obligatorio</strong>.
+                Este modo queda separado del topográfico. Esta zona queda reservada para conectar tu código definitivo de orientación cuando esté cerrado. No afecta a la rama topográfica.
             </div>
 
             <div class="config-row">
@@ -425,7 +286,7 @@
                 <div class="card-header"><h2>👥 PARTICIPANTES</h2></div>
                 <div class="config-item">
                     <label>Lista de participantes (uno por línea)</label>
-                    <textarea id="oriParticipantsText" rows="8" style="width:100%; resize:vertical; border-radius:14px; padding:12px; background:var(--bg-secondary); color:var(--text); border:1px solid var(--border-light); font-family:monospace;" placeholder="Ejemplo:
+                    <textarea id="oriParticipantsText" rows="8" style="width:100%; resize:vertical; border-radius:14px; padding:12px; background:var(--input-bg); color:var(--text-primary); border:1px solid var(--border-light); font-family:monospace;" placeholder="Ejemplo:
 ALFA 1
 ALFA 2
 BRAVO 1"></textarea>

@@ -4,6 +4,7 @@ let MODULOS = 8;
     let currentCoordType = "UTM";
     let currentStep = 1;
     let appMode = "topografica";
+    const ORIENTACION_ACTIVA = false;
     let hasUnsavedChanges = false;
 
     let map = null;
@@ -296,6 +297,7 @@ let MODULOS = 8;
         document.getElementById("numModulosSelect").value = MODULOS;
         document.getElementById("puntosPorModuloSelect").value = PUNTOS_POR_MODULO;
         if (savedAppMode === "orientacion" || savedAppMode === "topografica") appMode = savedAppMode;
+        if (appMode === "orientacion" && !ORIENTACION_ACTIVA) appMode = "topografica";
         document.getElementById("coordTypeConfig").value = currentCoordType;
         document.getElementById("infoEstructura").innerHTML = `${MODULOS} módulos × ${PUNTOS_POR_MODULO} puntos = ${MODULOS * PUNTOS_POR_MODULO} puntos totales`;
 
@@ -2855,21 +2857,38 @@ let MODULOS = 8;
         const topo = document.getElementById("headerTopoTab");
         const ori = document.getElementById("headerOriTab");
         if (topo) {
-            topo.style.background = appMode === "topografica"
-                ? "linear-gradient(180deg, #8db06a, #718b56)"
-                : "linear-gradient(180deg, #667b57, #536347)";
-            topo.style.borderColor = appMode === "topografica" ? "#d0dfaa" : "#a7b58d";
+            topo.classList.toggle("active", appMode === "topografica");
+            topo.setAttribute("aria-pressed", appMode === "topografica" ? "true" : "false");
         }
         if (ori) {
-            ori.style.background = appMode === "orientacion"
-                ? "linear-gradient(180deg, #8db06a, #718b56)"
-                : "linear-gradient(180deg, #667b57, #536347)";
-            ori.style.borderColor = appMode === "orientacion" ? "#d0dfaa" : "#a7b58d";
+            ori.classList.toggle("active", appMode === "orientacion");
+            ori.classList.toggle("pending", !ORIENTACION_ACTIVA);
+            ori.setAttribute("aria-disabled", ORIENTACION_ACTIVA ? "false" : "true");
+            ori.setAttribute("aria-pressed", appMode === "orientacion" ? "true" : "false");
+            const badge = ori.querySelector(".branch-tab-badge");
+            if (badge) badge.textContent = ORIENTACION_ACTIVA ? "Lista" : "Pendiente";
         }
     }
 
+    function showOrientationPending() {
+        const notice = document.getElementById("startupPendingNotice");
+        const card = document.getElementById("startupOriCard");
+        if (notice) {
+            notice.hidden = false;
+            notice.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        } else if (typeof toast === "function") {
+            toast("🧭 Orientación está preparada, pero todavía no está activa.", "success");
+        } else {
+            alert("Orientación está preparada, pero todavía no está activa.");
+        }
+        if (card) {
+            card.classList.remove("pending-pulse");
+            void card.offsetWidth;
+            card.classList.add("pending-pulse");
+        }
+    }
 
-    function markUnsavedChanges() {
+    function markUnsavedChangesfunction markUnsavedChanges() {
         hasUnsavedChanges = true;
     }
 
@@ -2988,6 +3007,10 @@ let MODULOS = 8;
     }
 
     function enterStartupMode(mode) {
+        if (mode === "orientacion" && !ORIENTACION_ACTIVA) {
+            showOrientationPending();
+            return;
+        }
         appMode = mode === "orientacion" ? "orientacion" : "topografica";
         const overlay = document.getElementById("startupModeOverlay");
         if (overlay) overlay.style.display = "none";
@@ -3027,10 +3050,16 @@ let MODULOS = 8;
         document.getElementById("startupOriBtn")?.addEventListener("click", () => enterStartupMode("orientacion"));
         document.getElementById("startupTopoCard")?.addEventListener("click", (e) => { if (e.target.id !== "startupTopoBtn") enterStartupMode("topografica"); });
         document.getElementById("startupOriCard")?.addEventListener("click", (e) => { if (e.target.id !== "startupOriBtn") enterStartupMode("orientacion"); });
+        document.getElementById("startupTopoCard")?.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); enterStartupMode("topografica"); } });
+        document.getElementById("startupOriCard")?.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); enterStartupMode("orientacion"); } });
         document.getElementById("headerTopoTab")?.addEventListener("click", () => {
             if (appMode !== "topografica") changeModeWithPrompt("topografica");
         });
         document.getElementById("headerOriTab")?.addEventListener("click", () => {
+            if (!ORIENTACION_ACTIVA) {
+                showOrientationPending();
+                return;
+            }
             if (appMode !== "orientacion") changeModeWithPrompt("orientacion");
         });
 
