@@ -4859,3 +4859,46 @@ body.dark .layer-selector { background: rgba(255,255,255,.06); }
         margin-top: 8px;
     }
 }
+
+
+/* ===== Misma fuente para MILITOPO y TOPOGRAFÍA ===== */
+.topo-info-clean h1,
+.topografia-subtitle-clean {
+    font-family: 'Courier New', monospace !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+    text-transform: uppercase !important;
+}
+
+.topografia-subtitle-clean {
+    letter-spacing: 0.16em !important;
+    color: #f5e6c8 !important;
+    text-shadow: 0 3px 14px rgba(0,0,0,0.34) !important;
+}
+
+@media (max-width: 700px) {
+    .topografia-subtitle-clean {
+        letter-spacing: 0.10em !important;
+    }
+}
+
+
+/* ===== Mismo tamaño para MILITOPO y TOPOGRAFÍA ===== */
+.topo-info-clean h1,
+.topografia-subtitle-clean {
+    font-size: clamp(2rem, 5vw, 4rem) !important;
+    line-height: 1 !important;
+    letter-spacing: 0.16em !important;
+}
+
+.topografia-subtitle-clean {
+    margin-top: 10px !important;
+}
+
+@media (max-width: 700px) {
+    .topo-info-clean h1,
+    .topografia-subtitle-clean {
+        font-size: clamp(1.9rem, 8vw, 3rem) !important;
+        letter-spacing: 0.10em !important;
+    }
+}
