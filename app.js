@@ -296,8 +296,8 @@ let MODULOS = 8;
         currentCoordType = savedTipo || "UTM";
         document.getElementById("numModulosSelect").value = MODULOS;
         document.getElementById("puntosPorModuloSelect").value = PUNTOS_POR_MODULO;
-        if (savedAppMode === "orientacion" || savedAppMode === "topografica") appMode = savedAppMode;
-        if (appMode === "orientacion" && !ORIENTACION_ACTIVA) appMode = "topografica";
+        if (savedAppMode === "topografica") appMode = savedAppMode;
+        if (savedAppMode === "orientacion") appMode = "topografica";
         document.getElementById("coordTypeConfig").value = currentCoordType;
         document.getElementById("infoEstructura").innerHTML = `${MODULOS} módulos × ${PUNTOS_POR_MODULO} puntos = ${MODULOS * PUNTOS_POR_MODULO} puntos totales`;
 
@@ -2942,27 +2942,15 @@ let MODULOS = 8;
 
     function enterStartupMode(mode) {
         if (mode === "orientacion") {
-            window.location.href = "orientacion/index.html";
+            window.location.href = "orientacion/";
             return;
         }
-        if (mode === "orientacion" && !ORIENTACION_ACTIVA) {
-            showOrientationPending();
-            return;
-        }
-        appMode = mode === "orientacion" ? "orientacion" : "topografica";
+        appMode = "topografica";
         const overlay = document.getElementById("startupModeOverlay");
         if (overlay) overlay.style.display = "none";
         try { localStorage.setItem("milimoto_app_mode", appMode); } catch (e) {}
 
-        if (appMode === "orientacion") {
-            showOrientacionMode();
-        } else {
-            showTopograficaMode();
-            setTimeout(() => {
-                const instructionsModal = document.getElementById("instructionsModal");
-                if (instructionsModal) instructionsModal.style.display = "flex";
-            }, 250);
-        }
+        showTopograficaMode();
     }
 
     function goToStep(step) {
@@ -3002,7 +2990,7 @@ let MODULOS = 8;
             if (appMode !== "topografica") changeModeWithPrompt("topografica");
         });
         document.getElementById("headerOriTab")?.addEventListener("click", () => {
-            window.location.href = "orientacion/index.html";
+            window.location.href = "orientacion/";
         });
 
         document.querySelectorAll("input, textarea, select").forEach(el => {
