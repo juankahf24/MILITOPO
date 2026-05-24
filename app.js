@@ -4,7 +4,7 @@ let MODULOS = 8;
     let currentCoordType = "UTM";
     let currentStep = 1;
     let appMode = "topografica";
-    const ORIENTACION_ACTIVA = false;
+    const ORIENTACION_ACTIVA = true;
     let hasUnsavedChanges = false;
 
     let map = null;
@@ -2941,6 +2941,10 @@ let MODULOS = 8;
     }
 
     function enterStartupMode(mode) {
+        if (mode === "orientacion") {
+            window.location.href = "orientacion/index.html";
+            return;
+        }
         if (mode === "orientacion" && !ORIENTACION_ACTIVA) {
             showOrientationPending();
             return;
@@ -2998,11 +3002,7 @@ let MODULOS = 8;
             if (appMode !== "topografica") changeModeWithPrompt("topografica");
         });
         document.getElementById("headerOriTab")?.addEventListener("click", () => {
-            if (!ORIENTACION_ACTIVA) {
-                showOrientationPending();
-                return;
-            }
-            if (appMode !== "orientacion") changeModeWithPrompt("orientacion");
+            window.location.href = "orientacion/index.html";
         });
 
         document.querySelectorAll("input, textarea, select").forEach(el => {
