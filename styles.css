@@ -4902,3 +4902,93 @@ body.dark .layer-selector { background: rgba(255,255,255,.06); }
         letter-spacing: 0.10em !important;
     }
 }
+
+
+/* ===== Botones de ramas en Topografía con el mismo estilo que Orientación ===== */
+.header-branch-tabs-modern {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+    margin-top: 18px !important;
+}
+
+.header-branch-btn {
+    min-width: 168px !important;
+    min-height: 52px !important;
+    padding: 12px 18px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(230,188,122,.34) !important;
+    background:
+        radial-gradient(circle at 18% 10%, rgba(255,255,255,.14), transparent 34%),
+        linear-gradient(135deg, rgba(255,255,255,.09), rgba(0,0,0,.18)) !important;
+    color: #f5e6c8 !important;
+    text-decoration: none !important;
+    font-family: "Courier New", monospace !important;
+    font-weight: 900 !important;
+    letter-spacing: .55px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 9px !important;
+    box-shadow:
+        0 14px 30px rgba(0,0,0,.22),
+        inset 0 1px 0 rgba(255,255,255,.12) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, filter .18s ease !important;
+}
+
+.header-branch-btn:hover,
+.header-branch-btn:focus-visible {
+    transform: translateY(-2px) !important;
+    outline: none !important;
+    filter: brightness(1.08) saturate(1.08) !important;
+    border-color: rgba(230,188,122,.74) !important;
+    box-shadow:
+        0 18px 38px rgba(0,0,0,.28),
+        0 0 0 4px rgba(219,164,80,.13),
+        inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
+
+.header-branch-btn:active {
+    transform: translateY(0) scale(.99) !important;
+}
+
+.header-branch-btn.active {
+    background:
+        radial-gradient(circle at 20% 15%, rgba(255,255,255,.20), transparent 34%),
+        linear-gradient(135deg, #f0c16a, #d79735) !important;
+    color: #2c1d0c !important;
+    border-color: rgba(255,245,200,.58) !important;
+    box-shadow:
+        0 18px 38px rgba(216,151,53,.28),
+        0 0 0 4px rgba(230,188,122,.15),
+        inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+
+.header-branch-btn .branch-tab-icon {
+    font-size: 1.12rem !important;
+    line-height: 1 !important;
+}
+
+.header-branch-btn .branch-tab-badge {
+    display: none !important;
+}
+
+@media (max-width: 760px) {
+    .header-branch-tabs-modern {
+        justify-content: center !important;
+        width: 100% !important;
+        gap: 10px !important;
+        margin-top: 18px !important;
+    }
+
+    .header-branch-btn {
+        width: min(100%, 280px) !important;
+        min-width: 0 !important;
+        min-height: 50px !important;
+        padding: 11px 16px !important;
+    }
+}
