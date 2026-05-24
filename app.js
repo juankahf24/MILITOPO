@@ -1343,19 +1343,7 @@ let MODULOS = 8;
 
     function generarPdfResultadosRecorridos(filasResultadosFmt, metricasRecorridos) {
         const doc = crearDocumentoPdfA4('landscape');
-        const marcas = calcularMarcadoresResultados(metricasRecorridos);
-        const rows = filasResultadosFmt.map((row, idx) => {
-            const copia = row.slice();
-            if (idx > 0) {
-                const mi = idx - 1;
-                let suf = "";
-                if (marcas.montanaSet.has(mi)) suf = " *M";
-                else if (marcas.dificilesSet.has(mi)) suf = " *D";
-                else if (marcas.facilesSet.has(mi)) suf = " *F";
-                if (suf && !String(copia[0] || "").includes(suf)) copia[0] = `${copia[0]}${suf}`;
-            }
-            return copia;
-        });
+        const rows = filasResultadosFmt;
         renderTablaPdf(doc, {
             title: "RESULTADOS DE RECORRIDOS",
             rows,
@@ -1366,23 +1354,11 @@ let MODULOS = 8;
             headerFontSize: 6.8,
             minRowHeight: 8.5,
             boldFirstCol: true,
-            alignments: ['center', 'left', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'],
-            headerFill: [217, 217, 217],
-            rowFillCallback: (row, dataIndex) => {
-                if (dataIndex < 0) return null;
-                if (marcas.montanaSet.has(dataIndex)) return [217, 210, 233];
-                if (marcas.dificilesSet.has(dataIndex)) return [244, 204, 204];
-                if (marcas.facilesSet.has(dataIndex)) return [217, 234, 211];
-                return [255, 255, 255];
-            },
-            cellFillCallback: (row, col, dataIndex) => {
-                if (dataIndex < 0 || col !== 10) return null;
-                const dificultad = String(row[10] || "").toUpperCase();
-                if (dificultad === "BAJA") return [217, 234, 211];
-                if (dificultad === "MEDIA") return [255, 242, 204];
-                if (dificultad === "ALTA") return [244, 204, 204];
-                return null;
-            }
+            alignments: ['center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'],
+            headerFill: [235, 235, 235],
+            rowFillCallback: () => [255, 255, 255],
+            cellFillCallback: () => null,
+            textColorCallback: () => [0, 0, 0]
         });
         return doc.output('arraybuffer');
     }
