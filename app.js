@@ -1327,7 +1327,6 @@ let MODULOS = 8;
         const fontSize = modulos <= 8 ? 7.8 : (modulos <= 12 ? 6.8 : (modulos <= 16 ? 5.9 : 5.2));
         renderTablaPdf(doc, {
             title: "RECORRIDOS COMPLETOS CON CÓDIGO",
-            subtitle: "A4 vertical · listo para imprimir al 100%",
             rows: tablaCodigosFmt,
             colWidths: [22, ...Array(modulos).fill((194 - 22) / modulos)],
             margin: 8,
