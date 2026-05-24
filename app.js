@@ -1302,8 +1302,7 @@ let MODULOS = 8;
         let y = 8;
         y = dibujarTituloPdf(doc, `HOJA DE RECORRIDO: ${nombre}`, y, {
             margin: 8,
-            fontSize: 13,
-            subtitulo: "A4 vertical · listo para imprimir al 100%"
+            fontSize: 13
         });
         y = dibujarBloqueNombrePdf(doc, y, "NOMBRE:", { margin: 8, height: 13 });
         renderTablaPdf(doc, {
@@ -1316,7 +1315,7 @@ let MODULOS = 8;
             headerFontSize: 8.6,
             minRowHeight: 12,
             boldFirstCol: true,
-            alignments: ['center', 'center', 'center', 'left', 'center'],
+            alignments: ['center', 'center', 'center', 'center', 'center'],
             headerFill: [227, 227, 227]
         });
         return doc.output('arraybuffer');
