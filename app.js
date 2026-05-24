@@ -1302,7 +1302,8 @@ let MODULOS = 8;
         let y = 8;
         y = dibujarTituloPdf(doc, `HOJA DE RECORRIDO: ${nombre}`, y, {
             margin: 8,
-            fontSize: 13
+            fontSize: 13,
+            subtitulo: "A4 vertical · listo para imprimir al 100%"
         });
         y = dibujarBloqueNombrePdf(doc, y, "NOMBRE:", { margin: 8, height: 13 });
         renderTablaPdf(doc, {
@@ -1315,7 +1316,7 @@ let MODULOS = 8;
             headerFontSize: 8.6,
             minRowHeight: 12,
             boldFirstCol: true,
-            alignments: ['center', 'center', 'center', 'center', 'center'],
+            alignments: ['center', 'center', 'center', 'left', 'center'],
             headerFill: [227, 227, 227]
         });
         return doc.output('arraybuffer');
@@ -1327,6 +1328,7 @@ let MODULOS = 8;
         const fontSize = modulos <= 8 ? 7.8 : (modulos <= 12 ? 6.8 : (modulos <= 16 ? 5.9 : 5.2));
         renderTablaPdf(doc, {
             title: "RECORRIDOS COMPLETOS CON CÓDIGO",
+            subtitle: "A4 vertical · listo para imprimir al 100%",
             rows: tablaCodigosFmt,
             colWidths: [22, ...Array(modulos).fill((194 - 22) / modulos)],
             margin: 8,
@@ -1358,7 +1360,7 @@ let MODULOS = 8;
         });
         renderTablaPdf(doc, {
             title: "RESULTADOS DE RECORRIDOS",
-            subtitle: "*M montaña · *D difícil · *F fácil",
+            subtitle: "A4 horizontal · tabla ancha lista para imprimir al 100% · *M montaña · *D difícil · *F fácil",
             rows,
             colWidths: [17, 28, 25, 25, 21, 23, 32, 31, 31, 31, 21],
             margin: 6,
@@ -1367,7 +1369,7 @@ let MODULOS = 8;
             headerFontSize: 6.8,
             minRowHeight: 8.5,
             boldFirstCol: true,
-            alignments: ['center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'],
+            alignments: ['center', 'left', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'],
             headerFill: [217, 217, 217],
             rowFillCallback: (row, dataIndex) => {
                 if (dataIndex < 0) return null;
