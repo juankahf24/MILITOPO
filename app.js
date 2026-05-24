@@ -2794,7 +2794,7 @@ let MODULOS = 8;
             ori.setAttribute("aria-disabled", ORIENTACION_ACTIVA ? "false" : "true");
             ori.setAttribute("aria-pressed", appMode === "orientacion" ? "true" : "false");
             const badge = ori.querySelector(".branch-tab-badge");
-            if (badge) badge.textContent = ORIENTACION_ACTIVA ? "Lista" : "Pendiente";
+            if (badge) badge.textContent = "";
         }
     }
 
@@ -2990,7 +2990,12 @@ let MODULOS = 8;
             if (appMode !== "topografica") changeModeWithPrompt("topografica");
         });
         document.getElementById("headerOriTab")?.addEventListener("click", () => {
-            window.location.href = "orientacion/";
+            const overlay = document.getElementById("startupModeOverlay");
+            if (overlay) {
+                overlay.style.display = "flex";
+                const notice = document.getElementById("startupPendingNotice");
+                if (notice) notice.hidden = true;
+            }
         });
 
         document.querySelectorAll("input, textarea, select").forEach(el => {
