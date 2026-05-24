@@ -4837,3 +4837,25 @@ body.dark .layer-selector { background: rgba(255,255,255,.06); }
         padding: 11px 16px;
     }
 }
+
+
+/* ===== Subtítulo centrado MILITOPO TOPOGRAFÍA ===== */
+.topografia-subtitle-clean {
+    margin-top: 10px;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    font-size: clamp(1.05rem, 2.8vw, 1.75rem);
+    font-weight: 900;
+    letter-spacing: 0.28em;
+    color: #f5e6c8;
+    text-transform: uppercase;
+    text-shadow: 0 3px 14px rgba(0,0,0,0.34);
+}
+
+@media (max-width: 700px) {
+    .topografia-subtitle-clean {
+        font-size: 1rem;
+        letter-spacing: 0.18em;
+        margin-top: 8px;
+    }
+}
