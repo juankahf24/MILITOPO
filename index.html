@@ -258,64 +258,19 @@
 
 
 
-<div id="startupModeOverlay" class="startup-overlay" role="dialog" aria-modal="true" aria-labelledby="startupTitle">
+<div id="startupModeOverlay" class="startup-overlay startup-overlay-minimal" role="dialog" aria-modal="true" aria-labelledby="startupTitle">
     <div class="startup-backdrop-grid" aria-hidden="true"></div>
-    <div class="startup-shell">
-        <div class="startup-hero">
-            <div class="startup-kicker">Sistema modular</div>
-            <div class="startup-logo-wrap">
-                <img class="startup-logo" src="https://i.postimg.cc/RFmGrHdD/IMG-4917.jpg" alt="Logo MILITOPO">
-            </div>
-            <h1 id="startupTitle">MILITOPO</h1>
-            <p>Elige la rama de trabajo. Topográfica queda operativa; Orientación queda preparada para integrar el código cuando lo tengas cerrado.</p>
+    <div class="startup-minimal-shell">
+        <div class="startup-minimal-logo-wrap">
+            <img class="startup-minimal-logo" src="https://i.postimg.cc/RFmGrHdD/IMG-4917.jpg" alt="Logo MILITOPO">
         </div>
-
-        <div class="startup-mode-grid" aria-label="Ramas disponibles">
-            <div id="startupTopoCard" class="startup-mode-card startup-mode-card-topo" role="button" tabindex="0" aria-label="Entrar en rama Topográfica">
-                <div class="startup-card-glow" aria-hidden="true"></div>
-                <div class="startup-card-head">
-                    <div class="startup-card-icon">🗺️</div>
-                    <div>
-                        <div class="startup-card-label">Rama activa</div>
-                        <h2>Topográfica</h2>
-                    </div>
-                </div>
-                <p>Gestiona módulos, puntos, balizas, recorridos, hojas, GPX, PDF y ZIP final desde el sistema actual.</p>
-                <div class="startup-chip-row">
-                    <span>Módulos</span>
-                    <span>Balizas</span>
-                    <span>Recorridos</span>
-                    <span>Exportación ZIP</span>
-                </div>
-                <button id="startupTopoBtn" type="button" class="startup-enter-btn">Entrar en Topográfica <span>→</span></button>
-            </div>
-
-            <div id="startupOriCard" class="startup-mode-card startup-mode-card-orientacion is-pending" role="button" tabindex="0" aria-label="Rama Orientación pendiente de activar" aria-disabled="true">
-                <div class="startup-card-glow" aria-hidden="true"></div>
-                <div class="startup-card-head">
-                    <div class="startup-card-icon">🧭</div>
-                    <div>
-                        <div class="startup-card-label">Rama preparada</div>
-                        <h2>Orientación</h2>
-                    </div>
-                </div>
-                <p>Entrada reservada para incorporar después tu otro código de orientación sin tocar ni mezclar la rama topográfica.</p>
-                <div class="startup-chip-row">
-                    <span>Participantes</span>
-                    <span>QR</span>
-                    <span>Validación</span>
-                    <span>Resultados</span>
-                </div>
-                <div class="startup-pending-panel">
-                    <strong>En preparación</strong>
-                    <span>Aún no está activa. Cuando cierres orientación, se conectará aquí.</span>
-                </div>
-                <button id="startupOriBtn" type="button" class="startup-enter-btn startup-enter-btn-pending">Orientación pendiente</button>
-            </div>
+        <h1 id="startupTitle" class="startup-minimal-title">MILITOPO</h1>
+        <div class="startup-minimal-actions" aria-label="Ramas disponibles">
+            <button id="startupTopoBtn" type="button" class="startup-minimal-btn startup-minimal-btn-primary">Entrar en Topografía</button>
+            <button id="startupOriBtn" type="button" class="startup-minimal-btn startup-minimal-btn-secondary">Entrar en Orientación</button>
         </div>
-
-        <div id="startupPendingNotice" class="startup-notice" hidden>
-            🧭 Orientación está preparada como segunda rama, pero todavía no se abre para no mezclar código incompleto con Topográfica.
+        <div id="startupPendingNotice" class="startup-notice startup-notice-floating" hidden>
+            🧭 Orientación estará disponible cuando incorpores esa rama.
         </div>
     </div>
 </div>
