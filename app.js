@@ -1358,7 +1358,6 @@ let MODULOS = 8;
         });
         renderTablaPdf(doc, {
             title: "RESULTADOS DE RECORRIDOS",
-            subtitle: "A4 horizontal · tabla ancha lista para imprimir al 100% · *M montaña · *D difícil · *F fácil",
             rows,
             colWidths: [17, 28, 25, 25, 21, 23, 32, 31, 31, 31, 21],
             margin: 6,
