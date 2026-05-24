@@ -1283,7 +1283,6 @@ let MODULOS = 8;
         const doc = crearDocumentoPdfA4('portrait');
         renderTablaPdf(doc, {
             title: titulo,
-            subtitle: "A4 vertical · listo para imprimir al 100%",
             rows: filasFmt.slice(1),
             colWidths: [20, 26, 56, 72, 20],
             margin: 8,
@@ -1292,7 +1291,7 @@ let MODULOS = 8;
             headerFontSize: 7.6,
             minRowHeight: 9,
             boldFirstCol: true,
-            alignments: ['center', 'center', 'center', 'left', 'center'],
+            alignments: ['center', 'center', 'center', 'center', 'center'],
             headerFill: [227, 227, 227]
         });
         return doc.output('arraybuffer');
