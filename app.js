@@ -2978,8 +2978,15 @@ let MODULOS = 8;
         if (overlay) overlay.style.display = "none";
         try { localStorage.setItem("milimoto_app_mode", appMode); } catch (e) {}
 
-        if (appMode === "orientacion") showOrientacionMode();
-        else showTopograficaMode();
+        if (appMode === "orientacion") {
+            showOrientacionMode();
+        } else {
+            showTopograficaMode();
+            setTimeout(() => {
+                const instructionsModal = document.getElementById("instructionsModal");
+                if (instructionsModal) instructionsModal.style.display = "flex";
+            }, 250);
+        }
     }
 
     function goToStep(step) {

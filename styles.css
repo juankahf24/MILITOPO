@@ -4615,3 +4615,55 @@ body.dark .layer-selector { background: rgba(255,255,255,.06); }
     .startup-minimal-actions { width: 100%; }
     .startup-minimal-btn { min-height: 62px; border-radius: 20px; letter-spacing: .09em; }
 }
+
+
+/* ===== Encabezado limpio dentro de Topografía ===== */
+.header-clean-topografia {
+    padding: 28px 24px 26px;
+    border-radius: 30px;
+    margin-bottom: 30px;
+}
+
+.header-content-clean {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.topo-militar-clean {
+    flex-direction: column;
+    gap: 14px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    backdrop-filter: none;
+    box-shadow: none;
+}
+
+.logo-imagen-clean {
+    width: clamp(128px, 18vw, 190px);
+    height: clamp(128px, 18vw, 190px);
+    padding: 6px;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,245,200,0.34);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.28);
+}
+
+.topo-info-clean h1 {
+    font-size: clamp(2rem, 5vw, 4rem);
+    letter-spacing: 0.16em;
+    line-height: 1;
+    text-align: center;
+    margin: 0;
+}
+
+@media (max-width: 700px) {
+    .header-clean-topografia {
+        padding: 24px 18px;
+        border-radius: 26px;
+    }
+    .topo-info-clean h1 {
+        letter-spacing: 0.10em;
+    }
+}
