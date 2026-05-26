@@ -5244,16 +5244,16 @@ async function recorridosPdfBlob(){
     const bottom=pageH-margin;
 
     const columns=[
-        {key:"participantId",label:"PARTICIPANTE",w:27,align:"center"},
-        {key:"routeId",label:"RECORRIDO",w:24,align:"center"},
-        {key:"status",label:"ESTADO",w:28,align:"center"},
-        {key:"distanceKm",label:"DIST. KM",w:22,align:"center"},
-        {key:"longestKm",label:"TRAMO LARGO",w:26,align:"center"},
-        {key:"positiveM",label:"DESNIVEL +",w:24,align:"center"},
-        {key:"negativeM",label:"DESNIVEL -",w:24,align:"center"},
-        {key:"globalM",label:"GLOBAL",w:20,align:"center"},
-        {key:"difficulty",label:"DIFICULTAD",w:24,align:"center"},
-        {key:"order",label:"ORDEN",w:88,align:"left"}
+        {key:"participantId",label:"PARTICIPANTE",w:25,align:"center"},
+        {key:"routeId",label:"RECORRIDO",w:22,align:"center"},
+        {key:"status",label:"ESTADO",w:23,align:"center"},
+        {key:"distanceKm",label:"DIST. KM",w:20,align:"center"},
+        {key:"longestKm",label:"TRAMO LARGO",w:23,align:"center"},
+        {key:"positiveM",label:"DESNIVEL +",w:22,align:"center"},
+        {key:"negativeM",label:"DESNIVEL -",w:22,align:"center"},
+        {key:"globalM",label:"GLOBAL",w:18,align:"center"},
+        {key:"difficulty",label:"DIFICULTAD",w:22,align:"center"},
+        {key:"order",label:"ORDEN",w:90,align:"left"}
     ];
 
     const rows=(state.routes||[]).map((r,i)=>{
@@ -5293,13 +5293,16 @@ async function recorridosPdfBlob(){
 
     function drawTableHeader(y){
         let x=margin;
-        doc.setFillColor(235,235,235);
         doc.setDrawColor(0,0,0);
         doc.setLineWidth(0.25);
         doc.setFont("helvetica","bold");
         doc.setFontSize(6.2);
         columns.forEach(col=>{
-            doc.rect(x,y,col.w,headerH,"FD");
+            doc.setFillColor(245,245,245);
+            doc.rect(x,y,col.w,headerH,"F");
+            doc.setDrawColor(0,0,0);
+            doc.rect(x,y,col.w,headerH,"S");
+            doc.setTextColor(0,0,0);
             const lines=doc.splitTextToSize(col.label,col.w-2).slice(0,2);
             doc.text(lines,x+col.w/2,y+3.4,{align:"center",maxWidth:col.w-2});
             x+=col.w;
@@ -5310,6 +5313,7 @@ async function recorridosPdfBlob(){
         const clean=String(text??"");
         doc.setFont("helvetica","normal");
         doc.setFontSize(5.8);
+        doc.setTextColor(0,0,0);
         const maxW=w-2;
         const lines=doc.splitTextToSize(clean,maxW).slice(0,2);
         const tx=align==="center"?x+w/2:x+1.2;
@@ -5419,13 +5423,16 @@ async function balizasPdfBlob(){
 
     function drawTableHeader(y){
         let x=margin;
-        doc.setFillColor(235,235,235);
         doc.setDrawColor(0,0,0);
         doc.setLineWidth(0.25);
         doc.setFont("helvetica","bold");
         doc.setFontSize(7);
         columns.forEach(col=>{
-            doc.rect(x,y,col.w,headerH,"FD");
+            doc.setFillColor(245,245,245);
+            doc.rect(x,y,col.w,headerH,"F");
+            doc.setDrawColor(0,0,0);
+            doc.rect(x,y,col.w,headerH,"S");
+            doc.setTextColor(0,0,0);
             doc.text(col.label,x+col.w/2,y+5.2,{align:"center"});
             x+=col.w;
         });
@@ -5435,6 +5442,7 @@ async function balizasPdfBlob(){
         const clean=String(text??"");
         doc.setFont("helvetica","normal");
         doc.setFontSize(6.5);
+        doc.setTextColor(0,0,0);
         const maxW=w-2;
         const lines=doc.splitTextToSize(clean,maxW).slice(0,2);
         const tx=align==="center"?x+w/2:x+1.4;
