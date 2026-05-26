@@ -5270,7 +5270,7 @@ async function recorridosPdfBlob(){
             negativeM:m.negativeM??"",
             globalM:m.globalM??"",
             difficulty:m.difficulty??"",
-            order:(r.points||[]).join(" → ")
+            order:(r.points||[]).join(" - ")
         };
     });
 
