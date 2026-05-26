@@ -750,8 +750,9 @@ async function generateRoutes(silent=false){
     const context=buildProfessionalRouteContext(start,controls,finish);
     const attempts=Math.max(760,Math.min(2600,state.participantCount*120+controls.length*36));
 
-    for(let r=0;r<state.participantCount;r++){
-        updateRouteGenerationLoader(`Diseñando recorrido ${r+1} de ${state.participantCount}...`,24+((r/Math.max(1,state.participantCount))*66));
+    for(let r=0;routes.length<state.participantCount && r<state.participantCount*4;r++){
+        const routeSlot=routes.length;
+        updateRouteGenerationLoader(`Diseñando recorrido ${routeSlot+1} de ${state.participantCount}...`,24+((routeSlot/Math.max(1,state.participantCount))*66));
         await routeSleep(10);
 
         let best=null;
@@ -770,7 +771,11 @@ async function generateRoutes(silent=false){
             const reusePenalty=ordered.reduce((sum,c)=>sum+Math.max(0,(usage[c.id]||0)-Math.max(1,state.maxControlReuse||1)+1),0);
             const balancePenalty=calcDistanceBalancePenalty(metrics,routes.map(x=>x.metrics));
 
+            const qualityTier=quality.code==="clean"?0:(quality.code==="acceptable"?1:2);
+            const shortLegPenalty=(quality.shortControlLegs||0)*80000;
             const score=
+                qualityTier*120000 +
+                shortLegPenalty +
                 quality.total*18.0 +
                 sequencePenalty*9.5 +
                 balancePenalty*6.0 +
@@ -852,12 +857,13 @@ async function generateRoutes(silent=false){
         qualityWarnings.unshift("Desnivel real no disponible o tardó demasiado. Se usó respaldo de montaña para poder generar la prueba.");
     }
 
-    state.routes=routes.map((x,i)=>({
+    const finalRoutes=routes.slice(0,state.participantCount);
+    state.routes=finalRoutes.map((x,i)=>({
         participantId:"P"+String(i+1).padStart(2,"0"),
         routeId:"R"+String(i+1).padStart(2,"0"),
         points:x.route.map(p=>p.id)
     }));
-    state.metrics=routes.map(x=>x.metrics);
+    state.metrics=finalRoutes.map(x=>x.metrics);
     state.skippedRoutes={};
     assignBalancedDifficulties(state.metrics);
     state.routeQualitySummary=buildRouteQualitySummary(state.metrics);
