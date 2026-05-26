@@ -748,43 +748,132 @@ async function generateRoutes(silent=false){
     controls.forEach(c=>usage[c.id]=0);
 
     const context=buildProfessionalRouteContext(start,controls,finish);
-    const attempts=Math.max(760,Math.min(2600,state.participantCount*120+controls.length*36));
+    const targetCount=Math.min(state.controlsPerRoute,controls.length);
+    const attempts=Math.max(2600,Math.min(9500,state.participantCount*520+controls.length*130+targetCount*360));
 
-    for(let r=0;routes.length<state.participantCount && r<state.participantCount*4;r++){
+    function generationShuffle(list, seed){
+        const arr=[...list];
+        for(let i=arr.length-1;i>0;i--){
+            const x=Math.sin((seed+1)*997.31+i*61.17)*10000;
+            const r=x-Math.floor(x);
+            const j=Math.floor(r*(i+1));
+            const tmp=arr[i];arr[i]=arr[j];arr[j]=tmp;
+        }
+        return arr;
+    }
+
+    function generationWideSample(seed, currentUsage){
+        const selected=[];
+        const used=new Set();
+        const pool=generationShuffle(controls,seed);
+        if(!pool.length)return selected;
+        selected.push(pool[0]);
+        used.add(pool[0].id);
+        while(selected.length<targetCount && used.size<controls.length){
+            let bestC=null,bestScore=-Infinity;
+            controls.forEach(c=>{
+                if(used.has(c.id))return;
+                const minD=Math.min(...selected.map(s=>haversineKm(s,c)));
+                const usePenalty=Math.pow((currentUsage[c.id]||0),1.25)*0.20;
+                const score=minD-usePenalty+Math.random()*0.05;
+                if(score>bestScore){bestScore=score;bestC=c;}
+            });
+            if(!bestC)break;
+            selected.push(bestC);
+            used.add(bestC.id);
+        }
+        return selected;
+    }
+
+    for(let r=0;routes.length<state.participantCount && r<state.participantCount*5;r++){
         const routeSlot=routes.length;
         updateRouteGenerationLoader(`Diseñando recorrido ${routeSlot+1} de ${state.participantCount}...`,24+((routeSlot/Math.max(1,state.participantCount))*66));
         await routeSleep(10);
 
         let best=null;
-        for(let a=0;a<attempts;a++){
-            const sampled=professionalSampleControls(context,state.controlsPerRoute,usage,r,a,routes);
-            const candidateControls=sampled.controls||sampled;
-            const direction=sampled.direction||1;
-            if(!candidateControls||candidateControls.length<state.controlsPerRoute)continue;
+        const uniqueCandidates=new Map();
 
-            const ordered=orderControlsSmart(start,candidateControls,finish,a,context,direction);
+        for(let a=0;a<attempts;a++){
+            let sampled;
+            let direction=(a%4===0||a%4===3)?1:-1;
+            const mode=a%7;
+
+            if(mode===0){
+                sampled=professionalSampleControls(context,targetCount,usage,r,a,routes);
+                direction=sampled.direction||direction;
+                sampled=sampled.controls||sampled;
+            }else if(mode===1){
+                sampled=sampleBalancedProgression(context,targetCount,usage,r,a,direction);
+            }else if(mode===2){
+                sampled=sampleFlowingRoute(context,targetCount,usage,r,a,direction,routes);
+            }else if(mode===3){
+                sampled=generationWideSample(a+r*137,usage);
+            }else if(mode===4){
+                sampled=generationShuffle(controls,a+r*211).slice(0,targetCount);
+            }else if(mode===5){
+                const s=professionalSampleControls(context,targetCount,usage,r,a+911,routes);
+                direction=s.direction||direction;
+                sampled=generationShuffle(s.controls||s,a+r*313).slice(0,targetCount);
+            }else{
+                sampled=sampleProgressionWindows(context,targetCount,usage,r,a+177,routes,direction);
+            }
+
+            const candidateControls=sampled.controls||sampled;
+            if(!candidateControls||candidateControls.length<targetCount)continue;
+
+            let ordered=orderControlsSmart(start,candidateControls,finish,a,context,direction);
+
+            // Variaciones controladas para que el generador inicial piense como la regeneración.
+            if(a%13===0 && ordered.length>3){
+                const k=1+(a%(ordered.length-2));
+                const rotated=[...ordered.slice(k),...ordered.slice(0,k)];
+                ordered=orderControlsSmart(start,rotated,finish,a+53,context,direction);
+            }
+            if(a%17===0 && ordered.length>4){
+                const c=[...ordered];
+                const i=1+(a%(ordered.length-2));
+                const tmp=c[i];c[i]=c[i+1];c[i+1]=tmp;
+                ordered=smoothAdjacentImprove([start,...c,finish],context,direction).slice(1,-1);
+            }
+
+            const ids=ordered.map(c=>c.id);
+            const key=ids.join("|");
+            if(uniqueCandidates.has(key))continue;
+
             const route=[start,...ordered,finish];
             const metrics=calcRouteMetrics(route);
             const quality=routeQualityDetails(route,context,direction);
-            const sequencePenalty=calcSequenceOverlapPenalty(ordered,routes);
+
+            // Se permite repetir algún tramo suelto. Lo que se penaliza de verdad
+            // es coincidir 3 o 4 balizas seguidas con otro recorrido.
+            const sequencePenalty=calcLongSequenceOverlapPenalty(ordered,routes);
+            const pairPenalty=calcSequenceOverlapPenalty(ordered,routes)*0.035;
             const overlap=calcOverlapPenalty(ordered,routes);
             const reusePenalty=ordered.reduce((sum,c)=>sum+Math.max(0,(usage[c.id]||0)-Math.max(1,state.maxControlReuse||1)+1),0);
             const balancePenalty=calcDistanceBalancePenalty(metrics,routes.map(x=>x.metrics));
 
             const qualityTier=quality.code==="clean"?0:(quality.code==="acceptable"?1:2);
-            const shortLegPenalty=(quality.shortControlLegs||0)*80000;
+            const shortLegPenalty=(quality.shortControlLegs||0)*90000;
             const score=
-                qualityTier*120000 +
+                qualityTier*180000 +
                 shortLegPenalty +
-                quality.total*18.0 +
-                sequencePenalty*9.5 +
-                balancePenalty*6.0 +
-                overlap*0.85 +
-                reusePenalty*3.2 +
-                metrics.distanceKm*0.16 +
+                quality.total*22.0 +
+                sequencePenalty +
+                pairPenalty +
+                balancePenalty*4.2 +
+                overlap*0.35 +
+                reusePenalty*2.4 +
+                metrics.distanceKm*0.10 +
                 Math.random()*0.01;
 
-            if(!best||score<best.score)best={route,controls:ordered,metrics,quality,score,sequencePenalty,balancePenalty,direction};
+            const item={route,controls:ordered,metrics,quality,score,sequencePenalty,balancePenalty,direction};
+            uniqueCandidates.set(key,item);
+            if(!best||score<best.score)best=item;
+
+            // Si encuentra un limpio sin tramos cortos ni coincidencias largas, puede parar antes.
+            if(best && best.quality.code==="clean" && Number(best.quality.shortControlLegs||0)===0 && best.sequencePenalty===0 && a>900){
+                break;
+            }
         }
 
         if(!best)continue;
@@ -812,12 +901,8 @@ async function generateRoutes(silent=false){
             }else if(item.quality.code==="acceptable"){
                 qualityWarnings.push(`${rid}: Recorrido aceptable. Trazado válido, pero no totalmente limpio.`);
             }
-            if(item.sequencePenalty>=80){
-                qualityWarnings.push(`${rid}: se evitó en lo posible copiar tramos, pero la configuración obliga a compartir alguna secuencia.`);
-            }
-            if(isInverse){
-                qualityWarnings.push(`${rid}: recorrido inverso creado automáticamente a partir de un recorrido limpio/perfecto.`);
-            }
+            // No se muestran avisos por inversos ni por repetir tramos sueltos.
+            // La lógica ya evita especialmente coincidir 3 o 4 balizas seguidas.
         }
 
         const currentRouteNumber=routes.length+1;
@@ -1565,6 +1650,36 @@ function segmentsIntersect(a,b,c,d){
 
 function orient(a,b,c){
     return (Number(b.lon)-Number(a.lon))*(Number(c.lat)-Number(a.lat))-(Number(b.lat)-Number(a.lat))*(Number(c.lon)-Number(a.lon));
+}
+
+
+function calcLongSequenceOverlapPenalty(orderedControls,existingRoutes){
+    const ids=(orderedControls||[]).map(c=>c.id);
+    let penalty=0;
+    (existingRoutes||[]).forEach(r=>{
+        const ex=(r.controls||[]).map(c=>c.id);
+        // Coincidir 3 balizas seguidas se penaliza mucho.
+        for(let i=0;i<=ids.length-3;i++){
+            const tri=ids.slice(i,i+3).join("|");
+            const triRev=ids.slice(i,i+3).reverse().join("|");
+            for(let j=0;j<=ex.length-3;j++){
+                const other=ex.slice(j,j+3).join("|");
+                if(tri===other)penalty+=1600;
+                else if(triRev===other)penalty+=420;
+            }
+        }
+        // Coincidir 4 balizas seguidas se considera casi prohibido.
+        for(let i=0;i<=ids.length-4;i++){
+            const quad=ids.slice(i,i+4).join("|");
+            const quadRev=ids.slice(i,i+4).reverse().join("|");
+            for(let j=0;j<=ex.length-4;j++){
+                const other=ex.slice(j,j+4).join("|");
+                if(quad===other)penalty+=9000;
+                else if(quadRev===other)penalty+=2400;
+            }
+        }
+    });
+    return penalty;
 }
 
 function calcSequenceOverlapPenalty(orderedControls,existingRoutes){
