@@ -783,24 +783,68 @@ async function generateRoutes(silent=false){
         }
 
         if(!best)continue;
-        best.controls.forEach(c=>usage[c.id]=(usage[c.id]||0)+1);
-        best.metrics.quality=best.quality.label;
-        best.metrics.qualityCode=best.quality.code;
-        best.metrics.qualityScore=Number(best.quality.total.toFixed(2));
-        best.metrics.routeMode=context.mode==="loop"?"circular":"lineal";
-        routes.push(best);
 
-        const rid="R"+String(r+1).padStart(2,"0");
-        if(best.quality.shortControlLegs>0){
-            qualityWarnings.push(`${rid}: contiene ${best.quality.shortControlLegs} tramo(s) entre balizas por debajo de 200 m (${(best.quality.shortControlLegList||[]).join(", ")}). Añade/mueve balizas o reduce controles por recorrido.`);
+        function prepareGeneratedRouteItem(item, clonedFrom=""){
+            item.metrics.quality=item.quality.label;
+            item.metrics.qualityCode=item.quality.code;
+            item.metrics.qualityScore=Number(item.quality.total.toFixed(2));
+            item.metrics.routeMode=context.mode==="loop"?"circular":"lineal";
+            if(clonedFrom)item.metrics.variantOf=clonedFrom;
+            return item;
         }
-        if(best.quality.code==="forced"){
-            qualityWarnings.push(`${rid}: Recorrido forzado. Revisa distribución de balizas, reduce controles por recorrido o mueve salida/llegada.`);
-        }else if(best.quality.code==="acceptable"){
-            qualityWarnings.push(`${rid}: Recorrido aceptable. Trazado válido, pero no totalmente limpio.`);
+
+        function pushGeneratedRoute(item, routeNumber, isInverse=false){
+            item.controls.forEach(c=>usage[c.id]=(usage[c.id]||0)+1);
+            prepareGeneratedRouteItem(item, isInverse?"INVERSO":"");
+            routes.push(item);
+
+            const rid="R"+String(routeNumber).padStart(2,"0");
+            if(item.quality.shortControlLegs>0){
+                qualityWarnings.push(`${rid}: contiene ${item.quality.shortControlLegs} tramo(s) entre balizas por debajo de 200 m (${(item.quality.shortControlLegList||[]).join(", ")}). Añade/mueve balizas o reduce controles por recorrido.`);
+            }
+            if(item.quality.code==="forced"){
+                qualityWarnings.push(`${rid}: Recorrido forzado. Revisa distribución de balizas, reduce controles por recorrido o mueve salida/llegada.`);
+            }else if(item.quality.code==="acceptable"){
+                qualityWarnings.push(`${rid}: Recorrido aceptable. Trazado válido, pero no totalmente limpio.`);
+            }
+            if(item.sequencePenalty>=80){
+                qualityWarnings.push(`${rid}: se evitó en lo posible copiar tramos, pero la configuración obliga a compartir alguna secuencia.`);
+            }
+            if(isInverse){
+                qualityWarnings.push(`${rid}: recorrido inverso creado automáticamente a partir de un recorrido limpio/perfecto.`);
+            }
         }
-        if(best.sequencePenalty>=80){
-            qualityWarnings.push(`${rid}: se evitó en lo posible copiar tramos, pero la configuración obliga a compartir alguna secuencia.`);
+
+        const currentRouteNumber=routes.length+1;
+        pushGeneratedRoute(best,currentRouteNumber,false);
+
+        // Prioridad alta: si un recorrido sale limpio/perfecto, se crea también su inverso.
+        // Así se obtienen dos recorridos muy buenos con la misma calidad de trazado.
+        const canAddInverse=routes.length<state.participantCount && best.quality.code==="clean" && Number(best.quality.shortControlLegs||0)===0;
+        if(canAddInverse){
+            const inverseControls=[...best.controls].reverse();
+            const inverseRoute=[start,...inverseControls,finish];
+            const inverseMetrics=calcRouteMetrics(inverseRoute);
+            const inverseQuality=routeQualityDetails(inverseRoute,context,-best.direction);
+            const inverseSequencePenalty=calcSequenceOverlapPenalty(inverseControls,routes);
+            const inverseOverlap=calcOverlapPenalty(inverseControls,routes);
+            const inverseItem={
+                route:inverseRoute,
+                controls:inverseControls,
+                metrics:inverseMetrics,
+                quality:inverseQuality,
+                score:best.score+0.001,
+                sequencePenalty:inverseSequencePenalty,
+                overlap:inverseOverlap,
+                balancePenalty:best.balancePenalty||0,
+                direction:-best.direction
+            };
+
+            // Lo añadimos si sigue siendo bueno. Si por geometría sale aceptable, también se permite,
+            // pero nunca si aparecen tramos entre balizas de menos de 200 m.
+            if(inverseQuality.shortControlLegs===0 && inverseQuality.code!=="forced"){
+                pushGeneratedRoute(inverseItem,routes.length+1,true);
+            }
         }
     }
 
