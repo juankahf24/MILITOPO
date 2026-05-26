@@ -5229,6 +5229,256 @@ function hideZipProgress(){
     if(box)box.style.display="none";
 }
 
+
+
+async function recorridosPdfBlob(){
+    const jsPDF=await ensureJsPdf();
+    const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4",compress:true});
+
+    const pageW=297, pageH=210;
+    const margin=5;
+    const usableW=pageW-margin*2;
+    const titleH=16;
+    const headerH=8;
+    const rowH=8;
+    const bottom=pageH-margin;
+
+    const columns=[
+        {key:"participantId",label:"PARTICIPANTE",w:27,align:"center"},
+        {key:"routeId",label:"RECORRIDO",w:24,align:"center"},
+        {key:"status",label:"ESTADO",w:28,align:"center"},
+        {key:"distanceKm",label:"DIST. KM",w:22,align:"center"},
+        {key:"longestKm",label:"TRAMO LARGO",w:26,align:"center"},
+        {key:"positiveM",label:"DESNIVEL +",w:24,align:"center"},
+        {key:"negativeM",label:"DESNIVEL -",w:24,align:"center"},
+        {key:"globalM",label:"GLOBAL",w:20,align:"center"},
+        {key:"difficulty",label:"DIFICULTAD",w:24,align:"center"},
+        {key:"order",label:"ORDEN",w:88,align:"left"}
+    ];
+
+    const rows=(state.routes||[]).map((r,i)=>{
+        const m=(state.metrics||[])[i]||{};
+        return {
+            participantId:String(r.participantId||""),
+            routeId:String(r.routeId||""),
+            status:isRouteSkipped(r)?"DESCARTADO":"ACTIVO",
+            distanceKm:m.distanceKm??"",
+            longestKm:m.longestKm??"",
+            positiveM:m.positiveM??"",
+            negativeM:m.negativeM??"",
+            globalM:m.globalM??"",
+            difficulty:m.difficulty??"",
+            order:(r.points||[]).join(" → ")
+        };
+    });
+
+    function drawPageHeader(){
+        doc.setFillColor(255,255,255);
+        doc.rect(0,0,pageW,pageH,"F");
+
+        doc.setDrawColor(0,0,0);
+        doc.setLineWidth(0.5);
+        doc.rect(margin,margin,pageW-margin*2,pageH-margin*2,"S");
+
+        doc.setFont("helvetica","bold");
+        doc.setTextColor(0,0,0);
+        doc.setFontSize(16);
+        doc.text("RECORRIDOS",pageW/2,margin+8,{align:"center"});
+
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(7);
+        const meta=`MILITOPO ORIENTACIÓN · ${String(state.eventName||"ENTRENAMIENTO ORIENTACIÓN")} · ${new Date().toLocaleString("es-ES")}`;
+        doc.text(meta,pageW/2,margin+13,{align:"center",maxWidth:usableW-8});
+    }
+
+    function drawTableHeader(y){
+        let x=margin;
+        doc.setFillColor(235,235,235);
+        doc.setDrawColor(0,0,0);
+        doc.setLineWidth(0.25);
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(6.2);
+        columns.forEach(col=>{
+            doc.rect(x,y,col.w,headerH,"FD");
+            const lines=doc.splitTextToSize(col.label,col.w-2).slice(0,2);
+            doc.text(lines,x+col.w/2,y+3.4,{align:"center",maxWidth:col.w-2});
+            x+=col.w;
+        });
+    }
+
+    function drawCellText(text,x,y,w,align){
+        const clean=String(text??"");
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(5.8);
+        const maxW=w-2;
+        const lines=doc.splitTextToSize(clean,maxW).slice(0,2);
+        const tx=align==="center"?x+w/2:x+1.2;
+        doc.text(lines,tx,y+3.4,{align:align==="center"?"center":"left",maxWidth:maxW});
+    }
+
+    function drawRow(row,y){
+        let x=margin;
+        doc.setDrawColor(0,0,0);
+        doc.setLineWidth(0.2);
+        columns.forEach(col=>{
+            doc.rect(x,y,col.w,rowH,"S");
+            drawCellText(row[col.key],x,y,col.w,col.align);
+            x+=col.w;
+        });
+    }
+
+    drawPageHeader();
+    let y=margin+titleH+3;
+    drawTableHeader(y);
+    y+=headerH;
+
+    rows.forEach(row=>{
+        if(y+rowH>bottom){
+            doc.addPage("a4","landscape");
+            drawPageHeader();
+            y=margin+titleH+3;
+            drawTableHeader(y);
+            y+=headerH;
+        }
+        drawRow(row,y);
+        y+=rowH;
+    });
+
+    if(!rows.length){
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(10);
+        doc.text("No hay recorridos generados.",pageW/2,y+12,{align:"center"});
+    }
+
+    return doc.output("blob");
+}
+
+
+async function balizasPdfBlob(){
+    const jsPDF=await ensureJsPdf();
+    const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
+
+    const pageW=210, pageH=297;
+    const margin=5;
+    const usableW=pageW-margin*2;
+    const titleH=16;
+    const rowH=8;
+    const headerH=8;
+    const bottom=pageH-margin;
+
+    const columns=[
+        {key:"id",label:"ID",w:20,align:"center"},
+        {key:"type",label:"TIPO",w:30,align:"center"},
+        {key:"utm",label:"UTM",w:72,align:"left"},
+        {key:"lat",label:"LAT",w:26,align:"center"},
+        {key:"lon",label:"LON",w:26,align:"center"},
+        {key:"elev",label:"ELEV.",w:26,align:"center"}
+    ];
+
+    function sortPointOrder(a,b){
+        const order=id=>{
+            const s=String(id||"").toUpperCase();
+            if(s==="START")return -2;
+            if(s==="FINISH")return 99999;
+            const m=s.match(/^B(\d+)$/);
+            return m?Number(m[1]):50000;
+        };
+        return order(a.id)-order(b.id)||String(a.id).localeCompare(String(b.id));
+    }
+
+    const rows=Object.values(state.points||{})
+        .slice()
+        .sort(sortPointOrder)
+        .map(p=>({
+            id:String(p.id||""),
+            type:String(p.type||""),
+            utm:String(p.utm||""),
+            lat:Number.isFinite(Number(p.lat))?Number(p.lat).toFixed(6):"",
+            lon:Number.isFinite(Number(p.lon))?Number(p.lon).toFixed(6):"",
+            elev:Number.isFinite(Number(p.elevation))?String(Math.round(Number(p.elevation))):""
+        }));
+
+    function drawPageHeader(){
+        doc.setFillColor(255,255,255);
+        doc.rect(0,0,pageW,pageH,"F");
+
+        doc.setDrawColor(0,0,0);
+        doc.setLineWidth(0.5);
+        doc.rect(margin,margin,pageW-margin*2,pageH-margin*2,"S");
+
+        doc.setFont("helvetica","bold");
+        doc.setTextColor(0,0,0);
+        doc.setFontSize(16);
+        doc.text("BALIZAS",pageW/2,margin+8,{align:"center"});
+
+        doc.setFontSize(7);
+        doc.setFont("helvetica","normal");
+        const meta=`MILITOPO ORIENTACIÓN · ${String(state.eventName||"ENTRENAMIENTO ORIENTACIÓN")} · ${new Date().toLocaleString("es-ES")}`;
+        doc.text(meta,pageW/2,margin+13,{align:"center",maxWidth:usableW-8});
+    }
+
+    function drawTableHeader(y){
+        let x=margin;
+        doc.setFillColor(235,235,235);
+        doc.setDrawColor(0,0,0);
+        doc.setLineWidth(0.25);
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(7);
+        columns.forEach(col=>{
+            doc.rect(x,y,col.w,headerH,"FD");
+            doc.text(col.label,x+col.w/2,y+5.2,{align:"center"});
+            x+=col.w;
+        });
+    }
+
+    function drawCellText(text,x,y,w,align){
+        const clean=String(text??"");
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(6.5);
+        const maxW=w-2;
+        const lines=doc.splitTextToSize(clean,maxW).slice(0,2);
+        const tx=align==="center"?x+w/2:x+1.4;
+        doc.text(lines,tx,y+5.1,{align:align==="center"?"center":"left",maxWidth:maxW});
+    }
+
+    function drawRow(row,y){
+        let x=margin;
+        doc.setDrawColor(0,0,0);
+        doc.setLineWidth(0.2);
+        columns.forEach(col=>{
+            doc.rect(x,y,col.w,rowH,"S");
+            drawCellText(row[col.key],x,y,col.w,col.align);
+            x+=col.w;
+        });
+    }
+
+    drawPageHeader();
+    let y=margin+titleH+3;
+    drawTableHeader(y);
+    y+=headerH;
+
+    rows.forEach(row=>{
+        if(y+rowH>bottom){
+            doc.addPage("a4","portrait");
+            drawPageHeader();
+            y=margin+titleH+3;
+            drawTableHeader(y);
+            y+=headerH;
+        }
+        drawRow(row,y);
+        y+=rowH;
+    });
+
+    if(!rows.length){
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(10);
+        doc.text("No hay balizas configuradas.",pageW/2,y+12,{align:"center"});
+    }
+
+    return doc.output("blob");
+}
+
+
 async function generateZip(verificationFromButton=null){ensureZipProgressUi();updateZipProgress(0,1,'Preparando ZIP');await zipUiYield();syncPlanScaleFromUiNow();
     const previousButton=document.querySelector('button[onclick="verifyAndGenerateZip()"]');
     try{
@@ -5269,8 +5519,8 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
 
         setZipStatus("warn","Añadiendo datos del evento...");
         zip.file("evento_orientacion.json",JSON.stringify(eventData,null,2));
-        zip.file("recorridos.csv",routesCsv());
-        zip.file("balizas.csv",pointsCsv());
+        zip.file("recorridos.pdf",await recorridosPdfBlob());
+        zip.file("balizas.pdf",await balizasPdfBlob());
         zip.file("registros_offline_base.json",JSON.stringify({eventId:state.eventId,participantNames:state.participantNames||{},logs:state.participantLogs},null,2));
         if(typeof verificationReportHtml==="function"){
             zip.file("VERIFICACION_EJERCICIO.html",verificationReportHtml(verification));
@@ -5462,7 +5712,7 @@ function buildEventData(){
         iofDescriptions:state.iofDescriptions||{},
         skippedRoutes:state.skippedRoutes||{}
     }
-}function pointsCsv(){const rows=[["ID","TIPO","UTM","LAT","LON","ELEVACION","DESCRIPCION","QR"]];Object.values(state.points).forEach(p=>rows.push([p.id,p.type,p.utm||"",p.lat??"",p.lon??"",p.elevation??"",p.desc||"",controlPayload(p.id)]));return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}function routesCsv(){const rows=[["PARTICIPANTE","RECORRIDO","ESTADO_MATERIAL","DISTANCIA_KM","TRAMO_LARGO_KM","DESNIVEL_POSITIVO_M","DESNIVEL_NEGATIVO_M","DESNIVEL_GLOBAL_M","DIFICULTAD","ORDEN"]];(state.routes||[]).forEach((r,i)=>{const m=state.metrics[i]||{};rows.push([r.participantId,r.routeId,isRouteSkipped(r)?"DESCARTADO_RESERVA":"ACTIVO",m.distanceKm,m.longestKm,m.positiveM,m.negativeM,m.globalM,m.difficulty,r.points.join(" > ")])});return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}
+}function pointsCsv(){const rows=[["ID","TIPO","UTM","LAT","LON","ELEVACION","QR"]];Object.values(state.points).forEach(p=>rows.push([p.id,p.type,p.utm||"",p.lat??"",p.lon??"",p.elevation??"",controlPayload(p.id)]));return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}function routesCsv(){const rows=[["PARTICIPANTE","RECORRIDO","ESTADO_MATERIAL","DISTANCIA_KM","TRAMO_LARGO_KM","DESNIVEL_POSITIVO_M","DESNIVEL_NEGATIVO_M","DESNIVEL_GLOBAL_M","DIFICULTAD","ORDEN"]];(state.routes||[]).forEach((r,i)=>{const m=state.metrics[i]||{};rows.push([r.participantId,r.routeId,isRouteSkipped(r)?"DESCARTADO_RESERVA":"ACTIVO",m.distanceKm,m.longestKm,m.positiveM,m.negativeM,m.globalM,m.difficulty,r.points.join(" > ")])});return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}
 
 const STORAGE_KEY_IOF_CUSTOM_SYMBOLS="militopo_iof_custom_symbols_v4_c_h_combo_cruce_union_curva";
 const STORAGE_KEY_IOF_D_CUSTOM_SYMBOLS="militopo_iof_d_custom_symbols_v1";
