@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>MILITOPO | Sistema de Recorridos Topográficos</title>
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Proj4js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    <!-- SheetJS -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script>window.XLSXBase = window.XLSX;</script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script>window.XLSXStyle = window.XLSX; window.XLSX = window.XLSXBase;</script>
+    <!-- JSZip y FileSaver -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- QRCode -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="container">
+    <div class="header header-clean-topografia">
+        <div class="header-content header-content-clean">
+            <div class="topo-militar topo-militar-clean">
+                <img class="logo-imagen logo-imagen-clean" src="https://i.postimg.cc/RFmGrHdD/IMG-4917.jpg" alt="Logo MILITOPO">
+                <div class="topo-info topo-info-clean">
+                    <h1>MILITOPO</h1>
+                    <div class="topografia-subtitle-clean">TOPOGRAFÍA</div>
+                    <div id="headerModeTabs" class="branch-tabs header-branch-tabs-modern" aria-label="Selector de rama MILITOPO">
+                        <button id="headerTopoTab" type="button" class="branch-tab header-branch-btn active" data-branch="topografica">
+                            <span class="branch-tab-icon">🗺️</span>
+                            <span class="branch-tab-text">Topográfica</span>
+                        </button>
+                        <button id="headerOriTab" type="button" class="branch-tab header-branch-btn" data-branch="orientacion" aria-disabled="false">
+                            <span class="branch-tab-icon">🧭</span>
+                            <span class="branch-tab-text">Orientación</span>
+                            
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="steps-container workflow-steps" aria-label="Pasos principales de Topográfica">
+        <div class="step" data-step="1">
+            <span class="step-number">01</span>
+            <span class="step-icon">⚙️</span>
+            <span class="step-copy">
+                <strong>Configurar</strong>
+                <small>Módulos, puntos y coordenadas</small>
+            </span>
+        </div>
+        <div class="step" data-step="2">
+            <span class="step-number">02</span>
+            <span class="step-icon">📍</span>
+            <span class="step-copy">
+                <strong>Editar puntos</strong>
+                <small>Mapa IGN o carga manual</small>
+            </span>
+        </div>
+        <div class="step" data-step="3">
+            <span class="step-number">03</span>
+            <span class="step-icon">📦</span>
+            <span class="step-copy">
+                <strong>Generar</strong>
+                <small>Recorridos y ZIP final</small>
+            </span>
+        </div>
+    </div>
+
+    <section id="topoVisualHud" class="topo-workflow-panel" aria-label="Progreso guiado de la rama Topográfica">
+        <div class="topo-workflow-header">
+            <div class="topo-workflow-compass" aria-hidden="true">🧭</div>
+            <div class="topo-workflow-title">
+                <div class="topo-hud-kicker">Rama activa · Topográfica</div>
+                <h2>Procedimiento del ejercicio</h2>
+                <p>Sigue el flujo en orden: primero estructura, después puntos y por último generación del paquete final.</p>
+            </div>
+            <div class="topo-workflow-percent" aria-live="polite">
+                <strong id="topoHudProgreso">0%</strong>
+                <span>avance</span>
+            </div>
+        </div>
+
+        <div class="topo-workflow-bar" aria-hidden="true">
+            <span id="topoHudProgressFill"></span>
+        </div>
+
+        <div class="topo-workflow-cards" aria-label="Estado de cada fase">
+            <article class="workflow-card" data-workflow-step="1">
+                <span class="workflow-card-icon">⚙️</span>
+                <div>
+                    <strong>1. Configurar estructura</strong>
+                    <small id="workflowStatus1">Pendiente de confirmar</small>
+                </div>
+            </article>
+            <article class="workflow-card" data-workflow-step="2">
+                <span class="workflow-card-icon">📍</span>
+                <div>
+                    <strong>2. Completar puntos</strong>
+                    <small id="workflowStatus2">0 puntos revisados</small>
+                </div>
+            </article>
+            <article class="workflow-card" data-workflow-step="3">
+                <span class="workflow-card-icon">📦</span>
+                <div>
+                    <strong>3. Generar archivos</strong>
+                    <small id="workflowStatus3">Listo cuando los puntos estén completos</small>
+                </div>
+            </article>
+        </div>
+
+        <div class="topo-workflow-metrics" aria-label="Resumen de estructura">
+            <div><span>📦</span><strong id="topoHudModulos">8</strong><small>Módulos</small></div>
+            <div><span>📍</span><strong id="topoHudPuntos">40</strong><small>Puntos totales</small></div>
+        </div>
+    </section>
+
+    <div id="step1" class="step-content active">
+        <div class="card">
+            <div class="card-header"><h2>✦ CONFIGURACIÓN DE LA ESTRUCTURA ✦</h2></div>
+            <div class="config-row">
+                <div class="config-item">
+                    <label>📦 MÓDULOS <button type="button" class="modern-info-btn" id="infoModulosIcon" aria-label="Información sobre módulos"><span>i</span></button></label>
+                    <select id="numModulosSelect"><option value="2">2 módulos</option><option value="3">3 módulos</option><option value="4">4 módulos</option><option value="5">5 módulos</option><option value="6">6 módulos</option><option value="7">7 módulos</option><option value="8" selected>8 módulos</option></select>
+                </div>
+                <div class="config-item">
+                    <label>📍 PUNTOS POR MÓDULO <button type="button" class="modern-info-btn" id="infoPuntosIcon" aria-label="Información sobre puntos por módulo"><span>i</span></button></label>
+                    <select id="puntosPorModuloSelect"><option value="2">2 puntos</option><option value="3">3 puntos</option><option value="4">4 puntos</option><option value="5" selected>5 puntos</option></select>
+                </div>
+                <div class="config-item">
+                    <label>🗺️ COORDENADAS <button type="button" class="modern-info-btn" id="infoCoordIcon" aria-label="Información sobre coordenadas"><span>i</span></button></label>
+                    <select id="coordTypeConfig"><option value="UTM">UTM</option><option value="MGRS">MGRS</option></select>
+                </div>
+            </div>
+            <div id="infoMessagesStep1"></div>
+            <div class="config-info"><strong>📌 ESTRUCTURA ACTUAL:</strong> <span id="infoEstructura">8 módulos × 5 puntos = 40 puntos totales</span></div>
+            <div class="nav-buttons">
+                <div></div>
+                <button id="confirmStep1" class="btn btn-primary">✓ CONFIRMAR Y CONTINUAR →</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="step2" class="step-content">
+        <div class="card">
+            <div class="card-header"><h2>📍 EDITAR PUNTOS TOPOGRÁFICOS</h2></div>
+            <div class="edit-options">
+                <div class="option-card">
+                    <div class="option-icon">🗺️</div>
+                    <div class="option-title">Automático con mapa IGN</div>
+                    <div class="option-desc">Utiliza el mapa topográfico/aéreo del IGN para seleccionar puntos visualmente. Haz clic en la pestaña de abajo, selecciona qué punto quieres modificar y haz clic en un punto del mapa para asignar coordenadas automáticamente.</div>
+                    <button id="mapBtn" class="btn btn-primary" style="padding: 6px 16px; font-size:0.75rem;">🗺️ Mapa topográfico y aéreo IGN</button>
+                </div>
+                <div class="option-card">
+                    <div class="option-icon">✍️</div>
+                    <div class="option-title">Manual</div>
+                    <div class="option-desc">Introduce las coordenadas directamente en cada punto. Puedes escribir en formato UTM o MGRS según la configuración del paso 1.</div>
+                    <div class="option-badge">Escribe directamente en los campos</div>
+                    <div class="import-export-buttons" id="importButtonsContainer">
+                        <div style="display: flex; align-items: center; gap: 8px;" id="csvImportContainer">
+                            <button id="importCSVBtn" class="btn btn-secondary btn-small">📂 Importar desde CSV/Excel</button>
+                            <button type="button" id="importCSVInfoIcon" class="modern-info-btn modern-info-btn-inline" aria-label="Información sobre importar CSV o Excel"><span>i</span></button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;" id="gpxImportContainer">
+                            <button id="importGPXBtn" class="btn btn-secondary btn-small">📥 Importar desde GPX/KML (ATAK)</button>
+                            <button type="button" id="importGPXInfoIcon" class="modern-info-btn modern-info-btn-inline" aria-label="Información sobre importar GPX o KML"><span>i</span></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="infoMessagesStep2"></div>
+
+            <div class="search-container-puntos">
+                <input type="text" id="searchPuntos" class="search-input-puntos" placeholder="Buscar por nombre del punto o descripción...">
+                <div class="search-actions">
+                    <button id="clearSearchBtn" class="btn-secondary btn-small">✖️ Limpiar búsqueda</button>
+                </div>
+            </div>
+
+            <div class="points-action-tabs" aria-label="Acciones rápidas de puntos topográficos">
+                <button type="button" id="autofillPuntosBtn" class="points-action-tab autofill">✨ Autorellenar puntos y descripciones</button>
+                <button type="button" id="clearPuntosTopBtn" class="points-action-tab clear">🧹 Limpiar puntos y descripciones</button>
+            </div>
+
+            <div id="puntosGrid" class="modulos-acordeon"></div>
+
+            <div class="dashboard" id="dashboard">
+                <div class="dashboard-title">📊 TABLERO DE CONTROL</div>
+                <div class="dashboard-stats">
+                    <div class="stat-card"><div class="stat-value" id="totalPuntos">0</div><div class="stat-label">Total puntos</div></div>
+                    <div class="stat-card"><div class="stat-value" id="completadosPuntos">0</div><div class="stat-label">Completados</div></div>
+                    <div class="stat-card"><div class="stat-value" id="porcentajePuntos">0%</div><div class="stat-label">Progreso</div></div>
+                    <div class="stat-card"><div class="stat-value" id="maxRecorridos">0</div><div class="stat-label">Recorridos máximos</div></div>
+                </div>
+                <div class="progress-bar-big"><div class="progress-fill-big" id="progressFillBig"></div></div>
+                <div id="dashboardWarnings" style="margin-top:14px;"></div>
+            </div>
+
+            <div class="nav-buttons">
+                <button id="backToStep1" class="btn btn-secondary">← ANTERIOR</button>
+                <button id="confirmStep2" class="btn btn-primary">CONFIRMAR Y CONTINUAR →</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="step3" class="step-content">
+        <div class="card">
+            <div class="card-header"><h2>🗺️ GENERAR RECORRIDOS</h2></div>
+            <div class="recorridos-selector">
+                <div class="recorridos-label">📊 NÚMERO DE RECORRIDOS A GENERAR</div>
+                <select id="numRecorridos" class="recorridos-select"></select>
+                <div class="recorridos-select-hint">Pulsa para desplegar opciones ▼</div>
+            </div>
+            <div id="resumenTecnicoBox" class="tech-summary">
+                <h3>📋 RESUMEN TÉCNICO PREVIO</h3>
+                <div id="resumenTecnicoContent" class="tech-grid"></div>
+                <div id="resumenTecnicoAvisos" style="margin-top:12px;"></div>
+                <div class="preview-inline-actions">
+                    <button id="previewRecorridoBtn" class="btn btn-secondary">🗺️ VISTA PREVIA EN MAPA</button>
+                    <button id="verRecorridosDetalleBtn" class="btn btn-secondary">📋 VER RECORRIDOS Y CARACTERÍSTICAS</button>
+                    <button id="regenerarRecorridosBtn" class="btn btn-primary">🔄 REGENERAR RECORRIDOS</button>
+                </div>
+                <div id="routeDetailsPanel" class="route-details-panel" style="display:none;"></div>
+            </div>
+            <div id="resultadosGen"></div>
+            <div class="zip-include-panel" style="margin-top: 20px;">
+                <div class="zip-include-title">📦 EL ZIP INCLUYE:</div>
+                <div class="file-grid">
+                    <div class="file-card"><div class="file-icon">📁</div><div class="file-title">Organizadores/</div><div class="file-desc">PDF de recorridos/resultados + informe PDF + puntos GPX</div><div class="badge">Carpeta</div></div>
+                    <div class="file-card"><div class="file-icon">🗺️</div><div class="file-title">Balizas/</div><div class="file-desc">Solo balizas normales en PDF A4 vertical, listas para imprimir</div><div class="badge">Carpeta</div></div>
+                    <div class="file-card"><div class="file-icon">📄</div><div class="file-title">Hojas_Recorrido/</div><div class="file-desc">Hojas para participantes en PDF A4 vertical, listas para imprimir</div><div class="badge">Carpeta</div></div>
+                </div>
+            </div>
+            <div id="zipNotification"></div>
+            <div class="nav-buttons">
+                <button id="backToStep2" class="btn btn-secondary">← ANTERIOR</button>
+                <button id="generarBtn" class="btn btn-success">✨ GENERAR ZIP</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+<div id="startupModeOverlay" class="startup-overlay startup-overlay-minimal" role="dialog" aria-modal="true" aria-labelledby="startupTitle">
+    <div class="startup-backdrop-grid" aria-hidden="true"></div>
+    <div class="startup-minimal-shell">
+        <div class="startup-minimal-logo-wrap">
+            <img class="startup-minimal-logo" src="https://i.postimg.cc/RFmGrHdD/IMG-4917.jpg" alt="Logo MILITOPO">
+        </div>
+        <h1 id="startupTitle" class="startup-minimal-title">MILITOPO</h1>
+        <div class="startup-minimal-actions" aria-label="Ramas disponibles">
+            <button id="startupTopoBtn" type="button" class="startup-minimal-btn startup-minimal-btn-primary">Entrar en Topografía</button>
+            <button id="startupOriBtn" type="button" class="startup-minimal-btn startup-minimal-btn-secondary">Entrar en Orientación</button>
+        </div>
+        <div id="startupPendingNotice" class="startup-notice startup-notice-floating" hidden>
+            🧭 Orientación estará disponible cuando incorpores esa rama.
+        </div>
+    </div>
+</div>
+
+<div id="orientacionShell" style="display:none;">
+    <div class="steps-container">
+        <div class="step active">PASO 1 · CONFIGURAR ORIENTACIÓN</div>
+        <div class="step">PASO 2 · PARTICIPANTES Y CONTROL</div>
+        <div class="step">PASO 3 · GENERAR ORIENTACIÓN</div>
+    </div>
+
+    <div id="oriStep1" class="step-content active">
+        <div class="card">
+            <div class="card-header"><h2>🏃 CONFIGURACIÓN DE ORIENTACIÓN</h2></div>
+            <div class="config-info" style="margin-bottom:14px;">
+                Este modo queda separado del topográfico. Esta zona queda reservada para conectar tu código definitivo de orientación cuando esté cerrado. No afecta a la rama topográfica.
+            </div>
+
+            <div class="config-row">
+                <div class="config-item">
+                    <label>📦 MÓDULOS</label>
+                    <select id="oriNumModulosMirror" disabled></select>
+                </div>
+                <div class="config-item">
+                    <label>📍 PUNTOS POR MÓDULO</label>
+                    <select id="oriPuntosPorModuloMirror" disabled></select>
+                </div>
+                <div class="config-item">
+                    <label>🧭 MODO</label>
+                    <select id="oriOrderMode">
+                        <option value="strict" selected>Orden obligatorio</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:14px; border:1px solid var(--border-light);">
+                <div class="card-header"><h2>👥 PARTICIPANTES</h2></div>
+                <div class="config-item">
+                    <label>Lista de participantes (uno por línea)</label>
+                    <textarea id="oriParticipantsText" rows="8" style="width:100%; resize:vertical; border-radius:14px; padding:12px; background:var(--input-bg); color:var(--text-primary); border:1px solid var(--border-light); font-family:monospace;" placeholder="Ejemplo:
+ALFA 1
+ALFA 2
+BRAVO 1"></textarea>
+                </div>
+                <div class="config-info" style="margin-top:10px;">
+                    <strong>Flujo previsto:</strong> tú les enseñas su QR personal en salida, lo escanean, quedan identificados y empieza a contar la hora de salida. Después validan balizas QR en orden, guiándose por su mapa de orientación.
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <div></div>
+                <button id="oriContinueBtn" class="btn btn-primary">✓ CONTINUAR ORIENTACIÓN →</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="oriStep2" class="step-content" style="display:block;">
+        <div class="card" style="display:none;" id="oriStep2Card">
+            <div class="card-header"><h2>📲 CONTROL DE SALIDA Y VALIDACIÓN</h2></div>
+            <div class="config-info">
+                Aquí irá la parte específica de orientación para salida con QR, validación de balizas y control del progreso.
+            </div>
+            <div class="config-info" style="margin-top:10px;">
+                Por ahora queda ya separado del modo topográfico y preparado para seguir construyéndolo sin tocar lo que ya funciona.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="topoInfoModal" class="topo-info-modal" aria-hidden="true">
+    <div class="topo-info-dialog" role="dialog" aria-modal="true" aria-labelledby="topoInfoModalTitle">
+        <div class="topo-info-dialog-header">
+            <div class="topo-info-dialog-title">
+                <span id="topoInfoModalIcon" class="topo-info-dialog-icon">ℹ️</span>
+                <span id="topoInfoModalTitle">Información</span>
+            </div>
+            <button type="button" id="topoInfoModalClose" class="topo-info-close" aria-label="Cerrar información">×</button>
+        </div>
+        <div id="topoInfoModalBody" class="topo-info-dialog-body"></div>
+    </div>
+</div>
+
+<div id="mapModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🗺️ Mapa Topográfico IGN (España)</h3>
+            <span class="close-modal">&times;</span>
+        </div>
+        <div class="map-search-panel">
+            <div class="map-search-title">🔎 Buscar zona del mapa</div>
+            <div class="map-search-row">
+                <input type="text" id="searchInput" placeholder="Lugar, dirección o coordenadas. Ej: Madrid, 40.4168 -3.7038">
+                <button id="searchBtn" class="btn btn-primary" type="button">🔍 Buscar</button>
+            </div>
+        </div>
+        <div class="map-coord-panel">
+            <div class="map-coord-card">
+                <div class="k">Coordenadas bajo el cursor</div>
+                <div class="v" id="coordMouseDisplay">--</div>
+            </div>
+            <div class="map-coord-card">
+                <div class="k">Coordenada de la baliza seleccionada</div>
+                <div class="v" id="coordPreview">--</div>
+            </div>
+        </div>
+        <div class="map-point-control-panel">
+            <div class="map-point-selector-box">
+                <label class="map-point-selector-label" for="mapPointSelect">Baliza a editar sobre el plano</label>
+                <select id="mapPointSelect" class="map-point-select" title="Selecciona el punto que quieres editar"></select>
+            </div>
+            <div id="mapPointStatusCard" class="map-point-status-card incomplete">
+                <div class="map-point-status-icon">✕</div>
+                <div>
+                    <div class="map-point-status-title">Baliza pendiente</div>
+                    <div class="map-point-status-detail">Selecciona una baliza</div>
+                </div>
+            </div>
+        </div>
+        <div id="geoStatusBanner" class="geo-status-banner"></div>
+        <div class="map-container" id="mapContainer"></div>
+        <div class="layer-selector map-layer-selector-bottom">
+            <button class="layer-btn" data-layer="topo">🗺️ Topográfico IGN</button>
+            <button class="layer-btn" data-layer="aerea">🛰️ Aérea PNOA</button>
+            <button class="layer-btn" data-layer="mapant">🧭 Orientación MAPANT</button>
+        </div>
+        <div id="mapManualEditor" class="map-manual-editor">
+            <div class="map-manual-editor-header">
+                <div class="map-manual-editor-title">🗂️ Edición manual dentro del mapa</div>
+                <div class="map-manual-editor-hint">Puedes modificar coordenadas y descripción sin salir de esta ventana.</div>
+            </div>
+            <div class="points-action-tabs map-action-tabs" aria-label="Acciones rápidas de puntos dentro del mapa">
+                <button type="button" id="mapAutofillPuntosBtn" class="points-action-tab autofill">✨ Autorellenar puntos y descripciones</button>
+                <button type="button" id="mapClearPuntosBtn" class="points-action-tab clear">🧹 Limpiar puntos y descripciones</button>
+            </div>
+            <div id="mapPuntosGrid" class="map-modulos-acordeon"></div>
+        </div>
+        <div class="alert alert-info" style="margin-top:12px;">
+            En Safari, el icono de mi ubicación puede no funcionar. Prueba en otro navegador del móvil.
+        </div>
+        <div class="alert alert-info">
+            <strong>🔹 ASIGNACIÓN CON DESCRIPCIÓN:</strong> Selecciona el punto, haz clic en el mapa → rellena coordenada y descripción, confirma.<br>
+            <strong>🔹 ARRASTRE CON CONFIRMACIÓN.</strong> 🔹 ELIMINAR PUNTO desde popup.<br>
+            <strong>🔹 BUSCADOR:</strong> Escribe un lugar y pulsa "Buscar".<br>
+            <strong>🔹 MI UBICACIÓN:</strong> Usa “📍 Mi ubicación” para centrar el mapa en tu posición actual.<br>
+            <strong>🔹 COORDENADAS BAJO EL RATÓN.</strong>
+        </div>
+    </div>
+</div>
+
+
+<div id="previewRouteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🗺️ Vista previa del recorrido</h3>
+            <span class="close-modal" id="closePreviewRouteModal">&times;</span>
+        </div>
+        <div class="point-selector preview-combined-selectors">
+            <div class="preview-select-stack">
+                <div class="preview-select-group">
+                    <select id="previewRouteSelect"></select>
+                </div>
+                <div class="preview-select-group">
+                    <select id="previewCompareRouteSelect"></select>
+                    <span class="coord-info preview-compare-hint">Comparar con (rojo)</span>
+                </div>
+            </div>
+            <div id="previewRouteInfo" class="coord-info">Recorrido: --</div>
+        </div>
+        <div id="previewRouteWarnings"></div>
+        <div class="route-preview-map" id="previewRouteMap"></div>
+        <div class="layer-selector" id="previewRouteLayerSelector">
+            <button class="layer-btn preview-layer-btn" data-preview-layer="topo">🗺️ Topográfico IGN</button>
+            <button class="layer-btn preview-layer-btn" data-preview-layer="aerea">🛰️ Aérea PNOA</button>
+            <button class="layer-btn preview-layer-btn" data-preview-layer="mapant">🧭 Orientación MAPANT</button>
+        </div>
+    </div>
+</div>
+
+<div id="instructionsModal" class="instructions-modal">
+    <div class="instructions-content">
+        <div class="instructions-header">
+            <h3>📖 GUÍA DE USO DE MILITOPO TOPOGRAFIA</h3>
+            <span class="close-instr" id="closeInstructionsBtn">&times;</span>
+        </div>
+        <h4>🎯 ¿Qué es MILITOPO?</h4>
+        <p>MILITOPO es una herramienta para <strong>crear, organizar y generar recorridos topográficos</strong> a partir de puntos de control o balizas. Está pensada para preparar ejercicios, prácticas, competiciones o actividades de orientación de una forma rápida, clara y ordenada.</p>
+
+        <h4>🧭 ¿Para qué sirve?</h4>
+        <p>Su objetivo es <strong>facilitar toda la preparación del recorrido</strong>: ordenar los puntos, repartirlos de forma equilibrada y generar automáticamente la documentación necesaria para organizadores, balizas y participantes.</p>
+
+        <h4>⚙️ ¿Cómo funciona?</h4>
+        <p>La aplicación se organiza mediante <strong>módulos</strong> y <strong>puntos</strong>. Cada recorrido pasa por <strong>un punto de cada módulo</strong>, lo que permite crear recorridos variados manteniendo una estructura lógica y equilibrada.</p>
+
+        <h4>📍 ¿Qué significa un punto como P11?</h4>
+        <p>Los puntos siguen una identificación sencilla: <strong>P</strong> significa Punto, el <strong>primer número</strong> indica el módulo y el <strong>segundo número</strong> el punto dentro de ese módulo. Por ejemplo, <strong>P11</strong> es el Punto 1 del Módulo 1 y <strong>P23</strong> es el Punto 3 del Módulo 2.</p>
+
+        <h4>📝 ¿Qué es la descripción del punto?</h4>
+        <p>La descripción indica <strong>qué representa ese punto o cómo reconocerlo en el terreno</strong>. Puede ser, por ejemplo: cota, collado, árbol, cruce o fuente. Así, cada punto queda definido por su identificador, su coordenada y su descripción.</p>
+
+        <h4>🗺️ ¿Qué puedes hacer?</h4>
+        <p>MILITOPO permite configurar módulos y puntos, trabajar con coordenadas <strong>UTM</strong> o <strong>MGRS</strong>, editar puntos manualmente o desde el mapa, importar puntos desde archivos, generar recorridos automáticamente y obtener archivos listos para usar.</p>
+
+        <h4>📦 ¿Cómo se usa?</h4>
+        <p>La aplicación se divide en <strong>tres pasos</strong>: <strong>configurar la estructura</strong>, <strong>editar los puntos</strong> y <strong>generar los recorridos</strong>.</p>
+
+        <h4>🗂️ ¿Qué genera al final?</h4>
+        <p>MILITOPO crea un <strong>ZIP organizado</strong> con archivos para <strong>organizadores</strong>, <strong>balizas</strong> y <strong>participantes</strong>. Incluye recorridos, resultados, códigos, hojas de recorrido, puntos y otros archivos auxiliares para facilitar el trabajo en campo.</p>
+
+        <h4>✅ ¿Qué aporta?</h4>
+        <p>Permite <strong>ahorrar tiempo, reducir errores y dejar toda la actividad preparada</strong> antes de empezar. Convierte una lista de puntos en un sistema completo de recorridos ya organizado y listo para usar.</p>
+
+
+        <h4>🪖 Guía rápida para no perderse</h4>
+        <p><strong>1. Entra en Topografía.</strong> Esta rama sirve para preparar recorridos topográficos con módulos, puntos, balizas, hojas, PDF y ZIP final.</p>
+        <p><strong>2. Paso 1: configura la estructura.</strong> Elige cuántos módulos quieres, cuántos puntos tiene cada módulo y si vas a trabajar en UTM o MGRS. Después pulsa <strong>Confirmar y continuar</strong>.</p>
+        <p><strong>3. Paso 2: mete los puntos.</strong> Puedes escribir las coordenadas a mano, importarlas desde CSV/Excel/GPX/KML o colocarlas con el mapa. Cada punto debe tener coordenada y descripción.</p>
+        <p><strong>4. Revisa el tablero.</strong> Mira que los puntos estén completos. Si falta algo, arréglalo antes de seguir.</p>
+        <p><strong>5. Paso 3: genera recorridos.</strong> Elige cuántos recorridos quieres crear en el desplegable y pulsa generar. La app reparte los puntos de forma automática.</p>
+        <p><strong>6. Descarga el ZIP.</strong> Dentro tendrás carpetas para organizadores, balizas y participantes. Ese ZIP es lo que usarás para imprimir o llevar al ejercicio.</p>
+
+        <div class="footer-instr">🧭 MILITOPO – Topografía de campo con precisión táctica.</div>
+    </div>
+</div>
+    <script src="app.js"></script>
+
+<div id="locationDeniedOverlay" class="location-overlay">
+    <div class="location-overlay-card">
+        <h3>📍 Ubicación denegada</h3>
+        <p id="locationDeniedMessage">No se ha podido obtener tu ubicación.</p>
+        <p id="locationDeniedAdvice">En iPhone y Safari es posible que esta función no funcione correctamente. Prueba en otro navegador del móvil, donde sí puede funcionar.</p>
+        <p class="small-note">Recomendación: en iPhone, si Safari bloquea la ubicación, usa otro navegador del dispositivo para centrarte en el mapa.</p>
+        <div class="location-overlay-actions">
+            <button id="retryLocationBtn" class="btn btn-primary">📍 Reintentar ubicación</button>
+            <button id="closeLocationOverlayBtn" class="btn btn-secondary">Cerrar aviso</button>
+        </div>
+    </div>
+</div>
+
+
+</body>
+</html>
