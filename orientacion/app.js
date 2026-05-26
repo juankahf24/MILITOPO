@@ -1,3 +1,4 @@
+/* pdf-tablas-fix-v2-20260527 */
 /* tabsfix-v2-20260526-001 */
 /* MILITOPO_V39_ESTADO_PASO5_ICONOS_LIMPIOS */
 const state={eventId:"",eventName:"ENTRENAMIENTO ORIENTACIÓN",
@@ -5236,24 +5237,25 @@ async function recorridosPdfBlob(){
     const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4",compress:true});
 
     const pageW=297, pageH=210;
-    const margin=5;
+    const margin=4;
     const usableW=pageW-margin*2;
-    const titleH=16;
+    const titleH=15;
     const headerH=8;
     const rowH=8;
     const bottom=pageH-margin;
 
+    // Total exacto: 289 mm útiles para A4 horizontal con margen 4 mm.
     const columns=[
         {key:"participantId",label:"PARTICIPANTE",w:25,align:"center"},
-        {key:"routeId",label:"RECORRIDO",w:22,align:"center"},
-        {key:"status",label:"ESTADO",w:23,align:"center"},
+        {key:"routeId",label:"RECORRIDO",w:21,align:"center"},
+        {key:"status",label:"ESTADO",w:22,align:"center"},
         {key:"distanceKm",label:"DIST. KM",w:20,align:"center"},
         {key:"longestKm",label:"TRAMO LARGO",w:23,align:"center"},
         {key:"positiveM",label:"DESNIVEL +",w:22,align:"center"},
         {key:"negativeM",label:"DESNIVEL -",w:22,align:"center"},
         {key:"globalM",label:"GLOBAL",w:18,align:"center"},
-        {key:"difficulty",label:"DIFICULTAD",w:22,align:"center"},
-        {key:"order",label:"ORDEN",w:90,align:"left"}
+        {key:"difficulty",label:"DIFICULTAD",w:23,align:"center"},
+        {key:"order",label:"ORDEN",w:93,align:"left"}
     ];
 
     const rows=(state.routes||[]).map((r,i)=>{
@@ -5277,7 +5279,7 @@ async function recorridosPdfBlob(){
         doc.rect(0,0,pageW,pageH,"F");
 
         doc.setDrawColor(0,0,0);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.45);
         doc.rect(margin,margin,pageW-margin*2,pageH-margin*2,"S");
 
         doc.setFont("helvetica","bold");
@@ -5287,16 +5289,16 @@ async function recorridosPdfBlob(){
 
         doc.setFont("helvetica","normal");
         doc.setFontSize(7);
+        doc.setTextColor(0,0,0);
         const meta=`MILITOPO ORIENTACIÓN · ${String(state.eventName||"ENTRENAMIENTO ORIENTACIÓN")} · ${new Date().toLocaleString("es-ES")}`;
         doc.text(meta,pageW/2,margin+13,{align:"center",maxWidth:usableW-8});
     }
 
     function drawTableHeader(y){
         let x=margin;
-        doc.setDrawColor(0,0,0);
         doc.setLineWidth(0.25);
         doc.setFont("helvetica","bold");
-        doc.setFontSize(6.2);
+        doc.setFontSize(6.1);
         columns.forEach(col=>{
             doc.setFillColor(245,245,245);
             doc.rect(x,y,col.w,headerH,"F");
@@ -5304,7 +5306,7 @@ async function recorridosPdfBlob(){
             doc.rect(x,y,col.w,headerH,"S");
             doc.setTextColor(0,0,0);
             const lines=doc.splitTextToSize(col.label,col.w-2).slice(0,2);
-            doc.text(lines,x+col.w/2,y+3.4,{align:"center",maxWidth:col.w-2});
+            doc.text(lines,x+col.w/2,y+3.3,{align:"center",maxWidth:col.w-2});
             x+=col.w;
         });
     }
@@ -5312,7 +5314,7 @@ async function recorridosPdfBlob(){
     function drawCellText(text,x,y,w,align){
         const clean=String(text??"");
         doc.setFont("helvetica","normal");
-        doc.setFontSize(5.8);
+        doc.setFontSize(5.7);
         doc.setTextColor(0,0,0);
         const maxW=w-2;
         const lines=doc.splitTextToSize(clean,maxW).slice(0,2);
@@ -5350,6 +5352,7 @@ async function recorridosPdfBlob(){
 
     if(!rows.length){
         doc.setFont("helvetica","normal");
+        doc.setTextColor(0,0,0);
         doc.setFontSize(10);
         doc.text("No hay recorridos generados.",pageW/2,y+12,{align:"center"});
     }
@@ -5407,7 +5410,7 @@ async function balizasPdfBlob(){
         doc.rect(0,0,pageW,pageH,"F");
 
         doc.setDrawColor(0,0,0);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.45);
         doc.rect(margin,margin,pageW-margin*2,pageH-margin*2,"S");
 
         doc.setFont("helvetica","bold");
@@ -5417,13 +5420,13 @@ async function balizasPdfBlob(){
 
         doc.setFontSize(7);
         doc.setFont("helvetica","normal");
+        doc.setTextColor(0,0,0);
         const meta=`MILITOPO ORIENTACIÓN · ${String(state.eventName||"ENTRENAMIENTO ORIENTACIÓN")} · ${new Date().toLocaleString("es-ES")}`;
         doc.text(meta,pageW/2,margin+13,{align:"center",maxWidth:usableW-8});
     }
 
     function drawTableHeader(y){
         let x=margin;
-        doc.setDrawColor(0,0,0);
         doc.setLineWidth(0.25);
         doc.setFont("helvetica","bold");
         doc.setFontSize(7);
@@ -5479,6 +5482,7 @@ async function balizasPdfBlob(){
 
     if(!rows.length){
         doc.setFont("helvetica","normal");
+        doc.setTextColor(0,0,0);
         doc.setFontSize(10);
         doc.text("No hay balizas configuradas.",pageW/2,y+12,{align:"center"});
     }
