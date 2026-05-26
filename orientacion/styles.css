@@ -1258,36 +1258,44 @@ th,td{
 }
 
 
-/* ===== FIX VISUAL PESTAÑAS DE PASOS ORIENTACIÓN ===== */
-/* Limpieza de estados para que al retroceder no queden colores mezclados en iPhone/Safari. */
+/* ===== MILITOPO ORIENTACIÓN · FIX PESTAÑAS V2 · tabsfix-v2-20260526-001 ===== */
 .steps {
-    isolation: isolate;
-    overflow: hidden;
+    isolation: isolate !important;
+    overflow: hidden !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
 }
 
 .step-tab {
-    position: relative;
-    z-index: 1;
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
     background: transparent !important;
+    background-image: none !important;
     color: #fff2d2 !important;
     opacity: .92 !important;
     box-shadow: none !important;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
+    -webkit-transform: translateZ(0) !important;
+    transform: translateZ(0) !important;
     background-clip: padding-box !important;
 }
 
 .step-tab.future,
-.step-tab[data-step-state="future"] {
+.step-tab[data-step-state="future"]:not(.active):not(.done) {
     background: transparent !important;
+    background-image: none !important;
     color: #fff2d2 !important;
     opacity: .92 !important;
     box-shadow: none !important;
 }
 
 .step-tab.done,
-.step-tab[data-step-state="done"] {
-    background: linear-gradient(180deg,#8fbd68,#5f8f3d) !important;
+.step-tab[data-step-state="done"]:not(.active) {
+    background: linear-gradient(180deg,#8fbd68 0%,#5f8f3d 100%) !important;
+    background-image: linear-gradient(180deg,#8fbd68 0%,#5f8f3d 100%) !important;
     color: #faffed !important;
     opacity: 1 !important;
     box-shadow: 0 10px 22px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.16) !important;
@@ -1295,29 +1303,18 @@ th,td{
 
 .step-tab.active,
 .step-tab[data-step-state="active"] {
-    background: linear-gradient(180deg,#ffd782,#d99938) !important;
+    background: linear-gradient(180deg,#ffd782 0%,#d99938 100%) !important;
+    background-image: linear-gradient(180deg,#ffd782 0%,#d99938 100%) !important;
     color: #1f1508 !important;
     opacity: 1 !important;
     box-shadow: 0 14px 26px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.28) !important;
 }
 
-/* Si por cualquier motivo un botón queda con active y done a la vez, gana active. */
 .step-tab.active.done,
-.step-tab[data-step-state="active"] {
-    background: linear-gradient(180deg,#ffd782,#d99938) !important;
+.step-tab.done.active {
+    background: linear-gradient(180deg,#ffd782 0%,#d99938 100%) !important;
+    background-image: linear-gradient(180deg,#ffd782 0%,#d99938 100%) !important;
     color: #1f1508 !important;
-}
-
-/* Rejilla más estable con 6 pasos: evita manchas/solapes al pintar dos filas. */
-.steps {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 10px !important;
-}
-
-.step-tab {
-    width: 100% !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
 }
 
 @media (min-width: 760px) {

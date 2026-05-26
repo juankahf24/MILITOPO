@@ -1,3 +1,4 @@
+/* tabsfix-v2-20260526-001 */
 /* MILITOPO_V39_ESTADO_PASO5_ICONOS_LIMPIOS */
 const state={eventId:"",eventName:"ENTRENAMIENTO ORIENTACIÓN",
     planScale:10000,
@@ -90,10 +91,12 @@ function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.
 
     document.querySelectorAll(".step-tab").forEach(btn=>{
         const step=Number(btn.dataset.step);
-        // Limpieza fuerte para evitar que Safari/iPhone deje restos visuales al retroceder.
+
+        // FIX V2: limpieza fuerte de estados visuales al cambiar/retroceder pasos.
         btn.classList.remove("active","done","future");
         btn.removeAttribute("data-step-state");
         btn.style.removeProperty("background");
+        btn.style.removeProperty("background-image");
         btn.style.removeProperty("color");
         btn.style.removeProperty("box-shadow");
         btn.style.removeProperty("opacity");
