@@ -791,6 +791,9 @@ async function generateRoutes(silent=false){
         routes.push(best);
 
         const rid="R"+String(r+1).padStart(2,"0");
+        if(best.quality.shortControlLegs>0){
+            qualityWarnings.push(`${rid}: contiene ${best.quality.shortControlLegs} tramo(s) entre balizas por debajo de 200 m (${(best.quality.shortControlLegList||[]).join(", ")}). Añade/mueve balizas o reduce controles por recorrido.`);
+        }
         if(best.quality.code==="forced"){
             qualityWarnings.push(`${rid}: Recorrido forzado. Revisa distribución de balizas, reduce controles por recorrido o mueve salida/llegada.`);
         }else if(best.quality.code==="acceptable"){
@@ -1103,6 +1106,7 @@ async function regenerateSingleRoute(routeIndex){
     assignBalancedDifficulties(state.metrics);
     state.routeQualitySummary=buildRouteQualitySummary(state.metrics);
     state.routeWarnings=(state.routeWarnings||[]).filter(w=>!String(w).startsWith(routeId+":"));
+    if(best.quality.shortControlLegs>0)state.routeWarnings.push(`${routeId}: contiene ${best.quality.shortControlLegs} tramo(s) entre balizas por debajo de 200 m (${(best.quality.shortControlLegList||[]).join(", ")}). Añade/mueve balizas o reduce controles por recorrido.`);
     if(best.quality.code==="forced")state.routeWarnings.push(`${routeId}: Recorrido forzado. Revisa distribución de balizas, reduce controles por recorrido o mueve salida/llegada.`);
     else if(best.quality.code==="acceptable")state.routeWarnings.push(`${routeId}: Recorrido aceptable. Trazado válido, pero no totalmente limpio.`);
 
@@ -1411,6 +1415,27 @@ function routeDistanceKm(route){
     return d;
 }
 
+
+function shortControlLegDetails(route,minKm=0.2){
+    let count=0;
+    let penalty=0;
+    const legs=[];
+    if(!Array.isArray(route))return {count,penalty,legs};
+    for(let i=1;i<route.length;i++){
+        const a=route[i-1], b=route[i];
+        if(!a||!b)continue;
+        const bothControls=a.type==="BALIZA" && b.type==="BALIZA";
+        if(!bothControls)continue;
+        const d=haversineKm(a,b);
+        if(Number.isFinite(d) && d<minKm){
+            count++;
+            legs.push(`${a.id}-${b.id}: ${Math.round(d*1000)} m`);
+            penalty += Math.pow((minKm-d)/minKm,2)*900 + 260;
+        }
+    }
+    return {count,penalty:Number(penalty.toFixed(3)),legs};
+}
+
 function routeQualityDetails(route,context=null,direction=1){
     context=context||buildProfessionalRouteContext(route[0],route.slice(1,-1),route[route.length-1]);
     let crossings=0,backtracks=0,hardBacktracks=0,turnPenalty=0,zigzags=0,nearRevisits=0,longLegPenalty=0,lateralJumpPenalty=0,edgePenalty=0;
@@ -1456,6 +1481,7 @@ function routeQualityDetails(route,context=null,direction=1){
     }
 
     const progressPenalty=backtracks*120+hardBacktracks*18;
+    const shortLegs=shortControlLegDetails(route,0.2);
     const total=
         crossings*90+
         progressPenalty+
@@ -1464,10 +1490,11 @@ function routeQualityDetails(route,context=null,direction=1){
         nearRevisits*10+
         longLegPenalty*7+
         lateralJumpPenalty*7+
-        edgePenalty*6;
-    const code=(crossings===0&&hardBacktracks===0&&total<28&&turnPenalty<1.35&&zigzags<=1)?"clean":((crossings<=1&&hardBacktracks<=1&&total<70)?"acceptable":"forced");
+        edgePenalty*6+
+        shortLegs.penalty;
+    const code=(shortLegs.count===0&&crossings===0&&hardBacktracks===0&&total<28&&turnPenalty<1.35&&zigzags<=1)?"clean":((shortLegs.count===0&&crossings<=1&&hardBacktracks<=1&&total<70)?"acceptable":"forced");
     const label=code==="clean"?"Recorrido limpio":(code==="acceptable"?"Recorrido aceptable":"Recorrido forzado");
-    return {total,crossings,backtracks:Number(backtracks.toFixed(3)),hardBacktracks,turnPenalty:Number(turnPenalty.toFixed(2)),zigzags,nearRevisits:Number(nearRevisits.toFixed(2)),longLegPenalty:Number(longLegPenalty.toFixed(2)),lateralJumpPenalty:Number(lateralJumpPenalty.toFixed(2)),progressPenalty:Number(progressPenalty.toFixed(2)),label,code};
+    return {total,crossings,backtracks:Number(backtracks.toFixed(3)),hardBacktracks,turnPenalty:Number(turnPenalty.toFixed(2)),zigzags,nearRevisits:Number(nearRevisits.toFixed(2)),longLegPenalty:Number(longLegPenalty.toFixed(2)),lateralJumpPenalty:Number(lateralJumpPenalty.toFixed(2)),progressPenalty:Number(progressPenalty.toFixed(2)),shortControlLegs:shortLegs.count,shortControlLegList:shortLegs.legs,label,code};
 }
 
 function turnAngle(a,b,c){
