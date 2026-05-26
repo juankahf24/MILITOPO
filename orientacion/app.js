@@ -7336,3 +7336,28 @@ downloadClassificationExcel=async function(){
         },500);
     });
 })();
+
+
+
+// ORIENTATION GUIDE MODAL START
+(function(){
+    function showOrientationGuide(){
+        const modal=document.getElementById("orientationGuideModal");
+        if(modal) modal.style.display="flex";
+    }
+    function hideOrientationGuide(){
+        const modal=document.getElementById("orientationGuideModal");
+        if(modal) modal.style.display="none";
+    }
+    document.addEventListener("DOMContentLoaded", function(){
+        const modal=document.getElementById("orientationGuideModal");
+        const close=document.getElementById("closeOrientationGuideBtn");
+        setTimeout(showOrientationGuide, 450);
+        close?.addEventListener("click", hideOrientationGuide);
+        modal?.addEventListener("click", function(e){
+            if(e.target===modal) hideOrientationGuide();
+        });
+    });
+    window.showOrientationGuide=showOrientationGuide;
+})();
+// ORIENTATION GUIDE MODAL END

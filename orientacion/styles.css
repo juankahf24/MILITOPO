@@ -1139,3 +1139,120 @@ th,td{
 #startupModeOverlay {
     display: none !important;
 }
+
+
+/* ===== Ventanas emergentes guiaburros MILITOPO ===== */
+.instructions-modal,
+.orientation-guide-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(3, 8, 4, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.instructions-content,
+.orientation-guide-content {
+    width: min(92vw, 820px);
+    max-height: 86vh;
+    overflow-y: auto;
+    border-radius: 28px;
+    border: 1px solid rgba(230,188,122,.38);
+    background:
+        radial-gradient(circle at 20% 0%, rgba(230,188,122,.16), transparent 30%),
+        linear-gradient(180deg, rgba(64,89,43,.98), rgba(23,34,15,.98));
+    color: #f5e6c8;
+    box-shadow: 0 28px 70px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08);
+    padding: clamp(18px, 4vw, 30px);
+    font-family: "Courier New", monospace;
+}
+
+.instructions-header,
+.orientation-guide-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 2px solid rgba(230,188,122,.48);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+}
+
+.instructions-header h3,
+.orientation-guide-header h3 {
+    margin: 0;
+    color: #f0c16a;
+    font-size: clamp(1.1rem, 4vw, 1.7rem);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.close-instr,
+.orientation-guide-close {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(230,188,122,.45);
+    background: rgba(0,0,0,.24);
+    color: #f5e6c8;
+    font-size: 30px;
+    line-height: 38px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+}
+
+.instructions-content h4,
+.orientation-guide-content h4 {
+    color: #f0c16a;
+    margin: 18px 0 8px;
+    font-size: 1.05rem;
+    letter-spacing: .04em;
+}
+
+.instructions-content p,
+.orientation-guide-content p {
+    color: #f5e6c8;
+    line-height: 1.55;
+    font-weight: 800;
+    margin: 9px 0;
+}
+
+.instructions-content strong,
+.orientation-guide-content strong {
+    color: #ffe3a0;
+}
+
+.footer-instr,
+.orientation-guide-footer {
+    margin-top: 18px;
+    padding: 12px;
+    text-align: center;
+    border-radius: 18px;
+    background: rgba(0,0,0,.22);
+    color: #f0c16a;
+    font-weight: 900;
+    letter-spacing: .05em;
+}
+
+@media (max-width: 700px) {
+    .instructions-modal,
+    .orientation-guide-modal {
+        padding: 12px;
+        align-items: flex-start;
+    }
+
+    .instructions-content,
+    .orientation-guide-content {
+        max-height: 92vh;
+        border-radius: 22px;
+        padding: 18px;
+        margin-top: 18px;
+    }
+}

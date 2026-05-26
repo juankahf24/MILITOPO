@@ -276,6 +276,36 @@
 </div>
 <!-- ROUTE GENERATION LOADER END -->
 <div id="toast" class="toast"></div>
+
+<div id="orientationGuideModal" class="orientation-guide-modal">
+    <div class="orientation-guide-content">
+        <div class="orientation-guide-header">
+            <h3>🧭 Guía fácil de MILITOPO Orientación</h3>
+            <button type="button" id="closeOrientationGuideBtn" class="orientation-guide-close" aria-label="Cerrar guía">&times;</button>
+        </div>
+
+        <h4>🎯 ¿Qué hace esta rama?</h4>
+        <p>Esta rama sirve para crear un <strong>ejercicio de orientación</strong>: salida, llegada, balizas, recorridos para participantes, códigos QR, planos PDF, control de salida/llegada y resultados.</p>
+
+        <h4>🪖 Guía para tontos, paso por paso</h4>
+        <p><strong>1. Paso 1 · Configurar prueba.</strong> Pon el nombre del ejercicio. Elige participantes, número de balizas, cuántas balizas lleva cada recorrido y cuántas veces se puede reutilizar una baliza.</p>
+        <p><strong>2. Escala del plano.</strong> Elige 1:10.000 o 1:7.500 y la equidistancia. Esto afecta a los planos PDF que se generan después.</p>
+        <p><strong>3. Paso 2 · Balizas y mapa.</strong> Coloca START, FINISH y las balizas. Puedes hacerlo desde el mapa, escribiendo UTM o importando GPX de ATAK por ID.</p>
+        <p><strong>4. Si importas desde ATAK.</strong> Nombra los waypoints como <strong>START</strong>, <strong>FINISH</strong>, <strong>B01</strong>, <strong>B02</strong>, <strong>B03</strong>... y usa el botón de importar GPX ATAK por ID.</p>
+        <p><strong>5. Revisa que todo esté completo.</strong> Si un punto sale pendiente, le falta coordenada o no se ha reconocido bien. No pases al siguiente paso hasta que salida, llegada y balizas estén bien.</p>
+        <p><strong>6. Paso 3 · Generar recorridos.</strong> La app crea recorridos para los participantes siguiendo una lógica limpia: evita repetir demasiado, intenta equilibrar distancias y ordena los controles.</p>
+        <p><strong>7. Regenerar un recorrido.</strong> Si un recorrido no te gusta, puedes regenerarlo individualmente. La app intentará buscar otra variante sin cambiar toda la prueba.</p>
+        <p><strong>8. Paso 4 · Material.</strong> Verifica el ejercicio y genera el ZIP. Ahí salen planos PDF, QR, CSV, app participante y archivos de control.</p>
+        <p><strong>9. Paso 5 · Salida y llegada.</strong> Sirve para organizar participantes, confirmar salidas, registrar llegadas y controlar el ejercicio con QR.</p>
+        <p><strong>10. Paso 6 · Resultados.</strong> Importa o revisa resultados y genera la clasificación final.</p>
+
+        <h4>✅ Resumen rápido</h4>
+        <p><strong>Configuras → colocas puntos → generas recorridos → verificas → descargas ZIP → controlas salida/llegada → sacas resultados.</strong></p>
+
+        <div class="orientation-guide-footer">MILITOPO · Orientación paso a paso</div>
+    </div>
+</div>
+
 <script src="app.js"></script>
 <script>
 (function(){
