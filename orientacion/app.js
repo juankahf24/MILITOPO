@@ -656,67 +656,120 @@ function pointNeedsElevation(p){
 }
 
 function fallbackElevation(p){
-    // Respaldo solo si no hay conexión/API. Modela una ladera de Sierra Nevada para pruebas.
+    // Último respaldo si no responde ninguna API real.
+    // Es conservador y local, para no inventar desniveles enormes.
     const lat=Number(p.lat||0), lon=Number(p.lon||0);
-    const northComponent=(lat-37.08)*18500;
-    const westComponent=(-3.36-lon)*5200;
-    const waves=Math.sin(lat*93.7+lon*21.4)*65+Math.cos(lon*77.2-lat*18.6)*45;
-    return Math.round(1850+northComponent+westComponent+waves);
+    const latBase=Math.floor(lat*100)/100;
+    const lonBase=Math.floor(lon*100)/100;
+    const localNorth=(lat-latBase)*10000*0.035;
+    const localEast=(lon-lonBase)*10000*0.020;
+    const ripple=Math.sin(lat*180.31+lon*91.77)*6+Math.cos(lon*151.19-lat*53.41)*4;
+    return Math.round(650+localNorth+localEast+ripple);
 }
 
-async function fetchElevationChunk(points, timeoutMs=3500){
+async function fetchJsonWithTimeout(url, timeoutMs=7000){
     if(!window.fetch) return null;
     const controller=typeof AbortController!=="undefined"?new AbortController():null;
     let timer=null;
     try{
         if(controller) timer=setTimeout(()=>controller.abort(),timeoutMs);
-        const lats=points.map(p=>Number(p.lat).toFixed(6)).join(",");
-        const lons=points.map(p=>Number(p.lon).toFixed(6)).join(",");
-        const url=`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`;
-        const res=await fetch(url, controller?{signal:controller.signal}:{});
+        const res=await fetch(url, controller?{signal:controller.signal,cache:"no-store"}:{cache:"no-store"});
         if(timer) clearTimeout(timer);
         if(!res || !res.ok) return null;
-        const data=await res.json();
-        return Array.isArray(data.elevation)?data.elevation:null;
+        return await res.json();
     }catch(e){
         if(timer) clearTimeout(timer);
         return null;
     }
 }
 
-async function prepareElevationsForRoutes(){
-    const pts=Object.values(state.points).filter(p=>p.lat!==null&&p.lon!==null);
-    const missing=pts.filter(pointNeedsElevation);
+async function fetchElevationChunk(points, timeoutMs=7000){
+    if(!points||!points.length)return null;
+    const lats=points.map(p=>Number(p.lat).toFixed(6)).join(",");
+    const lons=points.map(p=>Number(p.lon).toFixed(6)).join(",");
 
-    // Si las cotas ya están guardadas de una generación anterior, las reutilizamos.
-    // Esto evita que una regeneración marque falso aviso de "desnivel no real" solo porque no había nada nuevo que consultar.
-    if(!missing.length){
-        const source=state.elevationSource||"real";
-        return {realCount:pts.length,total:pts.length,source,existing:true};
+    // 1) API principal: Open-Meteo elevation.
+    const om=await fetchJsonWithTimeout(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lons}`,timeoutMs);
+    if(om && Array.isArray(om.elevation) && om.elevation.length>=points.length){
+        return om.elevation.slice(0,points.length);
     }
 
-    // Primero ponemos un respaldo inmediato para que nunca se quede sin desnivel.
-    missing.forEach(p=>{p.elevation=fallbackElevation(p);});
+    // 2) Respaldo real: OpenTopoData SRTM 30 m.
+    const locs=points.map(p=>`${Number(p.lat).toFixed(6)},${Number(p.lon).toFixed(6)}`).join("|");
+    const srtm=await fetchJsonWithTimeout(`https://api.opentopodata.org/v1/srtm30m?locations=${encodeURIComponent(locs)}`,timeoutMs);
+    if(srtm && Array.isArray(srtm.results) && srtm.results.length>=points.length){
+        const arr=srtm.results.slice(0,points.length).map(r=>r&&r.elevation);
+        if(arr.some(e=>Number.isFinite(Number(e))))return arr;
+    }
 
-    // Después intentamos sustituir por elevación real. Si falla, se queda el respaldo.
-    const chunkSize=25;
+    // 3) Respaldo real alternativo: ASTER 30 m.
+    const aster=await fetchJsonWithTimeout(`https://api.opentopodata.org/v1/aster30m?locations=${encodeURIComponent(locs)}`,timeoutMs);
+    if(aster && Array.isArray(aster.results) && aster.results.length>=points.length){
+        const arr=aster.results.slice(0,points.length).map(r=>r&&r.elevation);
+        if(arr.some(e=>Number.isFinite(Number(e))))return arr;
+    }
+
+    return null;
+}
+
+async function prepareElevationsForRoutes(){
+    const pts=Object.values(state.points).filter(p=>p.lat!==null&&p.lon!==null);
+
+    // Recalcular siempre para evitar cotas antiguas/falsas guardadas.
+    pts.forEach(p=>{p.elevation=fallbackElevation(p);});
+
+    const chunkSize=20;
     let realCount=0;
-    for(let i=0;i<missing.length;i+=chunkSize){
-        const chunk=missing.slice(i,i+chunkSize);
-        const elevs=await fetchElevationChunk(chunk,3500);
+    const realValues=new Map();
+
+    for(let i=0;i<pts.length;i+=chunkSize){
+        const chunk=pts.slice(i,i+chunkSize);
+        let elevs=null;
+
+        // Varios intentos para que al pasar del paso 2 al 3 calcule bien aunque tarde más.
+        for(let attempt=0;attempt<3 && !Array.isArray(elevs);attempt++){
+            elevs=await fetchElevationChunk(chunk,8500);
+            if(!Array.isArray(elevs)) await routeSleep(450);
+        }
+
         if(Array.isArray(elevs)){
             chunk.forEach((p,j)=>{
                 const e=Number(elevs[j]);
                 if(Number.isFinite(e)){
-                    p.elevation=Math.round(e);
+                    realValues.set(p.id,Math.round(e));
                     realCount++;
                 }
             });
         }
     }
 
-    // Si se han conseguido cotas reales nuevas, marcamos real. Si no, solo será fallback para los puntos recién calculados.
-    state.elevationSource = realCount ? "real" : (state.elevationSource||"fallback");
+    if(realCount>0){
+        pts.forEach(p=>{
+            if(realValues.has(p.id)){
+                p.elevation=realValues.get(p.id);
+                p.elevationReal=true;
+            }else{
+                // Si falta alguna cota, se estima con la media de las reales cercanas
+                // para no mezclar saltos absurdos.
+                const realPts=pts.filter(q=>realValues.has(q.id));
+                if(realPts.length){
+                    let best=realPts[0],bestD=Infinity;
+                    realPts.forEach(q=>{
+                        const d=haversineKm(p,q);
+                        if(d<bestD){bestD=d;best=q;}
+                    });
+                    p.elevation=realValues.get(best.id);
+                }
+                p.elevationReal=false;
+            }
+        });
+        state.elevationSource=realCount===pts.length?"real":"mixed";
+    }else{
+        // Último caso: no hubo ninguna API disponible. No saldrá 0, pero se marca como estimado.
+        pts.forEach(p=>{p.elevation=fallbackElevation(p);p.elevationReal=false;});
+        state.elevationSource="estimated";
+    }
+
     saveState();
     return {realCount,total:pts.length,source:state.elevationSource};
 }
@@ -754,8 +807,8 @@ async function generateRoutes(silent=false){
 
     summary.textContent=elevationInfo.source==="real"
         ? "Desnivel real listo. Diseñando recorridos con trazado lógico..."
-        : "No se pudo completar el desnivel real a tiempo. Diseñando recorridos con respaldo de montaña...";
-    updateRouteGenerationLoader(elevationInfo.source==="real"?"Desnivel real listo. Diseñando trazados...":"Usando respaldo de montaña. Diseñando trazados...",24);
+        : "Calculando desnivel con varios servicios. Si uno falla, se intenta otro...";
+    updateRouteGenerationLoader(elevationInfo.source==="real"?"Desnivel real listo. Diseñando trazados...":"Calculando cotas con respaldo de servicios externos...",24);
     await routeSleep(60);
 
     const controls=getAvailableControls();
@@ -958,7 +1011,7 @@ async function generateRoutes(silent=false){
     }
 
     if(elevationInfo.source!=="real"){
-        qualityWarnings.unshift("Desnivel real no disponible o tardó demasiado. Se usó respaldo de montaña para poder generar la prueba.");
+        qualityWarnings.unshift("Desnivel real parcial/no disponible. Se usó estimación conservadora para evitar desniveles falsos.");
     }
 
     const finalRoutes=routes.slice(0,state.participantCount);
@@ -1781,7 +1834,43 @@ function buildRouteQualitySummary(metrics){
 }
 // SMART ROUTE GENERATOR END
 
-function calcRouteMetrics(route){let distance=0,pos=0,neg=0,longest=0;for(let i=1;i<route.length;i++){const a=route[i-1],b=route[i],d=haversineKm(a,b);distance+=d;longest=Math.max(longest,d);const diff=Number(b.elevation||0)-Number(a.elevation||0);if(diff>0)pos+=diff;else neg+=Math.abs(diff)}const global=Number(route[route.length-1].elevation||0)-Number(route[0].elevation||0),difficultyScore=distance*.5+(pos/1000)*.5;let difficulty="MEDIA";if(difficultyScore<3.5)difficulty="BAJA";if(difficultyScore>7.5)difficulty="ALTA";return{distanceKm:Number(distance.toFixed(3)),longestKm:Number(longest.toFixed(3)),positiveM:Math.round(pos),negativeM:Math.round(neg),globalM:Math.round(global),difficulty,difficultyScore:Number(difficultyScore.toFixed(3))}}
+function calcRouteMetrics(route){
+    let distance=0,pos=0,neg=0,longest=0;
+
+    for(let i=1;i<route.length;i++){
+        const a=route[i-1],b=route[i],d=haversineKm(a,b);
+        distance+=d;
+        longest=Math.max(longest,d);
+
+        const ea=Number(a.elevation);
+        const eb=Number(b.elevation);
+        if(Number.isFinite(ea)&&Number.isFinite(eb)){
+            const diff=eb-ea;
+            // Filtro anti-picos. Permite desnivel real, pero bloquea barbaridades de API/datos corruptos.
+            const maxReasonableDiff=Math.max(35,d*1000*0.28);
+            if(Math.abs(diff)<=maxReasonableDiff){
+                if(diff>0)pos+=diff;
+                else neg+=Math.abs(diff);
+            }
+        }
+    }
+
+    let global=0;
+    if(route.length>1){
+        const e0=Number(route[0].elevation);
+        const e1=Number(route[route.length-1].elevation);
+        if(Number.isFinite(e0)&&Number.isFinite(e1)){
+            const raw=e1-e0;
+            global=Math.abs(raw)<=Math.max(50,distance*1000*0.20)?raw:0;
+        }
+    }
+
+    const difficultyScore=distance*.5+(pos/1000)*.5;
+    let difficulty="MEDIA";
+    if(difficultyScore<3.5)difficulty="BAJA";
+    if(difficultyScore>7.5)difficulty="ALTA";
+    return{distanceKm:Number(distance.toFixed(3)),longestKm:Number(longest.toFixed(3)),positiveM:Math.round(pos),negativeM:Math.round(neg),globalM:Math.round(global),difficulty,difficultyScore:Number(difficultyScore.toFixed(3))}
+}
 // BALANCED DIFFICULTY BUCKETS START
 function assignBalancedDifficulties(metrics){
     if(!Array.isArray(metrics)||!metrics.length) return;
