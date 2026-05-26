@@ -5132,6 +5132,10 @@ async function participantPlanPdfBlob(route){
 async function buildPrintScaleCalibrationPdfBlob(){
     const jsPDF=await ensureJsPdf();
     const pdf=new jsPDF({orientation:"landscape",unit:"mm",format:"a4",compress:true});
+    const correctionFactor=1.10; // Se midió 1 cm como 1,1 cm en impresión.
+    const cm10Corrected=100/correctionFactor; // 90,909 mm dibujados para salir como 100 mm impresos.
+    const cm1Corrected=10/correctionFactor;   // 9,091 mm dibujados para salir como 10 mm impresos.
+
     pdf.setFillColor(255,255,255);
     pdf.rect(0,0,297,210,"F");
 
@@ -5141,52 +5145,56 @@ async function buildPrintScaleCalibrationPdfBlob(){
     pdf.setFontSize(18);
     pdf.text("MILITOPO · CALIBRACIÓN DE IMPRESIÓN Y ESCALA",148.5,18,{align:"center"});
 
-    pdf.setFontSize(11);
+    pdf.setFontSize(10.5);
     pdf.setFont("helvetica","normal");
-    pdf.text("Imprime este PDF en A4 horizontal, escala 100 %, tamaño real, sin ajustar a página.",148.5,30,{align:"center"});
-    pdf.text("Después mide las barras con una regla. Si no coinciden, la impresora o el visor está reescalando.",148.5,37,{align:"center"});
+    pdf.text("Este PDF ya incluye la corrección aplicada al plano: 1 cm medido antes salía como 1,1 cm.",148.5,30,{align:"center"});
+    pdf.text("Imprime en A4 horizontal, tamaño real / 100 %, sin ajustar a página. Después mide las barras.",148.5,37,{align:"center"});
 
     pdf.setFont("helvetica","bold");
     pdf.setFontSize(12);
-    pdf.text("Comprobación física de papel",25,58);
+    pdf.text("Comprobación física corregida",25,58);
     pdf.setLineWidth(0.5);
 
-    // Barra 10 cm exactos
-    pdf.line(25,70,125,70);
-    pdf.line(25,67,25,73);
-    pdf.line(125,67,125,73);
+    // Barra corregida: debe medir 10 cm una vez impresa.
+    const x0=25;
+    const x1=x0+cm10Corrected;
+    pdf.line(x0,70,x1,70);
+    pdf.line(x0,67,x0,73);
+    pdf.line(x1,67,x1,73);
     for(let i=0;i<=10;i++){
-        const x=25+i*10;
+        const x=x0+i*(cm10Corrected/10);
         pdf.line(x,68.5,x,71.5);
         pdf.setFontSize(7);
         pdf.text(String(i),x,77,{align:"center"});
     }
     pdf.setFontSize(10);
-    pdf.text("Esta barra debe medir exactamente 10 cm",75,84,{align:"center"});
+    pdf.text("Esta barra debe medir exactamente 10 cm al imprimir",x0+cm10Corrected/2,84,{align:"center"});
 
-    // Barra 1 cm exacto
+    // Barra corregida: debe medir 1 cm una vez impresa.
+    const sx0=25;
+    const sx1=sx0+cm1Corrected;
     pdf.setLineWidth(0.45);
-    pdf.line(25,103,35,103);
-    pdf.line(25,100,25,106);
-    pdf.line(35,100,35,106);
+    pdf.line(sx0,103,sx1,103);
+    pdf.line(sx0,100,sx0,106);
+    pdf.line(sx1,100,sx1,106);
     pdf.setFontSize(10);
-    pdf.text("Esta barra debe medir exactamente 1 cm",30,114,{align:"center"});
+    pdf.text("Esta barra debe medir exactamente 1 cm al imprimir",sx0+cm1Corrected/2,114,{align:"center"});
 
     pdf.setFont("helvetica","bold");
     pdf.setFontSize(12);
-    pdf.text("Equivalencia de escala de los planos",165,58);
+    pdf.text("Equivalencia de escala de los planos corregidos",165,58);
 
     pdf.setFont("helvetica","normal");
     pdf.setFontSize(10);
-    pdf.text("E: 1:10.000  →  1 cm en el plano = 100 m en el terreno",165,72);
-    pdf.text("E: 1:7.500   →  1 cm en el plano = 75 m en el terreno",165,82);
+    pdf.text("E: 1:10.000  -  1 cm impreso = 100 m en el terreno",165,72);
+    pdf.text("E: 1:7.500   -  1 cm impreso = 75 m en el terreno",165,82);
 
     pdf.setFont("helvetica","bold");
-    pdf.text("Regla importante:",165,102);
+    pdf.text("Por qué se corrige:",165,102);
     pdf.setFont("helvetica","normal");
-    pdf.text("Si el PDF se imprime con “ajustar a página”, “reducir”, “encajar” o similar,",165,112);
-    pdf.text("la escala del plano deja de ser exacta aunque el archivo PDF esté bien creado.",165,121);
-    pdf.text("Debe imprimirse siempre a tamaño real / 100 %.",165,130);
+    pdf.text("En la prueba anterior, la raya de 1 cm del plano salía como 1,1 cm.",165,112);
+    pdf.text("Por eso esta calibración dibuja la barra un 10 % más corta,",165,121);
+    pdf.text("para que al imprimirse mida 1 cm real con la regla.",165,130);
 
     pdf.setDrawColor(180,0,0);
     pdf.setTextColor(180,0,0);
