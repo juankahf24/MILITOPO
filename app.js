@@ -2951,6 +2951,10 @@ let MODULOS = 8;
         try { localStorage.setItem("milimoto_app_mode", appMode); } catch (e) {}
 
         showTopograficaMode();
+        setTimeout(() => {
+            const instrModal = document.getElementById("instructionsModal");
+            if (instrModal) instrModal.style.display = "flex";
+        }, 260);
     }
 
     function goToStep(step) {
