@@ -90,8 +90,24 @@ function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.
 
     document.querySelectorAll(".step-tab").forEach(btn=>{
         const step=Number(btn.dataset.step);
-        btn.classList.toggle("active",step===currentAppStep);
-        btn.classList.toggle("done",step<currentAppStep);
+        // Limpieza fuerte para evitar que Safari/iPhone deje restos visuales al retroceder.
+        btn.classList.remove("active","done","future");
+        btn.removeAttribute("data-step-state");
+        btn.style.removeProperty("background");
+        btn.style.removeProperty("color");
+        btn.style.removeProperty("box-shadow");
+        btn.style.removeProperty("opacity");
+
+        if(step===currentAppStep){
+            btn.classList.add("active");
+            btn.setAttribute("data-step-state","active");
+        }else if(step<currentAppStep){
+            btn.classList.add("done");
+            btn.setAttribute("data-step-state","done");
+        }else{
+            btn.classList.add("future");
+            btn.setAttribute("data-step-state","future");
+        }
     });
 
     if(currentAppStep===2){

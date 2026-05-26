@@ -1256,3 +1256,72 @@ th,td{
         margin-top: 18px;
     }
 }
+
+
+/* ===== FIX VISUAL PESTAÑAS DE PASOS ORIENTACIÓN ===== */
+/* Limpieza de estados para que al retroceder no queden colores mezclados en iPhone/Safari. */
+.steps {
+    isolation: isolate;
+    overflow: hidden;
+}
+
+.step-tab {
+    position: relative;
+    z-index: 1;
+    background: transparent !important;
+    color: #fff2d2 !important;
+    opacity: .92 !important;
+    box-shadow: none !important;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    background-clip: padding-box !important;
+}
+
+.step-tab.future,
+.step-tab[data-step-state="future"] {
+    background: transparent !important;
+    color: #fff2d2 !important;
+    opacity: .92 !important;
+    box-shadow: none !important;
+}
+
+.step-tab.done,
+.step-tab[data-step-state="done"] {
+    background: linear-gradient(180deg,#8fbd68,#5f8f3d) !important;
+    color: #faffed !important;
+    opacity: 1 !important;
+    box-shadow: 0 10px 22px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
+
+.step-tab.active,
+.step-tab[data-step-state="active"] {
+    background: linear-gradient(180deg,#ffd782,#d99938) !important;
+    color: #1f1508 !important;
+    opacity: 1 !important;
+    box-shadow: 0 14px 26px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.28) !important;
+}
+
+/* Si por cualquier motivo un botón queda con active y done a la vez, gana active. */
+.step-tab.active.done,
+.step-tab[data-step-state="active"] {
+    background: linear-gradient(180deg,#ffd782,#d99938) !important;
+    color: #1f1508 !important;
+}
+
+/* Rejilla más estable con 6 pasos: evita manchas/solapes al pintar dos filas. */
+.steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+}
+
+.step-tab {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+}
+
+@media (min-width: 760px) {
+    .steps {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
