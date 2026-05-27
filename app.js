@@ -1390,8 +1390,8 @@ let MODULOS = 8;
 
         // Columna F preparada como TIEMPO TOTAL:
         // calcula automáticamente la diferencia entre Hora salida (C) y Hora llegada (D).
-        // Formato abreviado: 1h 25min.
-        // Importante: se deja preparada hasta muchas filas vacías, para que funcione cuando escribas datos después.
+        // Más compatible con Excel móvil/hojas de cálculo:
+        // la fórmula devuelve un número de tiempo y el formato de celda lo muestra como 1h 25min.
         if (totalCols >= 6) {
             const headerTiempo = XLSXLib.utils.encode_cell({ r: 2, c: 5 });
             if (!ws[headerTiempo]) ws[headerTiempo] = { t: "s", v: "TIEMPO TOTAL" };
@@ -1402,10 +1402,11 @@ let MODULOS = 8;
                 const excelRow = r + 1;
                 const addr = XLSXLib.utils.encode_cell({ r, c: 5 });
                 ws[addr] = {
-                    t: "s",
-                    // Fórmula simple y compatible: si escribes 8:40 y 9:40 calcula 1h 00min.
-                    f: `IF(AND(C${excelRow}<>"",D${excelRow}<>""),TEXT(MOD(D${excelRow}-C${excelRow},1),"[h]""h ""mm""min"""),"")`,
-                    v: ""
+                    t: "n",
+                    // Si salida=8:40 y llegada=9:50, calcula 1h 10min.
+                    f: `IF(AND(C${excelRow}<>"",D${excelRow}<>""),MOD(D${excelRow}-C${excelRow},1),"")`,
+                    v: 0,
+                    z: '[h]"h "mm"min"'
                 };
             }
 
@@ -1463,7 +1464,8 @@ let MODULOS = 8;
                     },
                     fill: isTitle
                         ? { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
-                        : (isHeader ? { patternType: "solid", fgColor: { rgb: "EBEBEB" } } : { patternType: "solid", fgColor: { rgb: "FFFFFF" } })
+                        : (isHeader ? { patternType: "solid", fgColor: { rgb: "EBEBEB" } } : { patternType: "solid", fgColor: { rgb: "FFFFFF" } }),
+                    numFmt: (isBody && C === 5) ? '[h]"h "mm"min"' : undefined
                 };
             }
         }
