@@ -1406,10 +1406,12 @@ let MODULOS = 8;
                 const addr = XLSXLib.utils.encode_cell({ r, c: 5 });
 
                 ws[addr] = {
-                    t: "s",
-                    // Compatible con horas escritas como 10:10 o como hora real de Excel.
+                    t: "n",
+                    // Fórmula sin funciones para máxima compatibilidad entre apps móviles.
                     // Devuelve texto abreviado: 0h 45min, 1h 10min, etc.
-                    f: `SI(O(C${excelRow}="";D${excelRow}="");"";TEXTO(RESIDUO(D${excelRow}-C${excelRow};1);"[h]"" h ""mm"" min"""))`
+                    f: `(C${excelRow}<>"")*(D${excelRow}<>"")*(D${excelRow}-C${excelRow}+(D${excelRow}<C${excelRow}))`,
+                    v: 0,
+                    z: '[h]" h "mm" min";; ;@' 
                 };
             }
 
@@ -1468,7 +1470,7 @@ let MODULOS = 8;
                     fill: isTitle
                         ? { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
                         : (isHeader ? { patternType: "solid", fgColor: { rgb: "EBEBEB" } } : { patternType: "solid", fgColor: { rgb: "FFFFFF" } }),
-                    numFmt: undefined
+                    numFmt: (isBody && C === 5) ? '[h]" h "mm" min";; ;@' : undefined
                 };
             }
         }
