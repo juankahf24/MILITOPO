@@ -1380,6 +1380,8 @@ let MODULOS = 8;
 
         const ws = XLSXLib.utils.aoa_to_sheet(datos);
         const wb = XLSXLib.utils.book_new();
+        wb.Workbook = wb.Workbook || {};
+        wb.Workbook.CalcPr = { fullCalcOnLoad: true, forceFullCalc: true };
         XLSXLib.utils.book_append_sheet(wb, ws, "Resultados");
 
         const totalCols = filasResultadosFmt[0]?.length || 11;
@@ -1389,20 +1391,25 @@ let MODULOS = 8;
         // Columna F preparada como TIEMPO TOTAL:
         // calcula automáticamente la diferencia entre Hora salida (C) y Hora llegada (D).
         // Formato abreviado: 1h 25min.
+        // Importante: se deja preparada hasta muchas filas vacías, para que funcione cuando escribas datos después.
         if (totalCols >= 6) {
             const headerTiempo = XLSXLib.utils.encode_cell({ r: 2, c: 5 });
             if (!ws[headerTiempo]) ws[headerTiempo] = { t: "s", v: "TIEMPO TOTAL" };
             ws[headerTiempo].v = "TIEMPO TOTAL";
 
-            for (let r = 3; r < lastRow; r++) {
+            const formulaLastRow = Math.max(lastRow, 203); // hasta fila 203 aprox.
+            for (let r = 3; r < formulaLastRow; r++) {
                 const excelRow = r + 1;
                 const addr = XLSXLib.utils.encode_cell({ r, c: 5 });
                 ws[addr] = {
                     t: "s",
-                    f: `IF(AND(C${excelRow}<>"",D${excelRow}<>""),TEXT(MOD(IF(ISNUMBER(D${excelRow}),D${excelRow},TIMEVALUE(D${excelRow}))-IF(ISNUMBER(C${excelRow}),C${excelRow},TIMEVALUE(C${excelRow})),1),"h""h ""mm""min"""),"")`,
+                    // Fórmula simple y compatible: si escribes 8:40 y 9:40 calcula 1h 00min.
+                    f: `IF(AND(C${excelRow}<>"",D${excelRow}<>""),TEXT(MOD(D${excelRow}-C${excelRow},1),"[h]""h ""mm""min"""),"")`,
                     v: ""
                 };
             }
+
+            ws["!ref"] = `A1:${lastCol}${formulaLastRow}`;
         }
 
         ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }];
