@@ -7922,8 +7922,14 @@ downloadClassificationExcel=async function(){
     document.addEventListener("DOMContentLoaded", function(){
         const modal=document.getElementById("orientationGuideModal");
         const close=document.getElementById("closeOrientationGuideBtn");
-        setTimeout(showOrientationGuide, 450);
+        let hideGuide=false;
+        try { hideGuide = localStorage.getItem("militopo_orientacion_guide_hidden") === "1"; } catch(e) {}
+        if(!hideGuide) setTimeout(showOrientationGuide, 450);
         close?.addEventListener("click", hideOrientationGuide);
+        document.getElementById("dontShowOrientationGuideBtn")?.addEventListener("click", function(){
+            try { localStorage.setItem("militopo_orientacion_guide_hidden", "1"); } catch(e) {}
+            hideOrientationGuide();
+        });
         modal?.addEventListener("click", function(e){
             if(e.target===modal) hideOrientationGuide();
         });
