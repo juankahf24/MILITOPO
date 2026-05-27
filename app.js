@@ -1389,28 +1389,31 @@ let MODULOS = 8;
         const lastRow = datos.length;
 
         // Columna F preparada como TIEMPO TOTAL:
-        // calcula automáticamente la diferencia entre Hora salida (C) y Hora llegada (D).
-        // Más compatible con Excel móvil/hojas de cálculo:
-        // la fórmula devuelve un número de tiempo y el formato de celda lo muestra como 1h 25min.
+        // Solo se coloca fórmula en las filas reales de recorridos.
+        // Así no aparece toda la columna llena con tiempos falsos.
+        // Si en una fila no hay hora de salida y hora de llegada, queda vacío.
         if (totalCols >= 6) {
             const headerTiempo = XLSXLib.utils.encode_cell({ r: 2, c: 5 });
             if (!ws[headerTiempo]) ws[headerTiempo] = { t: "s", v: "TIEMPO TOTAL" };
             ws[headerTiempo].v = "TIEMPO TOTAL";
 
-            const formulaLastRow = Math.max(lastRow, 203); // hasta fila 203 aprox.
-            for (let r = 3; r < formulaLastRow; r++) {
+            const firstBodyRow = 3; // fila Excel 4
+            const routeRowsCount = Math.max(0, filasResultadosFmt.length - 1);
+
+            for (let i = 0; i < routeRowsCount; i++) {
+                const r = firstBodyRow + i;
                 const excelRow = r + 1;
                 const addr = XLSXLib.utils.encode_cell({ r, c: 5 });
+
                 ws[addr] = {
-                    t: "n",
-                    // Solo calcula si C y D son horas reales/números mayores que 0.
-                    // Así no aparecen tiempos falsos en filas donde no has escrito salida y llegada.
-                    f: `IFERROR(IF(AND(ISNUMBER(C${excelRow}),ISNUMBER(D${excelRow}),C${excelRow}>0,D${excelRow}>0),MOD(D${excelRow}-C${excelRow},1),""),"")`,
-                    z: '[h]"h "mm"min"'
+                    t: "s",
+                    // Compatible con horas escritas como 10:10 o como hora real de Excel.
+                    // Devuelve texto abreviado: 0h 45min, 1h 10min, etc.
+                    f: `IF(OR(C${excelRow}="",D${excelRow}=""),"",TEXT(MOD(IF(ISNUMBER(D${excelRow}),D${excelRow},TIMEVALUE(D${excelRow}))-IF(ISNUMBER(C${excelRow}),C${excelRow},TIMEVALUE(C${excelRow})),1),"[h]""h ""mm""min"""))`
                 };
             }
 
-            ws["!ref"] = `A1:${lastCol}${formulaLastRow}`;
+            ws["!ref"] = `A1:${lastCol}${lastRow}`;
         }
 
         ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }];
@@ -1465,7 +1468,7 @@ let MODULOS = 8;
                     fill: isTitle
                         ? { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
                         : (isHeader ? { patternType: "solid", fgColor: { rgb: "EBEBEB" } } : { patternType: "solid", fgColor: { rgb: "FFFFFF" } }),
-                    numFmt: (isBody && C === 5) ? '[h]"h "mm"min"' : undefined
+                    numFmt: undefined
                 };
             }
         }
