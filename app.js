@@ -1380,43 +1380,14 @@ let MODULOS = 8;
 
         const ws = XLSXLib.utils.aoa_to_sheet(datos);
         const wb = XLSXLib.utils.book_new();
+
+        // Forzar recálculo al abrir el archivo en la app de hoja de cálculo.
         wb.Workbook = wb.Workbook || {};
-        wb.Workbook.CalcPr = { fullCalcOnLoad: true, forceFullCalc: true };
-        XLSXLib.utils.book_append_sheet(wb, ws, "Resultados");
+        wb.Workbook.CalcPr = { calcMode: "auto", fullCalcOnLoad: true, forceFullCalc: true };
 
         const totalCols = filasResultadosFmt[0]?.length || 11;
         const lastCol = XLSXLib.utils.encode_col(totalCols - 1);
         const lastRow = datos.length;
-
-        // Columna F preparada como TIEMPO TOTAL:
-        // Solo se coloca fórmula en las filas reales de recorridos.
-        // Así no aparece toda la columna llena con tiempos falsos.
-        // Si en una fila no hay hora de salida y hora de llegada, queda vacío.
-        if (totalCols >= 6) {
-            const headerTiempo = XLSXLib.utils.encode_cell({ r: 2, c: 5 });
-            if (!ws[headerTiempo]) ws[headerTiempo] = { t: "s", v: "TIEMPO TOTAL" };
-            ws[headerTiempo].v = "TIEMPO TOTAL";
-
-            const firstBodyRow = 3; // fila Excel 4
-            const routeRowsCount = Math.max(0, filasResultadosFmt.length - 1);
-
-            for (let i = 0; i < routeRowsCount; i++) {
-                const r = firstBodyRow + i;
-                const excelRow = r + 1;
-                const addr = XLSXLib.utils.encode_cell({ r, c: 5 });
-
-                ws[addr] = {
-                    t: "n",
-                    // Fórmula sin funciones para máxima compatibilidad entre apps móviles.
-                    // Devuelve texto abreviado: 0h 45min, 1h 10min, etc.
-                    f: `(C${excelRow}<>"")*(D${excelRow}<>"")*(D${excelRow}-C${excelRow}+(D${excelRow}<C${excelRow}))`,
-                    v: 0,
-                    z: '[h]" h "mm" min";; ;@' 
-                };
-            }
-
-            ws["!ref"] = `A1:${lastCol}${lastRow}`;
-        }
 
         ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }];
         ws["!cols"] = [
@@ -1425,7 +1396,7 @@ let MODULOS = 8;
             { wch: 17 },  // Hora salida
             { wch: 17 },  // Hora llegada
             { wch: 16 },  // Puntos
-            { wch: 13 },  // Tiempo total
+            { wch: 15 },  // Tiempo total
             { wch: 19 },  // Distancia
             { wch: 20 },  // Desnivel +
             { wch: 20 },  // Desnivel -
@@ -1443,14 +1414,7 @@ let MODULOS = 8;
         for (let R = range.s.r; R <= range.e.r; R++) {
             for (let C = range.s.c; C <= range.e.c; C++) {
                 const addr = XLSXLib.utils.encode_cell({ r: R, c: C });
-                if (!ws[addr])                 ws[addr] = {
-                    t: "s",
-                    // Fórmula de TEXTO: no usa formato numérico de celda.
-                    // Si falta salida o llegada queda vacío.
-                    // Si hay horas, muestra por ejemplo: 1 h 40 min.
-                    f: `IF(OR(C${excelRow}="",D${excelRow}=""),"",INT(MOD(D${excelRow}-C${excelRow},1)*24)&" h "&TEXT(MOD(ROUND(MOD(D${excelRow}-C${excelRow},1)*1440,0),60),"00")&" min")`,
-                    v: ""
-                };
+                if (!ws[addr]) ws[addr] = { t: "s", v: "" };
 
                 const isTitle = R === 0;
                 const isHeader = R === 2;
@@ -1464,7 +1428,7 @@ let MODULOS = 8;
                         color: { rgb: "000000" }
                     },
                     alignment: {
-                        horizontal: C === 1 && isBody ? "center" : "center",
+                        horizontal: "center",
                         vertical: "center",
                         wrapText: true
                     },
@@ -1476,14 +1440,52 @@ let MODULOS = 8;
                     },
                     fill: isTitle
                         ? { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
-                        : (isHeader ? { patternType: "solid", fgColor: { rgb: "EBEBEB" } } : { patternType: "solid", fgColor: { rgb: "FFFFFF" } }),
-                    numFmt: undefined
+                        : (isHeader ? { patternType: "solid", fgColor: { rgb: "EBEBEB" } } : { patternType: "solid", fgColor: { rgb: "FFFFFF" } })
                 };
             }
         }
 
+        // Columna F: TIEMPO TOTAL.
+        // Fórmula limpia, solo en filas reales de recorridos.
+        // No dejamos valor cacheado para evitar resultados falsos como 0h 12min.
+        // Fórmula por fila:
+        // =IF(OR(C4="",D4=""),"",TEXT(MOD(D4-C4,1),"[h]"" h ""mm"" min"""))
+        if (totalCols >= 6) {
+            const headerTiempo = XLSXLib.utils.encode_cell({ r: 2, c: 5 });
+            if (!ws[headerTiempo]) ws[headerTiempo] = { t: "s", v: "TIEMPO TOTAL" };
+            ws[headerTiempo].v = "TIEMPO TOTAL";
+
+            const routeRowsCount = Math.max(0, filasResultadosFmt.length - 1);
+            for (let i = 0; i < routeRowsCount; i++) {
+                const r = 3 + i;       // índice JS: fila Excel 4
+                const excelRow = r + 1;
+                const addr = XLSXLib.utils.encode_cell({ r, c: 5 });
+
+                ws[addr] = ws[addr] || {};
+                ws[addr].t = "s";
+                delete ws[addr].v;
+                delete ws[addr].w;
+                delete ws[addr].z;
+                ws[addr].f = `IF(OR(C${excelRow}="",D${excelRow}=""),"",TEXT(MOD(D${excelRow}-C${excelRow},1),"[h]"" h ""mm"" min"""))`;
+                ws[addr].s = {
+                    font: { name: "Arial", sz: 9, color: { rgb: "000000" } },
+                    alignment: { horizontal: "center", vertical: "center", wrapText: true },
+                    border: {
+                        top: { style: "thin", color: { rgb: "808080" } },
+                        bottom: { style: "thin", color: { rgb: "808080" } },
+                        left: { style: "thin", color: { rgb: "808080" } },
+                        right: { style: "thin", color: { rgb: "808080" } }
+                    },
+                    fill: { patternType: "solid", fgColor: { rgb: "FFFFFF" } }
+                };
+            }
+        }
+
+        ws["!ref"] = `A1:${lastCol}${lastRow}`;
         ws["!autofilter"] = { ref: `A3:${lastCol}${lastRow}` };
         aplicarImpresionA4Horizontal(ws);
+
+        XLSXLib.utils.book_append_sheet(wb, ws, "Resultados");
 
         const excelData = XLSXLib.write(wb, {
             bookType: "xlsx",
