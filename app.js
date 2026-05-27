@@ -1443,7 +1443,14 @@ let MODULOS = 8;
         for (let R = range.s.r; R <= range.e.r; R++) {
             for (let C = range.s.c; C <= range.e.c; C++) {
                 const addr = XLSXLib.utils.encode_cell({ r: R, c: C });
-                if (!ws[addr]) ws[addr] = { t: "s", v: "" };
+                if (!ws[addr])                 ws[addr] = {
+                    t: "s",
+                    // Fórmula de TEXTO: no usa formato numérico de celda.
+                    // Si falta salida o llegada queda vacío.
+                    // Si hay horas, muestra por ejemplo: 1 h 40 min.
+                    f: `IF(OR(C${excelRow}="",D${excelRow}=""),"",INT(MOD(D${excelRow}-C${excelRow},1)*24)&" h "&TEXT(MOD(ROUND(MOD(D${excelRow}-C${excelRow},1)*1440,0),60),"00")&" min")`,
+                    v: ""
+                };
 
                 const isTitle = R === 0;
                 const isHeader = R === 2;
@@ -1470,7 +1477,7 @@ let MODULOS = 8;
                     fill: isTitle
                         ? { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
                         : (isHeader ? { patternType: "solid", fgColor: { rgb: "EBEBEB" } } : { patternType: "solid", fgColor: { rgb: "FFFFFF" } }),
-                    numFmt: (isBody && C === 5) ? '[h]" h "mm" min";; ;@' : undefined
+                    numFmt: undefined
                 };
             }
         }
