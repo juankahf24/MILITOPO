@@ -1287,3 +1287,61 @@ th,td{
     filter: brightness(1.06);
     transform: translateY(-1px);
 }
+
+
+/* ===== FIX RESTAURADO PESTAÑAS DE PASOS ORIENTACIÓN ===== */
+/* Evita que al retroceder queden colores mezclados o restos naranjas/verdes. */
+.steps {
+    isolation: isolate !important;
+    overflow: hidden !important;
+}
+
+.step-tab {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    background-image: none !important;
+    color: #fff2d2 !important;
+    opacity: .92 !important;
+    box-shadow: none !important;
+    -webkit-transform: translateZ(0) !important;
+    transform: translateZ(0) !important;
+    background-clip: padding-box !important;
+}
+
+.step-tab.future,
+.step-tab[data-step-state="future"]:not(.active):not(.done) {
+    background: transparent !important;
+    background-image: none !important;
+    color: #fff2d2 !important;
+    opacity: .92 !important;
+    box-shadow: none !important;
+}
+
+.step-tab.done,
+.step-tab[data-step-state="done"]:not(.active) {
+    background: linear-gradient(180deg,#8fbd68 0%,#5f8f3d 100%) !important;
+    background-image: linear-gradient(180deg,#8fbd68 0%,#5f8f3d 100%) !important;
+    color: #faffed !important;
+    opacity: 1 !important;
+    box-shadow: 0 10px 22px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
+
+.step-tab.active,
+.step-tab[data-step-state="active"] {
+    background: linear-gradient(180deg,#ffd782 0%,#d99938 100%) !important;
+    background-image: linear-gradient(180deg,#ffd782 0%,#d99938 100%) !important;
+    color: #1f1508 !important;
+    opacity: 1 !important;
+    box-shadow: 0 14px 26px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.28) !important;
+}
+
+.step-tab.active.done,
+.step-tab.done.active {
+    background: linear-gradient(180deg,#ffd782 0%,#d99938 100%) !important;
+    background-image: linear-gradient(180deg,#ffd782 0%,#d99938 100%) !important;
+    color: #1f1508 !important;
+}
