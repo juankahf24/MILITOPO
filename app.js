@@ -1350,9 +1350,12 @@ let MODULOS = 8;
             colWidths: [17, 28, 25, 25, 21, 23, 32, 31, 31, 31, 21],
             margin: 6,
             headerRows: 1,
-            bodyFontSize: 7.1,
-            headerFontSize: 6.8,
-            minRowHeight: 8.5,
+            bodyFontSize: 5.5,
+            headerFontSize: 5.4,
+            minRowHeight: 6.4,
+            paddingX: 0.75,
+            paddingY: 0.4,
+            titleFontSize: 11,
             boldFirstCol: true,
             alignments: ['center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center', 'center'],
             headerFill: [235, 235, 235],
@@ -1362,6 +1365,95 @@ let MODULOS = 8;
         });
         return doc.output('arraybuffer');
     }
+
+    async function generarExcelResultadosRecorridos(filasResultadosFmt) {
+        const XLSXLib = window.XLSXStyle || window.XLSX;
+        if (!XLSXLib || !XLSXLib.utils || !XLSXLib.write) {
+            throw new Error("No se pudo cargar la librería Excel.");
+        }
+
+        const datos = [
+            ["RESULTADOS DE RECORRIDOS"],
+            [],
+            ...filasResultadosFmt
+        ];
+
+        const ws = XLSXLib.utils.aoa_to_sheet(datos);
+        const wb = XLSXLib.utils.book_new();
+        XLSXLib.utils.book_append_sheet(wb, ws, "Resultados");
+
+        const totalCols = filasResultadosFmt[0]?.length || 11;
+        const lastCol = XLSXLib.utils.encode_col(totalCols - 1);
+        const lastRow = datos.length;
+
+        ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }];
+        ws["!cols"] = [
+            { wch: 12 },  // Recorrido
+            { wch: 24 },  // Nombre
+            { wch: 17 },  // Hora salida
+            { wch: 17 },  // Hora llegada
+            { wch: 16 },  // Puntos
+            { wch: 16 },  // Tiempo
+            { wch: 19 },  // Distancia
+            { wch: 20 },  // Desnivel +
+            { wch: 20 },  // Desnivel -
+            { wch: 20 },  // Desnivel global
+            { wch: 14 }   // Dificultad
+        ];
+        ws["!rows"] = [
+            { hpt: 22 },
+            { hpt: 6 },
+            { hpt: 28 },
+            ...Array(Math.max(0, filasResultadosFmt.length - 1)).fill({ hpt: 20 })
+        ];
+
+        const range = XLSXLib.utils.decode_range(ws["!ref"] || `A1:${lastCol}${lastRow}`);
+        for (let R = range.s.r; R <= range.e.r; R++) {
+            for (let C = range.s.c; C <= range.e.c; C++) {
+                const addr = XLSXLib.utils.encode_cell({ r: R, c: C });
+                if (!ws[addr]) ws[addr] = { t: "s", v: "" };
+
+                const isTitle = R === 0;
+                const isHeader = R === 2;
+                const isBody = R >= 3;
+
+                ws[addr].s = {
+                    font: {
+                        name: "Arial",
+                        sz: isTitle ? 14 : (isHeader ? 10 : 9),
+                        bold: isTitle || isHeader || (isBody && C === 0),
+                        color: { rgb: "000000" }
+                    },
+                    alignment: {
+                        horizontal: C === 1 && isBody ? "center" : "center",
+                        vertical: "center",
+                        wrapText: true
+                    },
+                    border: {
+                        top: { style: "thin", color: { rgb: "808080" } },
+                        bottom: { style: "thin", color: { rgb: "808080" } },
+                        left: { style: "thin", color: { rgb: "808080" } },
+                        right: { style: "thin", color: { rgb: "808080" } }
+                    },
+                    fill: isTitle
+                        ? { patternType: "solid", fgColor: { rgb: "D9D9D9" } }
+                        : (isHeader ? { patternType: "solid", fgColor: { rgb: "EBEBEB" } } : { patternType: "solid", fgColor: { rgb: "FFFFFF" } })
+                };
+            }
+        }
+
+        ws["!autofilter"] = { ref: `A3:${lastCol}${lastRow}` };
+        aplicarImpresionA4Horizontal(ws);
+
+        const excelData = XLSXLib.write(wb, {
+            bookType: "xlsx",
+            type: "array",
+            cellStyles: true
+        });
+
+        return await prepararXlsxParaImpresionA4Horizontal(excelData);
+    }
+
     /* PDF PRINT-READY DOCUMENTS END */
 
 
@@ -1958,6 +2050,12 @@ let MODULOS = 8;
         const filasResultadosFmt = filasResultados.map(row => row.map(v => (v === null || v === undefined) ? "" : String(v)));
         const resultadosPdf = generarPdfResultadosRecorridos(filasResultadosFmt, metricasRecorridos);
         organizadoresFolder.file("Resultados de recorridos.pdf", resultadosPdf, { binary: true });
+        try {
+            const resultadosExcel = await generarExcelResultadosRecorridos(filasResultadosFmt);
+            organizadoresFolder.file("Resultados de recorridos.xlsx", resultadosExcel, { binary: true });
+        } catch (excelErr) {
+            console.warn("No se pudo generar el Excel de resultados:", excelErr);
+        }
         setProgress(40, "Generando balizas en PDF...");
         let balizasFolder = zip.folder("Balizas");
         let normalFolder = balizasFolder.folder("topografica_normal (con brujula)");
