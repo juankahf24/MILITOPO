@@ -1409,7 +1409,7 @@ let MODULOS = 8;
                     t: "s",
                     // Compatible con horas escritas como 10:10 o como hora real de Excel.
                     // Devuelve texto abreviado: 0h 45min, 1h 10min, etc.
-                    f: `IF(OR(C${excelRow}="",D${excelRow}=""),"",TEXT(MOD(IF(ISNUMBER(D${excelRow}),D${excelRow},TIMEVALUE(D${excelRow}))-IF(ISNUMBER(C${excelRow}),C${excelRow},TIMEVALUE(C${excelRow})),1),"[h]""h ""mm""min"""))`
+                    f: `SI(O(C${excelRow}="";D${excelRow}="");"";TEXTO(RESIDUO(D${excelRow}-C${excelRow};1);"[h]"" h ""mm"" min"""))`
                 };
             }
 
