@@ -1386,6 +1386,25 @@ let MODULOS = 8;
         const lastCol = XLSXLib.utils.encode_col(totalCols - 1);
         const lastRow = datos.length;
 
+        // Columna F preparada como TIEMPO TOTAL:
+        // calcula automáticamente la diferencia entre Hora salida (C) y Hora llegada (D).
+        // Formato abreviado: 1h 25min.
+        if (totalCols >= 6) {
+            const headerTiempo = XLSXLib.utils.encode_cell({ r: 2, c: 5 });
+            if (!ws[headerTiempo]) ws[headerTiempo] = { t: "s", v: "TIEMPO TOTAL" };
+            ws[headerTiempo].v = "TIEMPO TOTAL";
+
+            for (let r = 3; r < lastRow; r++) {
+                const excelRow = r + 1;
+                const addr = XLSXLib.utils.encode_cell({ r, c: 5 });
+                ws[addr] = {
+                    t: "s",
+                    f: `IF(AND(C${excelRow}<>"",D${excelRow}<>""),TEXT(MOD(IF(ISNUMBER(D${excelRow}),D${excelRow},TIMEVALUE(D${excelRow}))-IF(ISNUMBER(C${excelRow}),C${excelRow},TIMEVALUE(C${excelRow})),1),"h""h ""mm""min"""),"")`,
+                    v: ""
+                };
+            }
+        }
+
         ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }];
         ws["!cols"] = [
             { wch: 12 },  // Recorrido
@@ -1393,7 +1412,7 @@ let MODULOS = 8;
             { wch: 17 },  // Hora salida
             { wch: 17 },  // Hora llegada
             { wch: 16 },  // Puntos
-            { wch: 16 },  // Tiempo
+            { wch: 13 },  // Tiempo total
             { wch: 19 },  // Distancia
             { wch: 20 },  // Desnivel +
             { wch: 20 },  // Desnivel -
