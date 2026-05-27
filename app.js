@@ -1403,9 +1403,9 @@ let MODULOS = 8;
                 const addr = XLSXLib.utils.encode_cell({ r, c: 5 });
                 ws[addr] = {
                     t: "n",
-                    // Si salida=8:40 y llegada=9:50, calcula 1h 10min.
-                    f: `IF(AND(C${excelRow}<>"",D${excelRow}<>""),MOD(D${excelRow}-C${excelRow},1),"")`,
-                    v: 0,
+                    // Solo calcula si C y D son horas reales/números mayores que 0.
+                    // Así no aparecen tiempos falsos en filas donde no has escrito salida y llegada.
+                    f: `IFERROR(IF(AND(ISNUMBER(C${excelRow}),ISNUMBER(D${excelRow}),C${excelRow}>0,D${excelRow}>0),MOD(D${excelRow}-C${excelRow},1),""),"")`,
                     z: '[h]"h "mm"min"'
                 };
             }
