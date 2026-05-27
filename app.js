@@ -2952,8 +2952,10 @@ let MODULOS = 8;
 
         showTopograficaMode();
         setTimeout(() => {
+            let hideGuide = false;
+            try { hideGuide = localStorage.getItem("militopo_topografia_guide_hidden") === "1"; } catch (e) {}
             const instrModal = document.getElementById("instructionsModal");
-            if (instrModal) instrModal.style.display = "flex";
+            if (instrModal && !hideGuide) instrModal.style.display = "flex";
         }, 260);
     }
 
@@ -3175,6 +3177,10 @@ let MODULOS = 8;
 
         openInstrBtn?.addEventListener("click", showInstructions);
         closeInstrBtn?.addEventListener("click", hideInstructions);
+        document.getElementById("dontShowTopoGuideBtn")?.addEventListener("click", () => {
+            try { localStorage.setItem("militopo_topografia_guide_hidden", "1"); } catch (e) {}
+            hideInstructions();
+        });
         window.addEventListener("click", (e) => { if (e.target === instrModal) hideInstructions(); });
     });
 
