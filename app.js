@@ -1995,6 +1995,241 @@ let MODULOS = 8;
     /* ZIP SUCCESS CELEBRATION JS END */
 
 
+
+    function normalizarCabeceraClasificacion(value) {
+        return String(value ?? "")
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
+    }
+
+    function buscarFilaCabeceraResultados(rows) {
+        for (let i = 0; i < Math.min(rows.length, 20); i++) {
+            const norm = (rows[i] || []).map(normalizarCabeceraClasificacion);
+            const hasNombre = norm.some(x => x.includes("nombre"));
+            const hasPuntos = norm.some(x => x.includes("puntos"));
+            const hasTiempo = norm.some(x => x.includes("tiempo"));
+            if (hasNombre && hasPuntos && hasTiempo) return i;
+        }
+        return -1;
+    }
+
+    function indiceColumnaResultado(headers, variants) {
+        const norm = headers.map(normalizarCabeceraClasificacion);
+        for (const variant of variants) {
+            const v = normalizarCabeceraClasificacion(variant);
+            const exact = norm.findIndex(h => h === v);
+            if (exact >= 0) return exact;
+        }
+        for (const variant of variants) {
+            const v = normalizarCabeceraClasificacion(variant);
+            const partial = norm.findIndex(h => h.includes(v) || v.includes(h));
+            if (partial >= 0) return partial;
+        }
+        return -1;
+    }
+
+    function parseNumeroClasificacion(value, fallback = 0) {
+        if (value === null || value === undefined || value === "") return fallback;
+        if (typeof value === "number" && Number.isFinite(value)) return value;
+        const cleaned = String(value)
+            .replace(",", ".")
+            .replace(/[^\d.\-]/g, "");
+        const n = Number(cleaned);
+        return Number.isFinite(n) ? n : fallback;
+    }
+
+    function parseHoraMinutosClasificacion(value) {
+        if (value === null || value === undefined || value === "") return null;
+        if (typeof value === "number" && Number.isFinite(value)) {
+            const mins = Math.round((value % 1) * 1440);
+            return mins >= 0 ? mins : null;
+        }
+
+        const s = String(value).trim().toLowerCase();
+        if (!s) return null;
+
+        // Duración tipo 1 h 10 min / 1h10min / 70 min
+        const hm = s.match(/(\d+)\s*h(?:oras?)?\s*(\d+)?\s*m?/i);
+        if (hm) {
+            const h = Number(hm[1] || 0);
+            const m = Number(hm[2] || 0);
+            if (Number.isFinite(h) && Number.isFinite(m)) return h * 60 + m;
+        }
+        const onlyMin = s.match(/^(\d+)\s*min/);
+        if (onlyMin) return Number(onlyMin[1]);
+
+        // Hora tipo 8:40 / 08:40 / 8.40
+        const clock = s.match(/^(\d{1,2})[:.](\d{1,2})(?::\d{1,2})?$/);
+        if (clock) {
+            const h = Number(clock[1]);
+            const m = Number(clock[2]);
+            if (Number.isFinite(h) && Number.isFinite(m)) return h * 60 + m;
+        }
+
+        return null;
+    }
+
+    function formatMinutosClasificacion(minutes) {
+        if (!Number.isFinite(minutes)) return "";
+        const total = Math.max(0, Math.round(minutes));
+        const h = Math.floor(total / 60);
+        const m = total % 60;
+        return `${h} h ${String(m).padStart(2, "0")} min`;
+    }
+
+    function calcularTiempoTotalDesdeFila(row, idxSalida, idxLlegada, idxTiempo) {
+        const tiempoDirecto = idxTiempo >= 0 ? parseHoraMinutosClasificacion(row[idxTiempo]) : null;
+        if (tiempoDirecto !== null) return tiempoDirecto;
+
+        const salida = idxSalida >= 0 ? parseHoraMinutosClasificacion(row[idxSalida]) : null;
+        const llegada = idxLlegada >= 0 ? parseHoraMinutosClasificacion(row[idxLlegada]) : null;
+        if (salida === null || llegada === null) return null;
+
+        let diff = llegada - salida;
+        if (diff < 0) diff += 24 * 60; // por si acaba después de medianoche
+        return diff;
+    }
+
+    function generarPdfClasificacionResultados(rows) {
+        const doc = crearDocumentoPdfA4("landscape");
+        renderTablaPdf(doc, {
+            title: "CLASIFICACIÓN DE RESULTADOS",
+            rows,
+            colWidths: [14, 42, 24, 26, 28, 30, 30, 30, 24],
+            margin: 6,
+            headerRows: 1,
+            bodyFontSize: 6.2,
+            headerFontSize: 5.8,
+            minRowHeight: 6.8,
+            paddingX: 0.8,
+            paddingY: 0.45,
+            titleFontSize: 12,
+            boldFirstCol: true,
+            alignments: ["center", "center", "center", "center", "center", "center", "center", "center", "center"],
+            headerFill: [235, 235, 235],
+            rowFillCallback: () => [255, 255, 255],
+            cellFillCallback: () => null,
+            textColorCallback: () => [0, 0, 0]
+        });
+        return doc.output("blob");
+    }
+
+    async function generarClasificacionDesdeExcel(file) {
+        const status = document.getElementById("clasificacionStatus");
+        if (status) {
+            status.className = "classification-status warn";
+            status.textContent = "Leyendo Excel y preparando clasificación...";
+        }
+
+        const XLSXLib = window.XLSXStyle || window.XLSX;
+        if (!XLSXLib || !XLSXLib.read || !XLSXLib.utils) {
+            throw new Error("No se pudo cargar la librería Excel.");
+        }
+
+        const buffer = await file.arrayBuffer();
+        const wb = XLSXLib.read(buffer, { type: "array", cellDates: true });
+        const sheetName = wb.SheetNames[0];
+        if (!sheetName) throw new Error("El Excel no contiene hojas.");
+        const ws = wb.Sheets[sheetName];
+        const rows = XLSXLib.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
+
+        const headerRowIndex = buscarFilaCabeceraResultados(rows);
+        if (headerRowIndex < 0) {
+            throw new Error("No encuentro la fila de cabecera con Nombre, Puntos y Tiempo.");
+        }
+
+        const headers = rows[headerRowIndex] || [];
+        const idxNombre = indiceColumnaResultado(headers, ["Nombre"]);
+        const idxPuntos = indiceColumnaResultado(headers, ["Puntos obtenidos", "Puntos"]);
+        const idxSalida = indiceColumnaResultado(headers, ["Hora de salida", "Salida"]);
+        const idxLlegada = indiceColumnaResultado(headers, ["Hora de llegada", "Llegada"]);
+        const idxTiempo = indiceColumnaResultado(headers, ["Tiempo total"]);
+        const idxDistancia = indiceColumnaResultado(headers, ["Distancia total (km)", "Distancia total", "Distancia"]);
+        const idxDesPos = indiceColumnaResultado(headers, ["Desnivel positivo (m)", "Desnivel positivo"]);
+        const idxDesNeg = indiceColumnaResultado(headers, ["Desnivel negativo (m)", "Desnivel negativo"]);
+        const idxDesGlob = indiceColumnaResultado(headers, ["Desnivel global (m)", "Desnivel global"]);
+        const idxDificultad = indiceColumnaResultado(headers, ["Dificultad"]);
+
+        if (idxNombre < 0 || idxPuntos < 0) {
+            throw new Error("El Excel debe tener como mínimo las columnas Nombre y Puntos obtenidos.");
+        }
+
+        const participantes = [];
+        for (let r = headerRowIndex + 1; r < rows.length; r++) {
+            const row = rows[r] || [];
+            const nombre = String(row[idxNombre] ?? "").trim();
+            const puntosRaw = idxPuntos >= 0 ? row[idxPuntos] : "";
+            const puntosTexto = String(puntosRaw ?? "").trim();
+            const tieneAlgo = nombre || puntosTexto || (idxSalida >= 0 && row[idxSalida]) || (idxLlegada >= 0 && row[idxLlegada]);
+            if (!tieneAlgo) continue;
+
+            const puntos = parseNumeroClasificacion(puntosRaw, 0);
+            const tiempoMin = calcularTiempoTotalDesdeFila(row, idxSalida, idxLlegada, idxTiempo);
+
+            participantes.push({
+                nombre: nombre || "SIN NOMBRE",
+                puntos,
+                puntosTexto: String(Number.isInteger(puntos) ? puntos : puntos.toFixed(2)).replace(".", ","),
+                tiempoMin,
+                tiempoTexto: tiempoMin === null ? "" : formatMinutosClasificacion(tiempoMin),
+                distancia: idxDistancia >= 0 ? String(row[idxDistancia] ?? "") : "",
+                desPos: idxDesPos >= 0 ? String(row[idxDesPos] ?? "") : "",
+                desNeg: idxDesNeg >= 0 ? String(row[idxDesNeg] ?? "") : "",
+                desGlob: idxDesGlob >= 0 ? String(row[idxDesGlob] ?? "") : "",
+                dificultad: idxDificultad >= 0 ? String(row[idxDificultad] ?? "") : ""
+            });
+        }
+
+        if (!participantes.length) {
+            throw new Error("No hay participantes/resultados rellenados para clasificar.");
+        }
+
+        participantes.sort((a, b) => {
+            if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+            const ta = a.tiempoMin === null ? Number.POSITIVE_INFINITY : a.tiempoMin;
+            const tb = b.tiempoMin === null ? Number.POSITIVE_INFINITY : b.tiempoMin;
+            return ta - tb;
+        });
+
+        const tabla = [[
+            "Puesto",
+            "Nombre",
+            "Puntos obtenidos",
+            "Tiempo total",
+            "Distancia total (km)",
+            "Desnivel positivo (m)",
+            "Desnivel negativo (m)",
+            "Desnivel global (m)",
+            "Dificultad"
+        ]];
+
+        participantes.forEach((p, i) => {
+            tabla.push([
+                String(i + 1),
+                p.nombre,
+                p.puntosTexto,
+                p.tiempoTexto,
+                p.distancia,
+                p.desPos,
+                p.desNeg,
+                p.desGlob,
+                p.dificultad
+            ]);
+        });
+
+        const pdfBlob = generarPdfClasificacionResultados(tabla);
+        saveAs(pdfBlob, `Clasificacion_resultados_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.pdf`);
+
+        if (status) {
+            status.className = "classification-status ok";
+            status.textContent = `PDF de clasificación generado: ${participantes.length} participantes.`;
+        }
+        toast("🏆 Clasificación generada correctamente", "success");
+    }
+
+
     async function generarTodo() {
         let num = parseInt(document.getElementById("numRecorridos").value);
         if (isNaN(num) || num < 1 || num > 100) throw new Error("Número entre 1 y 100");
@@ -3241,6 +3476,27 @@ let MODULOS = 8;
 
         document.getElementById("clearPuntosTopBtn")?.addEventListener("click", limpiarTodosLosPuntos);
         document.getElementById("mapClearPuntosBtn")?.addEventListener("click", limpiarTodosLosPuntos);
+        document.getElementById("importResultadosExcelBtn")?.addEventListener("click", () => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".xlsx,.xls";
+            input.onchange = async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                try {
+                    await generarClasificacionDesdeExcel(file);
+                } catch (err) {
+                    const status = document.getElementById("clasificacionStatus");
+                    if (status) {
+                        status.className = "classification-status err";
+                        status.textContent = "Error: " + (err && err.message ? err.message : err);
+                    }
+                    toast("❌ No se pudo generar la clasificación", "error");
+                }
+            };
+            input.click();
+        });
+
         document.getElementById("generarBtn")?.addEventListener("click", async () => {
             let btn = document.getElementById("generarBtn");
             btn.disabled = true;

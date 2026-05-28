@@ -5217,3 +5217,53 @@ body.dark .close-modal {
     background: rgba(0,0,0,.28) !important;
     border-color: rgba(230,188,122,.34) !important;
 }
+
+
+/* ===== Clasificación desde Excel · Topografía ===== */
+.classification-upload-panel {
+    margin-top: 20px;
+    padding: 18px;
+    border-radius: 24px;
+    border: 1px solid rgba(230,188,122,.28);
+    background:
+        radial-gradient(circle at 12% 0%, rgba(230,188,122,.16), transparent 30%),
+        linear-gradient(180deg, rgba(45,61,35,.92), rgba(22,32,22,.96));
+    color: #f5e6c8;
+    box-shadow: 0 18px 44px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.classification-upload-title {
+    font-family: "Courier New", monospace;
+    font-size: .98rem;
+    font-weight: 900;
+    letter-spacing: .06em;
+    color: #f0c16a;
+    margin-bottom: 8px;
+}
+
+.classification-upload-panel p {
+    margin: 0 0 14px;
+    color: #f5e6c8;
+    line-height: 1.45;
+    font-family: "Courier New", monospace;
+    font-size: .86rem;
+}
+
+.classification-upload-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.classification-status {
+    font-family: "Courier New", monospace;
+    font-size: .82rem;
+    font-weight: 800;
+    color: #f5e6c8;
+}
+
+.classification-status.ok { color: #c9f2a4; }
+.classification-status.warn { color: #f0c16a; }
+.classification-status.err { color: #ffb2a0; }
+
