@@ -174,6 +174,7 @@ let MODULOS = 8;
             if (i === 5) option.selected = true;
             select.appendChild(option);
         }
+        restaurarSeleccionNumRecorridos();
     }
 
     function getPuntoId(m, p) { return `P${m}${p}`; }
@@ -278,10 +279,20 @@ let MODULOS = 8;
     }
 
     function guardarStorage() {
-        localStorage.setItem("milimoto_puntos", JSON.stringify(puntosData));
-        localStorage.setItem("milimoto_tipo", currentCoordType);
-        localStorage.setItem("milimoto_modulos", MODULOS);
-        localStorage.setItem("milimoto_puntos_por_modulo", PUNTOS_POR_MODULO);
+        try {
+            localStorage.setItem("milimoto_puntos", JSON.stringify(puntosData));
+            localStorage.setItem("milimoto_tipo", currentCoordType);
+            localStorage.setItem("milimoto_modulos", MODULOS);
+            localStorage.setItem("milimoto_puntos_por_modulo", PUNTOS_POR_MODULO);
+            localStorage.setItem("milimoto_app_mode", "topografica");
+            localStorage.setItem("milimoto_topografia_started", "1");
+            localStorage.setItem("milimoto_topografia_current_step", String(currentStep || 1));
+            const numRec = document.getElementById("numRecorridos")?.value || "";
+            if (numRec) localStorage.setItem("milimoto_num_recorridos", numRec);
+            localStorage.setItem("milimoto_topografia_last_save", new Date().toISOString());
+        } catch (e) {
+            console.warn("No se pudo guardar estado de topografía:", e);
+        }
     }
 
     function cargarStorage() {
@@ -307,6 +318,117 @@ let MODULOS = 8;
         renderizarPuntos();
         actualizarDashboard();
         actualizarVisibilidadImportGPX();
+    }
+
+
+
+    function getSavedTopografiaStep() {
+        const raw = parseInt(localStorage.getItem("milimoto_topografia_current_step") || "1", 10);
+        return Math.max(1, Math.min(3, Number.isFinite(raw) ? raw : 1));
+    }
+
+    function hasTopografiaSavedSession() {
+        return localStorage.getItem("milimoto_topografia_started") === "1" ||
+               localStorage.getItem("milimoto_app_mode") === "topografica" ||
+               !!localStorage.getItem("milimoto_puntos");
+    }
+
+    function syncTopografiaInputsToState() {
+        document.querySelectorAll(".coord-inp").forEach(inp => {
+            const pid = inp.getAttribute("data-id");
+            if (!pid) return;
+            if (!puntosData[pid]) puntosData[pid] = { coordsUTM: "", descripcion: "" };
+            puntosData[pid].coordsUTM = inp.value || "";
+            if (puntosData[pid].latlng) delete puntosData[pid].latlng;
+        });
+        document.querySelectorAll(".desc-inp").forEach(ta => {
+            const pid = ta.getAttribute("data-id");
+            if (!pid) return;
+            if (!puntosData[pid]) puntosData[pid] = { coordsUTM: "", descripcion: "" };
+            puntosData[pid].descripcion = ta.value || "";
+        });
+        const modSel = document.getElementById("numModulosSelect");
+        const ptsSel = document.getElementById("puntosPorModuloSelect");
+        const coordSel = document.getElementById("coordTypeConfig");
+        if (modSel) MODULOS = parseInt(modSel.value, 10) || MODULOS;
+        if (ptsSel) PUNTOS_POR_MODULO = parseInt(ptsSel.value, 10) || PUNTOS_POR_MODULO;
+        if (coordSel) currentCoordType = coordSel.value || currentCoordType;
+    }
+
+    function autoSaveTopografiaNow() {
+        try {
+            syncTopografiaInputsToState();
+            guardarStorage();
+        } catch (e) {
+            console.warn("Autoguardado topografía falló:", e);
+        }
+    }
+
+    let autoSaveTopografiaTimer = null;
+    function scheduleAutoSaveTopografia() {
+        if (autoSaveTopografiaTimer) clearTimeout(autoSaveTopografiaTimer);
+        autoSaveTopografiaTimer = setTimeout(autoSaveTopografiaNow, 250);
+    }
+
+    function restaurarSeleccionNumRecorridos() {
+        const savedNum = localStorage.getItem("milimoto_num_recorridos");
+        const select = document.getElementById("numRecorridos");
+        if (savedNum && select && [...select.options].some(o => o.value === savedNum)) {
+            select.value = savedNum;
+        }
+    }
+
+    function resetTopografiaEjercicioCompleto() {
+        const ok = confirm("¿Seguro que quieres borrar todo el ejercicio de Topografía y empezar de cero?");
+        if (!ok) return;
+
+        [
+            "milimoto_puntos",
+            "milimoto_tipo",
+            "milimoto_modulos",
+            "milimoto_puntos_por_modulo",
+            "milimoto_num_recorridos",
+            "milimoto_topografia_current_step",
+            "milimoto_topografia_last_save",
+            "milimoto_topografia_started"
+        ].forEach(k => {
+            try { localStorage.removeItem(k); } catch (e) {}
+        });
+
+        MODULOS = 8;
+        PUNTOS_POR_MODULO = 5;
+        currentCoordType = "UTM";
+        currentStep = 1;
+        puntosData = generarEstructuraCompleta(currentCoordType);
+        previewRecorridosCache = null;
+        routeDetailsLastResumen = null;
+        routeDetailsPanelVisible = false;
+
+        const modSel = document.getElementById("numModulosSelect");
+        const ptsSel = document.getElementById("puntosPorModuloSelect");
+        const coordSel = document.getElementById("coordTypeConfig");
+        if (modSel) modSel.value = "8";
+        if (ptsSel) ptsSel.value = "5";
+        if (coordSel) coordSel.value = "UTM";
+
+        generarOpcionesRecorridos();
+        const numSel = document.getElementById("numRecorridos");
+        if (numSel) numSel.value = "5";
+
+        document.getElementById("infoEstructura").innerHTML = "8 módulos × 5 puntos = 40 puntos totales";
+        const zipNoti = document.getElementById("zipNotification");
+        if (zipNoti) zipNoti.innerHTML = "";
+        const res = document.getElementById("resultadosGen");
+        if (res) res.innerHTML = "";
+        const panel = document.getElementById("routeDetailsPanel");
+        if (panel) { panel.style.display = "none"; panel.innerHTML = ""; }
+
+        renderizarPuntos();
+        actualizarDashboard();
+        actualizarVisibilidadImportGPX();
+        goToStep(1);
+        guardarStorage();
+        toast("🧹 Ejercicio reiniciado. Puedes empezar de cero.", "success");
     }
 
 
@@ -3323,7 +3445,7 @@ let MODULOS = 8;
         else showTopograficaMode();
     }
 
-    function showTopograficaMode() {
+    function showTopograficaMode(stepOverride = null) {
         applyTopografiaNightTheme();
         const mainSteps = document.querySelector(".steps-container");
         const step1 = document.getElementById("step1");
@@ -3338,7 +3460,7 @@ let MODULOS = 8;
         if (oriShell) oriShell.style.display = "none";
         if (topoHud) topoHud.style.display = "";
         updateHeaderModeTabs();
-        goToStep(1);
+        goToStep(stepOverride || getSavedTopografiaStep());
     }
 
     function fillOrientationMirrors() {
@@ -3384,9 +3506,13 @@ let MODULOS = 8;
         appMode = "topografica";
         const overlay = document.getElementById("startupModeOverlay");
         if (overlay) overlay.style.display = "none";
-        try { localStorage.setItem("milimoto_app_mode", appMode); } catch (e) {}
+        try {
+            localStorage.setItem("milimoto_app_mode", appMode);
+            localStorage.setItem("milimoto_topografia_started", "1");
+            localStorage.setItem("milimoto_topografia_current_step", "1");
+        } catch (e) {}
 
-        showTopograficaMode();
+        showTopograficaMode(1);
         setTimeout(() => {
             let hideGuide = false;
             try { hideGuide = localStorage.getItem("militopo_topografia_guide_hidden") === "1"; } catch (e) {}
@@ -3405,6 +3531,12 @@ let MODULOS = 8;
             else if (idx + 1 > step) s.classList.remove("completed");
         });
         currentStep = step;
+        try {
+            localStorage.setItem("milimoto_topografia_current_step", String(step));
+            localStorage.setItem("milimoto_topografia_started", "1");
+            localStorage.setItem("milimoto_app_mode", "topografica");
+        } catch (e) {}
+        guardarStorage();
         if (typeof updateTopoVisualState === "function") updateTopoVisualState();
         if (step === 2) actualizarDashboard();
         if (step === 3) renderResumenTecnicoPrevio();
@@ -3420,7 +3552,17 @@ let MODULOS = 8;
         initTheme();
         cargarStorage();
         generarOpcionesRecorridos();
-        goToStep(1);
+        restaurarSeleccionNumRecorridos();
+
+        if (hasTopografiaSavedSession()) {
+            appMode = "topografica";
+            const overlay = document.getElementById("startupModeOverlay");
+            if (overlay) overlay.style.display = "none";
+            try { localStorage.setItem("milimoto_app_mode", "topografica"); } catch (e) {}
+            showTopograficaMode(getSavedTopografiaStep());
+        } else {
+            goToStep(1);
+        }
 
         document.getElementById("startupTopoBtn")?.addEventListener("click", () => enterStartupMode("topografica"));
         document.getElementById("startupOriBtn")?.addEventListener("click", () => enterStartupMode("orientacion"));
@@ -3441,8 +3583,8 @@ let MODULOS = 8;
         });
 
         document.querySelectorAll("input, textarea, select").forEach(el => {
-            el.addEventListener("input", markUnsavedChanges);
-            el.addEventListener("change", markUnsavedChanges);
+            el.addEventListener("input", () => { markUnsavedChanges(); scheduleAutoSaveTopografia(); });
+            el.addEventListener("change", () => { markUnsavedChanges(); autoSaveTopografiaNow(); });
         });
 
         document.getElementById("confirmStep1")?.addEventListener("click", () => { clearUnsavedChanges(); });
@@ -3460,9 +3602,16 @@ let MODULOS = 8;
             window.scrollTo({ top: document.body.scrollHeight * 0.25, behavior: "smooth" });
         });
 
-        document.getElementById("confirmStep1")?.addEventListener("click", () => { aplicarConfiguracion(); goToStep(2); });
+        document.getElementById("nuevoEjercicioTopoBtn")?.addEventListener("click", resetTopografiaEjercicioCompleto);
+        window.addEventListener("pagehide", autoSaveTopografiaNow);
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden") autoSaveTopografiaNow();
+        });
+
+        document.getElementById("confirmStep1")?.addEventListener("click", () => { aplicarConfiguracion(); autoSaveTopografiaNow(); goToStep(2); });
         document.getElementById("backToStep1")?.addEventListener("click", () => { goToStep(1); });
         document.getElementById("confirmStep2")?.addEventListener("click", () => {
+            autoSaveTopografiaNow();
             let v = verificarCompletos();
             if (v.ok) {
                 toast("✅ Todos los puntos están completos y con formato válido. Avanzando al paso 3", "success");

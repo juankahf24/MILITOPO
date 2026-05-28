@@ -5342,3 +5342,15 @@ body.dark .close-modal {
     justify-content: center;
     flex-wrap: wrap;
 }
+
+
+/* ===== Botón nuevo ejercicio · Topografía ===== */
+#nuevoEjercicioTopoBtn {
+    border-color: rgba(255,178,160,.34) !important;
+}
+
+body.dark #nuevoEjercicioTopoBtn {
+    background: linear-gradient(180deg, rgba(90,58,45,.92), rgba(54,34,28,.94)) !important;
+    color: #ffd7cc !important;
+    border-color: rgba(255,178,160,.32) !important;
+}
