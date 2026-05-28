@@ -2120,19 +2120,40 @@ let MODULOS = 8;
     let clasificacionPdfPendiente = null;
     let clasificacionPdfNombrePendiente = "";
 
-    function descargarBlobDirecto(blob, filename) {
-        // Mismo sistema de descarga que usa el ZIP: FileSaver/saveAs.
-        // En iPhone/Safari debe ejecutarse justo dentro del click del usuario.
+    async function descargarBlobDirecto(blob, filename) {
         const pdfBlob = blob instanceof Blob
             ? new Blob([blob], { type: "application/pdf" })
             : new Blob([blob], { type: "application/pdf" });
 
-        if (typeof saveAs === "function") {
-            saveAs(pdfBlob, filename);
-            return;
+        // En iPhone/Safari los PDF suelen abrirse en vista previa aunque uses download/saveAs.
+        // Por eso primero usamos el sistema nativo de compartir archivos:
+        // ahí puedes elegir "Guardar en Archivos" y se guarda como PDF real.
+        try {
+            const pdfFile = new File([pdfBlob], filename, { type: "application/pdf" });
+            if (navigator.canShare && navigator.canShare({ files: [pdfFile] }) && navigator.share) {
+                await navigator.share({
+                    files: [pdfFile],
+                    title: "Clasificación MILITOPO",
+                    text: "PDF de clasificación generado por MILITOPO"
+                });
+                return "shared";
+            }
+        } catch (shareErr) {
+            console.warn("No se pudo usar compartir archivo PDF:", shareErr);
         }
 
-        // Respaldo si FileSaver no estuviera disponible.
+        // Fallback 1: forzar descarga como archivo binario.
+        try {
+            const forcedBlob = new Blob([pdfBlob], { type: "application/octet-stream" });
+            if (typeof saveAs === "function") {
+                saveAs(forcedBlob, filename);
+                return "download";
+            }
+        } catch (saveErr) {
+            console.warn("No se pudo usar saveAs:", saveErr);
+        }
+
+        // Fallback 2: enlace clásico. Algunos Safari abrirán vista previa por limitación del navegador.
         const url = URL.createObjectURL(pdfBlob);
         const a = document.createElement("a");
         a.href = url;
@@ -2145,6 +2166,7 @@ let MODULOS = 8;
             URL.revokeObjectURL(url);
             a.remove();
         }, 1500);
+        return "preview";
     }
 
     function cerrarModalClasificacionDescarga() {
@@ -2159,7 +2181,7 @@ let MODULOS = 8;
         const modal = document.getElementById("clasificacionDownloadModal");
         const text = document.getElementById("clasificacionDownloadText");
         if (text) {
-            text.textContent = `Excel leído correctamente. Se han clasificado ${totalParticipantes} participantes. Pulsa DESCARGAR PDF para guardar el documento.`;
+            text.textContent = `Excel leído correctamente. Se han clasificado ${totalParticipantes} participantes. Pulsa DESCARGAR PDF. En iPhone se abrirá el menú para elegir Guardar en Archivos.`;
         }
         if (modal) modal.style.display = "flex";
     }
@@ -3526,14 +3548,23 @@ let MODULOS = 8;
 
         document.getElementById("clearPuntosTopBtn")?.addEventListener("click", limpiarTodosLosPuntos);
         document.getElementById("mapClearPuntosBtn")?.addEventListener("click", limpiarTodosLosPuntos);
-        document.getElementById("clasificacionDownloadConfirm")?.addEventListener("click", (e) => {
+        document.getElementById("clasificacionDownloadConfirm")?.addEventListener("click", async (e) => {
             e.preventDefault();
             e.stopPropagation();
 
             if (clasificacionPdfPendiente && clasificacionPdfNombrePendiente) {
-                descargarBlobDirecto(clasificacionPdfPendiente, clasificacionPdfNombrePendiente);
-                toast("📄 Descarga de clasificación iniciada", "success");
-                setTimeout(cerrarModalClasificacionDescarga, 450);
+                try {
+                    const modoDescarga = await descargarBlobDirecto(clasificacionPdfPendiente, clasificacionPdfNombrePendiente);
+                    if (modoDescarga === "shared") {
+                        toast("📄 PDF enviado al menú de compartir", "success");
+                    } else {
+                        toast("📄 Descarga de clasificación iniciada", "success");
+                    }
+                    setTimeout(cerrarModalClasificacionDescarga, 450);
+                } catch (err) {
+                    console.error(err);
+                    toast("❌ No se pudo lanzar la descarga del PDF", "error");
+                }
             } else {
                 toast("❌ No hay PDF preparado para descargar", "error");
             }
