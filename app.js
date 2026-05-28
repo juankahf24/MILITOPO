@@ -2890,32 +2890,19 @@ let MODULOS = 8;
 
     }
 
+    function applyTopografiaNightTheme() {
+        document.body.classList.add("dark");
+        try { localStorage.setItem("milimoto_tema", "dark"); } catch (e) {}
+        document.querySelectorAll(".theme-opt").forEach(o => {
+            o.classList.remove("active");
+            if (o.getAttribute("data-theme") === "dark") o.classList.add("active");
+        });
+    }
+
     function initTheme() {
-        let saved = localStorage.getItem("milimoto_tema");
-        if (saved) {
-            if (saved === "dark") document.body.classList.add("dark");
-            else document.body.classList.remove("dark");
-            document.querySelectorAll(".theme-opt").forEach(o => {
-                o.classList.remove("active");
-                if (o.getAttribute("data-theme") === saved) o.classList.add("active");
-            });
-        } else {
-            let hour = new Date().getHours();
-            let isNight = hour >= 20 || hour < 7;
-            if (isNight) {
-                document.body.classList.add("dark");
-                document.querySelectorAll(".theme-opt").forEach(o => {
-                    o.classList.remove("active");
-                    if (o.getAttribute("data-theme") === "dark") o.classList.add("active");
-                });
-            } else {
-                document.body.classList.remove("dark");
-                document.querySelectorAll(".theme-opt").forEach(o => {
-                    o.classList.remove("active");
-                    if (o.getAttribute("data-theme") === "light") o.classList.add("active");
-                });
-            }
-        }
+        // En la rama Topografía se fuerza el modo noche para mantener
+        // contraste alto y una apariencia consistente.
+        applyTopografiaNightTheme();
     }
 
 
@@ -3030,6 +3017,7 @@ let MODULOS = 8;
     }
 
     function showTopograficaMode() {
+        applyTopografiaNightTheme();
         const mainSteps = document.querySelector(".steps-container");
         const step1 = document.getElementById("step1");
         const step2 = document.getElementById("step2");
@@ -3085,6 +3073,7 @@ let MODULOS = 8;
             window.location.href = "orientacion/";
             return;
         }
+        applyTopografiaNightTheme();
         appMode = "topografica";
         const overlay = document.getElementById("startupModeOverlay");
         if (overlay) overlay.style.display = "none";

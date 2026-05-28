@@ -5140,3 +5140,80 @@ body.dark .layer-selector { background: rgba(255,255,255,.06); }
     filter: brightness(1.06);
     transform: translateY(-1px);
 }
+
+
+/* ===== MILITOPO TOPOGRAFÍA · refuerzo modo noche / contraste ===== */
+body.dark {
+    --text-primary: #f5e6c8;
+    --text-secondary: #e8d4ad;
+    --text-muted: #cdb68b;
+    --accent: #e6bc7a;
+    --accent-dark: #d39c4a;
+}
+
+body.dark .card,
+body.dark .dashboard,
+body.dark .recorridos-selector,
+body.dark .modulo-item,
+body.dark .map-search-panel,
+body.dark .map-manual-editor,
+body.dark .file-card,
+body.dark .zip-include-panel,
+body.dark .route-details-panel,
+body.dark .tech-summary,
+body.dark .modal-content,
+body.dark .instructions-content,
+body.dark .topo-info-dialog,
+body.dark .location-overlay-card {
+    color: #f5e6c8 !important;
+    background:
+        radial-gradient(circle at 14% 0%, rgba(230,188,122,.16), transparent 30%),
+        linear-gradient(180deg, rgba(61,80,44,.96), rgba(28,39,21,.98)) !important;
+    border-color: rgba(230,188,122,.28) !important;
+}
+
+body.dark .stat-card {
+    background: linear-gradient(180deg, rgba(69,88,50,.92), rgba(38,50,28,.92)) !important;
+    border: 1px solid rgba(230,188,122,.22) !important;
+}
+
+body.dark .dashboard-title,
+body.dark .stat-value,
+body.dark .stat-label,
+body.dark .card-header h2,
+body.dark .card p,
+body.dark .dashboard p,
+body.dark .instructions-content h3,
+body.dark .instructions-content h4,
+body.dark .instructions-content p,
+body.dark .instructions-content li,
+body.dark .instructions-content strong,
+body.dark .topo-info-dialog-title,
+body.dark .topo-info-dialog-body,
+body.dark .topo-info-dialog-body strong,
+body.dark .topo-info h1,
+body.dark .topo-info .slogan {
+    color: #f5e6c8 !important;
+}
+
+body.dark .instructions-header,
+body.dark .orientation-guide-header,
+body.dark .topo-info-dialog-header,
+body.dark .modal-header {
+    background: rgba(230,188,122,.10) !important;
+    border-color: rgba(230,188,122,.20) !important;
+}
+
+body.dark .instructions-header h3,
+body.dark .orientation-guide-header h3 {
+    color: #f0c16a !important;
+}
+
+body.dark .close-instr,
+body.dark .orientation-guide-close,
+body.dark .topo-info-close,
+body.dark .close-modal {
+    color: #f5e6c8 !important;
+    background: rgba(0,0,0,.28) !important;
+    border-color: rgba(230,188,122,.34) !important;
+}
