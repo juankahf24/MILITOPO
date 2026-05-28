@@ -4587,7 +4587,7 @@ function participantOfflineAppHtml(eventData){
 function participantOfflineServiceWorkerJs(){
     return `/* MILITOPO participante · recarga offline segura v53 */
 const MILITOPO_PARTICIPANT_CACHE = "militopo-participante-offline-v53";
-const PARTICIPANT_CORE = ["./", "./Militopo_participante_offline.html", "./sw.js"];
+const PARTICIPANT_CORE = ["./", "./index.html", "./sw.js"];
 
 self.addEventListener("install", event => {
   self.skipWaiting();
@@ -4628,7 +4628,7 @@ self.addEventListener("fetch", event => {
       const hit = await cached(request);
       if (hit) return hit;
       if (request.mode === "navigate") {
-        const fallback = await cached(new Request("./Militopo_participante_offline.html")) || await cached(new Request("./"));
+        const fallback = await cached(new Request("./index.html")) || await cached(new Request("./"));
         if (fallback) return fallback;
         return new Response("<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>MILITOPO offline</title><body style='font-family:monospace;background:#10190b;color:#f5e6c8;padding:24px'><h1>MILITOPO participante sin cobertura</h1><p>Esta app todavía no estaba guardada en este móvil. Ábrela una vez con cobertura antes de empezar.</p></body>", { headers: { "Content-Type": "text/html;charset=utf-8" } });
       }
@@ -5578,7 +5578,7 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
         zip.file("Descripciones_IOF_general.csv",descRows.map(r=>r.map(csvEscape).join(";")).join("\n"));
 
         if(typeof participantOfflineAppHtml==="function"){
-            appFolder.file("Militopo_participante_offline.html",participantOfflineAppHtml(eventData));
+            appFolder.file("index.html",participantOfflineAppHtml(eventData));
             if(typeof participantOfflineServiceWorkerJs==="function"){
                 appFolder.file("sw.js",participantOfflineServiceWorkerJs());
             }
