@@ -2528,7 +2528,7 @@ let MODULOS = 8;
         }
         setProgress(40, "Generando balizas en PDF...");
         let balizasFolder = zip.folder("Balizas");
-        let normalFolder = balizasFolder.folder("topografica_normal (con brujula)");
+        let normalFolder = balizasFolder;
         let puntosArray = Object.keys(puntosData);
         let balizasGeneradas = 0;
         for (let pid of puntosArray) {
