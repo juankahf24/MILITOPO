@@ -2121,10 +2121,23 @@ let MODULOS = 8;
     let clasificacionPdfNombrePendiente = "";
 
     function descargarBlobDirecto(blob, filename) {
-        const url = URL.createObjectURL(blob);
+        // Mismo sistema de descarga que usa el ZIP: FileSaver/saveAs.
+        // En iPhone/Safari debe ejecutarse justo dentro del click del usuario.
+        const pdfBlob = blob instanceof Blob
+            ? new Blob([blob], { type: "application/pdf" })
+            : new Blob([blob], { type: "application/pdf" });
+
+        if (typeof saveAs === "function") {
+            saveAs(pdfBlob, filename);
+            return;
+        }
+
+        // Respaldo si FileSaver no estuviera disponible.
+        const url = URL.createObjectURL(pdfBlob);
         const a = document.createElement("a");
         a.href = url;
         a.download = filename;
+        a.rel = "noopener";
         a.style.display = "none";
         document.body.appendChild(a);
         a.click();
@@ -3513,12 +3526,17 @@ let MODULOS = 8;
 
         document.getElementById("clearPuntosTopBtn")?.addEventListener("click", limpiarTodosLosPuntos);
         document.getElementById("mapClearPuntosBtn")?.addEventListener("click", limpiarTodosLosPuntos);
-        document.getElementById("clasificacionDownloadConfirm")?.addEventListener("click", () => {
+        document.getElementById("clasificacionDownloadConfirm")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
             if (clasificacionPdfPendiente && clasificacionPdfNombrePendiente) {
                 descargarBlobDirecto(clasificacionPdfPendiente, clasificacionPdfNombrePendiente);
                 toast("📄 Descarga de clasificación iniciada", "success");
+                setTimeout(cerrarModalClasificacionDescarga, 450);
+            } else {
+                toast("❌ No hay PDF preparado para descargar", "error");
             }
-            cerrarModalClasificacionDescarga();
         });
         document.getElementById("clasificacionDownloadCancel")?.addEventListener("click", cerrarModalClasificacionDescarga);
         document.getElementById("clasificacionDownloadClose")?.addEventListener("click", cerrarModalClasificacionDescarga);
