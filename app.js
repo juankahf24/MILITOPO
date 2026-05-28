@@ -2116,6 +2116,42 @@ let MODULOS = 8;
         return doc.output("blob");
     }
 
+
+    let clasificacionPdfPendiente = null;
+    let clasificacionPdfNombrePendiente = "";
+
+    function descargarBlobDirecto(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+            a.remove();
+        }, 1500);
+    }
+
+    function cerrarModalClasificacionDescarga() {
+        const modal = document.getElementById("clasificacionDownloadModal");
+        if (modal) modal.style.display = "none";
+    }
+
+    function abrirModalClasificacionDescarga(blob, filename, totalParticipantes) {
+        clasificacionPdfPendiente = blob;
+        clasificacionPdfNombrePendiente = filename;
+
+        const modal = document.getElementById("clasificacionDownloadModal");
+        const text = document.getElementById("clasificacionDownloadText");
+        if (text) {
+            text.textContent = `Excel leído correctamente. Se han clasificado ${totalParticipantes} participantes. Pulsa DESCARGAR PDF para guardar el documento.`;
+        }
+        if (modal) modal.style.display = "flex";
+    }
+
+
     async function generarClasificacionDesdeExcel(file) {
         const status = document.getElementById("clasificacionStatus");
         if (status) {
@@ -2220,13 +2256,14 @@ let MODULOS = 8;
         });
 
         const pdfBlob = generarPdfClasificacionResultados(tabla);
-        saveAs(pdfBlob, `Clasificacion_resultados_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.pdf`);
+        const pdfName = `Clasificacion_resultados_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.pdf`;
+        abrirModalClasificacionDescarga(pdfBlob, pdfName, participantes.length);
 
         if (status) {
             status.className = "classification-status ok";
-            status.textContent = `PDF de clasificación generado: ${participantes.length} participantes.`;
+            status.textContent = `Clasificación preparada: ${participantes.length} participantes. Pulsa DESCARGAR PDF en la ventana.`;
         }
-        toast("🏆 Clasificación generada correctamente", "success");
+        toast("🏆 Clasificación preparada", "success");
     }
 
 
@@ -3476,6 +3513,19 @@ let MODULOS = 8;
 
         document.getElementById("clearPuntosTopBtn")?.addEventListener("click", limpiarTodosLosPuntos);
         document.getElementById("mapClearPuntosBtn")?.addEventListener("click", limpiarTodosLosPuntos);
+        document.getElementById("clasificacionDownloadConfirm")?.addEventListener("click", () => {
+            if (clasificacionPdfPendiente && clasificacionPdfNombrePendiente) {
+                descargarBlobDirecto(clasificacionPdfPendiente, clasificacionPdfNombrePendiente);
+                toast("📄 Descarga de clasificación iniciada", "success");
+            }
+            cerrarModalClasificacionDescarga();
+        });
+        document.getElementById("clasificacionDownloadCancel")?.addEventListener("click", cerrarModalClasificacionDescarga);
+        document.getElementById("clasificacionDownloadClose")?.addEventListener("click", cerrarModalClasificacionDescarga);
+        document.getElementById("clasificacionDownloadModal")?.addEventListener("click", (e) => {
+            if (e.target && e.target.id === "clasificacionDownloadModal") cerrarModalClasificacionDescarga();
+        });
+
         document.getElementById("importResultadosExcelBtn")?.addEventListener("click", () => {
             const input = document.createElement("input");
             input.type = "file";

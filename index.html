@@ -231,14 +231,7 @@
                 <div id="routeDetailsPanel" class="route-details-panel" style="display:none;"></div>
             </div>
             <div id="resultadosGen"></div>
-            <div class="classification-upload-panel">
-                <div class="classification-upload-title">🏆 GENERAR CLASIFICACIÓN DESDE EXCEL</div>
-                <p>Sube el archivo <strong>Resultados de recorridos.xlsx</strong> ya rellenado para crear un PDF de clasificación ordenado por puntos y tiempo.</p>
-                <div class="classification-upload-actions">
-                    <button id="importResultadosExcelBtn" type="button" class="btn btn-secondary">📥 SUBIR EXCEL DE RESULTADOS</button>
-                    <div id="clasificacionStatus" class="classification-status"></div>
-                </div>
-            </div>
+            
 
             <div class="zip-include-panel" style="margin-top: 20px;">
                 <div class="zip-include-title">📦 EL ZIP INCLUYE:</div>
@@ -252,6 +245,14 @@
             <div class="nav-buttons">
                 <button id="backToStep2" class="btn btn-secondary">← ANTERIOR</button>
                 <button id="generarBtn" class="btn btn-success">✨ GENERAR ZIP</button>
+<div class="classification-upload-panel">
+                <div class="classification-upload-title">🏆 GENERAR CLASIFICACIÓN DESDE EXCEL</div>
+                <p>Sube el archivo <strong>Resultados de recorridos.xlsx</strong> ya rellenado para crear un PDF de clasificación ordenado por puntos y tiempo.</p>
+                <div class="classification-upload-actions">
+                    <button id="importResultadosExcelBtn" type="button" class="btn btn-secondary">📥 SUBIR EXCEL DE RESULTADOS</button>
+                    <div id="clasificacionStatus" class="classification-status"></div>
+                </div>
+            </div>
             </div>
         </div>
     </div>
@@ -500,7 +501,21 @@ BRAVO 1"></textarea>
         <div class="footer-instr">🧭 MILITOPO – Topografía de campo con precisión táctica.</div>
     </div>
 </div>
-    <script src="app.js"></script>
+    
+    <div id="clasificacionDownloadModal" class="clasificacion-download-modal" style="display:none;">
+        <div class="clasificacion-download-card">
+            <button id="clasificacionDownloadClose" class="clasificacion-download-close" type="button">×</button>
+            <div class="clasificacion-download-icon">🏆</div>
+            <h3>CLASIFICACIÓN LISTA</h3>
+            <p id="clasificacionDownloadText">Excel leído correctamente. Ya puedes descargar el PDF de clasificación.</p>
+            <div class="clasificacion-download-actions">
+                <button id="clasificacionDownloadCancel" type="button" class="btn btn-secondary">CANCELAR</button>
+                <button id="clasificacionDownloadConfirm" type="button" class="btn btn-primary">DESCARGAR PDF</button>
+            </div>
+        </div>
+    </div>
+
+<script src="app.js"></script>
 
 <div id="locationDeniedOverlay" class="location-overlay">
     <div class="location-overlay-card">
