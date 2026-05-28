@@ -3773,8 +3773,8 @@ let MODULOS = 8;
 
         const searchInput = document.getElementById("searchPuntos");
         const clearBtn = document.getElementById("clearSearchBtn");
-        searchInput.addEventListener("input", (e) => { currentSearchTerm = e.target.value; renderizarPuntos(); });
-        clearBtn.addEventListener("click", () => { searchInput.value = ""; currentSearchTerm = ""; renderizarPuntos(); });
+        searchInput?.addEventListener("input", (e) => { currentSearchTerm = e.target.value; renderizarPuntos(); });
+        clearBtn?.addEventListener("click", () => { if (searchInput) searchInput.value = ""; currentSearchTerm = ""; renderizarPuntos(); });
 
         const mapModal = document.getElementById("mapModal");
         document.getElementById("mapBtn")?.addEventListener("click", openMapModal);
