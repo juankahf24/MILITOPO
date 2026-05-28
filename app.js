@@ -2253,10 +2253,10 @@ let MODULOS = 8;
         try {
             const pdfFile = new File([pdfBlob], filename, { type: "application/pdf" });
             if (navigator.canShare && navigator.canShare({ files: [pdfFile] }) && navigator.share) {
+                // Solo compartimos el archivo PDF. No añadimos title/text porque iOS
+                // puede generar un .txt adicional con ese texto.
                 await navigator.share({
-                    files: [pdfFile],
-                    title: "Clasificación MILITOPO",
-                    text: "PDF de clasificación generado por MILITOPO"
+                    files: [pdfFile]
                 });
                 return "shared";
             }
@@ -2264,11 +2264,10 @@ let MODULOS = 8;
             console.warn("No se pudo usar compartir archivo PDF:", shareErr);
         }
 
-        // Fallback 1: forzar descarga como archivo binario.
+        // Fallback 1: descarga directa del PDF.
         try {
-            const forcedBlob = new Blob([pdfBlob], { type: "application/octet-stream" });
             if (typeof saveAs === "function") {
-                saveAs(forcedBlob, filename);
+                saveAs(pdfBlob, filename);
                 return "download";
             }
         } catch (saveErr) {
