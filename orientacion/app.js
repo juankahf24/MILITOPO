@@ -5129,6 +5129,81 @@ async function participantPlanPdfBlob(route){
 
 
 
+
+function xmlEscape(value){
+    return String(value??"")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&apos;");
+}
+
+function buildAllExercisePointsGpx(){
+    const points=Object.values(state.points||{})
+        .filter(p=>p&&p.id&&Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon)))
+        .filter(p=>{
+            const id=String(p.id||"").toUpperCase();
+            const type=String(p.type||"").toUpperCase();
+            return id==="START"||id==="FINISH"||type==="SALIDA"||type==="LLEGADA"||type==="START"||type==="FINISH"||type==="BALIZA";
+        })
+        .sort((a,b)=>{
+            const order=p=>{
+                const id=String(p.id||"").toUpperCase();
+                const type=String(p.type||"").toUpperCase();
+                if(id==="START"||type==="SALIDA"||type==="START")return -2;
+                if(id==="FINISH"||type==="LLEGADA"||type==="FINISH")return 999999;
+                const m=id.match(/^B(\d+)$/);
+                return m?Number(m[1]):500000;
+            };
+            return order(a)-order(b)||String(a.id||"").localeCompare(String(b.id||""));
+        });
+
+    if(!points.length)throw new Error("No hay puntos con coordenadas válidas para generar GPX.");
+
+    const eventName=String(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
+    const now=new Date().toISOString();
+
+    const waypoints=points.map(p=>{
+        const id=String(p.id||"").trim();
+        const lat=Number(p.lat);
+        const lon=Number(p.lon);
+        const ele=Number.isFinite(Number(p.elevation))?Number(p.elevation):null;
+        const type=String(p.type||"BALIZA").trim()||"BALIZA";
+        const descParts=[
+            `ID: ${id}`,
+            `Tipo: ${type}`,
+            p.utm?`UTM: ${p.utm}`:"",
+            p.desc?`Descripción: ${p.desc}`:""
+        ].filter(Boolean);
+
+        return [
+            `  <wpt lat="${lat.toFixed(8)}" lon="${lon.toFixed(8)}">`,
+            `    <name>${xmlEscape(id)}</name>`,
+            `    <desc>${xmlEscape(descParts.join(" | "))}</desc>`,
+            ele!==null?`    <ele>${Math.round(ele)}</ele>`:"",
+            `    <type>${xmlEscape(type)}</type>`,
+            `    <sym>Waypoint</sym>`,
+            `  </wpt>`
+        ].filter(Boolean).join("\n");
+    }).join("\n");
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1"
+     creator="MILITOPO ORIENTACIÓN"
+     xmlns="http://www.topografix.com/GPX/1/1"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>${xmlEscape(eventName)} · Puntos ATAK</name>
+    <desc>${xmlEscape("Todos los puntos del ejercicio generados por MILITOPO. Cada waypoint conserva su ID como nombre para ATAK.")}</desc>
+    <time>${now}</time>
+  </metadata>
+${waypoints}
+</gpx>`;
+}
+
+
 async function allControlsPlanPdfBlob(){
     const jsPDF=await ensureJsPdf();
     const html2canvas=await ensureHtml2Canvas();
@@ -5646,6 +5721,16 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
             ]);
         });
         zip.file("Descripciones_IOF_general.csv",descRows.map(r=>r.map(csvEscape).join(";")).join("\n"));
+
+        if(typeof buildAllExercisePointsGpx==="function"){
+            try{
+                setZipStatus("warn","Añadiendo GPX ATAK con todos los puntos...");
+                zip.file("Puntos_ejercicio_ATAK.gpx",buildAllExercisePointsGpx());
+            }catch(gpxErr){
+                console.warn("GPX ATAK no generado",gpxErr);
+                zip.file("Puntos_ejercicio_ATAK_ERROR.txt",`No se pudo generar el GPX ATAK. Motivo: ${gpxErr&&gpxErr.message?gpxErr.message:gpxErr}`);
+            }
+        }
 
         if(typeof allControlsPlanPdfBlob==="function"){
             try{
