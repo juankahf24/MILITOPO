@@ -5680,28 +5680,28 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
 
         const zip=new JSZip();
         const eventData=buildEventData();
-        const docsFolder=zip.folder("Otros documentos");
+        zip.folder("Otros documentos");
 
         setZipStatus("warn","Añadiendo datos del evento...");
-        docsFolder.file("evento_orientacion.json",JSON.stringify(eventData,null,2));
-        docsFolder.file("recorridos.pdf",await recorridosPdfBlob());
-        docsFolder.file("balizas.pdf",await balizasPdfBlob());
-        docsFolder.file("registros_offline_base.json",JSON.stringify({eventId:state.eventId,participantNames:state.participantNames||{},logs:state.participantLogs},null,2));
+        zip.file("Otros documentos/evento_orientacion.json",JSON.stringify(eventData,null,2));
+        zip.file("Otros documentos/recorridos.pdf",await recorridosPdfBlob());
+        zip.file("Otros documentos/balizas.pdf",await balizasPdfBlob());
+        zip.file("Otros documentos/registros_offline_base.json",JSON.stringify({eventId:state.eventId,participantNames:state.participantNames||{},logs:state.participantLogs},null,2));
         if(typeof verificationReportHtml==="function"){
-            docsFolder.file("VERIFICACION_EJERCICIO.html",verificationReportHtml(verification));
+            zip.file("Otros documentos/VERIFICACION_EJERCICIO.html",verificationReportHtml(verification));
         }
 
         const participantsFolder=zip.folder("Participantes");
         const controlsFolder=zip.folder("QR_Balizas");
         const pdfFolder=zip.folder("Planos_PDF");
-        const planoFolder=zip.folder("Plano Completo");
+        zip.folder("Plano Completo");
         const appFolder=zip.folder("App_Participante");
         if(typeof buildPrintScaleCalibrationPdfBlob==="function"){
             try{
                 setZipStatus("warn","Añadiendo calibración de impresión...");
-                docsFolder.file("CALIBRACION_IMPRESION_ESCALA.pdf",await buildPrintScaleCalibrationPdfBlob());
+                zip.file("Otros documentos/CALIBRACION_IMPRESION_ESCALA.pdf",await buildPrintScaleCalibrationPdfBlob());
             }catch(calErr){
-                docsFolder.file("CALIBRACION_IMPRESION_ESCALA_ERROR.txt",`No se pudo generar la calibración: ${calErr&&calErr.message?calErr.message:calErr}`);
+                zip.file("Otros documentos/CALIBRACION_IMPRESION_ESCALA_ERROR.txt",`No se pudo generar la calibración: ${calErr&&calErr.message?calErr.message:calErr}`);
             }
         }
 
@@ -5721,7 +5721,7 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
                 d.text||""
             ]);
         });
-        docsFolder.file("Descripciones_IOF_general.csv",descRows.map(r=>r.map(csvEscape).join(";")).join("\n"));
+        zip.file("Otros documentos/Descripciones_IOF_general.csv",descRows.map(r=>r.map(csvEscape).join(";")).join("\n"));
 
         if(typeof buildAllExercisePointsGpx==="function"){
             try{
@@ -5736,10 +5736,10 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
         if(typeof allControlsPlanPdfBlob==="function"){
             try{
                 setZipStatus("warn","Generando plano general con todas las balizas...");
-                planoFolder.file("Plano_todas_balizas.pdf",await allControlsPlanPdfBlob());
+                zip.file("Plano Completo/Plano_todas_balizas.pdf",await allControlsPlanPdfBlob());
             }catch(planErr){
                 console.warn("Plano general de balizas no generado",planErr);
-                planoFolder.file("Plano_todas_balizas_ERROR.txt",`No se pudo generar el plano general de balizas. Motivo: ${planErr&&planErr.message?planErr.message:planErr}`);
+                zip.file("Plano Completo/Plano_todas_balizas_ERROR.txt",`No se pudo generar el plano general de balizas. Motivo: ${planErr&&planErr.message?planErr.message:planErr}`);
             }
         }
 
