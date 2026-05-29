@@ -5154,8 +5154,8 @@ async function allControlsPlanPdfBlob(){
         await waitForPlanFrameReady(frame);
         await injectMapantBackgroundIntoPlanFrame(frame);
 
-        const doc=frame.contentDocument;
-        const sheet=doc&&doc.querySelector(".sheet");
+        const docEl=frame.contentDocument;
+        const sheet=docEl&&docEl.querySelector(".sheet");
         if(!sheet)throw new Error("No se encontró la hoja del plano general");
 
         const canvas=await html2canvas(sheet,{
@@ -5177,6 +5177,14 @@ async function allControlsPlanPdfBlob(){
         pdf.setFillColor(255,255,255);
         pdf.rect(0,0,pageW,pageH,"F");
         pdf.addImage(img,"JPEG",margin,margin,pageW-margin*2,pageH-margin*2,undefined,"FAST");
+
+        // Impresión a doble cara:
+        // Página 1 = plano con encabezado, mapa, tabla IOF lateral y ficha técnica.
+        // Página 2 y siguientes = tabla IOF vertical con las balizas que no caben en el lateral.
+        if(typeof drawAllControlsIofOverflowPdfPages==="function"){
+            drawAllControlsIofOverflowPdfPages(pdf);
+        }
+
         return pdf.output("blob");
     }catch(e){
         throw new Error("Plano general no generado: "+(e&&e.message?e.message:e));
@@ -5184,6 +5192,7 @@ async function allControlsPlanPdfBlob(){
         setTimeout(()=>frame.remove(),500);
     }
 }
+
 
 
 
@@ -6372,11 +6381,10 @@ function openIofDescriptionsSheet(){
 
 
 
-function allControlsPlanHtml(){
-    // Plano general con el MISMO formato que los planos PDF de recorridos:
-    // encabezado, tabla IOF y ficha técnica. Diferencia: no dibuja líneas,
-    // muestra todas las balizas/puntos y etiqueta cada punto con su ID.
-    const pointIds=Object.values(state.points||{})
+const ALL_CONTROLS_PLAN_FIRST_PAGE_IOF_MAX=21;
+
+function allControlsPlanPointIds(){
+    return Object.values(state.points||{})
         .filter(p=>p&&p.id&&Number.isFinite(p.lat)&&Number.isFinite(p.lon))
         .filter(p=>{
             const id=String(p.id||"").toUpperCase();
@@ -6395,6 +6403,129 @@ function allControlsPlanHtml(){
             return order(a)-order(b)||String(a.id||"").localeCompare(String(b.id||""));
         })
         .map(p=>p.id);
+}
+
+function allControlsPlanIofRows(pointIds){
+    return (pointIds||[]).map((id,idx)=>{
+        const p=state.points[id]||{};
+        const io=typeof getIofDescription==="function"?getIofDescription(id):{};
+        const raw=(field)=>((state.iofDescriptions||{})[id]||{})[field]||"";
+        const isStart=String(id).toUpperCase()==="START"||String(p.type||"").toUpperCase()==="SALIDA";
+        const isFinish=String(id).toUpperCase()==="FINISH"||String(p.type||"").toUpperCase()==="LLEGADA";
+        const numericOrder=String((pointIds||[]).slice(0,idx+1).filter(pid=>{
+            const up=String(pid||"").toUpperCase();
+            return up!=="START"&&up!=="FINISH";
+        }).length);
+        return {
+            a:isStart?"▷":isFinish?"◎":numericOrder,
+            b:isStart?"SALIDA":isFinish?"META":String(id||""),
+            c:(typeof iofText==="function"?iofText("c",raw("c")):"")||raw("c")||"",
+            d:(io.dText||raw("d")||""),
+            e:(io.eText||raw("e")||""),
+            f:(io.fText||raw("f")||raw("combo")||""),
+            g:(io.gText||raw("g")||""),
+            h:(io.hText||raw("h")||""),
+            text:(io.text||p.desc||"")
+        };
+    });
+}
+
+function drawAllControlsIofOverflowPdfPages(pdf){
+    const pointIds=typeof allControlsPlanPointIds==="function"?allControlsPlanPointIds():[];
+    const overflowIds=pointIds.slice(ALL_CONTROLS_PLAN_FIRST_PAGE_IOF_MAX);
+    if(!overflowIds.length)return;
+
+    const rows=allControlsPlanIofRows(overflowIds);
+    const pageW=210, pageH=297;
+    const margin=7;
+    const usableW=pageW-margin*2;
+    const titleY=12;
+    const headerY=22;
+    const headerH=8;
+    const rowH=8.6;
+    const bottom=pageH-margin;
+
+    const columns=[
+        {key:"a",label:"A",w:10,align:"center"},
+        {key:"b",label:"B / ID",w:22,align:"center"},
+        {key:"c",label:"C",w:18,align:"center"},
+        {key:"d",label:"D",w:34,align:"left"},
+        {key:"e",label:"E",w:24,align:"left"},
+        {key:"f",label:"F",w:28,align:"left"},
+        {key:"g",label:"G",w:25,align:"left"},
+        {key:"h",label:"H",w:25,align:"left"}
+    ];
+
+    function drawHeader(pageNum,totalPages){
+        pdf.setFillColor(255,255,255);
+        pdf.rect(0,0,pageW,pageH,"F");
+        pdf.setDrawColor(0,0,0);
+        pdf.setLineWidth(0.35);
+        pdf.rect(margin,margin,pageW-margin*2,pageH-margin*2,"S");
+
+        pdf.setFont("helvetica","bold");
+        pdf.setTextColor(0,0,0);
+        pdf.setFontSize(14);
+        pdf.text("TABLA IOF · PLANO TODAS LAS BALIZAS",pageW/2,titleY,{align:"center"});
+
+        pdf.setFont("helvetica","normal");
+        pdf.setFontSize(7.5);
+        const meta=`MILITOPO ORIENTACIÓN · ${String(state.eventName||"ENTRENAMIENTO ORIENTACIÓN")} · hoja trasera ${pageNum}/${totalPages}`;
+        pdf.text(meta,pageW/2,17,{align:"center",maxWidth:usableW-8});
+
+        let x=margin;
+        pdf.setFont("helvetica","bold");
+        pdf.setFontSize(6.5);
+        pdf.setFillColor(245,245,245);
+        columns.forEach(col=>{
+            pdf.rect(x,headerY,col.w,headerH,"F");
+            pdf.rect(x,headerY,col.w,headerH,"S");
+            pdf.text(col.label,x+col.w/2,headerY+5,{align:"center",maxWidth:col.w-1});
+            x+=col.w;
+        });
+        return headerY+headerH;
+    }
+
+    function drawRow(row,y){
+        let x=margin;
+        columns.forEach(col=>{
+            pdf.setDrawColor(0,0,0);
+            pdf.setLineWidth(0.18);
+            pdf.rect(x,y,col.w,rowH,"S");
+            pdf.setFont("helvetica","normal");
+            pdf.setFontSize(col.key==="d"||col.key==="f"||col.key==="g"||col.key==="h"?5.2:5.8);
+            pdf.setTextColor(0,0,0);
+            const txt=String(row[col.key]??"");
+            const lines=pdf.splitTextToSize(txt,col.w-1.5).slice(0,2);
+            const tx=col.align==="center"?x+col.w/2:x+1;
+            pdf.text(lines,tx,y+3.6,{align:col.align==="center"?"center":"left",maxWidth:col.w-1.5});
+            x+=col.w;
+        });
+    }
+
+    const rowsPerPage=Math.max(1,Math.floor((bottom-(headerY+headerH))/rowH));
+    const totalPages=Math.ceil(rows.length/rowsPerPage);
+    let page=0;
+    for(let i=0;i<rows.length;i+=rowsPerPage){
+        page++;
+        pdf.addPage([210,297],"portrait");
+        let y=drawHeader(page,totalPages);
+        rows.slice(i,i+rowsPerPage).forEach(row=>{
+            drawRow(row,y);
+            y+=rowH;
+        });
+
+        pdf.setFont("helvetica","bold");
+        pdf.setFontSize(7);
+        pdf.text("Imprimir a doble cara: esta tabla es la cara trasera del plano general.",pageW/2,pageH-4,{align:"center"});
+    }
+}
+
+function allControlsPlanHtml(){
+    // Plano general con el MISMO formato que los planos PDF de recorridos:
+    // encabezado, tabla IOF y ficha técnica. Diferencia: no dibuja líneas,
+    // muestra todas las balizas/puntos y etiqueta cada punto con su ID.
+    const pointIds=allControlsPlanPointIds();
 
     if(!pointIds.length)throw new Error("No hay puntos con coordenadas para crear el plano general.");
 
@@ -6406,17 +6537,24 @@ function allControlsPlanHtml(){
 
     let html=participantPlanHtml(fakeRoute);
 
+    const hideFrom=ALL_CONTROLS_PLAN_FIRST_PAGE_IOF_MAX+1;
+    const overflowCount=Math.max(0,pointIds.length-ALL_CONTROLS_PLAN_FIRST_PAGE_IOF_MAX);
+    const overflowCss=overflowCount>0
+        ? `.iof-table tbody tr:nth-child(n+${hideFrom}){display:none!important}.iof:after{content:"Continúa en tabla IOF trasera: ${overflowCount} puntos";display:flex;align-items:center;justify-content:center;border-top:1.3px solid #000;background:#fff;color:#000;font-size:6.5px;font-weight:900;height:15px;text-align:center;padding:0 2px;box-sizing:border-box}`
+        : "";
+
     // Cambios visuales sobre el mismo plano:
     // 1) título de archivo / cabecera conceptual
     // 2) no dibujar líneas entre puntos
     // 3) etiqueta visible = ID real del punto, no número de orden
-    // 4) texto de ficha técnica adaptado
+    // 4) si hay muchos puntos, la tabla lateral muestra solo los que caben y continúa en página 2 vertical
     html=html
         .replace(/<title>Plano_[^<]*<\/title>/, "<title>Plano_todas_balizas</title>")
         .replace(/Recorrido: GENERAL \/ TODAS_BALIZAS/g, "Plano general: todas las balizas")
         .replace(/const segs=\[\];[\s\S]*?lines\.innerHTML=segs\.join\(''\);/, "lines.innerHTML='';")
         .replace(/\+p\.markerOrder\+/g, "+p.id+")
-        .replace(/Fondo común del evento · escala fija correcta/g, "Plano general de todas las balizas · escala fija correcta");
+        .replace(/Fondo común del evento · escala fija correcta/g, "Plano general de todas las balizas · escala fija correcta")
+        .replace("</style>", overflowCss+"</style>");
 
     return html;
 }
