@@ -5181,8 +5181,8 @@ async function allControlsPlanPdfBlob(){
         // Impresión a doble cara:
         // Página 1 = plano con encabezado, mapa, tabla IOF lateral y ficha técnica.
         // Página 2 y siguientes = tabla IOF vertical con las balizas que no caben en el lateral.
-        if(typeof drawAllControlsIofOverflowPdfPages==="function"){
-            drawAllControlsIofOverflowPdfPages(pdf);
+        if(typeof appendAllControlsIofOverflowPdfPages==="function"){
+            await appendAllControlsIofOverflowPdfPages(pdf);
         }
 
         return pdf.output("blob");
@@ -6381,7 +6381,9 @@ function openIofDescriptionsSheet(){
 
 
 
+
 const ALL_CONTROLS_PLAN_FIRST_PAGE_IOF_MAX=21;
+const ALL_CONTROLS_IOF_TABLES_PER_BACK_PAGE=3;
 
 function allControlsPlanPointIds(){
     return Object.values(state.points||{})
@@ -6410,131 +6412,128 @@ function allControlsPlanIofRows(pointIds){
         const p=state.points[id]||{};
         const io=typeof getIofDescription==="function"?getIofDescription(id):{};
         const raw=(field)=>((state.iofDescriptions||{})[id]||{})[field]||"";
-        const isStart=String(id).toUpperCase()==="START"||String(p.type||"").toUpperCase()==="SALIDA";
-        const isFinish=String(id).toUpperCase()==="FINISH"||String(p.type||"").toUpperCase()==="LLEGADA";
-        const numericOrder=String((pointIds||[]).slice(0,idx+1).filter(pid=>{
-            const up=String(pid||"").toUpperCase();
-            return up!=="START"&&up!=="FINISH";
+        const up=String(id||"").toUpperCase();
+        const type=String(p.type||"").toUpperCase();
+        const isStart=up==="START"||type==="SALIDA"||type==="START";
+        const isFinish=up==="FINISH"||type==="LLEGADA"||type==="FINISH";
+        const n=isStart?"S":isFinish?"M":String((pointIds||[]).slice(0,idx+1).filter(pid=>{
+            const u=String(pid||"").toUpperCase();
+            return u!=="START"&&u!=="FINISH";
         }).length);
         return {
-            a:isStart?"▷":isFinish?"◎":numericOrder,
-            b:isStart?"SALIDA":isFinish?"META":String(id||""),
-            c:(typeof iofText==="function"?iofText("c",raw("c")):"")||raw("c")||"",
-            d:(io.dText||raw("d")||""),
-            e:(io.eText||raw("e")||""),
-            f:(io.fText||raw("f")||raw("combo")||""),
-            g:(io.gText||raw("g")||""),
-            h:(io.hText||raw("h")||""),
-            text:(io.text||p.desc||"")
+            id:String(id||""),
+            order:isStart?"▷":isFinish?"◎":n,
+            code:isStart?"SALIDA":isFinish?"META":String(id||""),
+            c:(io.cSymbol||raw("c")||""),
+            d:(io.dSymbol||raw("d")||""),
+            e:(io.eSymbol||raw("e")||""),
+            f:(io.fSymbol||io.fText||raw("f")||raw("combo")||""),
+            g:(io.gSymbol||raw("g")||""),
+            h:(io.hSymbol||raw("h")||"")
         };
     });
 }
 
-function drawAllControlsIofOverflowPdfPages(pdf){
-    const pointIds=typeof allControlsPlanPointIds==="function"?allControlsPlanPointIds():[];
-    const overflowIds=pointIds.slice(ALL_CONTROLS_PLAN_FIRST_PAGE_IOF_MAX);
-    if(!overflowIds.length)return;
+function allControlsIofTableHtml(rows,label){
+    const eventTitle=escapeHtml(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
+    const scaleLabel=`1:${Number(state.planScale||10000)===7500?"7.500":"10.000"}`;
+    const routeNumber=escapeHtml(label||"IOF");
+    return `<div class="iof"><div class="iof-head"><div class="iof-title">${eventTitle}</div><div class="iof-difficulty">PLANO GENERAL · ${scaleLabel}</div><div class="iof-metrics"><div>${routeNumber}</div><div>BALIZAS</div><div>TODAS</div></div><div class="iof-letters"><div>A</div><div>B</div><div>C</div><div>D</div><div>E</div><div>F</div><div>G</div><div>H</div></div></div><table class="iof-table"><colgroup><col class="col-a"><col class="col-b"><col><col><col><col><col><col></colgroup><tbody>${rows.map(p=>`<tr><td>${escapeHtml(String(p.order))}</td><td class="code">${escapeHtml(p.code)}</td><td>${renderIofCellSymbol(p.c)}</td><td>${renderIofCellSymbol(p.d)}</td><td>${renderIofCellSymbol(p.e)}</td><td class="fcell">${renderIofCellSymbol(p.f)}</td><td class="gcell">${renderIofCellSymbol(p.g)}</td><td>${renderIofCellSymbol(p.h)}</td></tr>`).join("")}</tbody></table></div>`;
+}
 
-    const rows=allControlsPlanIofRows(overflowIds);
-    const pageW=210, pageH=297;
-    const margin=7;
-    const usableW=pageW-margin*2;
-    const titleY=12;
-    const headerY=22;
-    const headerH=8;
-    const rowH=8.6;
-    const bottom=pageH-margin;
+function allControlsIofOverflowPageHtml(tableChunks,page,totalPages){
+    const tables=tableChunks.map((rows,i)=>allControlsIofTableHtml(rows,`IOF ${page}.${i+1}`)).join("");
+    const eventTitle=escapeHtml(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IOF_trasera_${page}</title><style>
+@page{size:A4 portrait;margin:0}
+html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-serif;color:#111}
+.sheet{width:210mm;height:297mm;background:#ebe3c8;margin:0 auto;position:relative;overflow:hidden;box-sizing:border-box;padding:7mm}
+.back-title{height:14mm;background:#3f4a2c;color:#efe6c8;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;letter-spacing:2px;font-size:15px;margin-bottom:5mm}
+.back-subtitle{position:absolute;left:7mm;right:7mm;bottom:3mm;text-align:center;font-size:7px;font-weight:900;color:#3f4a2c}
+.iof-grid{display:grid;grid-template-columns:50mm 50mm 50mm;gap:6mm;align-items:start;justify-content:center}
+.iof{width:50mm;border:2px solid #000;color:#000;font-weight:900;background:white;display:flex;flex-direction:column;box-sizing:border-box}
+.iof-head{border-bottom:2px solid #000;background:white;color:#000;font-weight:900;font-size:8px;line-height:1.08}
+.iof-title{height:15px;display:flex;align-items:center;justify-content:center;border-bottom:1.3px solid #000;font-size:8px;background:#fff;overflow:hidden;white-space:nowrap;padding:0 2px;box-sizing:border-box}
+.iof-difficulty{height:14px;display:flex;align-items:center;justify-content:center;border-bottom:1.3px solid #000;font-size:7px;background:#fff}
+.iof-metrics{display:grid;grid-template-columns:1fr 1.35fr 1.15fr;height:16px;border-bottom:1.3px solid #000;background:#fff}
+.iof-metrics div{display:flex;align-items:center;justify-content:center;border-right:1.3px solid #000;font-size:8px;overflow:hidden}.iof-metrics div:last-child{border-right:0}
+.iof-letters{display:grid;grid-template-columns:19px 34px repeat(6,1fr);height:15px;border-bottom:1.3px solid #000;background:#fff}
+.iof-letters div{display:flex;align-items:center;justify-content:center;border-right:1.3px solid #000;font-size:8px}.iof-letters div:last-child{border-right:0}
+.iof-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8px;color:#000;background:#fff}
+.iof-table td{border:1.3px solid #000;height:17px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
+.iof-table .col-a{width:19px}.iof-table .col-b{width:34px}.iof-table .code{font-size:7px}.iof-table .fcell{font-size:6.1px;letter-spacing:-.2px}.iof-table .gcell{font-size:6.1px;letter-spacing:-.25px}
+.iof-table svg{width:18.8px;height:18.8px;color:#000!important;vertical-align:middle;display:inline-block;overflow:visible;filter:none!important}
+.iof-table svg path,.iof-table svg line,.iof-table svg polyline,.iof-table svg rect,.iof-table svg circle,.iof-table svg ellipse,.iof-table svg polygon{fill:none;stroke:currentColor;stroke-width:8.2;stroke-linecap:round;stroke-linejoin:round}
+.iof-table svg [fill]:not([fill="none"]):not([fill="transparent"]),.iof-table svg .fill,.iof-table svg.filled rect,.iof-table svg.filled circle,.iof-table svg.filled polygon,.iof-table svg text,.iof-table svg tspan{fill:currentColor}
+.iof-table svg text,.iof-table svg tspan{stroke:none}
+</style></head><body><div class="sheet"><div class="back-title">TABLA IOF TRASERA · ${eventTitle}</div><div class="iof-grid">${tables}</div><div class="back-subtitle">Impresión a doble cara · Página trasera ${page}/${totalPages} · Mismo formato, tamaño y símbolos que la tabla IOF lateral</div></div></body></html>`;
+}
 
-    const columns=[
-        {key:"a",label:"A",w:10,align:"center"},
-        {key:"b",label:"B / ID",w:22,align:"center"},
-        {key:"c",label:"C",w:18,align:"center"},
-        {key:"d",label:"D",w:34,align:"left"},
-        {key:"e",label:"E",w:24,align:"left"},
-        {key:"f",label:"F",w:28,align:"left"},
-        {key:"g",label:"G",w:25,align:"left"},
-        {key:"h",label:"H",w:25,align:"left"}
-    ];
+async function appendAllControlsIofOverflowPdfPages(pdf){
+    const pointIds=allControlsPlanPointIds();
+    const allRows=allControlsPlanIofRows(pointIds);
+    const overflowRows=allRows.slice(ALL_CONTROLS_PLAN_FIRST_PAGE_IOF_MAX);
+    if(!overflowRows.length)return;
 
-    function drawHeader(pageNum,totalPages){
-        pdf.setFillColor(255,255,255);
-        pdf.rect(0,0,pageW,pageH,"F");
-        pdf.setDrawColor(0,0,0);
-        pdf.setLineWidth(0.35);
-        pdf.rect(margin,margin,pageW-margin*2,pageH-margin*2,"S");
-
-        pdf.setFont("helvetica","bold");
-        pdf.setTextColor(0,0,0);
-        pdf.setFontSize(14);
-        pdf.text("TABLA IOF · PLANO TODAS LAS BALIZAS",pageW/2,titleY,{align:"center"});
-
-        pdf.setFont("helvetica","normal");
-        pdf.setFontSize(7.5);
-        const meta=`MILITOPO ORIENTACIÓN · ${String(state.eventName||"ENTRENAMIENTO ORIENTACIÓN")} · hoja trasera ${pageNum}/${totalPages}`;
-        pdf.text(meta,pageW/2,17,{align:"center",maxWidth:usableW-8});
-
-        let x=margin;
-        pdf.setFont("helvetica","bold");
-        pdf.setFontSize(6.5);
-        pdf.setFillColor(245,245,245);
-        columns.forEach(col=>{
-            pdf.rect(x,headerY,col.w,headerH,"F");
-            pdf.rect(x,headerY,col.w,headerH,"S");
-            pdf.text(col.label,x+col.w/2,headerY+5,{align:"center",maxWidth:col.w-1});
-            x+=col.w;
-        });
-        return headerY+headerH;
+    const html2canvas=await ensureHtml2Canvas();
+    const rowsPerTable=ALL_CONTROLS_PLAN_FIRST_PAGE_IOF_MAX;
+    const tableChunks=[];
+    for(let i=0;i<overflowRows.length;i+=rowsPerTable){
+        tableChunks.push(overflowRows.slice(i,i+rowsPerTable));
     }
 
-    function drawRow(row,y){
-        let x=margin;
-        columns.forEach(col=>{
-            pdf.setDrawColor(0,0,0);
-            pdf.setLineWidth(0.18);
-            pdf.rect(x,y,col.w,rowH,"S");
-            pdf.setFont("helvetica","normal");
-            pdf.setFontSize(col.key==="d"||col.key==="f"||col.key==="g"||col.key==="h"?5.2:5.8);
-            pdf.setTextColor(0,0,0);
-            const txt=String(row[col.key]??"");
-            const lines=pdf.splitTextToSize(txt,col.w-1.5).slice(0,2);
-            const tx=col.align==="center"?x+col.w/2:x+1;
-            pdf.text(lines,tx,y+3.6,{align:col.align==="center"?"center":"left",maxWidth:col.w-1.5});
-            x+=col.w;
-        });
+    const pages=[];
+    for(let i=0;i<tableChunks.length;i+=ALL_CONTROLS_IOF_TABLES_PER_BACK_PAGE){
+        pages.push(tableChunks.slice(i,i+ALL_CONTROLS_IOF_TABLES_PER_BACK_PAGE));
     }
 
-    const rowsPerPage=Math.max(1,Math.floor((bottom-(headerY+headerH))/rowH));
-    const totalPages=Math.ceil(rows.length/rowsPerPage);
-    let page=0;
-    for(let i=0;i<rows.length;i+=rowsPerPage){
-        page++;
-        pdf.addPage([210,297],"portrait");
-        let y=drawHeader(page,totalPages);
-        rows.slice(i,i+rowsPerPage).forEach(row=>{
-            drawRow(row,y);
-            y+=rowH;
-        });
+    const frame=document.createElement("iframe");
+    frame.style.position="fixed";
+    frame.style.left="-20000px";
+    frame.style.top="0";
+    frame.style.width="794px";
+    frame.style.height="1123px";
+    frame.style.border="0";
+    frame.setAttribute("aria-hidden","true");
+    document.body.appendChild(frame);
 
-        pdf.setFont("helvetica","bold");
-        pdf.setFontSize(7);
-        pdf.text("Imprimir a doble cara: esta tabla es la cara trasera del plano general.",pageW/2,pageH-4,{align:"center"});
+    try{
+        for(let p=0;p<pages.length;p++){
+            frame.srcdoc=allControlsIofOverflowPageHtml(pages[p],p+1,pages.length);
+            await new Promise(resolve=>{
+                const t=setTimeout(()=>resolve(),1000);
+                frame.onload=()=>{clearTimeout(t);resolve();};
+            });
+            await waitMs(450);
+            const doc=frame.contentDocument;
+            const sheet=doc&&doc.querySelector(".sheet");
+            if(!sheet)continue;
+
+            const canvas=await html2canvas(sheet,{
+                scale:2.2,
+                useCORS:true,
+                allowTaint:false,
+                backgroundColor:"#ebe3c8",
+                logging:false,
+                width:sheet.scrollWidth,
+                height:sheet.scrollHeight,
+                windowWidth:sheet.scrollWidth,
+                windowHeight:sheet.scrollHeight
+            });
+            const img=canvas.toDataURL("image/jpeg",0.96);
+            pdf.addPage([210,297],"portrait");
+            pdf.addImage(img,"JPEG",0,0,210,297,undefined,"FAST");
+        }
+    }finally{
+        setTimeout(()=>frame.remove(),500);
     }
 }
 
 function allControlsPlanHtml(){
-    // Plano general con el MISMO formato que los planos PDF de recorridos:
-    // encabezado, tabla IOF y ficha técnica. Diferencia: no dibuja líneas,
-    // muestra todas las balizas/puntos y etiqueta cada punto con su ID.
     const pointIds=allControlsPlanPointIds();
-
     if(!pointIds.length)throw new Error("No hay puntos con coordenadas para crear el plano general.");
 
-    const fakeRoute={
-        participantId:"GENERAL",
-        routeId:"TODAS_BALIZAS",
-        points:pointIds
-    };
-
+    const fakeRoute={participantId:"GENERAL",routeId:"TODAS_BALIZAS",points:pointIds};
     let html=participantPlanHtml(fakeRoute);
 
     const hideFrom=ALL_CONTROLS_PLAN_FIRST_PAGE_IOF_MAX+1;
@@ -6543,11 +6542,6 @@ function allControlsPlanHtml(){
         ? `.iof-table tbody tr:nth-child(n+${hideFrom}){display:none!important}.iof:after{content:"Continúa en tabla IOF trasera: ${overflowCount} puntos";display:flex;align-items:center;justify-content:center;border-top:1.3px solid #000;background:#fff;color:#000;font-size:6.5px;font-weight:900;height:15px;text-align:center;padding:0 2px;box-sizing:border-box}`
         : "";
 
-    // Cambios visuales sobre el mismo plano:
-    // 1) título de archivo / cabecera conceptual
-    // 2) no dibujar líneas entre puntos
-    // 3) etiqueta visible = ID real del punto, no número de orden
-    // 4) si hay muchos puntos, la tabla lateral muestra solo los que caben y continúa en página 2 vertical
     html=html
         .replace(/<title>Plano_[^<]*<\/title>/, "<title>Plano_todas_balizas</title>")
         .replace(/Recorrido: GENERAL \/ TODAS_BALIZAS/g, "Plano general: todas las balizas")
