@@ -6383,6 +6383,9 @@ function allControlsPlanHtml(){
 
     const eventTitle=escapeHtml(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
     const planScale=Number(state.planScale||10000)===7500?7500:10000;
+    // Misma corrección de escala que usan los planos individuales:
+    // compensa la impresión/canvas que antes hacía que 1 cm saliera como 1,1 cm.
+    const planHtmlToPdfMeasuredFactor=1.10;
     const mapPaperWidthMm=289;
     const mapPaperHeightMm=202;
     const terrainWidthM=mapPaperWidthMm*planHtmlToPdfMeasuredFactor*planScale/1000;
