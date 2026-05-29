@@ -5680,6 +5680,7 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
 
         const zip=new JSZip();
         const eventData=buildEventData();
+        const docsFolder=zip.folder("Otros documentos");
 
         setZipStatus("warn","Añadiendo datos del evento...");
         docsFolder.file("evento_orientacion.json",JSON.stringify(eventData,null,2));
@@ -5694,7 +5695,6 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
         const controlsFolder=zip.folder("QR_Balizas");
         const pdfFolder=zip.folder("Planos_PDF");
         const planoFolder=zip.folder("Plano Completo");
-        const docsFolder=zip.folder("Otros documentos");
         const appFolder=zip.folder("App_Participante");
         if(typeof buildPrintScaleCalibrationPdfBlob==="function"){
             try{
