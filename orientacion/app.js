@@ -5129,6 +5129,66 @@ async function participantPlanPdfBlob(route){
 
 
 
+async function allControlsPlanPdfBlob(){
+    const jsPDF=await ensureJsPdf();
+    const html2canvas=await ensureHtml2Canvas();
+    if(typeof allControlsPlanHtml!=="function")throw new Error("allControlsPlanHtml no disponible");
+
+    const frame=document.createElement("iframe");
+    frame.style.position="fixed";
+    frame.style.left="-20000px";
+    frame.style.top="0";
+    frame.style.width="1123px";
+    frame.style.height="794px";
+    frame.style.border="0";
+    frame.setAttribute("aria-hidden","true");
+    document.body.appendChild(frame);
+
+    try{
+        const html=allControlsPlanHtml();
+        frame.srcdoc=html;
+        await new Promise(resolve=>{
+            const t=setTimeout(()=>resolve(),6000);
+            frame.onload=()=>{clearTimeout(t);resolve();};
+        });
+        await waitForPlanFrameReady(frame);
+        await injectMapantBackgroundIntoPlanFrame(frame);
+
+        const doc=frame.contentDocument;
+        const sheet=doc&&doc.querySelector(".sheet");
+        if(!sheet)throw new Error("No se encontró la hoja del plano general");
+
+        const canvas=await html2canvas(sheet,{
+            scale:2.1,
+            useCORS:true,
+            allowTaint:false,
+            backgroundColor:"#ffffff",
+            logging:false,
+            width:sheet.scrollWidth,
+            height:sheet.scrollHeight,
+            windowWidth:sheet.scrollWidth,
+            windowHeight:sheet.scrollHeight
+        });
+
+        const img=canvas.toDataURL("image/jpeg",0.96);
+        const pdf=new jsPDF({orientation:"landscape",unit:"mm",format:"a4",compress:true});
+        const pageW=297, pageH=210;
+        const margin=4;
+        pdf.setFillColor(255,255,255);
+        pdf.rect(0,0,pageW,pageH,"F");
+        pdf.addImage(img,"JPEG",margin,margin,pageW-margin*2,pageH-margin*2,undefined,"FAST");
+        return pdf.output("blob");
+    }catch(e){
+        throw new Error("Plano general no generado: "+(e&&e.message?e.message:e));
+    }finally{
+        setTimeout(()=>frame.remove(),500);
+    }
+}
+
+
+
+
+
 async function buildPrintScaleCalibrationPdfBlob(){
     const jsPDF=await ensureJsPdf();
     const pdf=new jsPDF({orientation:"landscape",unit:"mm",format:"a4",compress:true});
@@ -5549,6 +5609,7 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
         const participantsFolder=zip.folder("Participantes");
         const controlsFolder=zip.folder("QR_Balizas");
         const pdfFolder=zip.folder("Planos_PDF");
+        const planoFolder=zip.folder("Plano");
         const appFolder=zip.folder("App_Participante");
         if(typeof buildPrintScaleCalibrationPdfBlob==="function"){
             try{
@@ -5576,6 +5637,16 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
             ]);
         });
         zip.file("Descripciones_IOF_general.csv",descRows.map(r=>r.map(csvEscape).join(";")).join("\n"));
+
+        if(typeof allControlsPlanPdfBlob==="function"){
+            try{
+                setZipStatus("warn","Generando plano general con todas las balizas...");
+                planoFolder.file("Plano_todas_balizas.pdf",await allControlsPlanPdfBlob());
+            }catch(planErr){
+                console.warn("Plano general de balizas no generado",planErr);
+                planoFolder.file("Plano_todas_balizas_ERROR.txt",`No se pudo generar el plano general de balizas. Motivo: ${planErr&&planErr.message?planErr.message:planErr}`);
+            }
+        }
 
         if(typeof participantOfflineAppHtml==="function"){
             appFolder.file("index.html",participantOfflineAppHtml(eventData));
@@ -6299,6 +6370,180 @@ function openIofDescriptionsSheet(){
     w.document.close();
 }
 
+
+
+function allControlsPlanHtml(){
+    const eventPoints=Object.values(state.points||{})
+        .filter(p=>p&&p.id&&Number.isFinite(p.lat)&&Number.isFinite(p.lon))
+        .filter(p=>{
+            const id=String(p.id||"").toUpperCase();
+            const type=String(p.type||"").toUpperCase();
+            return id==="START"||id==="FINISH"||type==="SALIDA"||type==="LLEGADA"||type==="START"||type==="FINISH"||type==="BALIZA";
+        });
+
+    const eventTitle=escapeHtml(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
+    const planScale=Number(state.planScale||10000)===7500?7500:10000;
+    const mapPaperWidthMm=289;
+    const mapPaperHeightMm=202;
+    const terrainWidthM=mapPaperWidthMm*planHtmlToPdfMeasuredFactor*planScale/1000;
+    const terrainHeightM=mapPaperHeightMm*planHtmlToPdfMeasuredFactor*planScale/1000;
+
+    const pts=eventPoints.length?eventPoints:[];
+    const center=pts.length?{
+        lat:pts.reduce((a,p)=>a+p.lat,0)/pts.length,
+        lon:pts.reduce((a,p)=>a+p.lon,0)/pts.length
+    }:{lat:40.4168,lon:-3.7038};
+
+    const mPerLat=111320;
+    const mPerLon=111320*Math.cos(center.lat*Math.PI/180);
+    const halfLat=(terrainHeightM/2)/mPerLat;
+    const halfLon=(terrainWidthM/2)/(mPerLon||1);
+
+    const bounds={
+        north:center.lat+halfLat,
+        south:center.lat-halfLat,
+        west:center.lon-halfLon,
+        east:center.lon+halfLon,
+        centerLat:center.lat,
+        centerLon:center.lon
+    };
+
+    const json=JSON.stringify(eventPoints.map(p=>({
+        id:String(p.id||""),
+        lat:Number(p.lat),
+        lon:Number(p.lon),
+        type:String(p.type||"")
+    })));
+    const boundsJson=JSON.stringify(bounds);
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Plano_general_balizas</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+@page{size:A4 landscape;margin:0}
+html,body{margin:0;padding:0;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#111}
+.sheet{width:297mm;height:210mm;background:#fff;margin:0 auto;position:relative;overflow:hidden;box-sizing:border-box;padding:4mm}
+.map-wrap{position:relative;width:289mm;height:202mm;background:#e9ead7;overflow:hidden;box-sizing:border-box}
+#participantPlanMap{width:100%;height:100%}
+.routeOverlay{position:absolute;inset:0;width:100%;height:100%;z-index:500;pointer-events:none}
+.map-footer{position:absolute;left:4mm;right:4mm;bottom:1.2mm;display:flex;justify-content:space-between;align-items:center;font-size:7px;font-weight:700;color:#222;z-index:700}
+.map-footer .title{font-size:8px;letter-spacing:.6px;font-weight:900}
+.leaflet-control-attribution,.leaflet-control-zoom{display:none!important}
+</style>
+</head>
+<body>
+<div class="sheet">
+    <div class="map-wrap">
+        <div id="participantPlanMap"></div>
+        <svg id="courseLines" class="routeOverlay"></svg>
+        <div class="map-footer">
+            <div class="title">${eventTitle}</div>
+            <div>PLANO GENERAL DE BALIZAS · ESCALA 1:${planScale}</div>
+        </div>
+    </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+<script>
+const points=${json};
+const commonBounds=${boundsJson};
+window.militopoPlanExportBounds=commonBounds;
+
+const map=L.map('participantPlanMap',{
+    zoomControl:false,
+    attributionControl:false,
+    preferCanvas:true
+}).setView([commonBounds.centerLat, commonBounds.centerLon], 15);
+
+const mapant=L.tileLayer.wms('https://mapant.es/wms',{
+    layers:'mapant',
+    format:'image/png',
+    transparent:false,
+    version:'1.3.0',
+    attribution:'© Mapant.es'
+});
+mapant.addTo(map);
+
+const bounds=[[commonBounds.south,commonBounds.west],[commonBounds.north,commonBounds.east]];
+
+function classifyPoint(p){
+    const id=String(p.id||'').toUpperCase();
+    const type=String(p.type||'').toUpperCase();
+    if(id==='START'||type==='SALIDA'||type==='START')return 'start';
+    if(id==='FINISH'||type==='LLEGADA'||type==='FINISH')return 'finish';
+    return 'control';
+}
+
+function drawAllPoints(){
+    const svg=document.getElementById('courseLines');
+    if(!svg)return;
+    const rect=svg.getBoundingClientRect();
+    svg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
+    svg.innerHTML='';
+
+    const stroke='#6a0032';
+    const fill='rgba(255,255,255,0.10)';
+    const textFill='#111';
+    const textStroke='#fff';
+
+    points.forEach(function(p){
+        const pt=map.latLngToContainerPoint([p.lat,p.lon]);
+        const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+        const kind=classifyPoint(p);
+        const x=pt.x, y=pt.y;
+
+        if(kind==='start'){
+            const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+            poly.setAttribute('points', x + ',' + (y-10) + ' ' + (x-9) + ',' + (y+8) + ' ' + (x+9) + ',' + (y+8));
+            poly.setAttribute('fill', fill);
+            poly.setAttribute('stroke', stroke);
+            poly.setAttribute('stroke-width', '2');
+            g.appendChild(poly);
+        }else if(kind==='finish'){
+            const c1=document.createElementNS('http://www.w3.org/2000/svg','circle');
+            c1.setAttribute('cx', x); c1.setAttribute('cy', y); c1.setAttribute('r', '10');
+            c1.setAttribute('fill', fill); c1.setAttribute('stroke', stroke); c1.setAttribute('stroke-width', '2');
+            const c2=document.createElementNS('http://www.w3.org/2000/svg','circle');
+            c2.setAttribute('cx', x); c2.setAttribute('cy', y); c2.setAttribute('r', '6');
+            c2.setAttribute('fill', 'none'); c2.setAttribute('stroke', stroke); c2.setAttribute('stroke-width', '2');
+            g.appendChild(c1); g.appendChild(c2);
+        }else{
+            const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+            c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', '10');
+            c.setAttribute('fill', fill); c.setAttribute('stroke', stroke); c.setAttribute('stroke-width', '2');
+            g.appendChild(c);
+        }
+
+        const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+        t.setAttribute('x', x+12);
+        t.setAttribute('y', y-12);
+        t.setAttribute('font-size', '14');
+        t.setAttribute('font-family', 'Arial, Helvetica, sans-serif');
+        t.setAttribute('font-weight', '900');
+        t.setAttribute('paint-order', 'stroke');
+        t.setAttribute('stroke', textStroke);
+        t.setAttribute('stroke-width', '3');
+        t.setAttribute('fill', textFill);
+        t.textContent=String(p.id||'');
+        g.appendChild(t);
+
+        svg.appendChild(g);
+    });
+}
+
+map.whenReady(function(){
+    map.fitBounds(bounds,{animate:false,padding:[0,0]});
+    setTimeout(function(){ map.invalidateSize(); drawAllPoints(); },350);
+});
+map.on('moveend zoomend resize load', drawAllPoints);
+setTimeout(function(){ try{ map.invalidateSize(); drawAllPoints(); }catch(e){} },1200);
+<\/script>
+</body>
+</html>`;
+}
 
 
 function participantPlanHtml(route){
