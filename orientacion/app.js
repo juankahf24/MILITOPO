@@ -6373,179 +6373,52 @@ function openIofDescriptionsSheet(){
 
 
 function allControlsPlanHtml(){
-    const eventPoints=Object.values(state.points||{})
+    // Plano general con el MISMO formato que los planos PDF de recorridos:
+    // encabezado, tabla IOF y ficha técnica. Diferencia: no dibuja líneas,
+    // muestra todas las balizas/puntos y etiqueta cada punto con su ID.
+    const pointIds=Object.values(state.points||{})
         .filter(p=>p&&p.id&&Number.isFinite(p.lat)&&Number.isFinite(p.lon))
         .filter(p=>{
             const id=String(p.id||"").toUpperCase();
             const type=String(p.type||"").toUpperCase();
             return id==="START"||id==="FINISH"||type==="SALIDA"||type==="LLEGADA"||type==="START"||type==="FINISH"||type==="BALIZA";
-        });
+        })
+        .sort((a,b)=>{
+            const order=p=>{
+                const id=String(p.id||"").toUpperCase();
+                const type=String(p.type||"").toUpperCase();
+                if(id==="START"||type==="SALIDA"||type==="START")return -2;
+                if(id==="FINISH"||type==="LLEGADA"||type==="FINISH")return 999999;
+                const m=id.match(/^B(\d+)$/);
+                return m?Number(m[1]):500000;
+            };
+            return order(a)-order(b)||String(a.id||"").localeCompare(String(b.id||""));
+        })
+        .map(p=>p.id);
 
-    const eventTitle=escapeHtml(state.eventName||"ENTRENAMIENTO ORIENTACIÓN");
-    const planScale=Number(state.planScale||10000)===7500?7500:10000;
-    // Misma corrección de escala que usan los planos individuales:
-    // compensa la impresión/canvas que antes hacía que 1 cm saliera como 1,1 cm.
-    const planHtmlToPdfMeasuredFactor=1.10;
-    const mapPaperWidthMm=289;
-    const mapPaperHeightMm=202;
-    const terrainWidthM=mapPaperWidthMm*planHtmlToPdfMeasuredFactor*planScale/1000;
-    const terrainHeightM=mapPaperHeightMm*planHtmlToPdfMeasuredFactor*planScale/1000;
+    if(!pointIds.length)throw new Error("No hay puntos con coordenadas para crear el plano general.");
 
-    const pts=eventPoints.length?eventPoints:[];
-    const center=pts.length?{
-        lat:pts.reduce((a,p)=>a+p.lat,0)/pts.length,
-        lon:pts.reduce((a,p)=>a+p.lon,0)/pts.length
-    }:{lat:40.4168,lon:-3.7038};
-
-    const mPerLat=111320;
-    const mPerLon=111320*Math.cos(center.lat*Math.PI/180);
-    const halfLat=(terrainHeightM/2)/mPerLat;
-    const halfLon=(terrainWidthM/2)/(mPerLon||1);
-
-    const bounds={
-        north:center.lat+halfLat,
-        south:center.lat-halfLat,
-        west:center.lon-halfLon,
-        east:center.lon+halfLon,
-        centerLat:center.lat,
-        centerLon:center.lon
+    const fakeRoute={
+        participantId:"GENERAL",
+        routeId:"TODAS_BALIZAS",
+        points:pointIds
     };
 
-    const json=JSON.stringify(eventPoints.map(p=>({
-        id:String(p.id||""),
-        lat:Number(p.lat),
-        lon:Number(p.lon),
-        type:String(p.type||"")
-    })));
-    const boundsJson=JSON.stringify(bounds);
+    let html=participantPlanHtml(fakeRoute);
 
-    return `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Plano_general_balizas</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<style>
-@page{size:A4 landscape;margin:0}
-html,body{margin:0;padding:0;background:#fff;font-family:Arial,Helvetica,sans-serif;color:#111}
-.sheet{width:297mm;height:210mm;background:#fff;margin:0 auto;position:relative;overflow:hidden;box-sizing:border-box;padding:4mm}
-.map-wrap{position:relative;width:289mm;height:202mm;background:#e9ead7;overflow:hidden;box-sizing:border-box}
-#participantPlanMap{width:100%;height:100%}
-.routeOverlay{position:absolute;inset:0;width:100%;height:100%;z-index:500;pointer-events:none}
-.map-footer{position:absolute;left:4mm;right:4mm;bottom:1.2mm;display:flex;justify-content:space-between;align-items:center;font-size:7px;font-weight:700;color:#222;z-index:700}
-.map-footer .title{font-size:8px;letter-spacing:.6px;font-weight:900}
-.leaflet-control-attribution,.leaflet-control-zoom{display:none!important}
-</style>
-</head>
-<body>
-<div class="sheet">
-    <div class="map-wrap">
-        <div id="participantPlanMap"></div>
-        <svg id="courseLines" class="routeOverlay"></svg>
-        <div class="map-footer">
-            <div class="title">${eventTitle}</div>
-            <div>PLANO GENERAL DE BALIZAS · ESCALA 1:${planScale}</div>
-        </div>
-    </div>
-</div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
-<script>
-const points=${json};
-const commonBounds=${boundsJson};
-window.militopoPlanExportBounds=commonBounds;
+    // Cambios visuales sobre el mismo plano:
+    // 1) título de archivo / cabecera conceptual
+    // 2) no dibujar líneas entre puntos
+    // 3) etiqueta visible = ID real del punto, no número de orden
+    // 4) texto de ficha técnica adaptado
+    html=html
+        .replace(/<title>Plano_[^<]*<\/title>/, "<title>Plano_todas_balizas</title>")
+        .replace(/Recorrido: GENERAL \/ TODAS_BALIZAS/g, "Plano general: todas las balizas")
+        .replace(/const segs=\[\];[\s\S]*?lines\.innerHTML=segs\.join\(''\);/, "lines.innerHTML='';")
+        .replace(/\+p\.markerOrder\+/g, "+p.id+")
+        .replace(/Fondo común del evento · escala fija correcta/g, "Plano general de todas las balizas · escala fija correcta");
 
-const map=L.map('participantPlanMap',{
-    zoomControl:false,
-    attributionControl:false,
-    preferCanvas:true
-}).setView([commonBounds.centerLat, commonBounds.centerLon], 15);
-
-const mapant=L.tileLayer.wms('https://mapant.es/wms',{
-    layers:'mapant',
-    format:'image/png',
-    transparent:false,
-    version:'1.3.0',
-    attribution:'© Mapant.es'
-});
-mapant.addTo(map);
-
-const bounds=[[commonBounds.south,commonBounds.west],[commonBounds.north,commonBounds.east]];
-
-function classifyPoint(p){
-    const id=String(p.id||'').toUpperCase();
-    const type=String(p.type||'').toUpperCase();
-    if(id==='START'||type==='SALIDA'||type==='START')return 'start';
-    if(id==='FINISH'||type==='LLEGADA'||type==='FINISH')return 'finish';
-    return 'control';
-}
-
-function drawAllPoints(){
-    const svg=document.getElementById('courseLines');
-    if(!svg)return;
-    const rect=svg.getBoundingClientRect();
-    svg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
-    svg.innerHTML='';
-
-    const stroke='#6a0032';
-    const fill='rgba(255,255,255,0.10)';
-    const textFill='#111';
-    const textStroke='#fff';
-
-    points.forEach(function(p){
-        const pt=map.latLngToContainerPoint([p.lat,p.lon]);
-        const g=document.createElementNS('http://www.w3.org/2000/svg','g');
-        const kind=classifyPoint(p);
-        const x=pt.x, y=pt.y;
-
-        if(kind==='start'){
-            const poly=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-            poly.setAttribute('points', x + ',' + (y-10) + ' ' + (x-9) + ',' + (y+8) + ' ' + (x+9) + ',' + (y+8));
-            poly.setAttribute('fill', fill);
-            poly.setAttribute('stroke', stroke);
-            poly.setAttribute('stroke-width', '2');
-            g.appendChild(poly);
-        }else if(kind==='finish'){
-            const c1=document.createElementNS('http://www.w3.org/2000/svg','circle');
-            c1.setAttribute('cx', x); c1.setAttribute('cy', y); c1.setAttribute('r', '10');
-            c1.setAttribute('fill', fill); c1.setAttribute('stroke', stroke); c1.setAttribute('stroke-width', '2');
-            const c2=document.createElementNS('http://www.w3.org/2000/svg','circle');
-            c2.setAttribute('cx', x); c2.setAttribute('cy', y); c2.setAttribute('r', '6');
-            c2.setAttribute('fill', 'none'); c2.setAttribute('stroke', stroke); c2.setAttribute('stroke-width', '2');
-            g.appendChild(c1); g.appendChild(c2);
-        }else{
-            const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-            c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', '10');
-            c.setAttribute('fill', fill); c.setAttribute('stroke', stroke); c.setAttribute('stroke-width', '2');
-            g.appendChild(c);
-        }
-
-        const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-        t.setAttribute('x', x+12);
-        t.setAttribute('y', y-12);
-        t.setAttribute('font-size', '14');
-        t.setAttribute('font-family', 'Arial, Helvetica, sans-serif');
-        t.setAttribute('font-weight', '900');
-        t.setAttribute('paint-order', 'stroke');
-        t.setAttribute('stroke', textStroke);
-        t.setAttribute('stroke-width', '3');
-        t.setAttribute('fill', textFill);
-        t.textContent=String(p.id||'');
-        g.appendChild(t);
-
-        svg.appendChild(g);
-    });
-}
-
-map.whenReady(function(){
-    map.fitBounds(bounds,{animate:false,padding:[0,0]});
-    setTimeout(function(){ map.invalidateSize(); drawAllPoints(); },350);
-});
-map.on('moveend zoomend resize load', drawAllPoints);
-setTimeout(function(){ try{ map.invalidateSize(); drawAllPoints(); }catch(e){} },1200);
-<\/script>
-</body>
-</html>`;
+    return html;
 }
 
 
