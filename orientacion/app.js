@@ -3349,7 +3349,119 @@ async function scanResultQrCameraLoop(){
     }
 }
 
-function updateParticipantSelect(){const sel=document.getElementById("participantSelect");if(sel){sel.innerHTML="";for(let i=1;i<=state.participantCount;i++){const pid="P"+String(i).padStart(2,"0"),opt=document.createElement("option");opt.value=pid;opt.textContent=pid;sel.appendChild(opt)}}updateOrganizerParticipantSelects()}function renderQrPreview(){updateOrganizerParticipantSelects();renderImportedResults();const box=document.getElementById("qrPreview");if(!box)return;box.innerHTML="";[{label:"Participante P01",payload:participantPayload("P01")},{label:"Baliza B01",payload:controlPayload("B01")},{label:"Salida",payload:controlPayload("START")},{label:"Llegada",payload:controlPayload("FINISH")}].forEach(async item=>{const div=document.createElement("div");div.className="qr-card";div.innerHTML=`<div>${item.label}</div><div style="height:150px;display:grid;place-items:center">Generando...</div><small>${item.payload}</small>`;box.appendChild(div);try{const url=await QRCode.toDataURL(item.payload,{margin:4,width:220,errorCorrectionLevel:'M'});div.innerHTML=`<div>${item.label}</div><img src="${url}"><small>${item.payload}</small>`}catch(e){div.innerHTML=`<div>${item.label}</div><pre>${item.payload}</pre>`}})}function participantPayload(pid){const route=state.routes.find(r=>r.participantId===pid&&!isRouteSkipped(r));return `ORI|PARTICIPANT|${state.eventId}|${pid}|${route?.routeId||""}`}function controlPayload(id){return `ORI|CONTROL|${state.eventId}|${id}`}
+function updateParticipantSelect(){const sel=document.getElementById("participantSelect");if(sel){sel.innerHTML="";for(let i=1;i<=state.participantCount;i++){const pid="P"+String(i).padStart(2,"0"),opt=document.createElement("option");opt.value=pid;opt.textContent=pid;sel.appendChild(opt)}}updateOrganizerParticipantSelects()}function renderQrPreview(){updateOrganizerParticipantSelects();renderImportedResults();const box=document.getElementById("qrPreview");if(!box)return;box.innerHTML="";[{label:"Participante P01",payload:participantPayload("P01")},{label:"Baliza B01",payload:controlPayload("B01")},{label:"Salida",payload:controlPayload("START")},{label:"Llegada",payload:controlPayload("FINISH")}].forEach(async item=>{const div=document.createElement("div");div.className="qr-card";div.innerHTML=`<div>${item.label}</div><div style="height:150px;display:grid;place-items:center">Generando...</div><small>${item.payload}</small>`;box.appendChild(div);try{const url=await QRCode.toDataURL(item.payload,{margin:4,width:220,errorCorrectionLevel:'M'});div.innerHTML=`<div>${item.label}</div><img src="${url}"><small>${item.payload}</small>`}catch(e){div.innerHTML=`<div>${item.label}</div><pre>${item.payload}</pre>`}})}
+function base64UrlEncodeUtf8(value){
+    const bytes=new TextEncoder().encode(String(value??""));
+    let bin="";
+    bytes.forEach(b=>bin+=String.fromCharCode(b));
+    return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+
+function base64UrlDecodeUtf8(value){
+    const clean=String(value||"").replace(/-/g,"+").replace(/_/g,"/");
+    const padded=clean+"=".repeat((4-clean.length%4)%4);
+    const bin=atob(padded);
+    const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    return new TextDecoder("utf-8").decode(bytes);
+}
+
+function safeParticipantBaseUrl(){
+    try{return window.location.origin+window.location.pathname;}
+    catch(e){return "./";}
+}
+
+function buildParticipantWebEventData(pid){
+    const full=typeof buildEventData==="function"?buildEventData():{};
+    const route=(state.routes||[]).find(r=>r&&r.participantId===pid&&!isRouteSkipped(r))
+        || (state.routes||[]).find(r=>r&&r.participantId===pid)
+        || null;
+    if(!route)throw new Error("No hay recorrido para "+pid);
+
+    const routeIndex=(state.routes||[]).findIndex(r=>r&&r.participantId===route.participantId&&r.routeId===route.routeId);
+    const metric=(state.metrics||[])[routeIndex]||{};
+    const pointIds=new Set((route.points||[]).filter(Boolean));
+    pointIds.add("START");
+    pointIds.add("FINISH");
+
+    const points={};
+    Object.keys(state.points||{}).forEach(id=>{
+        if(pointIds.has(id)&&state.points[id])points[id]=state.points[id];
+    });
+
+    const payload={
+        ...full,
+        participantMode:true,
+        webParticipantId:pid,
+        webGeneratedAt:new Date().toISOString(),
+        config:{...(full.config||{}),participantCount:1,activeParticipantCount:1},
+        routes:[route],
+        metrics:[metric],
+        points,
+        participantNames:{[pid]:(state.participantNames||{})[pid]||""},
+        participantLogs:{},
+        skippedRoutes:{},
+        importedResults:[]
+    };
+
+    if(state.iofDescriptions){
+        payload.iofDescriptions={};
+        Object.keys(state.iofDescriptions).forEach(id=>{
+            if(pointIds.has(id))payload.iofDescriptions[id]=state.iofDescriptions[id];
+        });
+    }
+    return payload;
+}
+
+function participantWebUrl(pid){
+    const eventData=buildParticipantWebEventData(pid);
+    const packed=base64UrlEncodeUtf8(JSON.stringify(eventData));
+    const url=new URL(safeParticipantBaseUrl(),window.location.href);
+    url.searchParams.set("modo","participante");
+    url.searchParams.set("p",pid);
+    url.searchParams.set("pdata",packed);
+    return url.toString();
+}
+
+function readParticipantWebDataFromUrl(){
+    try{
+        const params=new URLSearchParams(window.location.search||"");
+        const packed=params.get("pdata")||params.get("data")||"";
+        if(!packed)return null;
+        const eventData=JSON.parse(base64UrlDecodeUtf8(packed));
+        const pid=params.get("p")||eventData.webParticipantId||"";
+        const saved={pid,eventData,loadedAt:new Date().toISOString()};
+        localStorage.setItem("militopo_participant_web_event_v1",JSON.stringify(saved));
+        localStorage.setItem("militopo_orientacion_access_mode_v1","participante");
+        try{
+            const cleanUrl=window.location.pathname+"?modo=participante"+(pid?"&p="+encodeURIComponent(pid):"");
+            window.history.replaceState({},document.title,cleanUrl);
+        }catch(e){}
+        return saved;
+    }catch(e){
+        console.warn("No se pudo leer pdata participante",e);
+        return null;
+    }
+}
+
+function readSavedParticipantWebData(){
+    const fromUrl=readParticipantWebDataFromUrl();
+    if(fromUrl)return fromUrl;
+    try{
+        const raw=localStorage.getItem("militopo_participant_web_event_v1");
+        return raw?JSON.parse(raw):null;
+    }catch(e){return null;}
+}
+
+function participantPayload(pid){
+    try{
+        return participantWebUrl(pid);
+    }catch(e){
+        const route=state.routes.find(r=>r.participantId===pid&&!isRouteSkipped(r));
+        return `ORI|PART|${state.eventId}|${pid}|${route?.routeId||""}`;
+    }
+}
+function controlPayload(id){return `ORI|CONTROL|${state.eventId}|${id}`}
 function loadParticipantMode(){
     const pid=document.getElementById("participantSelect").value;
     const route=state.routes.find(r=>r.participantId===pid&&!isRouteSkipped(r));
@@ -4514,66 +4626,77 @@ async function printableControlsQrPdfBlob(items){
 
 
 async function participantAccessWebQrPdfBlob(){
-    const accessUrl="https://juankahf24.github.io/participante/";
     const jsPDF=await ensureJsPdf();
-    const qrDataUrl=await qrDataUrlForPrint(accessUrl,1400);
     const eventName=participantPrintEventName();
     const eventCode=String(state.eventId||"").trim()||"—";
-
+    const routes=(state.routes||[]).filter(r=>r&&!isRouteSkipped(r));
     const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
-    pdf.setFillColor(255,255,255);
-    pdf.rect(0,0,210,297,"F");
+    const pageW=210,pageH=297,margin=8,gap=6;
+    const cardW=(pageW-margin*2-gap)/2;
+    const cardH=(pageH-margin*2-gap)/2;
+    const generatedAt=new Date().toLocaleString("es-ES");
 
-    pdf.setDrawColor(0,0,0);
-    pdf.setLineWidth(0.7);
-    pdf.rect(10,10,190,277,"S");
+    for(let i=0;i<routes.length;i++){
+        if(i>0 && i%4===0)pdf.addPage("a4","portrait");
+        const pos=i%4;
+        const col=pos%2,row=Math.floor(pos/2);
+        const x=margin+col*(cardW+gap);
+        const y=margin+row*(cardH+gap);
+        const route=routes[i];
+        const pid=String(route.participantId||"").toUpperCase();
+        const rid=String(route.routeId||"").toUpperCase();
+        const url=participantWebUrl(route.participantId);
+        const qrDataUrl=await qrDataUrlForPrint(url,1200);
 
-    pdf.setTextColor(0,0,0);
-    pdf.setFont("helvetica","bold");
-    pdf.setFontSize(19);
-    pdf.text("MILITOPO · ACCESO PARTICIPANTE",105,28,{align:"center"});
+        pdf.setFillColor(255,255,255);
+        pdf.rect(x,y,cardW,cardH,"F");
+        pdf.setDrawColor(0,0,0);
+        pdf.setLineWidth(.55);
+        pdf.rect(x,y,cardW,cardH,"S");
 
-    pdf.setFontSize(12);
-    pdf.setFont("helvetica","normal");
-    pdf.text("Escanea este QR para abrir la web del participante.",105,39,{align:"center"});
+        pdf.setTextColor(0,0,0);
+        pdf.setFont("helvetica","bold");
+        pdf.setFontSize(9.5);
+        pdf.text("MILITOPO · PARTICIPANTE WEB",x+cardW/2,y+8,{align:"center",maxWidth:cardW-8});
+        pdf.setFontSize(8.2);
+        pdf.text(`${pid} · ${rid}`,x+cardW/2,y+15,{align:"center"});
+        pdf.setFont("helvetica","normal");
+        pdf.setFontSize(6.5);
+        pdf.text(eventName,x+cardW/2,y+21,{align:"center",maxWidth:cardW-8});
 
-    pdf.setFont("helvetica","bold");
-    pdf.setFontSize(11);
-    pdf.text("URL",105,52,{align:"center"});
-    pdf.setFont("helvetica","normal");
-    pdf.setFontSize(10);
-    pdf.text(accessUrl,105,59,{align:"center"});
+        const qrSize=Math.min(70,cardW-24);
+        const qrX=x+(cardW-qrSize)/2;
+        const qrY=y+28;
+        pdf.setLineWidth(.7);
+        pdf.rect(qrX-2,qrY-2,qrSize+4,qrSize+4,"S");
+        pdf.addImage(qrDataUrl,"PNG",qrX,qrY,qrSize,qrSize,undefined,"FAST");
 
-    pdf.setDrawColor(0,0,0);
-    pdf.setLineWidth(1.2);
-    pdf.rect(45,72,120,120,"S");
-    pdf.addImage(qrDataUrl,"PNG",52,79,106,106,undefined,"FAST");
+        pdf.setFont("helvetica","bold");
+        pdf.setFontSize(7.2);
+        pdf.text("Escanear con cámara del móvil",x+cardW/2,qrY+qrSize+9,{align:"center"});
+        pdf.setFont("helvetica","normal");
+        pdf.setFontSize(5.5);
+        const note=[
+            "Abre la misma rama Orientación en modo participante.",
+            "El recorrido va dentro del QR.",
+            `Evento: ${eventCode}`,
+            `Generado: ${generatedAt}`
+        ];
+        let yy=qrY+qrSize+16;
+        note.forEach(line=>{
+            pdf.text(line,x+cardW/2,yy,{align:"center",maxWidth:cardW-10});
+            yy+=5.2;
+        });
+    }
 
-    pdf.setFont("helvetica","bold");
-    pdf.setFontSize(13);
-    pdf.text("ACCESO WEB PARTICIPANTE",105,207,{align:"center"});
-
-    pdf.setFont("helvetica","normal");
-    pdf.setFontSize(10);
-    const metaLines=[
-        `Ejercicio: ${eventName}`,
-        `Código evento: ${eventCode}`,
-        "Formato: A4 vertical · imprimir al 100 % · ajustado a márgenes",
-        "Archivo generado automáticamente dentro de la carpeta Participantes"
-    ];
-    let y=222;
-    metaLines.forEach(line=>{
-        pdf.text(String(line),105,y,{align:"center",maxWidth:172});
-        y+=8;
-    });
-
-    pdf.setFont("helvetica","bold");
-    pdf.setFontSize(9);
-    pdf.text("MILITOPO · ORIENTACIÓN",105,274,{align:"center"});
+    if(!routes.length){
+        pdf.setFont("helvetica","bold");
+        pdf.setFontSize(14);
+        pdf.text("No hay recorridos activos para generar QR web participante.",105,145,{align:"center",maxWidth:180});
+    }
 
     return pdf.output("blob");
 }
-
 
 
 function participantOfflineAppHtml(eventData){
@@ -8248,6 +8371,191 @@ downloadClassificationExcel=async function(){
 
 
 
+// MILITOPO ORIENTACIÓN · CONTROL DE ACCESO ORGANIZADOR/PARTICIPANTE START
+(function(){
+    const ORGANIZER_PASSWORD = "Militopo2026";
+    const ACCESS_MODE_KEY = "militopo_orientacion_access_mode_v1";
+    const ORGANIZER_UNLOCK_KEY = "militopo_orientacion_organizer_unlocked_session_v1";
+
+    function appRoot(){
+        return document.querySelector(".app");
+    }
+
+    function setAppVisible(visible){
+        const root = appRoot();
+        if(root) root.style.display = visible ? "" : "none";
+    }
+
+    function gateEl(){
+        return document.getElementById("militopoAccessGate");
+    }
+
+    function participantShell(){
+        return document.getElementById("militopoParticipantOnlyShell");
+    }
+
+    function showGate(){
+        setAppVisible(false);
+        const shell = participantShell();
+        if(shell) shell.style.display = "none";
+        const gate = gateEl();
+        if(gate) gate.style.display = "flex";
+        const panel = document.getElementById("militopoPasswordPanel");
+        const choices = document.getElementById("militopoAccessChoices");
+        const error = document.getElementById("militopoPasswordError");
+        if(panel) panel.style.display = "none";
+        if(choices) choices.style.display = "";
+        if(error) error.textContent = "";
+    }
+
+    function maybeShowOrientationGuideAfterUnlock(){
+        try{
+            const hideGuide = localStorage.getItem("militopo_orientacion_guide_hidden") === "1";
+            if(!hideGuide && typeof window.showOrientationGuide === "function"){
+                setTimeout(()=>window.showOrientationGuide(), 350);
+            }
+        }catch(e){}
+    }
+
+    function showOrganizer(){
+        const gate = gateEl();
+        const shell = participantShell();
+        if(gate) gate.style.display = "none";
+        if(shell) shell.style.display = "none";
+        setAppVisible(true);
+        try{
+            localStorage.setItem(ACCESS_MODE_KEY, "organizador");
+            sessionStorage.setItem(ORGANIZER_UNLOCK_KEY, "1");
+        }catch(e){}
+        if(typeof goStep === "function"){
+            try{ goStep(currentAppStep || 1, {silent:true, noScroll:true}); }catch(e){}
+        }
+        maybeShowOrientationGuideAfterUnlock();
+    }
+
+    function showPasswordPanel(){
+        const panel = document.getElementById("militopoPasswordPanel");
+        const choices = document.getElementById("militopoAccessChoices");
+        const input = document.getElementById("militopoOrganizerPassword");
+        const error = document.getElementById("militopoPasswordError");
+        if(choices) choices.style.display = "none";
+        if(panel) panel.style.display = "";
+        if(error) error.textContent = "";
+        if(input){
+            input.value = "";
+            setTimeout(()=>input.focus(), 80);
+        }
+    }
+
+    function checkOrganizerPassword(){
+        const input = document.getElementById("militopoOrganizerPassword");
+        const error = document.getElementById("militopoPasswordError");
+        const value = input ? input.value : "";
+        if(value === ORGANIZER_PASSWORD){
+            showOrganizer();
+        }else{
+            if(error) error.textContent = "Contraseña incorrecta.";
+            if(input){
+                input.value = "";
+                input.focus();
+            }
+        }
+    }
+
+    function showParticipant(){
+        const gate = gateEl();
+        const shell = participantShell();
+        const content = document.getElementById("militopoParticipantOnlyContent");
+        if(gate) gate.style.display = "none";
+        setAppVisible(false);
+        if(shell) shell.style.display = "flex";
+        try{ localStorage.setItem(ACCESS_MODE_KEY, "participante"); }catch(e){}
+
+        if(!content) return;
+        content.innerHTML = "";
+
+        try{
+            let participantPack = typeof readSavedParticipantWebData === "function" ? readSavedParticipantWebData() : null;
+            let eventData = participantPack && participantPack.eventData ? participantPack.eventData : null;
+
+            if(!eventData){
+                const hasRoutes = Array.isArray(state.routes) && state.routes.length > 0;
+                const hasPoints = state.points && Object.keys(state.points).length > 0;
+                if(hasRoutes && hasPoints && typeof buildEventData === "function"){
+                    eventData = buildEventData();
+                }
+            }
+
+            if(!eventData || typeof participantOfflineAppHtml !== "function"){
+                content.innerHTML = `<div class="participant-empty-card">
+                    <h2>Vista participante</h2>
+                    <p>Aún no hay un ejercicio cargado en este móvil.</p>
+                    <p>Escanea el QR de participante que genera el organizador. Ese QR carga automáticamente tu recorrido en esta misma app.</p>
+                </div>`;
+                return;
+            }
+
+            const iframe = document.createElement("iframe");
+            iframe.className = "participant-integrated-frame";
+            iframe.setAttribute("title", "MILITOPO Participante");
+            iframe.srcdoc = participantOfflineAppHtml(eventData);
+            content.appendChild(iframe);
+        }catch(err){
+            console.error(err);
+            content.innerHTML = `<div class="participant-empty-card">
+                <h2>No se pudo cargar la vista participante</h2>
+                <p>${String(err && err.message ? err.message : err)}</p>
+            </div>`;
+        }
+    }
+
+    function initAccessGate(){
+        const gate = gateEl();
+        if(!gate) return;
+
+        document.getElementById("militopoOrganizerAccessBtn")?.addEventListener("click", showPasswordPanel);
+        document.getElementById("militopoParticipantAccessBtn")?.addEventListener("click", showParticipant);
+        document.getElementById("militopoPasswordEnterBtn")?.addEventListener("click", checkOrganizerPassword);
+        document.getElementById("militopoPasswordCancelBtn")?.addEventListener("click", showGate);
+        document.getElementById("militopoOrganizerPassword")?.addEventListener("keydown", (e)=>{
+            if(e.key === "Enter"){
+                e.preventDefault();
+                checkOrganizerPassword();
+            }
+            if(e.key === "Escape"){
+                e.preventDefault();
+                showGate();
+            }
+        });
+        document.getElementById("militopoBackToAccessBtn")?.addEventListener("click", ()=>{
+            try{ localStorage.removeItem(ACCESS_MODE_KEY); }catch(e){}
+            showGate();
+        });
+
+        let mode = "";
+        let unlocked = false;
+        const urlParticipantData = (typeof readParticipantWebDataFromUrl === "function") ? readParticipantWebDataFromUrl() : null;
+        try{
+            mode = urlParticipantData ? "participante" : (localStorage.getItem(ACCESS_MODE_KEY) || "");
+            unlocked = sessionStorage.getItem(ORGANIZER_UNLOCK_KEY) === "1";
+        }catch(e){}
+
+        if(mode === "participante"){
+            showParticipant();
+        }else if(mode === "organizador" && unlocked){
+            showOrganizer();
+        }else{
+            showGate();
+        }
+    }
+
+    window.addEventListener("load", function(){
+        setTimeout(initAccessGate, 420);
+    });
+})();
+// MILITOPO ORIENTACIÓN · CONTROL DE ACCESO ORGANIZADOR/PARTICIPANTE END
+
+
 // ORIENTATION GUIDE MODAL START
 (function(){
     function showOrientationGuide(){
@@ -8263,7 +8571,9 @@ downloadClassificationExcel=async function(){
         const close=document.getElementById("closeOrientationGuideBtn");
         let hideGuide=false;
         try { hideGuide = localStorage.getItem("militopo_orientacion_guide_hidden") === "1"; } catch(e) {}
-        if(!hideGuide) setTimeout(showOrientationGuide, 450);
+        const accessMode = (()=>{ try { return localStorage.getItem("militopo_orientacion_access_mode_v1") || ""; } catch(e){ return ""; } })();
+        const organizerUnlocked = (()=>{ try { return sessionStorage.getItem("militopo_orientacion_organizer_unlocked_session_v1") === "1"; } catch(e){ return false; } })();
+        if(!hideGuide && accessMode === "organizador" && organizerUnlocked) setTimeout(showOrientationGuide, 450);
         close?.addEventListener("click", hideOrientationGuide);
         document.getElementById("dontShowOrientationGuideBtn")?.addEventListener("click", function(){
             try { localStorage.setItem("militopo_orientacion_guide_hidden", "1"); } catch(e) {}
