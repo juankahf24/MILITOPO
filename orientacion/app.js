@@ -3414,21 +3414,21 @@ function buildParticipantWebEventData(pid){
 }
 
 function participantWebUrl(pid){
-    const eventData=buildParticipantWebEventData(pid);
-    const packed=base64UrlEncodeUtf8(JSON.stringify(eventData));
+    const compact=buildCompactParticipantWebData(pid);
+    const packed=base64UrlEncodeUtf8(JSON.stringify(compact));
     const url=new URL(safeParticipantBaseUrl(),window.location.href);
     url.searchParams.set("modo","participante");
     url.searchParams.set("p",pid);
-    url.searchParams.set("pdata",packed);
+    url.searchParams.set("c",packed);
     return url.toString();
 }
-
 function readParticipantWebDataFromUrl(){
     try{
         const params=new URLSearchParams(window.location.search||"");
-        const packed=params.get("pdata")||params.get("data")||"";
+        const packed=params.get("c")||params.get("pdata")||params.get("data")||"";
         if(!packed)return null;
-        const eventData=JSON.parse(base64UrlDecodeUtf8(packed));
+        const raw=JSON.parse(base64UrlDecodeUtf8(packed));
+        const eventData=(raw&&raw.v===1)?expandCompactParticipantWebData(raw):raw;
         const pid=params.get("p")||eventData.webParticipantId||"";
         const saved={pid,eventData,loadedAt:new Date().toISOString()};
         localStorage.setItem("militopo_participant_web_event_v1",JSON.stringify(saved));
@@ -3439,11 +3439,10 @@ function readParticipantWebDataFromUrl(){
         }catch(e){}
         return saved;
     }catch(e){
-        console.warn("No se pudo leer pdata participante",e);
+        console.warn("No se pudo leer datos de participante",e);
         return null;
     }
 }
-
 function readSavedParticipantWebData(){
     const fromUrl=readParticipantWebDataFromUrl();
     if(fromUrl)return fromUrl;
@@ -3451,6 +3450,105 @@ function readSavedParticipantWebData(){
         const raw=localStorage.getItem("militopo_participant_web_event_v1");
         return raw?JSON.parse(raw):null;
     }catch(e){return null;}
+}
+
+
+function roundCoordForQr(value){
+    const n=Number(value);
+    return Number.isFinite(n)?Number(n.toFixed(6)):null;
+}
+
+function buildCompactParticipantWebData(pid){
+    const route=(state.routes||[]).find(r=>r&&r.participantId===pid&&!isRouteSkipped(r))
+        || (state.routes||[]).find(r=>r&&r.participantId===pid)
+        || null;
+    if(!route)throw new Error("No hay recorrido para "+pid);
+
+    const routeIndex=(state.routes||[]).findIndex(r=>r&&r.participantId===route.participantId&&r.routeId===route.routeId);
+    const metric=(state.metrics||[])[routeIndex]||{};
+    const ids=(route.points||[]).filter(Boolean);
+    const allIds=[];
+    ["START",...ids,"FINISH"].forEach(id=>{ if(id&&!allIds.includes(id))allIds.push(id); });
+
+    const points=allIds.map(id=>{
+        const p=(state.points||{})[id]||{};
+        return [
+            String(id),
+            String(p.type||((String(id).toUpperCase()==="START")?"SALIDA":(String(id).toUpperCase()==="FINISH")?"LLEGADA":"BALIZA")),
+            roundCoordForQr(p.lat),
+            roundCoordForQr(p.lon),
+            Number.isFinite(Number(p.elevation))?Math.round(Number(p.elevation)):null,
+            String(p.utm||""),
+            String(p.desc||"")
+        ];
+    });
+
+    return {
+        v:1,
+        e:String(state.eventId||""),
+        n:String(state.eventName||"ENTRENAMIENTO ORIENTACIÓN"),
+        p:String(pid||route.participantId||""),
+        pn:String((state.participantNames||{})[pid]||""),
+        r:{i:String(route.participantId||pid||""),d:String(route.routeId||""),q:ids},
+        m:{
+            km:Number.isFinite(Number(metric.distanceKm))?Number(Number(metric.distanceKm).toFixed(3)):undefined,
+            pp:Number.isFinite(Number(metric.climbUp))?Math.round(Number(metric.climbUp)):undefined,
+            pn:Number.isFinite(Number(metric.climbDown))?Math.round(Number(metric.climbDown)):undefined,
+            dg:Number.isFinite(Number(metric.netClimb))?Math.round(Number(metric.netClimb)):undefined,
+            df:metric.difficulty||undefined
+        },
+        pts:points,
+        t:Date.now()
+    };
+}
+
+function expandCompactParticipantWebData(compact){
+    if(!compact || compact.v!==1)return compact;
+
+    const points={};
+    (compact.pts||[]).forEach(row=>{
+        const id=String(row[0]||"");
+        if(!id)return;
+        points[id]={
+            id,
+            type:String(row[1]||"BALIZA"),
+            lat:Number.isFinite(Number(row[2]))?Number(row[2]):null,
+            lon:Number.isFinite(Number(row[3]))?Number(row[3]):null,
+            elevation:Number.isFinite(Number(row[4]))?Number(row[4]):null,
+            utm:String(row[5]||""),
+            desc:String(row[6]||"")
+        };
+    });
+
+    const pid=String(compact.p||compact.r?.i||"P01");
+    const routeId=String(compact.r?.d||"R01");
+    const routePoints=(compact.r?.q||[]).filter(Boolean);
+
+    return {
+        version:"orientacion_v1_web_compact",
+        participantMode:true,
+        webParticipantId:pid,
+        eventId:String(compact.e||""),
+        eventName:String(compact.n||"ENTRENAMIENTO ORIENTACIÓN"),
+        createdAt:new Date(Number(compact.t)||Date.now()).toISOString(),
+        config:{participantCount:1,activeParticipantCount:1,controlCount:routePoints.length,controlsPerRoute:routePoints.length,maxControlReuse:1},
+        points,
+        routes:[{participantId:pid,routeId,points:routePoints}],
+        metrics:[{
+            participantId:pid,
+            routeId,
+            distanceKm:compact.m?.km,
+            climbUp:compact.m?.pp,
+            climbDown:compact.m?.pn,
+            netClimb:compact.m?.dg,
+            difficulty:compact.m?.df
+        }],
+        participantNames:{[pid]:String(compact.pn||"")},
+        participantLogs:{},
+        skippedRoutes:{},
+        importedResults:[],
+        iofDescriptions:{}
+    };
 }
 
 function participantPayload(pid){
@@ -4515,6 +4613,7 @@ async function printableParticipantsQrPdfBlob(items){
         const pid=String(route.participantId||"").toUpperCase();
         const rid=String(route.routeId||"").toUpperCase();
         const payload=String(items[i].payload||"");
+        const payloadDisplay=payload.length>110?payload.slice(0,110)+"…":payload;
         const qr=await printableQrPngDataUrl(items[i].qrDataUrl,1200);
 
         doc.setDrawColor(0,0,0);
@@ -4546,7 +4645,7 @@ async function printableParticipantsQrPdfBlob(items){
         drawPdfLabelValue(doc,"Evento",eventCode,x+4,infoY,(cardW-10)/2,10,{valueSize:7,maxLines:1,boldValue:true});
         drawPdfLabelValue(doc,"Recorrido",rid||"—",x+5+(cardW-10)/2,infoY,(cardW-10)/2,10,{valueSize:7,maxLines:1,boldValue:true});
         infoY+=12;
-        drawPdfLabelValue(doc,"Payload",payload,x+4,infoY,cardW-8,15,{valueSize:5.8,maxLines:3});
+        drawPdfLabelValue(doc,"Payload",payloadDisplay,x+4,infoY,cardW-8,15,{valueSize:5.8,maxLines:3});
         doc.setFont("helvetica","normal");
         doc.setFontSize(5.5);
         doc.text(`MILITOPO · ORIENTACIÓN · ${generatedAt}`,x+cardW/2,y+cardH-3,{align:"center"});
@@ -4678,7 +4777,7 @@ async function participantAccessWebQrPdfBlob(){
         pdf.setFontSize(5.5);
         const note=[
             "Abre la misma rama Orientación en modo participante.",
-            "El recorrido va dentro del QR.",
+            "El recorrido compacto va dentro del QR.",
             `Evento: ${eventCode}`,
             `Generado: ${generatedAt}`
         ];
