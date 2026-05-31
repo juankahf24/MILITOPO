@@ -3306,6 +3306,8 @@ let geoTiffState = {
     isRendering:false
 };
 let geoTiffPinchState = null;
+let geoTiffDragState = null;
+let geoTiffSuppressCanvasClickUntil = 0;
 let geoTiffPanState = null;
 
 async function ensureGeoTiffLib(){
@@ -3344,15 +3346,20 @@ function geoTiffFillPointSelect(){
     updateGeoTiffPointStatus();
 }
 
-function openGeoTiffModal(){
+function openGeoTiffModal(autoChoose=false){
     const modal=document.getElementById("geoTiffModal");
     if(!modal)return;
     modal.style.display="flex";
     geoTiffFillPointSelect();
     if(!geoTiffState.loaded){
         geoTiffSetStatus("Selecciona un archivo <strong>.tif/.tiff GeoTIFF</strong> georreferenciado. Si no contiene coordenadas legibles, la app avisará y no asignará puntos.","warn");
-        const input=document.getElementById("geoTiffInput");
-        if(input) input.click();
+        if(autoChoose){
+            const input=document.getElementById("geoTiffInput");
+            if(input){
+                input.value="";
+                setTimeout(()=>input.click(),80);
+            }
+        }
     }else{
         geoTiffSetStatus(`✅ <strong>${escapeHtml(geoTiffState.fileName)}</strong> cargado correctamente.`,"ok");
         renderGeoTiffMarkers();
@@ -3418,18 +3425,40 @@ function projectedToCoordText(x,y){
     return `${String(info.zone).padStart(2,"0")}${band} ${Math.round(x)} ${Math.round(y)}`;
 }
 
-function geoTiffCanvasClickToProjected(evt){
+
+function geoTiffClientToProjected(clientX,clientY){
     const canvas=document.getElementById("geoTiffCanvas");
     if(!canvas||!geoTiffState.bbox)return null;
     const rect=canvas.getBoundingClientRect();
-    const px=(evt.clientX-rect.left)*(canvas.width/rect.width);
-    const py=(evt.clientY-rect.top)*(canvas.height/rect.height);
-    const rx=px/canvas.width;
-    const ry=py/canvas.height;
+    const px=(clientX-rect.left)*(canvas.width/rect.width);
+    const py=(clientY-rect.top)*(canvas.height/rect.height);
+    const rx=Math.max(0,Math.min(1,px/canvas.width));
+    const ry=Math.max(0,Math.min(1,py/canvas.height));
     const b=geoTiffState.bbox;
     const x=b[0]+rx*(b[2]-b[0]);
     const y=b[3]-ry*(b[3]-b[1]);
     return {x,y,px,py,rx,ry};
+}
+
+function geoTiffSavePointFromProjected(pointId,pos,openPopup=true){
+    const coord=projectedToCoordText(pos.x,pos.y);
+    if(!puntosData[pointId])puntosData[pointId]={coordsUTM:"",descripcion:""};
+    puntosData[pointId].coordsUTM=coord;
+    guardarStorage();
+    renderizarPuntos();
+    actualizarDashboard();
+    updateGeoTiffPointStatus();
+    renderGeoTiffMarkers();
+    if(typeof updateAllMapMarkers==="function")updateAllMapMarkers();
+    if(typeof updatePreviewFromSelectedPoint==="function")updatePreviewFromSelectedPoint();
+    if(openPopup) showGeoTiffPointPopup(pointId);
+    geoTiffSetStatus(`✅ ${escapeHtml(pointId)} actualizado desde GeoTIFF: <strong>${escapeHtml(coord)}</strong>`,"ok");
+    return coord;
+}
+
+
+function geoTiffCanvasClickToProjected(evt){
+    return geoTiffClientToProjected(evt.clientX,evt.clientY);
 }
 
 function updateGeoTiffPointStatus(){
@@ -3591,16 +3620,28 @@ function showGeoTiffPointPopup(pointId){
     const desc=data.descripcion||"";
     popup.innerHTML=`
         <button type="button" class="geotiff-popup-close" aria-label="Cerrar">×</button>
-        <div class="geotiff-compact-popup-card">
-            <div class="geotiff-compact-popup-head">
-                <span class="geotiff-compact-pin"></span>
-                <div>
-                    <div class="geotiff-compact-title">Punto ${escapeHtml(pointId)}</div>
-                    <div class="geotiff-compact-coord">${escapeHtml(coordText)}</div>
+        <div class="geotiff-ign-popup-card">
+            <div class="geotiff-ign-head">
+                <span class="geotiff-ign-pin"></span>
+                <div class="geotiff-ign-titlebox">
+                    <div class="geotiff-ign-title">Punto ${escapeHtml(pointId)}</div>
                 </div>
             </div>
-            <textarea class="popup-desc-input geotiff-compact-desc" placeholder="Descripción...">${escapeHtml(desc)}</textarea>
-            <button type="button" class="geotiff-compact-delete" onclick="window.eliminarPunto('${pointId}')">🗑️ Eliminar punto</button>
+
+            <div class="geotiff-ign-coordbox">
+                <div class="geotiff-ign-label">COORDENADAS</div>
+                <div class="geotiff-ign-coord">${escapeHtml(coordText)}</div>
+            </div>
+
+            <div class="geotiff-ign-desc-head">
+                <span>EDITAR DESCRIPCIÓN</span>
+                <small>Se guarda al salir</small>
+            </div>
+            <textarea class="popup-desc-input geotiff-ign-desc" placeholder="Añade referencia del terreno...">${escapeHtml(desc)}</textarea>
+
+            <button type="button" class="geotiff-ign-delete">🗑️ Eliminar punto</button>
+
+            <div class="geotiff-ign-drag-hint">✅ Arrastra el icono azul para mover la baliza</div>
         </div>
     `;
 
@@ -3625,6 +3666,28 @@ function showGeoTiffPointPopup(pointId){
                 e.preventDefault();
                 input.blur();
             }
+        });
+    }
+
+    const deleteBtn=popup.querySelector(".geotiff-ign-delete");
+    if(deleteBtn){
+        deleteBtn.addEventListener("click",(e)=>{
+            e.preventDefault();
+            e.stopPropagation();
+            if(!confirm(`¿Eliminar el punto ${pointId}? Se borrarán sus coordenadas y descripción.`))return;
+            if(!puntosData[pointId])puntosData[pointId]={coordsUTM:"",descripcion:""};
+            puntosData[pointId].coordsUTM="";
+            puntosData[pointId].descripcion="";
+            puntosData[pointId].latlng=null;
+            guardarStorage();
+            syncPointInputs(pointId);
+            if(typeof syncMapPointInputs==="function")syncMapPointInputs(pointId);
+            actualizarDashboard();
+            refreshMapPointSelectorState();
+            updateGeoTiffPointStatus();
+            renderGeoTiffMarkers();
+            hideGeoTiffPointPopup();
+            geoTiffSetStatus(`✅ Punto ${escapeHtml(pointId)} eliminado correctamente`,"ok");
         });
     }
 
@@ -3659,13 +3722,71 @@ function renderGeoTiffMarkers(){
         marker.className="geotiff-point-marker geotiff-blue-marker-container";
         marker.style.left=left+"%";
         marker.style.top=top+"%";
+        marker.dataset.pointId=id;
         marker.innerHTML=`<div class="map-blue-marker geotiff-blue-marker"><span class="map-blue-pin"></span><span class="map-blue-label">${escapeHtml(id)}</span></div>`;
         marker.title=`${id} · ${data.coordsUTM||""}`;
 
         marker.addEventListener("click",(e)=>{
+            if(geoTiffSuppressCanvasClickUntil && Date.now()<geoTiffSuppressCanvasClickUntil)return;
             e.preventDefault();
             e.stopPropagation();
             showGeoTiffPointPopup(id);
+        });
+
+        marker.addEventListener("pointerdown",(e)=>{
+            if(!geoTiffState.loaded||!geoTiffState.canAssign)return;
+            e.preventDefault();
+            e.stopPropagation();
+            hideGeoTiffPointPopup();
+            marker.setPointerCapture?.(e.pointerId);
+            geoTiffDragState={
+                pointId:id,
+                pointerId:e.pointerId,
+                moved:false,
+                marker
+            };
+            marker.classList.add("dragging");
+        });
+
+        marker.addEventListener("pointermove",(e)=>{
+            if(!geoTiffDragState||geoTiffDragState.pointerId!==e.pointerId||geoTiffDragState.pointId!==id)return;
+            e.preventDefault();
+            e.stopPropagation();
+            const pos=geoTiffClientToProjected(e.clientX,e.clientY);
+            if(!pos)return;
+            geoTiffDragState.moved=true;
+            const left=((pos.x-b[0])/(b[2]-b[0]))*100;
+            const top=((b[3]-pos.y)/(b[3]-b[1]))*100;
+            marker.style.left=Math.max(0,Math.min(100,left))+"%";
+            marker.style.top=Math.max(0,Math.min(100,top))+"%";
+        });
+
+        marker.addEventListener("pointerup",(e)=>{
+            if(!geoTiffDragState||geoTiffDragState.pointerId!==e.pointerId||geoTiffDragState.pointId!==id)return;
+            e.preventDefault();
+            e.stopPropagation();
+            marker.classList.remove("dragging");
+            const moved=geoTiffDragState.moved;
+            geoTiffDragState=null;
+            geoTiffSuppressCanvasClickUntil=Date.now()+500;
+            const pos=geoTiffClientToProjected(e.clientX,e.clientY);
+            if(pos && moved){
+                try{
+                    geoTiffSavePointFromProjected(id,pos,true);
+                }catch(err){
+                    geoTiffSetStatus(`⚠️ No se pudo mover la baliza: ${escapeHtml(err&&err.message?err.message:err)}`,"error");
+                    renderGeoTiffMarkers();
+                }
+            }else{
+                showGeoTiffPointPopup(id);
+            }
+        });
+
+        marker.addEventListener("pointercancel",(e)=>{
+            if(!geoTiffDragState||geoTiffDragState.pointerId!==e.pointerId)return;
+            geoTiffDragState=null;
+            marker.classList.remove("dragging");
+            renderGeoTiffMarkers();
         });
 
         layer.appendChild(marker);
@@ -3769,20 +3890,10 @@ function handleGeoTiffCanvasClick(evt){
             geoTiffSetStatus("⚠️ Selecciona una baliza antes de clicar en el plano.","error");
             return;
         }
+        if(geoTiffSuppressCanvasClickUntil && Date.now()<geoTiffSuppressCanvasClickUntil)return;
         const pos=geoTiffCanvasClickToProjected(evt);
         if(!pos)return;
-        const coord=projectedToCoordText(pos.x,pos.y);
-        if(!puntosData[pointId])puntosData[pointId]={coordsUTM:"",descripcion:""};
-        puntosData[pointId].coordsUTM=coord;
-        guardarStorage();
-        renderizarPuntos();
-        actualizarDashboard();
-        updateGeoTiffPointStatus();
-        renderGeoTiffMarkers();
-        if(typeof updateAllMapMarkers==="function")updateAllMapMarkers();
-        if(typeof updatePreviewFromSelectedPoint==="function")updatePreviewFromSelectedPoint();
-        showGeoTiffPointPopup(pointId);
-        geoTiffSetStatus(`✅ ${escapeHtml(pointId)} actualizado desde GeoTIFF: <strong>${escapeHtml(coord)}</strong>`,"ok");
+        geoTiffSavePointFromProjected(pointId,pos,true);
     }catch(err){
         geoTiffSetStatus(`⚠️ No se pudo asignar coordenada: ${escapeHtml(err&&err.message?err.message:err)}`,"error");
     }
@@ -4282,13 +4393,15 @@ function openMapModal() {
         const mapModal = document.getElementById("mapModal");
         document.getElementById("mapBtn")?.addEventListener("click", openMapModal);
         document.getElementById("geoTiffBtn")?.addEventListener("click", () => {
-            const input=document.getElementById("geoTiffInput");
-            if(input) input.click();
-            openGeoTiffModal();
+            openGeoTiffModal(true);
         });
-        document.getElementById("geoTiffInput")?.addEventListener("change", (e) => {
-            const file=e.target.files&&e.target.files[0];
-            if(file) loadGeoTiffFile(file);
+        document.getElementById("geoTiffInput")?.addEventListener("change", async (e) => {
+            const input=e.target;
+            const file=input.files&&input.files[0];
+            if(file){
+                await loadGeoTiffFile(file);
+                input.value="";
+            }
         });
         document.getElementById("closeGeoTiffModal")?.addEventListener("click", closeGeoTiffModal);
         const geoTiffModal=document.getElementById("geoTiffModal");
@@ -4297,7 +4410,10 @@ function openMapModal() {
         });
         document.getElementById("geoTiffChooseAgainBtn")?.addEventListener("click", () => {
             const input=document.getElementById("geoTiffInput");
-            if(input) input.click();
+            if(input){
+                input.value="";
+                input.click();
+            }
         });
         document.getElementById("geoTiffFitBtn")?.addEventListener("click", fitGeoTiffToViewer);
         document.getElementById("geoTiffZoomInBtn")?.addEventListener("click", () => setGeoTiffZoom((Number(geoTiffState.zoom)||1)*1.25));

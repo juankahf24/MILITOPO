@@ -6324,3 +6324,369 @@ body {
     border-right: 1px solid rgba(230,188,122,.38) !important;
     border-bottom: 1px solid rgba(230,188,122,.38) !important;
 }
+
+
+/* ===== GeoTIFF: popup estilo IGN + marker arrastrable ===== */
+#geoTiffModal .geotiff-popup-shell {
+    width: min(330px, 86vw) !important;
+    max-width: 330px !important;
+    transform: translate(-45%, calc(-100% - 22px)) !important;
+    z-index: 80 !important;
+    background: transparent !important;
+}
+
+#geoTiffModal .geotiff-ign-popup-card {
+    width: min(330px, 86vw) !important;
+    max-width: 330px !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+    background: #f6f2e8 !important;
+    color: #24301f !important;
+    border: 1px solid rgba(54,70,44,.32) !important;
+    box-shadow: 0 18px 40px rgba(0,0,0,.42) !important;
+    opacity: 1 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+#geoTiffModal .geotiff-ign-head {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 13px 16px 10px !important;
+    background: rgba(255,255,255,.76) !important;
+}
+
+#geoTiffModal .geotiff-ign-pin {
+    width: 28px !important;
+    height: 28px !important;
+    flex: 0 0 28px !important;
+    border-radius: 999px !important;
+    background: #4f9be8 !important;
+    border: 6px solid #eaf5ff !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.24) !important;
+}
+
+#geoTiffModal .geotiff-ign-title {
+    color: #324264 !important;
+    font-size: 1.04rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
+    line-height: 1.1 !important;
+}
+
+#geoTiffModal .geotiff-ign-coordbox {
+    margin: 0 14px 12px !important;
+    padding: 10px 12px !important;
+    border-radius: 13px !important;
+    border: 1px solid rgba(54,70,44,.20) !important;
+    background: #dde0d2 !important;
+}
+
+#geoTiffModal .geotiff-ign-label {
+    color: #6b5944 !important;
+    font-size: .68rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .14em !important;
+    margin-bottom: 5px !important;
+}
+
+#geoTiffModal .geotiff-ign-coord {
+    color: #25311f !important;
+    font-size: .95rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .06em !important;
+    overflow-wrap: anywhere !important;
+}
+
+#geoTiffModal .geotiff-ign-desc-head {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    padding: 0 14px 7px !important;
+    color: #6d4f39 !important;
+    font-size: .70rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .10em !important;
+}
+
+#geoTiffModal .geotiff-ign-desc-head small {
+    color: #55723c !important;
+    font-size: .66rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .05em !important;
+}
+
+#geoTiffModal .geotiff-ign-desc {
+    display: block !important;
+    width: calc(100% - 28px) !important;
+    min-height: 62px !important;
+    max-height: 96px !important;
+    margin: 0 14px 12px !important;
+    padding: 12px !important;
+    resize: vertical !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(117,86,64,.22) !important;
+    background: #ffffff !important;
+    color: #171c13 !important;
+    font-size: .92rem !important;
+    font-weight: 850 !important;
+    line-height: 1.3 !important;
+    box-shadow: inset 0 1px 0 rgba(0,0,0,.04) !important;
+}
+
+#geoTiffModal .geotiff-ign-delete {
+    display: block !important;
+    width: calc(100% - 28px) !important;
+    margin: 0 14px 12px !important;
+    padding: 12px 14px !important;
+    border-radius: 15px !important;
+    border: 0 !important;
+    background: linear-gradient(180deg,#c96a50,#ad503b) !important;
+    color: #fff !important;
+    font-size: .82rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .06em !important;
+    box-shadow: 0 8px 18px rgba(173,80,59,.28) !important;
+}
+
+#geoTiffModal .geotiff-ign-drag-hint {
+    width: calc(100% - 28px) !important;
+    margin: 0 14px 14px !important;
+    padding: 11px !important;
+    border-radius: 13px !important;
+    text-align: center !important;
+    background: #e8ecd9 !important;
+    border: 1px solid rgba(92,123,56,.18) !important;
+    color: #54733f !important;
+    font-size: .78rem !important;
+    font-weight: 900 !important;
+    line-height: 1.25 !important;
+}
+
+#geoTiffModal .geotiff-popup-close {
+    top: 12px !important;
+    right: 12px !important;
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 26px !important;
+    background: rgba(96,91,77,.16) !important;
+    color: #6d4f39 !important;
+    border: 0 !important;
+    z-index: 120 !important;
+    box-shadow: none !important;
+}
+
+#geoTiffModal .geotiff-popup-shell::after {
+    content: "" !important;
+    position: absolute !important;
+    left: 48% !important;
+    bottom: -10px !important;
+    width: 20px !important;
+    height: 20px !important;
+    transform: rotate(45deg) !important;
+    background: #f6f2e8 !important;
+    box-shadow: 7px 7px 12px rgba(0,0,0,.10) !important;
+    z-index: -1 !important;
+}
+
+#geoTiffModal .geotiff-point-marker {
+    cursor: grab !important;
+    touch-action: none !important;
+}
+
+#geoTiffModal .geotiff-point-marker.dragging {
+    cursor: grabbing !important;
+    z-index: 200 !important;
+    transform: translate(-7px, -16px) scale(1.08) !important;
+}
+
+#geoTiffModal .geotiff-point-marker.dragging .geotiff-blue-marker {
+    filter: drop-shadow(0 8px 14px rgba(0,0,0,.48)) !important;
+}
+
+
+/* ===== FIX DEFINITIVO GeoTIFF: popup IGN visible y marcador arrastrable ===== */
+#geoTiffModal .geotiff-popup-shell {
+    width: min(340px, 88vw) !important;
+    max-width: 340px !important;
+    transform: translate(-46%, calc(-100% - 24px)) !important;
+    z-index: 999999 !important;
+    pointer-events: auto !important;
+    background: transparent !important;
+    opacity: 1 !important;
+}
+
+#geoTiffModal .geotiff-popup-shell .geotiff-compact-popup-card {
+    display: none !important;
+}
+
+#geoTiffModal .geotiff-ign-popup-card {
+    display: block !important;
+    width: min(340px, 88vw) !important;
+    max-width: 340px !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+    background: #f6f2e8 !important;
+    color: #24301f !important;
+    border: 1px solid rgba(54,70,44,.32) !important;
+    box-shadow: 0 18px 40px rgba(0,0,0,.45) !important;
+    opacity: 1 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+#geoTiffModal .geotiff-ign-head {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 13px 16px 10px !important;
+    background: rgba(255,255,255,.86) !important;
+}
+
+#geoTiffModal .geotiff-ign-pin {
+    display: block !important;
+    width: 28px !important;
+    height: 28px !important;
+    flex: 0 0 28px !important;
+    border-radius: 999px !important;
+    background: #4f9be8 !important;
+    border: 6px solid #eaf5ff !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.24) !important;
+}
+
+#geoTiffModal .geotiff-ign-title {
+    color: #324264 !important;
+    font-size: 1.04rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .04em !important;
+    line-height: 1.1 !important;
+}
+
+#geoTiffModal .geotiff-ign-coordbox {
+    display: block !important;
+    margin: 0 14px 12px !important;
+    padding: 10px 12px !important;
+    border-radius: 13px !important;
+    border: 1px solid rgba(54,70,44,.20) !important;
+    background: #dde0d2 !important;
+}
+
+#geoTiffModal .geotiff-ign-label {
+    color: #6b5944 !important;
+    font-size: .68rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .14em !important;
+    margin-bottom: 5px !important;
+}
+
+#geoTiffModal .geotiff-ign-coord {
+    color: #25311f !important;
+    font-size: .95rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .06em !important;
+    overflow-wrap: anywhere !important;
+}
+
+#geoTiffModal .geotiff-ign-desc-head {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    padding: 0 14px 7px !important;
+    color: #6d4f39 !important;
+    font-size: .70rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .10em !important;
+}
+
+#geoTiffModal .geotiff-ign-desc-head small {
+    color: #55723c !important;
+    font-size: .66rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .05em !important;
+}
+
+#geoTiffModal .geotiff-ign-desc {
+    display: block !important;
+    width: calc(100% - 28px) !important;
+    min-height: 62px !important;
+    max-height: 96px !important;
+    margin: 0 14px 12px !important;
+    padding: 12px !important;
+    resize: vertical !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(117,86,64,.22) !important;
+    background: #ffffff !important;
+    color: #171c13 !important;
+    font-size: .92rem !important;
+    font-weight: 850 !important;
+    line-height: 1.3 !important;
+    box-shadow: inset 0 1px 0 rgba(0,0,0,.04) !important;
+}
+
+#geoTiffModal .geotiff-ign-delete {
+    display: block !important;
+    width: calc(100% - 28px) !important;
+    margin: 0 14px 12px !important;
+    padding: 12px 14px !important;
+    border-radius: 15px !important;
+    border: 0 !important;
+    background: linear-gradient(180deg,#c96a50,#ad503b) !important;
+    color: #fff !important;
+    font-size: .82rem !important;
+    font-weight: 900 !important;
+    letter-spacing: .06em !important;
+    box-shadow: 0 8px 18px rgba(173,80,59,.28) !important;
+}
+
+#geoTiffModal .geotiff-ign-drag-hint {
+    display: block !important;
+    width: calc(100% - 28px) !important;
+    margin: 0 14px 14px !important;
+    padding: 11px !important;
+    border-radius: 13px !important;
+    text-align: center !important;
+    background: #e8ecd9 !important;
+    border: 1px solid rgba(92,123,56,.18) !important;
+    color: #54733f !important;
+    font-size: .78rem !important;
+    font-weight: 900 !important;
+    line-height: 1.25 !important;
+}
+
+#geoTiffModal .geotiff-popup-close {
+    top: 12px !important;
+    right: 12px !important;
+    width: 40px !important;
+    height: 40px !important;
+    font-size: 26px !important;
+    background: rgba(96,91,77,.16) !important;
+    color: #6d4f39 !important;
+    border: 0 !important;
+    z-index: 120 !important;
+    box-shadow: none !important;
+}
+
+#geoTiffModal .geotiff-popup-shell::after {
+    content: "" !important;
+    position: absolute !important;
+    left: 48% !important;
+    bottom: -10px !important;
+    width: 20px !important;
+    height: 20px !important;
+    transform: rotate(45deg) !important;
+    background: #f6f2e8 !important;
+    box-shadow: 7px 7px 12px rgba(0,0,0,.10) !important;
+    z-index: -1 !important;
+}
+
+#geoTiffModal .geotiff-point-marker {
+    cursor: grab !important;
+    touch-action: none !important;
+}
+
+#geoTiffModal .geotiff-point-marker.dragging {
+    cursor: grabbing !important;
+    z-index: 200 !important;
+    transform: translate(-7px, -16px) scale(1.08) !important;
+}
