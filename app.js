@@ -3561,29 +3561,107 @@ function fitGeoTiffToViewer(){
     shell.scrollTop=0;
 }
 
+
+function hideGeoTiffPointPopup(){
+    const viewport=document.getElementById("geoTiffCanvasViewport");
+    const old=viewport?viewport.querySelector(".geotiff-popup-shell"):null;
+    if(old) old.remove();
+}
+
+function showGeoTiffPointPopup(pointId){
+    const viewport=document.getElementById("geoTiffCanvasViewport");
+    if(!viewport||!geoTiffState.bbox)return;
+
+    const data=puntosData[pointId]||{};
+    const parsed=parseUtmForGeoTiff(data.coordsUTM);
+    if(!parsed)return;
+
+    const b=geoTiffState.bbox;
+    const left=((parsed.easting-b[0])/(b[2]-b[0]))*100;
+    const top=((b[3]-parsed.northing)/(b[3]-b[1]))*100;
+
+    hideGeoTiffPointPopup();
+
+    const popup=document.createElement("div");
+    popup.className="geotiff-popup-shell modern-point-popup";
+    popup.style.left=left+"%";
+    popup.style.top=top+"%";
+
+    const coordText=data.coordsUTM||"";
+    const desc=data.descripcion||"";
+    popup.innerHTML=`
+        <button type="button" class="geotiff-popup-close" aria-label="Cerrar">×</button>
+        ${buildModernPointPopup(pointId, coordText, desc)}
+    `;
+
+    viewport.appendChild(popup);
+
+    const close=popup.querySelector(".geotiff-popup-close");
+    if(close) close.addEventListener("click",(e)=>{
+        e.stopPropagation();
+        hideGeoTiffPointPopup();
+    });
+
+    const input=popup.querySelector(".popup-desc-input");
+    if(input){
+        const save=()=>{
+            guardarDescripcionPunto(pointId,input.value);
+            renderGeoTiffMarkers();
+            showGeoTiffPointPopup(pointId);
+        };
+        input.addEventListener("blur",save);
+        input.addEventListener("keydown",(e)=>{
+            if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){
+                e.preventDefault();
+                input.blur();
+            }
+        });
+    }
+
+    popup.addEventListener("click",(e)=>e.stopPropagation());
+}
+
+
 function renderGeoTiffMarkers(){
     const layer=document.getElementById("geoTiffMarkersLayer");
     const shell=document.getElementById("geoTiffCanvasShell");
     if(!layer||!shell||!geoTiffState.bbox)return;
+
     layer.innerHTML="";
     const b=geoTiffState.bbox;
+
     Object.keys(puntosData||{}).forEach(id=>{
         const data=puntosData[id]||{};
         if(!data.coordsUTM)return;
+
         const parsed=parseUtmForGeoTiff(data.coordsUTM);
         if(!parsed)return;
-        const x=parsed.easting,y=parsed.northing;
+
+        const x=parsed.easting;
+        const y=parsed.northing;
         if(x<b[0]||x>b[2]||y<b[1]||y>b[3])return;
+
         const left=((x-b[0])/(b[2]-b[0]))*100;
         const top=((b[3]-y)/(b[3]-b[1]))*100;
-        const marker=document.createElement("div");
-        marker.className="geotiff-point-marker";
+
+        const marker=document.createElement("button");
+        marker.type="button";
+        marker.className="geotiff-point-marker geotiff-blue-marker-container";
         marker.style.left=left+"%";
         marker.style.top=top+"%";
-        marker.textContent=id;
+        marker.innerHTML=`<div class="map-blue-marker geotiff-blue-marker"><span class="map-blue-pin"></span><span class="map-blue-label">${escapeHtml(id)}</span></div>`;
+        marker.title=`${id} · ${data.coordsUTM||""}`;
+
+        marker.addEventListener("click",(e)=>{
+            e.preventDefault();
+            e.stopPropagation();
+            showGeoTiffPointPopup(id);
+        });
+
         layer.appendChild(marker);
     });
 }
+
 
 function parseUtmForGeoTiff(text){
     try{
@@ -3693,6 +3771,7 @@ function handleGeoTiffCanvasClick(evt){
         renderGeoTiffMarkers();
         if(typeof updateAllMapMarkers==="function")updateAllMapMarkers();
         if(typeof updatePreviewFromSelectedPoint==="function")updatePreviewFromSelectedPoint();
+        showGeoTiffPointPopup(pointId);
         geoTiffSetStatus(`✅ ${escapeHtml(pointId)} actualizado desde GeoTIFF: <strong>${escapeHtml(coord)}</strong>`,"ok");
     }catch(err){
         geoTiffSetStatus(`⚠️ No se pudo asignar coordenada: ${escapeHtml(err&&err.message?err.message:err)}`,"error");
