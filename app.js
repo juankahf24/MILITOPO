@@ -4277,6 +4277,7 @@ function openMapModal() {
         });
         document.getElementById("geoTiffPointSelect")?.addEventListener("change", updateGeoTiffPointStatus);
         document.getElementById("geoTiffCanvas")?.addEventListener("click", handleGeoTiffCanvasClick);
+        document.getElementById("geoTiffCanvas")?.addEventListener("dragstart", (e) => e.preventDefault());
         document.querySelector("#mapModal .close-modal")?.addEventListener("click", () => {
             mapModal.style.display = "none";
             if (map) { map.remove(); map = null; }
