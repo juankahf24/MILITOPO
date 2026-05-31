@@ -5700,3 +5700,17 @@ body.dark #nuevoEjercicioTopoBtn {
         font-size: 1.04rem !important;
     }
 }
+
+
+/* ===== GeoTIFF: separación extra y gesto de pinza ===== */
+.geotiff-status {
+    margin-bottom: 16px !important;
+}
+
+.geotiff-section:first-of-type {
+    margin-top: 8px;
+}
+
+.geotiff-canvas-shell {
+    touch-action: none !important;
+}

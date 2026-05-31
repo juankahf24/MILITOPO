@@ -3305,6 +3305,7 @@ let geoTiffState = {
     redrawToken:0,
     isRendering:false
 };
+let geoTiffPinchState = null;
 
 async function ensureGeoTiffLib(){
     if(window.GeoTIFF)return window.GeoTIFF;
@@ -3519,6 +3520,34 @@ function setGeoTiffZoom(nextZoom,keepCenter=true){
         shell.scrollTop=Math.max(0,cy*shell.scrollHeight-shell.clientHeight/2);
     }
     renderGeoTiffCanvasForZoom();
+}
+
+function setGeoTiffZoomAroundPoint(nextZoom, clientX, clientY){
+    const shell=document.getElementById("geoTiffCanvasShell");
+    if(!shell){
+        setGeoTiffZoom(nextZoom,true);
+        return;
+    }
+    const shellRect=shell.getBoundingClientRect();
+    const localX=Math.max(0,Math.min(shell.clientWidth,clientX-shellRect.left));
+    const localY=Math.max(0,Math.min(shell.clientHeight,clientY-shellRect.top));
+    const oldZoom=Math.max(0.35,Math.min(6,Number(geoTiffState.zoom)||1));
+    const newZoom=Math.max(0.35,Math.min(6,nextZoom));
+    const contentX=(shell.scrollLeft+localX)/oldZoom;
+    const contentY=(shell.scrollTop+localY)/oldZoom;
+
+    geoTiffState.zoom=newZoom;
+    applyGeoTiffZoom();
+    renderGeoTiffMarkers();
+    shell.scrollLeft=Math.max(0,contentX*newZoom-localX);
+    shell.scrollTop=Math.max(0,contentY*newZoom-localY);
+    renderGeoTiffCanvasForZoom();
+}
+
+function getTouchDistance(t1,t2){
+    const dx=t2.clientX-t1.clientX;
+    const dy=t2.clientY-t1.clientY;
+    return Math.hypot(dx,dy);
 }
 
 function fitGeoTiffToViewer(){
@@ -4179,11 +4208,43 @@ function openMapModal() {
         document.getElementById("geoTiffFitBtn")?.addEventListener("click", fitGeoTiffToViewer);
         document.getElementById("geoTiffZoomInBtn")?.addEventListener("click", () => setGeoTiffZoom((Number(geoTiffState.zoom)||1)*1.25));
         document.getElementById("geoTiffZoomOutBtn")?.addEventListener("click", () => setGeoTiffZoom((Number(geoTiffState.zoom)||1)/1.25));
-        document.getElementById("geoTiffCanvasShell")?.addEventListener("wheel", (e) => {
+        const geoTiffShell=document.getElementById("geoTiffCanvasShell");
+        geoTiffShell?.addEventListener("wheel", (e) => {
             if(!geoTiffState.loaded)return;
             e.preventDefault();
-            setGeoTiffZoom((Number(geoTiffState.zoom)||1)*(e.deltaY<0?1.12:1/1.12));
+            setGeoTiffZoomAroundPoint((Number(geoTiffState.zoom)||1)*(e.deltaY<0?1.12:1/1.12), e.clientX, e.clientY);
         }, {passive:false});
+        geoTiffShell?.addEventListener("touchstart", (e) => {
+            if(!geoTiffState.loaded)return;
+            if(e.touches.length===2){
+                const [t1,t2]=e.touches;
+                geoTiffPinchState={
+                    startDistance:getTouchDistance(t1,t2),
+                    startZoom:Number(geoTiffState.zoom)||1
+                };
+                e.preventDefault();
+            }
+        }, {passive:false});
+        geoTiffShell?.addEventListener("touchmove", (e) => {
+            if(!geoTiffState.loaded)return;
+            if(e.touches.length===2 && geoTiffPinchState){
+                const [t1,t2]=e.touches;
+                const distance=getTouchDistance(t1,t2);
+                if(geoTiffPinchState.startDistance>0){
+                    const midX=(t1.clientX+t2.clientX)/2;
+                    const midY=(t1.clientY+t2.clientY)/2;
+                    const targetZoom=geoTiffPinchState.startZoom*(distance/geoTiffPinchState.startDistance);
+                    setGeoTiffZoomAroundPoint(targetZoom, midX, midY);
+                }
+                e.preventDefault();
+            }
+        }, {passive:false});
+        geoTiffShell?.addEventListener("touchend", (e) => {
+            if(e.touches.length<2) geoTiffPinchState=null;
+        });
+        geoTiffShell?.addEventListener("touchcancel", () => {
+            geoTiffPinchState=null;
+        });
         document.getElementById("geoTiffPointSelect")?.addEventListener("change", updateGeoTiffPointStatus);
         document.getElementById("geoTiffCanvas")?.addEventListener("click", handleGeoTiffCanvasClick);
         document.querySelector("#mapModal .close-modal")?.addEventListener("click", () => {
