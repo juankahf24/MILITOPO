@@ -3286,7 +3286,319 @@ let MODULOS = 8;
             .catch(() => { toast("Error en la búsqueda. Revisa tu conexión.", "error"); });
     }
 
-    function openMapModal() {
+    
+// ===== MILITOPO TOPOGRAFÍA · PLANO MILITAR GEOTIFF START =====
+let geoTiffState = {
+    loaded:false,
+    fileName:"",
+    width:0,
+    height:0,
+    displayWidth:0,
+    displayHeight:0,
+    bbox:null,
+    epsg:null,
+    zone:null,
+    northern:true,
+    canAssign:false
+};
+
+async function ensureGeoTiffLib(){
+    if(window.GeoTIFF)return window.GeoTIFF;
+    await new Promise((resolve,reject)=>{
+        const s=document.createElement("script");
+        s.src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.min.js";
+        s.async=true;
+        s.onload=resolve;
+        s.onerror=()=>reject(new Error("No se pudo cargar la librería GeoTIFF. Revisa conexión."));
+        document.head.appendChild(s);
+    });
+    if(!window.GeoTIFF)throw new Error("Librería GeoTIFF no disponible.");
+    return window.GeoTIFF;
+}
+
+function geoTiffSetStatus(msg,type="info"){
+    const el=document.getElementById("geoTiffStatus");
+    if(!el)return;
+    el.style.display="block";
+    el.className="geo-status-banner geotiff-status "+(type==="ok"?"ok":type==="error"?"error":"warn");
+    el.innerHTML=msg;
+}
+
+function geoTiffFillPointSelect(){
+    const select=document.getElementById("geoTiffPointSelect");
+    if(!select)return;
+    select.innerHTML="";
+    for(let m=1;m<=MODULOS;m++){
+        for(let p=1;p<=PUNTOS_POR_MODULO;p++){
+            const pointId=getPuntoId(m,p);
+            const st=getMapPointStatus(pointId);
+            select.appendChild(new Option((st.complete?"✅ ":"❌ ")+pointId,pointId));
+        }
+    }
+    updateGeoTiffPointStatus();
+}
+
+function openGeoTiffModal(){
+    const modal=document.getElementById("geoTiffModal");
+    if(!modal)return;
+    modal.style.display="flex";
+    geoTiffFillPointSelect();
+    if(!geoTiffState.loaded){
+        geoTiffSetStatus("Selecciona un archivo <strong>.tif/.tiff GeoTIFF</strong> georreferenciado. Si no contiene coordenadas legibles, la app avisará y no asignará puntos.","warn");
+        const input=document.getElementById("geoTiffInput");
+        if(input) input.click();
+    }else{
+        geoTiffSetStatus(`✅ GeoTIFF cargado: <strong>${escapeHtml(geoTiffState.fileName)}</strong>. Puedes editar puntos sobre el plano.`,"ok");
+        renderGeoTiffMarkers();
+    }
+}
+
+function closeGeoTiffModal(){
+    const modal=document.getElementById("geoTiffModal");
+    if(modal)modal.style.display="none";
+}
+
+function detectGeoTiffEpsg(image){
+    try{
+        const keys=image.getGeoKeys?image.getGeoKeys():{};
+        const code=keys.ProjectedCSTypeGeoKey||keys.GeographicTypeGeoKey||keys.ProjectedCSType||keys.GeographicType;
+        const epsg=Number(code);
+        return Number.isFinite(epsg)?epsg:null;
+    }catch(e){return null;}
+}
+
+function epsgToUtmInfo(epsg,bbox){
+    if(!epsg)return null;
+    if(epsg>=32601&&epsg<=32660)return {zone:epsg-32600,northern:true,datum:"WGS84"};
+    if(epsg>=32701&&epsg<=32760)return {zone:epsg-32700,northern:false,datum:"WGS84"};
+    if(epsg>=25828&&epsg<=25831)return {zone:epsg-25800,northern:true,datum:"ETRS89"};
+    if(epsg>=23028&&epsg<=23031)return {zone:epsg-23000,northern:true,datum:"ED50"};
+    // Si no hay EPSG UTM pero las coordenadas parecen UTM, intentamos deducir zona por defecto de España.
+    if(bbox&&bbox.length>=4){
+        const x=(bbox[0]+bbox[2])/2, y=(bbox[1]+bbox[3])/2;
+        if(x>100000&&x<900000&&y>0&&y<10000000)return {zone:30,northern:true,datum:"UTM"};
+    }
+    return null;
+}
+
+function utmBandFromLat(lat){
+    const bands="CDEFGHJKLMNPQRSTUVWX";
+    let idx=Math.floor((lat+80)/8);
+    if(idx<0)idx=0;
+    if(idx>=bands.length)idx=bands.length-1;
+    return bands[idx];
+}
+
+function projectedToCoordText(x,y){
+    const info=geoTiffState;
+    if(!info.canAssign||!info.zone)throw new Error("El GeoTIFF no tiene sistema UTM legible.");
+    let latLon=null;
+    try{
+        if(typeof proj4==="function"){
+            const projUTM=`+proj=utm +zone=${info.zone} +${info.northern?"north":"south"} +ellps=WGS84 +datum=WGS84 +units=m +no_defs`;
+            const wgs84="+proj=longlat +datum=WGS84 +no_defs";
+            const out=proj4(projUTM,wgs84,[x,y]);
+            latLon={lon:out[0],lat:out[1]};
+        }
+    }catch(e){latLon=null;}
+
+    if(currentCoordType==="MGRS"){
+        if(latLon&&typeof latLonToMGRS==="function")return latLonToMGRS(latLon.lat,latLon.lon);
+        throw new Error("No se puede convertir a MGRS sin lat/lon.");
+    }
+
+    let band="T";
+    if(latLon&&Number.isFinite(latLon.lat))band=utmBandFromLat(latLon.lat);
+    return `${String(info.zone).padStart(2,"0")}${band} ${Math.round(x)} ${Math.round(y)}`;
+}
+
+function geoTiffCanvasClickToProjected(evt){
+    const canvas=document.getElementById("geoTiffCanvas");
+    if(!canvas||!geoTiffState.bbox)return null;
+    const rect=canvas.getBoundingClientRect();
+    const px=(evt.clientX-rect.left)*(canvas.width/rect.width);
+    const py=(evt.clientY-rect.top)*(canvas.height/rect.height);
+    const rx=px/canvas.width;
+    const ry=py/canvas.height;
+    const b=geoTiffState.bbox;
+    const x=b[0]+rx*(b[2]-b[0]);
+    const y=b[3]-ry*(b[3]-b[1]);
+    return {x,y,px,py,rx,ry};
+}
+
+function updateGeoTiffPointStatus(){
+    const select=document.getElementById("geoTiffPointSelect");
+    const card=document.getElementById("geoTiffPointStatusCard");
+    if(!select||!card)return;
+    const id=select.value;
+    const st=getMapPointStatus(id);
+    card.className="map-point-status-card "+(st.complete?"complete":"incomplete");
+    card.innerHTML=`<div class="map-point-status-icon">${st.complete?"✓":"✕"}</div><div><div class="map-point-status-title">${escapeHtml(id||"Baliza")}</div><div class="map-point-status-detail">${st.complete?"Completa":"Pendiente de coordenada o descripción"}</div></div>`;
+}
+
+function renderGeoTiffMarkers(){
+    const layer=document.getElementById("geoTiffMarkersLayer");
+    const shell=document.getElementById("geoTiffCanvasShell");
+    if(!layer||!shell||!geoTiffState.bbox)return;
+    layer.innerHTML="";
+    const b=geoTiffState.bbox;
+    Object.keys(puntosData||{}).forEach(id=>{
+        const data=puntosData[id]||{};
+        if(!data.coordsUTM)return;
+        const parsed=parseUtmForGeoTiff(data.coordsUTM);
+        if(!parsed)return;
+        const x=parsed.easting,y=parsed.northing;
+        if(x<b[0]||x>b[2]||y<b[1]||y>b[3])return;
+        const left=((x-b[0])/(b[2]-b[0]))*100;
+        const top=((b[3]-y)/(b[3]-b[1]))*100;
+        const marker=document.createElement("div");
+        marker.className="geotiff-point-marker";
+        marker.style.left=left+"%";
+        marker.style.top=top+"%";
+        marker.textContent=id;
+        layer.appendChild(marker);
+    });
+}
+
+function parseUtmForGeoTiff(text){
+    try{
+        const parts=String(text||"").trim().split(/\s+/);
+        if(parts.length<3)return null;
+        const zoneBand=parts[0].toUpperCase();
+        const zone=Number((zoneBand.match(/\d+/)||[])[0]);
+        const band=(zoneBand.match(/[A-Z]/)||[])[0]||"T";
+        const easting=Number(parts[1]);
+        const northing=Number(parts[2]);
+        if(!Number.isFinite(zone)||!Number.isFinite(easting)||!Number.isFinite(northing))return null;
+        return {zone,band,easting,northing};
+    }catch(e){return null;}
+}
+
+async function loadGeoTiffFile(file){
+    if(!file)return;
+    const modal=document.getElementById("geoTiffModal");
+    if(modal)modal.style.display="flex";
+    geoTiffSetStatus("⏳ Leyendo GeoTIFF. En archivos grandes puede tardar...","warn");
+
+    try{
+        const GeoTIFF=await ensureGeoTiffLib();
+        const buffer=await file.arrayBuffer();
+        const tiff=await GeoTIFF.fromArrayBuffer(buffer);
+        const image=await tiff.getImage();
+        const bbox=image.getBoundingBox?image.getBoundingBox():null;
+        const width=image.getWidth();
+        const height=image.getHeight();
+        const epsg=detectGeoTiffEpsg(image);
+        const utmInfo=epsgToUtmInfo(epsg,bbox);
+
+        if(!bbox||bbox.length<4||!bbox.every(Number.isFinite)){
+            geoTiffState={...geoTiffState,loaded:false,canAssign:false};
+            geoTiffSetStatus("⚠️ Este TIF se ha abierto, pero <strong>no contiene georreferenciación legible</strong>. No se pueden calcular coordenadas. Sube un GeoTIFF con coordenadas o usa el mapa IGN.","error");
+            return;
+        }
+
+        if(!utmInfo){
+            geoTiffState={...geoTiffState,loaded:false,canAssign:false,bbox,epsg};
+            geoTiffSetStatus(`⚠️ El GeoTIFF tiene coordenadas, pero la app no reconoce un sistema UTM compatible${epsg?` (EPSG:${epsg})`:""}. No se asignarán puntos para evitar errores. Usa GeoTIFF UTM WGS84/ETRS89 o mapa IGN.`,"error");
+            return;
+        }
+
+        const maxW=1600;
+        const scale=Math.min(1,maxW/width);
+        const outW=Math.max(1,Math.round(width*scale));
+        const outH=Math.max(1,Math.round(height*scale));
+
+        const canvas=document.getElementById("geoTiffCanvas");
+        if(!canvas)throw new Error("No existe canvas GeoTIFF.");
+        canvas.width=outW;
+        canvas.height=outH;
+
+        let rgb;
+        try{
+            rgb=await image.readRGB({width:outW,height:outH});
+        }catch(e){
+            const rasters=await image.readRasters({width:outW,height:outH,interleave:true});
+            rgb=rasters;
+        }
+
+        const ctx=canvas.getContext("2d");
+        const img=ctx.createImageData(outW,outH);
+        const pixelCount=outW*outH;
+        const samples=rgb.length/pixelCount;
+
+        for(let i=0;i<pixelCount;i++){
+            const src=i*samples;
+            const dst=i*4;
+            if(samples>=3){
+                img.data[dst]=rgb[src]||0;
+                img.data[dst+1]=rgb[src+1]||0;
+                img.data[dst+2]=rgb[src+2]||0;
+            }else{
+                const v=rgb[i]||0;
+                img.data[dst]=v;img.data[dst+1]=v;img.data[dst+2]=v;
+            }
+            img.data[dst+3]=255;
+        }
+        ctx.putImageData(img,0,0);
+
+        geoTiffState={
+            loaded:true,
+            fileName:file.name||"GeoTIFF",
+            width,
+            height,
+            displayWidth:outW,
+            displayHeight:outH,
+            bbox,
+            epsg,
+            zone:utmInfo.zone,
+            northern:utmInfo.northern,
+            canAssign:true
+        };
+
+        const epsgTxt=epsg?`EPSG:${epsg}`:"sin EPSG declarado";
+        geoTiffSetStatus(`✅ GeoTIFF georreferenciado cargado: <strong>${escapeHtml(file.name)}</strong><br>${epsgTxt} · UTM zona ${utmInfo.zone} · ${Math.round(bbox[0])}, ${Math.round(bbox[1])} → ${Math.round(bbox[2])}, ${Math.round(bbox[3])}`,"ok");
+        geoTiffFillPointSelect();
+        renderGeoTiffMarkers();
+    }catch(err){
+        console.error(err);
+        geoTiffState={...geoTiffState,loaded:false,canAssign:false};
+        geoTiffSetStatus(`⚠️ No se pudo leer el GeoTIFF o sus coordenadas.<br><strong>Motivo:</strong> ${escapeHtml(err&&err.message?err.message:err)}<br>Usa un GeoTIFF georreferenciado o el mapa IGN.`,"error");
+    }
+}
+
+function handleGeoTiffCanvasClick(evt){
+    try{
+        if(!geoTiffState.loaded||!geoTiffState.canAssign){
+            geoTiffSetStatus("⚠️ Primero carga un GeoTIFF georreferenciado legible.","error");
+            return;
+        }
+        const select=document.getElementById("geoTiffPointSelect");
+        const pointId=select&&select.value;
+        if(!pointId){
+            geoTiffSetStatus("⚠️ Selecciona una baliza antes de clicar en el plano.","error");
+            return;
+        }
+        const pos=geoTiffCanvasClickToProjected(evt);
+        if(!pos)return;
+        const coord=projectedToCoordText(pos.x,pos.y);
+        if(!puntosData[pointId])puntosData[pointId]={coordsUTM:"",descripcion:""};
+        puntosData[pointId].coordsUTM=coord;
+        guardarStorage();
+        renderizarPuntos();
+        actualizarDashboard();
+        updateGeoTiffPointStatus();
+        renderGeoTiffMarkers();
+        if(typeof updateAllMapMarkers==="function")updateAllMapMarkers();
+        if(typeof updatePreviewFromSelectedPoint==="function")updatePreviewFromSelectedPoint();
+        geoTiffSetStatus(`✅ ${escapeHtml(pointId)} actualizado desde GeoTIFF: <strong>${escapeHtml(coord)}</strong>`,"ok");
+    }catch(err){
+        geoTiffSetStatus(`⚠️ No se pudo asignar coordenada: ${escapeHtml(err&&err.message?err.message:err)}`,"error");
+    }
+}
+// ===== MILITOPO TOPOGRAFÍA · PLANO MILITAR GEOTIFF END =====
+
+
+function openMapModal() {
         const modal = document.getElementById("mapModal");
         modal.style.display = "flex";
         const select = document.getElementById("mapPointSelect");
@@ -3777,6 +4089,26 @@ let MODULOS = 8;
 
         const mapModal = document.getElementById("mapModal");
         document.getElementById("mapBtn")?.addEventListener("click", openMapModal);
+        document.getElementById("geoTiffBtn")?.addEventListener("click", () => {
+            const input=document.getElementById("geoTiffInput");
+            if(input) input.click();
+            openGeoTiffModal();
+        });
+        document.getElementById("geoTiffInput")?.addEventListener("change", (e) => {
+            const file=e.target.files&&e.target.files[0];
+            if(file) loadGeoTiffFile(file);
+        });
+        document.getElementById("closeGeoTiffModal")?.addEventListener("click", closeGeoTiffModal);
+        document.getElementById("geoTiffChooseAgainBtn")?.addEventListener("click", () => {
+            const input=document.getElementById("geoTiffInput");
+            if(input) input.click();
+        });
+        document.getElementById("geoTiffFitBtn")?.addEventListener("click", () => {
+            const shell=document.getElementById("geoTiffCanvasShell");
+            if(shell){shell.scrollLeft=0;shell.scrollTop=0;}
+        });
+        document.getElementById("geoTiffPointSelect")?.addEventListener("change", updateGeoTiffPointStatus);
+        document.getElementById("geoTiffCanvas")?.addEventListener("click", handleGeoTiffCanvasClick);
         document.querySelector("#mapModal .close-modal")?.addEventListener("click", () => {
             mapModal.style.display = "none";
             if (map) { map.remove(); map = null; }
