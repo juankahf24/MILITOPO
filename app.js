@@ -3300,7 +3300,10 @@ let geoTiffState = {
     zone:null,
     northern:true,
     canAssign:false,
-    zoom:1
+    zoom:1,
+    sourceImage:null,
+    redrawToken:0,
+    isRendering:false
 };
 
 async function ensureGeoTiffLib(){
@@ -3349,7 +3352,7 @@ function openGeoTiffModal(){
         const input=document.getElementById("geoTiffInput");
         if(input) input.click();
     }else{
-        geoTiffSetStatus(`✅ GeoTIFF cargado: <strong>${escapeHtml(geoTiffState.fileName)}</strong>. Puedes editar puntos sobre el plano.`,"ok");
+        geoTiffSetStatus(`✅ <strong>${escapeHtml(geoTiffState.fileName)}</strong> cargado correctamente.`,"ok");
         renderGeoTiffMarkers();
     }
 }
@@ -3454,9 +3457,55 @@ function applyGeoTiffZoom(){
     if(label)label.textContent=Math.round(z*100)+"%";
 }
 
+async function renderGeoTiffCanvasForZoom(force=false){
+    const canvas=document.getElementById("geoTiffCanvas");
+    const sourceImage=geoTiffState.sourceImage;
+    if(!canvas||!sourceImage||!geoTiffState.width||!geoTiffState.height)return;
+
+    const z=Math.max(0.35,Math.min(6,Number(geoTiffState.zoom)||1));
+    const desiredW=Math.max(1, Math.min(geoTiffState.width, Math.round(geoTiffState.displayWidth * Math.max(1, z) * Math.min(window.devicePixelRatio || 1, 2))));
+    const desiredH=Math.max(1,Math.round((desiredW/geoTiffState.width)*geoTiffState.height));
+    if(!force && canvas.width===desiredW && canvas.height===desiredH)return;
+
+    const token=++geoTiffState.redrawToken;
+    geoTiffState.isRendering=true;
+    try{
+        let rgb;
+        try{
+            rgb=await sourceImage.readRGB({width:desiredW,height:desiredH});
+        }catch(e){
+            rgb=await sourceImage.readRasters({width:desiredW,height:desiredH,interleave:true});
+        }
+        if(token!==geoTiffState.redrawToken)return;
+        canvas.width=desiredW;
+        canvas.height=desiredH;
+        const ctx=canvas.getContext("2d");
+        const img=ctx.createImageData(desiredW,desiredH);
+        const pixelCount=desiredW*desiredH;
+        const samples=rgb.length/pixelCount;
+        for(let i=0;i<pixelCount;i++){
+            const src=i*samples;
+            const dst=i*4;
+            if(samples>=3){
+                img.data[dst]=rgb[src]||0;
+                img.data[dst+1]=rgb[src+1]||0;
+                img.data[dst+2]=rgb[src+2]||0;
+            }else{
+                const v=rgb[i]||0;
+                img.data[dst]=v;img.data[dst+1]=v;img.data[dst+2]=v;
+            }
+            img.data[dst+3]=255;
+        }
+        ctx.putImageData(img,0,0);
+    }catch(err){
+        console.warn("GeoTIFF zoom redraw failed",err);
+    }finally{
+        geoTiffState.isRendering=false;
+    }
+}
+
 function setGeoTiffZoom(nextZoom,keepCenter=true){
     const shell=document.getElementById("geoTiffCanvasShell");
-    const oldZoom=Number(geoTiffState.zoom)||1;
     let cx=0.5,cy=0.5;
     if(shell&&keepCenter&&shell.scrollWidth&&shell.scrollHeight){
         cx=(shell.scrollLeft+shell.clientWidth/2)/Math.max(1,shell.scrollWidth);
@@ -3469,6 +3518,7 @@ function setGeoTiffZoom(nextZoom,keepCenter=true){
         shell.scrollLeft=Math.max(0,cx*shell.scrollWidth-shell.clientWidth/2);
         shell.scrollTop=Math.max(0,cy*shell.scrollHeight-shell.clientHeight/2);
     }
+    renderGeoTiffCanvasForZoom();
 }
 
 function fitGeoTiffToViewer(){
@@ -3555,36 +3605,6 @@ async function loadGeoTiffFile(file){
 
         const canvas=document.getElementById("geoTiffCanvas");
         if(!canvas)throw new Error("No existe canvas GeoTIFF.");
-        canvas.width=outW;
-        canvas.height=outH;
-
-        let rgb;
-        try{
-            rgb=await image.readRGB({width:outW,height:outH});
-        }catch(e){
-            const rasters=await image.readRasters({width:outW,height:outH,interleave:true});
-            rgb=rasters;
-        }
-
-        const ctx=canvas.getContext("2d");
-        const img=ctx.createImageData(outW,outH);
-        const pixelCount=outW*outH;
-        const samples=rgb.length/pixelCount;
-
-        for(let i=0;i<pixelCount;i++){
-            const src=i*samples;
-            const dst=i*4;
-            if(samples>=3){
-                img.data[dst]=rgb[src]||0;
-                img.data[dst+1]=rgb[src+1]||0;
-                img.data[dst+2]=rgb[src+2]||0;
-            }else{
-                const v=rgb[i]||0;
-                img.data[dst]=v;img.data[dst+1]=v;img.data[dst+2]=v;
-            }
-            img.data[dst+3]=255;
-        }
-        ctx.putImageData(img,0,0);
 
         geoTiffState={
             loaded:true,
@@ -3598,14 +3618,18 @@ async function loadGeoTiffFile(file){
             zone:utmInfo.zone,
             northern:utmInfo.northern,
             canAssign:true,
-            zoom:1
+            zoom:1,
+            sourceImage:image,
+            redrawToken:0,
+            isRendering:false
         };
 
         applyGeoTiffZoom();
+        await renderGeoTiffCanvasForZoom(true);
         setTimeout(()=>fitGeoTiffToViewer(),80);
 
         const epsgTxt=epsg?`EPSG:${epsg}`:"sin EPSG declarado";
-        geoTiffSetStatus(`✅ GeoTIFF georreferenciado cargado: <strong>${escapeHtml(file.name)}</strong><br>${epsgTxt} · UTM zona ${utmInfo.zone} · ${Math.round(bbox[0])}, ${Math.round(bbox[1])} → ${Math.round(bbox[2])}, ${Math.round(bbox[3])}`,"ok");
+        geoTiffSetStatus(`✅ <strong>${escapeHtml(file.name)}</strong><br>${epsgTxt} · UTM zona ${utmInfo.zone} · ${Math.round(bbox[0])}, ${Math.round(bbox[1])} → ${Math.round(bbox[2])}, ${Math.round(bbox[3])}`,"ok");
         geoTiffFillPointSelect();
         renderGeoTiffMarkers();
     }catch(err){
