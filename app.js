@@ -4202,6 +4202,10 @@ function openMapModal() {
             if(file) loadGeoTiffFile(file);
         });
         document.getElementById("closeGeoTiffModal")?.addEventListener("click", closeGeoTiffModal);
+        const geoTiffModal=document.getElementById("geoTiffModal");
+        window.addEventListener("click", (e) => {
+            if (e.target === geoTiffModal) closeGeoTiffModal();
+        });
         document.getElementById("geoTiffChooseAgainBtn")?.addEventListener("click", () => {
             const input=document.getElementById("geoTiffInput");
             if(input) input.click();

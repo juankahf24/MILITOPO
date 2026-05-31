@@ -424,67 +424,65 @@ BRAVO 1"></textarea>
 
 
 
-<div id="geoTiffModal" class="modal">
-    <div class="modal-content geotiff-modal-content">
-        <div class="modal-header geotiff-modal-header">
-            <div>
+
+<div id="geoTiffModal" class="modal geotiff-modal-fixed">
+    <div class="modal-content geotiff-modal-content-fixed">
+        <div class="modal-header geotiff-fixed-header">
+            <div class="geotiff-fixed-titlebox">
                 <h3>🗂️ Plano militar GeoTIFF</h3>
                 <p>Sube un plano georreferenciado y edita puntos directamente sobre él.</p>
             </div>
             <span class="close-modal" id="closeGeoTiffModal">&times;</span>
         </div>
 
-        <div class="geotiff-layout">
-            <aside class="geotiff-side-panel">
-                <div id="geoTiffStatus" class="geo-status-banner geotiff-status"></div>
+        <div class="geotiff-fixed-body">
+            <div id="geoTiffStatus" class="geo-status-banner geotiff-status geotiff-fixed-status"></div>
 
-                <div class="geotiff-section">
-                    <div class="geotiff-section-title">1 · Archivo</div>
-                    <button type="button" id="geoTiffChooseAgainBtn" class="btn btn-secondary btn-small geotiff-full-btn">📁 Cargar otro GeoTIFF</button>
+            <div class="geotiff-fixed-section">
+                <div class="geotiff-section-title">1 · Archivo</div>
+                <button type="button" id="geoTiffChooseAgainBtn" class="btn btn-secondary btn-small geotiff-full-btn">📁 Cargar otro GeoTIFF</button>
+            </div>
+
+            <div class="geotiff-fixed-section">
+                <div class="geotiff-section-title">2 · Baliza</div>
+                <label class="map-point-selector-label" for="geoTiffPointSelect">Baliza a editar</label>
+                <div class="geotiff-select-wrap">
+                    <select id="geoTiffPointSelect" class="map-point-select geotiff-point-select"></select>
                 </div>
-
-                <div class="geotiff-section">
-                    <div class="geotiff-section-title">2 · Baliza</div>
-                    <label class="map-point-selector-label" for="geoTiffPointSelect">Baliza a editar</label>
-                    <div class="geotiff-select-wrap">
-                        <select id="geoTiffPointSelect" class="map-point-select geotiff-point-select"></select>
-                    </div>
-                    <div id="geoTiffPointStatusCard" class="map-point-status-card incomplete geotiff-point-card">
-                        <div class="map-point-status-icon">✕</div>
-                        <div>
-                            <div class="map-point-status-title">Baliza pendiente</div>
-                            <div class="map-point-status-detail">Selecciona una baliza y haz clic en el plano</div>
-                        </div>
+                <div id="geoTiffPointStatusCard" class="map-point-status-card incomplete geotiff-point-card">
+                    <div class="map-point-status-icon">✕</div>
+                    <div>
+                        <div class="map-point-status-title">Baliza pendiente</div>
+                        <div class="map-point-status-detail">Selecciona una baliza y haz clic en el plano</div>
                     </div>
                 </div>
+            </div>
 
-                <div class="geotiff-section">
-                    <div class="geotiff-section-title">3 · Vista</div>
-                    <div class="geotiff-zoom-controls">
-                        <button type="button" id="geoTiffZoomOutBtn" class="btn btn-secondary btn-small">−</button>
-                        <button type="button" id="geoTiffFitBtn" class="btn btn-secondary btn-small">Ajustar</button>
-                        <button type="button" id="geoTiffZoomInBtn" class="btn btn-secondary btn-small">+</button>
-                    </div>
-                    <div id="geoTiffZoomLabel" class="geotiff-zoom-label">100%</div>
+            <div class="geotiff-fixed-section">
+                <div class="geotiff-section-title">3 · Vista</div>
+                <div class="geotiff-zoom-controls">
+                    <button type="button" id="geoTiffZoomOutBtn" class="btn btn-secondary btn-small">−</button>
+                    <button type="button" id="geoTiffFitBtn" class="btn btn-secondary btn-small">Ajustar</button>
+                    <button type="button" id="geoTiffZoomInBtn" class="btn btn-secondary btn-small">+</button>
                 </div>
+                <div id="geoTiffZoomLabel" class="geotiff-zoom-label">100%</div>
+            </div>
 
-                <div class="geotiff-help">
-                    <strong>Uso:</strong> selecciona una baliza y haz clic sobre el plano. Si no se leen coordenadas reales, la app avisará y no asignará puntos.
-                </div>
-            </aside>
+            <div class="geotiff-fixed-help">
+                <strong>Uso:</strong> selecciona una baliza y haz clic sobre el plano. Usa dos dedos para ampliar y un dedo para moverte por la imagen.
+            </div>
 
-            <section class="geotiff-viewer-panel">
-                <div class="geotiff-viewer-title">
-                    <span>Plano cargado</span>
-                    <small>El zoom afecta solo a la imagen, no a toda la ventana</small>
+            <div class="geotiff-viewer-title geotiff-fixed-viewer-title">
+                <span>Plano cargado</span>
+                <small>El zoom afecta solo a la imagen, no a toda la ventana.</small>
+            </div>
+
+            <div class="geotiff-canvas-shell geotiff-fixed-canvas-shell" id="geoTiffCanvasShell">
+                <div id="geoTiffCanvasViewport" class="geotiff-canvas-viewport">
+                    <canvas id="geoTiffCanvas"></canvas>
+                    <div id="geoTiffMarkersLayer" class="geotiff-markers-layer"></div>
                 </div>
-                <div class="geotiff-canvas-shell" id="geoTiffCanvasShell">
-                    <div id="geoTiffCanvasViewport" class="geotiff-canvas-viewport">
-                        <canvas id="geoTiffCanvas"></canvas>
-                        <div id="geoTiffMarkersLayer" class="geotiff-markers-layer"></div>
-                    </div>
-                </div>
-            </section>
+            </div>
         </div>
     </div>
 </div>
