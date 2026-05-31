@@ -2923,6 +2923,8 @@ function showParticipantQrForStart(){
 
     setStep5DeliveryConfirmPanel("start",route,"participant");
     renderOrganizerQr("organizerStartQrBox","organizerStartPayload",payload,participantDisplay(pid,route.routeId));
+    const participantPayloadBox=document.getElementById("organizerStartPayload");
+    if(participantPayloadBox) participantPayloadBox.textContent="";
     renderStartFlowStatusPanel();
 }
 

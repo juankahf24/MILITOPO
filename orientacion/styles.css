@@ -1578,3 +1578,10 @@ th,td{
         min-height: 112px;
     }
 }
+
+
+/* Oculta el texto técnico largo del QR participante en la pantalla del organizador.
+   El QR sigue generándose y funcionando igual. */
+#organizerStartPayload {
+    display: none !important;
+}
