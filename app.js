@@ -2540,7 +2540,7 @@ let MODULOS = 8;
                 if (it.final) tabla.push([it.rid, "FINAL", "---", `PUNTO FINAL - ${pid}`, it.cod]);
                 else if (it.sig) {
                     let sd = puntosData[it.sig.puntoId] || { descripcion: "?", coordsUTM: "" };
-                    tabla.push([it.rid, it.sig.puntoId, formatearCoord(sd.coordsUTM, tipo), `${it.sig.puntoId} - ${sd.descripcion}`, it.cod]);
+                    tabla.push([it.rid, it.sig.puntoId, formatearCoord(sd.coordsUTM, tipo), `${sd.descripcion}`, it.cod]);
                 }
             }
             let filas = [[titulo], tabla[0], ...tabla.slice(1)];
@@ -3553,27 +3553,7 @@ let MODULOS = 8;
         generarOpcionesRecorridos();
         restaurarSeleccionNumRecorridos();
 
-        const forceStartupMenu = (() => {
-            try {
-                const params = new URLSearchParams(window.location.search || "");
-                return params.has("militopo_menu") || params.has("menu") || params.get("vista") === "inicio";
-            } catch (e) {
-                return false;
-            }
-        })();
-
-        if (forceStartupMenu) {
-            // Cuando se viene desde Orientación pulsando "Topográfica",
-            // se muestra la interfaz principal para elegir rama, sin borrar datos guardados.
-            appMode = "";
-            const overlay = document.getElementById("startupModeOverlay");
-            if (overlay) overlay.style.display = "flex";
-            goToStep(1);
-            try {
-                const cleanUrl = window.location.pathname + window.location.hash;
-                window.history.replaceState({}, document.title, cleanUrl);
-            } catch (e) {}
-        } else if (hasTopografiaSavedSession()) {
+        if (hasTopografiaSavedSession()) {
             appMode = "topografica";
             const overlay = document.getElementById("startupModeOverlay");
             if (overlay) overlay.style.display = "none";
