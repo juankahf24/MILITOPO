@@ -3299,7 +3299,8 @@ let geoTiffState = {
     epsg:null,
     zone:null,
     northern:true,
-    canAssign:false
+    canAssign:false,
+    zoom:1
 };
 
 async function ensureGeoTiffLib(){
@@ -3436,6 +3437,50 @@ function updateGeoTiffPointStatus(){
     card.innerHTML=`<div class="map-point-status-icon">${st.complete?"✓":"✕"}</div><div><div class="map-point-status-title">${escapeHtml(id||"Baliza")}</div><div class="map-point-status-detail">${st.complete?"Completa":"Pendiente de coordenada o descripción"}</div></div>`;
 }
 
+
+function applyGeoTiffZoom(){
+    const viewport=document.getElementById("geoTiffCanvasViewport");
+    const label=document.getElementById("geoTiffZoomLabel");
+    if(!viewport)return;
+    const z=Math.max(0.35,Math.min(6,Number(geoTiffState.zoom)||1));
+    geoTiffState.zoom=z;
+    viewport.style.width=(geoTiffState.displayWidth*z)+"px";
+    viewport.style.height=(geoTiffState.displayHeight*z)+"px";
+    const canvas=document.getElementById("geoTiffCanvas");
+    if(canvas){
+        canvas.style.width=(geoTiffState.displayWidth*z)+"px";
+        canvas.style.height=(geoTiffState.displayHeight*z)+"px";
+    }
+    if(label)label.textContent=Math.round(z*100)+"%";
+}
+
+function setGeoTiffZoom(nextZoom,keepCenter=true){
+    const shell=document.getElementById("geoTiffCanvasShell");
+    const oldZoom=Number(geoTiffState.zoom)||1;
+    let cx=0.5,cy=0.5;
+    if(shell&&keepCenter&&shell.scrollWidth&&shell.scrollHeight){
+        cx=(shell.scrollLeft+shell.clientWidth/2)/Math.max(1,shell.scrollWidth);
+        cy=(shell.scrollTop+shell.clientHeight/2)/Math.max(1,shell.scrollHeight);
+    }
+    geoTiffState.zoom=Math.max(0.35,Math.min(6,nextZoom));
+    applyGeoTiffZoom();
+    renderGeoTiffMarkers();
+    if(shell&&keepCenter){
+        shell.scrollLeft=Math.max(0,cx*shell.scrollWidth-shell.clientWidth/2);
+        shell.scrollTop=Math.max(0,cy*shell.scrollHeight-shell.clientHeight/2);
+    }
+}
+
+function fitGeoTiffToViewer(){
+    const shell=document.getElementById("geoTiffCanvasShell");
+    if(!shell||!geoTiffState.displayWidth||!geoTiffState.displayHeight)return;
+    const zx=(shell.clientWidth-16)/geoTiffState.displayWidth;
+    const zy=(shell.clientHeight-16)/geoTiffState.displayHeight;
+    setGeoTiffZoom(Math.max(0.35,Math.min(1,Math.min(zx,zy))),false);
+    shell.scrollLeft=0;
+    shell.scrollTop=0;
+}
+
 function renderGeoTiffMarkers(){
     const layer=document.getElementById("geoTiffMarkersLayer");
     const shell=document.getElementById("geoTiffCanvasShell");
@@ -3552,8 +3597,12 @@ async function loadGeoTiffFile(file){
             epsg,
             zone:utmInfo.zone,
             northern:utmInfo.northern,
-            canAssign:true
+            canAssign:true,
+            zoom:1
         };
+
+        applyGeoTiffZoom();
+        setTimeout(()=>fitGeoTiffToViewer(),80);
 
         const epsgTxt=epsg?`EPSG:${epsg}`:"sin EPSG declarado";
         geoTiffSetStatus(`✅ GeoTIFF georreferenciado cargado: <strong>${escapeHtml(file.name)}</strong><br>${epsgTxt} · UTM zona ${utmInfo.zone} · ${Math.round(bbox[0])}, ${Math.round(bbox[1])} → ${Math.round(bbox[2])}, ${Math.round(bbox[3])}`,"ok");
@@ -4103,10 +4152,14 @@ function openMapModal() {
             const input=document.getElementById("geoTiffInput");
             if(input) input.click();
         });
-        document.getElementById("geoTiffFitBtn")?.addEventListener("click", () => {
-            const shell=document.getElementById("geoTiffCanvasShell");
-            if(shell){shell.scrollLeft=0;shell.scrollTop=0;}
-        });
+        document.getElementById("geoTiffFitBtn")?.addEventListener("click", fitGeoTiffToViewer);
+        document.getElementById("geoTiffZoomInBtn")?.addEventListener("click", () => setGeoTiffZoom((Number(geoTiffState.zoom)||1)*1.25));
+        document.getElementById("geoTiffZoomOutBtn")?.addEventListener("click", () => setGeoTiffZoom((Number(geoTiffState.zoom)||1)/1.25));
+        document.getElementById("geoTiffCanvasShell")?.addEventListener("wheel", (e) => {
+            if(!geoTiffState.loaded)return;
+            e.preventDefault();
+            setGeoTiffZoom((Number(geoTiffState.zoom)||1)*(e.deltaY<0?1.12:1/1.12));
+        }, {passive:false});
         document.getElementById("geoTiffPointSelect")?.addEventListener("change", updateGeoTiffPointStatus);
         document.getElementById("geoTiffCanvas")?.addEventListener("click", handleGeoTiffCanvasClick);
         document.querySelector("#mapModal .close-modal")?.addEventListener("click", () => {
