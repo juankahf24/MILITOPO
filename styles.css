@@ -5714,3 +5714,58 @@ body.dark #nuevoEjercicioTopoBtn {
 .geotiff-canvas-shell {
     touch-action: none !important;
 }
+
+
+/* ===== GeoTIFF: mejor ajuste a márgenes y desplazamiento táctil ===== */
+.geotiff-modal-content {
+    width: min(94vw, 1180px) !important;
+    max-width: 1180px !important;
+}
+
+.geotiff-layout {
+    grid-template-columns: minmax(220px, 290px) minmax(0, 1fr) !important;
+    gap: 12px !important;
+}
+
+.geotiff-side-panel {
+    padding-right: 2px !important;
+}
+
+.geotiff-section {
+    padding: 10px !important;
+}
+
+.geotiff-help,
+.geotiff-point-card,
+.geotiff-full-btn,
+.geotiff-select-wrap,
+.geotiff-zoom-controls {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.geotiff-point-select {
+    min-height: 54px !important;
+    padding: 12px 48px 12px 16px !important;
+}
+
+.geotiff-canvas-shell {
+    touch-action: none !important;
+}
+
+@media (max-width: 860px) {
+    .geotiff-modal-content {
+        width: 94vw !important;
+    }
+    .geotiff-layout {
+        gap: 10px !important;
+    }
+    .geotiff-section {
+        padding: 9px !important;
+    }
+    .geotiff-point-select {
+        min-height: 52px !important;
+        font-size: 1rem !important;
+    }
+}

@@ -3306,6 +3306,7 @@ let geoTiffState = {
     isRendering:false
 };
 let geoTiffPinchState = null;
+let geoTiffPanState = null;
 
 async function ensureGeoTiffLib(){
     if(window.GeoTIFF)return window.GeoTIFF;
@@ -4218,11 +4219,21 @@ function openMapModal() {
             if(!geoTiffState.loaded)return;
             if(e.touches.length===2){
                 const [t1,t2]=e.touches;
+                geoTiffPanState=null;
                 geoTiffPinchState={
                     startDistance:getTouchDistance(t1,t2),
                     startZoom:Number(geoTiffState.zoom)||1
                 };
                 e.preventDefault();
+            }else if(e.touches.length===1){
+                const t=e.touches[0];
+                geoTiffPinchState=null;
+                geoTiffPanState={
+                    startX:t.clientX,
+                    startY:t.clientY,
+                    startScrollLeft:geoTiffShell.scrollLeft,
+                    startScrollTop:geoTiffShell.scrollTop
+                };
             }
         }, {passive:false});
         geoTiffShell?.addEventListener("touchmove", (e) => {
@@ -4237,13 +4248,32 @@ function openMapModal() {
                     setGeoTiffZoomAroundPoint(targetZoom, midX, midY);
                 }
                 e.preventDefault();
+            }else if(e.touches.length===1 && geoTiffPanState){
+                const t=e.touches[0];
+                const dx=t.clientX-geoTiffPanState.startX;
+                const dy=t.clientY-geoTiffPanState.startY;
+                geoTiffShell.scrollLeft=Math.max(0, geoTiffPanState.startScrollLeft-dx);
+                geoTiffShell.scrollTop=Math.max(0, geoTiffPanState.startScrollTop-dy);
+                e.preventDefault();
             }
         }, {passive:false});
         geoTiffShell?.addEventListener("touchend", (e) => {
             if(e.touches.length<2) geoTiffPinchState=null;
+            if(e.touches.length===1){
+                const t=e.touches[0];
+                geoTiffPanState={
+                    startX:t.clientX,
+                    startY:t.clientY,
+                    startScrollLeft:geoTiffShell.scrollLeft,
+                    startScrollTop:geoTiffShell.scrollTop
+                };
+            }else if(e.touches.length===0){
+                geoTiffPanState=null;
+            }
         });
         geoTiffShell?.addEventListener("touchcancel", () => {
             geoTiffPinchState=null;
+            geoTiffPanState=null;
         });
         document.getElementById("geoTiffPointSelect")?.addEventListener("change", updateGeoTiffPointStatus);
         document.getElementById("geoTiffCanvas")?.addEventListener("click", handleGeoTiffCanvasClick);
