@@ -3591,7 +3591,17 @@ function showGeoTiffPointPopup(pointId){
     const desc=data.descripcion||"";
     popup.innerHTML=`
         <button type="button" class="geotiff-popup-close" aria-label="Cerrar">×</button>
-        ${buildModernPointPopup(pointId, coordText, desc)}
+        <div class="geotiff-compact-popup-card">
+            <div class="geotiff-compact-popup-head">
+                <span class="geotiff-compact-pin"></span>
+                <div>
+                    <div class="geotiff-compact-title">Punto ${escapeHtml(pointId)}</div>
+                    <div class="geotiff-compact-coord">${escapeHtml(coordText)}</div>
+                </div>
+            </div>
+            <textarea class="popup-desc-input geotiff-compact-desc" placeholder="Descripción...">${escapeHtml(desc)}</textarea>
+            <button type="button" class="geotiff-compact-delete" onclick="window.eliminarPunto('${pointId}')">🗑️ Eliminar punto</button>
+        </div>
     `;
 
     viewport.appendChild(popup);
