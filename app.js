@@ -3695,6 +3695,57 @@ function showGeoTiffPointPopup(pointId){
 }
 
 
+
+function geoTiffStartMarkerDrag(pointId,marker,clientX,clientY){
+    if(!geoTiffState.loaded||!geoTiffState.canAssign)return;
+    hideGeoTiffPointPopup();
+    geoTiffDragState={
+        pointId,
+        marker,
+        startX:clientX,
+        startY:clientY,
+        moved:false
+    };
+    marker.classList.add("dragging");
+    geoTiffSuppressCanvasClickUntil=Date.now()+600;
+}
+
+function geoTiffMoveMarkerDrag(clientX,clientY){
+    if(!geoTiffDragState||!geoTiffState.bbox)return;
+    const marker=geoTiffDragState.marker;
+    const dx=clientX-geoTiffDragState.startX;
+    const dy=clientY-geoTiffDragState.startY;
+    if(Math.hypot(dx,dy)>3)geoTiffDragState.moved=true;
+    const pos=geoTiffClientToProjected(clientX,clientY);
+    if(!pos||!marker)return;
+    const b=geoTiffState.bbox;
+    const left=((pos.x-b[0])/(b[2]-b[0]))*100;
+    const top=((b[3]-pos.y)/(b[3]-b[1]))*100;
+    marker.style.left=Math.max(0,Math.min(100,left))+"%";
+    marker.style.top=Math.max(0,Math.min(100,top))+"%";
+}
+
+function geoTiffEndMarkerDrag(clientX,clientY){
+    if(!geoTiffDragState)return;
+    const {pointId,marker,moved}=geoTiffDragState;
+    if(marker)marker.classList.remove("dragging");
+    geoTiffDragState=null;
+    geoTiffSuppressCanvasClickUntil=Date.now()+650;
+
+    const pos=geoTiffClientToProjected(clientX,clientY);
+    if(pos&&moved){
+        try{
+            geoTiffSavePointFromProjected(pointId,pos,true);
+        }catch(err){
+            geoTiffSetStatus(`⚠️ No se pudo mover la baliza: ${escapeHtml(err&&err.message?err.message:err)}`,"error");
+            renderGeoTiffMarkers();
+        }
+    }else{
+        showGeoTiffPointPopup(pointId);
+    }
+}
+
+
 function renderGeoTiffMarkers(){
     const layer=document.getElementById("geoTiffMarkersLayer");
     const shell=document.getElementById("geoTiffCanvasShell");
@@ -3731,6 +3782,21 @@ function renderGeoTiffMarkers(){
             e.preventDefault();
             e.stopPropagation();
             showGeoTiffPointPopup(id);
+        });
+
+        marker.addEventListener("touchstart",(e)=>{
+            if(e.touches.length!==1)return;
+            const t=e.touches[0];
+            geoTiffStartMarkerDrag(id,marker,t.clientX,t.clientY);
+            e.preventDefault();
+            e.stopPropagation();
+        },{passive:false});
+
+        marker.addEventListener("mousedown",(e)=>{
+            if(e.button!==0)return;
+            geoTiffStartMarkerDrag(id,marker,e.clientX,e.clientY);
+            e.preventDefault();
+            e.stopPropagation();
         });
 
         marker.addEventListener("pointerdown",(e)=>{
@@ -4483,6 +4549,28 @@ function openMapModal() {
         geoTiffShell?.addEventListener("touchcancel", () => {
             geoTiffPinchState=null;
             geoTiffPanState=null;
+        });
+        document.addEventListener("touchmove",(e)=>{
+            if(!geoTiffDragState)return;
+            if(e.touches.length!==1)return;
+            const t=e.touches[0];
+            geoTiffMoveMarkerDrag(t.clientX,t.clientY);
+            e.preventDefault();
+        },{passive:false});
+        document.addEventListener("touchend",(e)=>{
+            if(!geoTiffDragState)return;
+            const t=e.changedTouches&&e.changedTouches[0];
+            if(t)geoTiffEndMarkerDrag(t.clientX,t.clientY);
+        },{passive:false});
+        document.addEventListener("mousemove",(e)=>{
+            if(!geoTiffDragState)return;
+            geoTiffMoveMarkerDrag(e.clientX,e.clientY);
+            e.preventDefault();
+        });
+        document.addEventListener("mouseup",(e)=>{
+            if(!geoTiffDragState)return;
+            geoTiffEndMarkerDrag(e.clientX,e.clientY);
+            e.preventDefault();
         });
         document.getElementById("geoTiffPointSelect")?.addEventListener("change", updateGeoTiffPointStatus);
         document.getElementById("geoTiffCanvas")?.addEventListener("click", handleGeoTiffCanvasClick);
