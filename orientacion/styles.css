@@ -1588,3 +1588,17 @@ th,td{
     max-height: 0 !important;
     overflow: hidden !important;
 }
+
+
+
+/* Vista participante: cambio de acceso reactivado para pruebas/organizador */
+#militopoParticipantOnlyShell #militopoBackToAccessBtn {
+    display: inline-flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+#militopoParticipantOnlyShell .participant-only-topbar {
+    justify-content: space-between !important;
+    text-align: left !important;
+}

@@ -8671,12 +8671,9 @@ downloadClassificationExcel=async function(){
                 showGate();
             }
         });
-        // En modo participante NO se permite cambiar de acceso/rama.
-        // Así el corredor no puede volver a organizador ni perder su recorrido cargado.
-        document.getElementById("militopoBackToAccessBtn")?.addEventListener("click", (e)=>{
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
+        document.getElementById("militopoBackToAccessBtn")?.addEventListener("click", ()=>{
+            try{ localStorage.removeItem(ACCESS_MODE_KEY); }catch(e){}
+            showGate();
         });
 
         let mode = "";
