@@ -5341,7 +5341,10 @@ async function participantPlanPdfBlob(route){
         // La leyenda se gira hacia la izquierda para que el encabezado quede en el lateral izquierdo.
         const legendBack=await planPdfLegendLandscapeLeftDataUrl();
         pdf.addPage([297,210],"landscape");
-        pdf.addImage(legendBack,"JPEG",5,5,287,200,undefined,"FAST");
+        // Cara trasera / hoja de descripciones IOF más corta.
+        // La imagen ya viene girada a la izquierda; reducir el ancho evita que los símbolos
+        // queden tan estirados y deja la leyenda más compacta, como en la zona marcada.
+        pdf.addImage(legendBack,"JPEG",5,5,232,200,undefined,"FAST");
 
         return pdf.output("blob");
     }catch(e){
