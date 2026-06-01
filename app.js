@@ -4178,6 +4178,7 @@ function openMapModal() {
     }
 
     function enterStartupMode(mode) {
+        try { sessionStorage.setItem("militopo_main_menu_seen_session_v1", "1"); } catch (e) {}
         if (mode === "orientacion") {
             window.location.href = "orientacion/";
             return;
@@ -4234,13 +4235,32 @@ function openMapModal() {
         generarOpcionesRecorridos();
         restaurarSeleccionNumRecorridos();
 
-        if (hasTopografiaSavedSession()) {
+        const startupParams = new URLSearchParams(window.location.search || "");
+        const forceMainMenu = startupParams.has("militopo_menu") || startupParams.get("modo") === "menu";
+        let firstWebEntryThisSession = true;
+        try {
+            firstWebEntryThisSession = sessionStorage.getItem("militopo_main_menu_seen_session_v1") !== "1";
+        } catch (e) {}
+
+        if (forceMainMenu || firstWebEntryThisSession) {
+            const overlay = document.getElementById("startupModeOverlay");
+            if (overlay) overlay.style.display = "flex";
+            try { sessionStorage.setItem("militopo_main_menu_seen_session_v1", "1"); } catch (e) {}
+            try {
+                if (forceMainMenu) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            } catch (e) {}
+            goToStep(getSavedTopografiaStep());
+        } else if (hasTopografiaSavedSession()) {
             appMode = "topografica";
             const overlay = document.getElementById("startupModeOverlay");
             if (overlay) overlay.style.display = "none";
             try { localStorage.setItem("milimoto_app_mode", "topografica"); } catch (e) {}
             showTopograficaMode(getSavedTopografiaStep());
         } else {
+            const overlay = document.getElementById("startupModeOverlay");
+            if (overlay) overlay.style.display = "flex";
             goToStep(1);
         }
 
