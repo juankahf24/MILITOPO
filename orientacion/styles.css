@@ -1578,3 +1578,15 @@ th,td{
         min-height: 112px;
     }
 }
+
+
+/* Paso 5 · Ocultar texto técnico largo del QR participante/salida/llegada.
+   La lógica del QR sigue funcionando; solo se quita visualmente. */
+#organizerStartPayload,
+#organizerFinishPayload,
+.qr-card small {
+    display: none !important;
+    visibility: hidden !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+}

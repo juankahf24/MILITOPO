@@ -2731,7 +2731,9 @@ async function renderOrganizerQr(targetBoxId,targetPayloadId,payload,label){
     const payloadBox=document.getElementById(targetPayloadId);
     if(!box) return;
 
-    if(payloadBox) payloadBox.textContent=payload;
+    // No mostrar visualmente el texto técnico del QR.
+    // El payload se sigue usando para generar el QR, pero no se pinta debajo.
+    if(payloadBox) payloadBox.textContent="";
     box.innerHTML="Generando QR...";
 
     if(window.QRCode && typeof QRCode.toDataURL==="function"){
@@ -6971,6 +6973,15 @@ function drawCourse(){
     const lineW=1.7;
     const cutGap=symbolR+2.2;
 
+    // Corrección círculos perfectos:
+    // El SVG del recorrido usa viewBox 1000x1000 con preserveAspectRatio="none".
+    // Al encajar sobre un área rectangular, un <circle> se estira y sale como óvalo.
+    // Por eso usamos <ellipse> compensada en X según la proporción real del área del plano.
+    const mapWrap=document.querySelector(".map-wrap");
+    const mapAspectFix=mapWrap ? (mapWrap.clientHeight / Math.max(1,mapWrap.clientWidth)) : (162/230);
+    const symbolRx=symbolR*mapAspectFix;
+    const finishInnerRx=(symbolR*0.58)*mapAspectFix;
+
     function unit(a,b){
         const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
         return {ux:dx/d,uy:dy/d,dx,dy,d};
@@ -7003,9 +7014,9 @@ function drawCourse(){
             return '<polygon points="'+tipX.toFixed(1)+','+tipY.toFixed(1)+' '+p2x.toFixed(1)+','+p2y.toFixed(1)+' '+p3x.toFixed(1)+','+p3y.toFixed(1)+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/>';
         }
         if(p.type==='FINISH'){
-            return '<circle cx="'+x+'" cy="'+y+'" r="'+(symbolR*0.58).toFixed(1)+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/><circle cx="'+x+'" cy="'+y+'" r="'+symbolR+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/>';
+            return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+finishInnerRx.toFixed(1)+'" ry="'+(symbolR*0.58).toFixed(1)+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/><ellipse cx="'+x+'" cy="'+y+'" rx="'+symbolRx.toFixed(1)+'" ry="'+symbolR+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/>';
         }
-        return '<circle cx="'+x+'" cy="'+y+'" r="'+symbolR+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/><text x="'+(x+symbolR+4).toFixed(1)+'" y="'+(y-symbolR-2).toFixed(1)+'" fill="#e45ac8" font-size="23" font-weight="900">'+p.markerOrder+'</text>';
+        return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+symbolRx.toFixed(1)+'" ry="'+symbolR+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/><text x="'+(x+symbolRx+5).toFixed(1)+'" y="'+(y-symbolR-2).toFixed(1)+'" fill="#e45ac8" font-size="23" font-weight="900">'+p.markerOrder+'</text>';
     }).join('');
 }
 
