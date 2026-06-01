@@ -2736,8 +2736,8 @@ async function renderOrganizerQr(targetBoxId,targetPayloadId,payload,label){
 
     if(window.QRCode && typeof QRCode.toDataURL==="function"){
         try{
-            const url=await QRCode.toDataURL(payload,{margin:4,width:320,errorCorrectionLevel:"M"});
-            box.innerHTML=`<div style="text-align:center;"><img src="${url}" style="width:240px;max-width:100%;border-radius:16px;background:white;padding:10px;"><div style="margin-top:8px;font-weight:900;color:#f0c16a;">${escapeHtml(label||"QR")}</div></div>`;
+            const url=await QRCode.toDataURL(payload,{margin:6,width:460,errorCorrectionLevel:"L"});
+            box.innerHTML=`<div style="text-align:center;"><img src="${url}" style="width:280px;max-width:100%;border-radius:16px;background:white;padding:14px;"><div style="margin-top:8px;font-weight:900;color:#f0c16a;">${escapeHtml(label||"QR")}</div></div>`;
             return;
         }catch(e){
             console.warn("No se pudo generar QR visual:", e);
@@ -3472,40 +3472,90 @@ function buildCompactParticipantWebData(pid){
     const allIds=[];
     ["START",...ids,"FINISH"].forEach(id=>{ if(id&&!allIds.includes(id))allIds.push(id); });
 
+    // v2 simplificado para que el QR sea mucho menos denso y Android lo lea mejor.
+    // Mantiene la función: carga participante, recorrido, START/FINISH, balizas y coordenadas.
+    // Elimina datos pesados no esenciales para el corredor: UTM, descripción larga, elevación e IOF.
     const points=allIds.map(id=>{
         const p=(state.points||{})[id]||{};
         return [
             String(id),
-            String(p.type||((String(id).toUpperCase()==="START")?"SALIDA":(String(id).toUpperCase()==="FINISH")?"LLEGADA":"BALIZA")),
             roundCoordForQr(p.lat),
-            roundCoordForQr(p.lon),
-            Number.isFinite(Number(p.elevation))?Math.round(Number(p.elevation)):null,
-            String(p.utm||""),
-            String(p.desc||"")
+            roundCoordForQr(p.lon)
         ];
     });
 
     return {
-        v:1,
+        v:2,
         e:String(state.eventId||""),
-        n:String(state.eventName||"ENTRENAMIENTO ORIENTACIÓN"),
+        n:String(state.eventName||""),
         p:String(pid||route.participantId||""),
         pn:String((state.participantNames||{})[pid]||""),
-        r:{i:String(route.participantId||pid||""),d:String(route.routeId||""),q:ids},
-        m:{
-            km:Number.isFinite(Number(metric.distanceKm))?Number(Number(metric.distanceKm).toFixed(3)):undefined,
-            pp:Number.isFinite(Number(metric.climbUp))?Math.round(Number(metric.climbUp)):undefined,
-            pn:Number.isFinite(Number(metric.climbDown))?Math.round(Number(metric.climbDown)):undefined,
-            dg:Number.isFinite(Number(metric.netClimb))?Math.round(Number(metric.netClimb)):undefined,
-            df:metric.difficulty||undefined
-        },
+        r:[String(route.routeId||""),ids],
+        m:[
+            Number.isFinite(Number(metric.distanceKm))?Number(Number(metric.distanceKm).toFixed(3)):undefined,
+            Number.isFinite(Number(metric.climbUp))?Math.round(Number(metric.climbUp)):undefined,
+            Number.isFinite(Number(metric.climbDown))?Math.round(Number(metric.climbDown)):undefined,
+            Number.isFinite(Number(metric.netClimb))?Math.round(Number(metric.netClimb)):undefined,
+            String(metric.difficulty||"")
+        ],
         pts:points,
         t:Date.now()
     };
 }
 
 function expandCompactParticipantWebData(compact){
-    if(!compact || compact.v!==1)return compact;
+    if(!compact)return compact;
+
+    // v2 = QR participante simplificado para Android/iPhone.
+    if(compact.v===2){
+        const points={};
+        (compact.pts||[]).forEach(row=>{
+            const id=String(row[0]||"");
+            if(!id)return;
+            const upper=id.toUpperCase();
+            points[id]={
+                id,
+                type:upper==="START"?"SALIDA":upper==="FINISH"?"LLEGADA":"BALIZA",
+                lat:Number.isFinite(Number(row[1]))?Number(row[1]):null,
+                lon:Number.isFinite(Number(row[2]))?Number(row[2]):null,
+                elevation:null,
+                utm:"",
+                desc:""
+            };
+        });
+
+        const pid=String(compact.p||"P01");
+        const routeId=String((compact.r&&compact.r[0])||"R01");
+        const routePoints=((compact.r&&compact.r[1])||[]).filter(Boolean);
+
+        return {
+            version:"orientacion_v2_web_compact_android",
+            participantMode:true,
+            webParticipantId:pid,
+            eventId:String(compact.e||""),
+            eventName:String(compact.n||"ENTRENAMIENTO ORIENTACIÓN"),
+            createdAt:new Date(Number(compact.t)||Date.now()).toISOString(),
+            config:{participantCount:1,activeParticipantCount:1,controlCount:routePoints.length,controlsPerRoute:routePoints.length,maxControlReuse:1},
+            points,
+            routes:[{participantId:pid,routeId,points:routePoints}],
+            metrics:[{
+                participantId:pid,
+                routeId,
+                distanceKm:compact.m?.[0],
+                climbUp:compact.m?.[1],
+                climbDown:compact.m?.[2],
+                netClimb:compact.m?.[3],
+                difficulty:compact.m?.[4]
+            }],
+            participantNames:{[pid]:String(compact.pn||"")},
+            participantLogs:{},
+            skippedRoutes:{},
+            importedResults:[],
+            iofDescriptions:{}
+        };
+    }
+
+    if(compact.v!==1)return compact;
 
     const points={};
     (compact.pts||[]).forEach(row=>{
@@ -4438,7 +4488,7 @@ async function addQrFileToZip(folder, filenameBase, payload, label){
 async function qrDataUrlForPrint(payload,width=900){
     if(window.QRCode && typeof QRCode.toDataURL==="function"){
         try{
-            return await QRCode.toDataURL(payload,{margin:4,width,errorCorrectionLevel:"M"});
+            return await QRCode.toDataURL(payload,{margin:6,width,errorCorrectionLevel:"L"});
         }catch(e){
             console.warn("QR imprimible PNG falló, creando SVG:", e);
         }
@@ -4779,7 +4829,7 @@ async function participantAccessWebQrPdfBlob(){
         pdf.setFontSize(5.5);
         const note=[
             "Abre la misma rama Orientación en modo participante.",
-            "El recorrido compacto va dentro del QR.",
+            "QR simplificado para cámara Android/iPhone.",
             `Evento: ${eventCode}`,
             `Generado: ${generatedAt}`
         ];
@@ -8621,9 +8671,12 @@ downloadClassificationExcel=async function(){
                 showGate();
             }
         });
-        document.getElementById("militopoBackToAccessBtn")?.addEventListener("click", ()=>{
-            try{ localStorage.removeItem(ACCESS_MODE_KEY); }catch(e){}
-            showGate();
+        // En modo participante NO se permite cambiar de acceso/rama.
+        // Así el corredor no puede volver a organizador ni perder su recorrido cargado.
+        document.getElementById("militopoBackToAccessBtn")?.addEventListener("click", (e)=>{
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
         });
 
         let mode = "";
