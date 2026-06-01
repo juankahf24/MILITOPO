@@ -6743,7 +6743,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .sheet{width:210mm;height:297mm;background:#ebe3c8;margin:0 auto;position:relative;overflow:hidden;box-sizing:border-box;padding:7mm}
 .back-title{height:14mm;background:#3f4a2c;color:#efe6c8;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:900;letter-spacing:2px;font-size:15px;margin-bottom:5mm}
 .back-subtitle{position:absolute;left:7mm;right:7mm;bottom:3mm;text-align:center;font-size:7px;font-weight:900;color:#3f4a2c}
-.iof-grid{display:grid;grid-template-columns:50mm 50mm 50mm;gap:6mm;align-items:start;justify-content:center}
+.iof-grid{display:grid;grid-template-columns:50mm 50mm 50mm;gap:6mm;align-items:start;justify-content:center;transform:scaleY(.82);transform-origin:top center}
 .iof{width:50mm;border:2px solid #000;color:#000;font-weight:900;background:white;display:flex;flex-direction:column;box-sizing:border-box}
 .iof-head{border-bottom:2px solid #000;background:white;color:#000;font-weight:900;font-size:8px;line-height:1.08}
 .iof-title{height:15px;display:flex;align-items:center;justify-content:center;border-bottom:1.3px solid #000;font-size:8px;background:#fff;overflow:hidden;white-space:nowrap;padding:0 2px;box-sizing:border-box}
@@ -6753,7 +6753,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .iof-letters{display:grid;grid-template-columns:19px 34px repeat(6,1fr);height:15px;border-bottom:1.3px solid #000;background:#fff}
 .iof-letters div{display:flex;align-items:center;justify-content:center;border-right:1.3px solid #000;font-size:8px}.iof-letters div:last-child{border-right:0}
 .iof-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8px;color:#000;background:#fff}
-.iof-table td{border:1.3px solid #000;height:17px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
+.iof-table td{border:1.3px solid #000;height:15px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
 .iof-table .col-a{width:19px}.iof-table .col-b{width:34px}.iof-table .code{font-size:7px}.iof-table .fcell{font-size:6.1px;letter-spacing:-.2px}.iof-table .gcell{font-size:6.1px;letter-spacing:-.25px}
 .iof-table svg{width:18.8px;height:18.8px;color:#000!important;vertical-align:middle;display:inline-block;overflow:visible;filter:none!important}
 .iof-table svg path,.iof-table svg line,.iof-table svg polyline,.iof-table svg rect,.iof-table svg circle,.iof-table svg ellipse,.iof-table svg polygon{fill:none;stroke:currentColor;stroke-width:8.2;stroke-linecap:round;stroke-linejoin:round}
