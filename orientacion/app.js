@@ -6754,7 +6754,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .iof-table td{border:1.3px solid #000;height:17px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
 .iof-table .col-a{width:19px}.iof-table .col-b{width:34px}.iof-table .code{font-size:7px}.iof-table .fcell{font-size:6.1px;letter-spacing:-.2px}.iof-table .gcell{font-size:6.1px;letter-spacing:-.25px}
 .iof-table svg{width:18.8px;height:18.8px;color:#000!important;vertical-align:middle;display:inline-block;overflow:visible;filter:none!important}
-.iof-table svg path,.iof-table svg line,.iof-table svg polyline,.iof-table svg rect,.iof-table svg circle,.iof-table svg ellipse,.iof-table svg polygon{fill:none;stroke:currentColor;stroke-width:8.2;stroke-linecap:round;stroke-linejoin:round} .control-d-symbol{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#000;background:transparent;overflow:hidden}.control-d-symbol svg{width:100%!important;height:100%!important;color:#000!important;display:block!important;overflow:visible!important}.control-d-symbol svg path,.control-d-symbol svg line,.control-d-symbol svg polyline,.control-d-symbol svg rect,.control-d-symbol svg circle,.control-d-symbol svg ellipse,.control-d-symbol svg polygon{fill:none;stroke:#000!important;stroke-width:5.2!important;stroke-linecap:round!important;stroke-linejoin:round!important}.control-d-symbol svg [fill]:not([fill="none"]):not([fill="transparent"]),.control-d-symbol svg .fill,.control-d-symbol svg.filled rect,.control-d-symbol svg.filled circle,.control-d-symbol svg.filled polygon{fill:#000!important;stroke:none!important}
+.iof-table svg path,.iof-table svg line,.iof-table svg polyline,.iof-table svg rect,.iof-table svg circle,.iof-table svg ellipse,.iof-table svg polygon{fill:none;stroke:currentColor;stroke-width:8.2;stroke-linecap:round;stroke-linejoin:round} .control-d-svg{overflow:visible!important;color:#000!important;pointer-events:none!important}.control-d-svg path,.control-d-svg line,.control-d-svg polyline,.control-d-svg rect,.control-d-svg circle,.control-d-svg ellipse,.control-d-svg polygon{fill:none;stroke:#000!important;stroke-width:6!important;stroke-linecap:round!important;stroke-linejoin:round!important}.control-d-svg [fill]:not([fill="none"]):not([fill="transparent"]),.control-d-svg .fill,.control-d-svg.filled rect,.control-d-svg.filled circle,.control-d-svg.filled polygon{fill:#000!important;stroke:none!important}
 .iof-table svg [fill]:not([fill="none"]):not([fill="transparent"]),.iof-table svg .fill,.iof-table svg.filled rect,.iof-table svg.filled circle,.iof-table svg.filled polygon,.iof-table svg text,.iof-table svg tspan{fill:currentColor}
 .iof-table svg text,.iof-table svg tspan{stroke:none}
 </style></head><body><div class="sheet"><div class="back-title">TABLA IOF TRASERA · ${eventTitle}</div><div class="iof-grid">${tables}</div><div class="back-subtitle">Impresión a doble cara · Página trasera ${page}/${totalPages} · Mismo formato, tamaño y símbolos que la tabla IOF lateral</div></div></body></html>`;
@@ -6966,7 +6966,7 @@ function drawCourse(){
 
     // Símbolos uniformes y pequeños: el punto real queda en el centro del círculo/meta,
     // y en el vértice del triángulo de salida.
-    const symbolR=11.2;
+    const symbolR=12.4;
     const strokeW=1.8;
     const lineW=1.7;
     const cutGap=symbolR+2.2;
@@ -6979,17 +6979,24 @@ function drawCourse(){
     const finishInnerRx=(symbolR*0.58)*overlayAspectFix;
 
     // Símbolo IOF real de columna D dentro del círculo.
-    // Se dibuja en un foreignObject pequeño para usar el mismo SVG de la tabla IOF.
-    const iofDSize=symbolR*0.78;
+    // IMPORTANTE: se inserta como SVG nativo, no como foreignObject, porque
+    // foreignObject no siempre aparece al convertir el plano a PDF/canvas.
+    const iofDSize=symbolR*0.92;
     const iofDW=iofDSize*overlayAspectFix;
     function tinyIofD(x,y,p){
         const raw=(p&&p.d)?String(p.d):"";
         if(!raw)return "";
         const fx=(x-iofDW/2).toFixed(1);
         const fy=(y-iofDSize/2).toFixed(1);
-        return '<foreignObject x="'+fx+'" y="'+fy+'" width="'+iofDW.toFixed(1)+'" height="'+iofDSize.toFixed(1)+'">'+
-            '<div xmlns="http://www.w3.org/1999/xhtml" class="control-d-symbol">'+raw+'</div>'+
-            '</foreignObject>';
+        const w=iofDW.toFixed(1);
+        const h=iofDSize.toFixed(1);
+
+        // Convierte el <svg ...> de la tabla IOF en un <svg> anidado dentro del overlay.
+        let s=raw.replace(/<svg\b/i,'<svg x="'+fx+'" y="'+fy+'" width="'+w+'" height="'+h+'" class="control-d-svg" preserveAspectRatio="xMidYMid meet"');
+        s=s.replace(/\sclass="([^"]*)"/i,' class="$1 control-d-svg"');
+        s=s.replace(/\swidth="[^"]*"/i,'');
+        s=s.replace(/\sheight="[^"]*"/i,'');
+        return s;
     }
 
     function unit(a,b){
