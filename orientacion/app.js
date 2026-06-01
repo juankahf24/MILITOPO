@@ -6754,7 +6754,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 .iof-table td{border:1.3px solid #000;height:17px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap}
 .iof-table .col-a{width:19px}.iof-table .col-b{width:34px}.iof-table .code{font-size:7px}.iof-table .fcell{font-size:6.1px;letter-spacing:-.2px}.iof-table .gcell{font-size:6.1px;letter-spacing:-.25px}
 .iof-table svg{width:18.8px;height:18.8px;color:#000!important;vertical-align:middle;display:inline-block;overflow:visible;filter:none!important}
-.iof-table svg path,.iof-table svg line,.iof-table svg polyline,.iof-table svg rect,.iof-table svg circle,.iof-table svg ellipse,.iof-table svg polygon{fill:none;stroke:currentColor;stroke-width:8.2;stroke-linecap:round;stroke-linejoin:round}
+.iof-table svg path,.iof-table svg line,.iof-table svg polyline,.iof-table svg rect,.iof-table svg circle,.iof-table svg ellipse,.iof-table svg polygon{fill:none;stroke:currentColor;stroke-width:8.2;stroke-linecap:round;stroke-linejoin:round} .control-d-symbol{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#000;background:transparent;overflow:hidden}.control-d-symbol svg{width:100%!important;height:100%!important;color:#000!important;display:block!important;overflow:visible!important}.control-d-symbol svg path,.control-d-symbol svg line,.control-d-symbol svg polyline,.control-d-symbol svg rect,.control-d-symbol svg circle,.control-d-symbol svg ellipse,.control-d-symbol svg polygon{fill:none;stroke:#000!important;stroke-width:5.2!important;stroke-linecap:round!important;stroke-linejoin:round!important}.control-d-symbol svg [fill]:not([fill="none"]):not([fill="transparent"]),.control-d-symbol svg .fill,.control-d-symbol svg.filled rect,.control-d-symbol svg.filled circle,.control-d-symbol svg.filled polygon{fill:#000!important;stroke:none!important}
 .iof-table svg [fill]:not([fill="none"]):not([fill="transparent"]),.iof-table svg .fill,.iof-table svg.filled rect,.iof-table svg.filled circle,.iof-table svg.filled polygon,.iof-table svg text,.iof-table svg tspan{fill:currentColor}
 .iof-table svg text,.iof-table svg tspan{stroke:none}
 </style></head><body><div class="sheet"><div class="back-title">TABLA IOF TRASERA · ${eventTitle}</div><div class="iof-grid">${tables}</div><div class="back-subtitle">Impresión a doble cara · Página trasera ${page}/${totalPages} · Mismo formato, tamaño y símbolos que la tabla IOF lateral</div></div></body></html>`;
@@ -6978,23 +6978,18 @@ function drawCourse(){
     const symbolRx=symbolR*overlayAspectFix;
     const finishInnerRx=(symbolR*0.58)*overlayAspectFix;
 
-    // Símbolo IOF "D" dentro del círculo: muy pequeño y con línea negra fina.
-    // Está compensado también en X para no deformarse por el escalado rectangular del SVG.
-    const iofDSize=symbolR*0.43;
+    // Símbolo IOF real de columna D dentro del círculo.
+    // Se dibuja en un foreignObject pequeño para usar el mismo SVG de la tabla IOF.
+    const iofDSize=symbolR*0.78;
     const iofDW=iofDSize*overlayAspectFix;
-    const iofStroke=0.75;
-    function tinyIofD(x,y){
-        const w=iofDW;
-        const h=iofDSize;
-        const l=(x-w*0.55).toFixed(1);
-        const t=(y-h*0.55).toFixed(1);
-        const r=(x+w*0.55).toFixed(1);
-        const b=(y+h*0.55).toFixed(1);
-        const mid=(y).toFixed(1);
-        return '<g stroke="#111" stroke-width="'+iofStroke+'" fill="none" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke">'+
-            '<path d="M '+l+' '+t+' L '+l+' '+b+'"/>'+
-            '<path d="M '+l+' '+t+' Q '+r+' '+mid+' '+l+' '+b+'"/>'+
-            '</g>';
+    function tinyIofD(x,y,p){
+        const raw=(p&&p.d)?String(p.d):"";
+        if(!raw)return "";
+        const fx=(x-iofDW/2).toFixed(1);
+        const fy=(y-iofDSize/2).toFixed(1);
+        return '<foreignObject x="'+fx+'" y="'+fy+'" width="'+iofDW.toFixed(1)+'" height="'+iofDSize.toFixed(1)+'">'+
+            '<div xmlns="http://www.w3.org/1999/xhtml" class="control-d-symbol">'+raw+'</div>'+
+            '</foreignObject>';
     }
 
     function unit(a,b){
@@ -7031,7 +7026,7 @@ function drawCourse(){
         if(p.type==='FINISH'){
             return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+finishInnerRx.toFixed(1)+'" ry="'+(symbolR*0.58).toFixed(1)+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/><ellipse cx="'+x+'" cy="'+y+'" rx="'+symbolRx.toFixed(1)+'" ry="'+symbolR+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/>';
         }
-        return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+symbolRx.toFixed(1)+'" ry="'+symbolR+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/>'+tinyIofD(Number(x),Number(y))+'<text x="'+(x+symbolRx+5).toFixed(1)+'" y="'+(y-symbolR-2).toFixed(1)+'" fill="#e45ac8" font-size="23" font-weight="900">'+p.markerOrder+'</text>';
+        return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+symbolRx.toFixed(1)+'" ry="'+symbolR+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/>'+tinyIofD(Number(x),Number(y),p)+'<text x="'+(x+symbolRx+5).toFixed(1)+'" y="'+(y-symbolR-2).toFixed(1)+'" fill="#e45ac8" font-size="23" font-weight="900">'+p.markerOrder+'</text>';
     }).join('');
 }
 
