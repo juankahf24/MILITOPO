@@ -6966,8 +6966,8 @@ function drawCourse(){
 
     // Símbolos uniformes y pequeños: el punto real queda en el centro del círculo/meta,
     // y en el vértice del triángulo de salida.
-    const symbolR=10;
-    const strokeW=1.9;
+    const symbolR=11.2;
+    const strokeW=1.8;
     const lineW=1.7;
     const cutGap=symbolR+2.2;
 
@@ -6977,6 +6977,25 @@ function drawCourse(){
     const overlayAspectFix=162/230;
     const symbolRx=symbolR*overlayAspectFix;
     const finishInnerRx=(symbolR*0.58)*overlayAspectFix;
+
+    // Símbolo IOF "D" dentro del círculo: muy pequeño y con línea negra fina.
+    // Está compensado también en X para no deformarse por el escalado rectangular del SVG.
+    const iofDSize=symbolR*0.43;
+    const iofDW=iofDSize*overlayAspectFix;
+    const iofStroke=0.75;
+    function tinyIofD(x,y){
+        const w=iofDW;
+        const h=iofDSize;
+        const l=(x-w*0.55).toFixed(1);
+        const t=(y-h*0.55).toFixed(1);
+        const r=(x+w*0.55).toFixed(1);
+        const b=(y+h*0.55).toFixed(1);
+        const mid=(y).toFixed(1);
+        return '<g stroke="#111" stroke-width="'+iofStroke+'" fill="none" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke">'+
+            '<path d="M '+l+' '+t+' L '+l+' '+b+'"/>'+
+            '<path d="M '+l+' '+t+' Q '+r+' '+mid+' '+l+' '+b+'"/>'+
+            '</g>';
+    }
 
     function unit(a,b){
         const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
@@ -7012,7 +7031,7 @@ function drawCourse(){
         if(p.type==='FINISH'){
             return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+finishInnerRx.toFixed(1)+'" ry="'+(symbolR*0.58).toFixed(1)+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/><ellipse cx="'+x+'" cy="'+y+'" rx="'+symbolRx.toFixed(1)+'" ry="'+symbolR+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/>';
         }
-        return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+symbolRx.toFixed(1)+'" ry="'+symbolR+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/><text x="'+(x+symbolRx+5).toFixed(1)+'" y="'+(y-symbolR-2).toFixed(1)+'" fill="#e45ac8" font-size="23" font-weight="900">'+p.markerOrder+'</text>';
+        return '<ellipse cx="'+x+'" cy="'+y+'" rx="'+symbolRx.toFixed(1)+'" ry="'+symbolR+'" fill="none" stroke="#e45ac8" stroke-width="'+strokeW+'" vector-effect="non-scaling-stroke"/>'+tinyIofD(Number(x),Number(y))+'<text x="'+(x+symbolRx+5).toFixed(1)+'" y="'+(y-symbolR-2).toFixed(1)+'" fill="#e45ac8" font-size="23" font-weight="900">'+p.markerOrder+'</text>';
     }).join('');
 }
 
