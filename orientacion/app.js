@@ -3430,7 +3430,7 @@ function readParticipantWebDataFromUrl(){
         const packed=params.get("c")||params.get("pdata")||params.get("data")||"";
         if(!packed)return null;
         const raw=JSON.parse(base64UrlDecodeUtf8(packed));
-        const eventData=(raw&&raw.v===1)?expandCompactParticipantWebData(raw):raw;
+        const eventData=(raw&&(raw.v===1||raw.v===2))?expandCompactParticipantWebData(raw):raw;
         const pid=params.get("p")||eventData.webParticipantId||"";
         const saved={pid,eventData,loadedAt:new Date().toISOString()};
         localStorage.setItem("militopo_participant_web_event_v1",JSON.stringify(saved));
@@ -3505,7 +3505,60 @@ function buildCompactParticipantWebData(pid){
 }
 
 function expandCompactParticipantWebData(compact){
-    if(!compact || compact.v!==1)return compact;
+    if(!compact)return compact;
+
+    // v2 = QR participante simplificado. Hay que expandirlo aquí, en la app principal,
+    // para que al abrir la web desde el QR el iframe participante ya reciba routes/points
+    // y cargue el recorrido directamente sin pedir escanear otra vez.
+    if(compact.v===2){
+        const points={};
+        (compact.pts||[]).forEach(row=>{
+            const id=String(row[0]||"");
+            if(!id)return;
+            const upper=id.toUpperCase();
+            points[id]={
+                id,
+                type:upper==="START"?"SALIDA":upper==="FINISH"?"LLEGADA":"BALIZA",
+                lat:Number.isFinite(Number(row[1]))?Number(row[1]):null,
+                lon:Number.isFinite(Number(row[2]))?Number(row[2]):null,
+                elevation:null,
+                utm:"",
+                desc:""
+            };
+        });
+
+        const pid=String(compact.p||"P01");
+        const routeId=String((compact.r&&compact.r[0])||"R01");
+        const routePoints=((compact.r&&compact.r[1])||[]).filter(Boolean);
+
+        return {
+            version:"orientacion_v2_web_compact_main_expanded",
+            participantMode:true,
+            webParticipantId:pid,
+            eventId:String(compact.e||""),
+            eventName:String(compact.n||"ENTRENAMIENTO ORIENTACIÓN"),
+            createdAt:new Date(Number(compact.t)||Date.now()).toISOString(),
+            config:{participantCount:1,activeParticipantCount:1,controlCount:routePoints.length,controlsPerRoute:routePoints.length,maxControlReuse:1},
+            points,
+            routes:[{participantId:pid,routeId,points:routePoints}],
+            metrics:[{
+                participantId:pid,
+                routeId,
+                distanceKm:compact.m?.[0],
+                climbUp:compact.m?.[1],
+                climbDown:compact.m?.[2],
+                netClimb:compact.m?.[3],
+                difficulty:compact.m?.[4]
+            }],
+            participantNames:{[pid]:String(compact.pn||"")},
+            participantLogs:{},
+            skippedRoutes:{},
+            importedResults:[],
+            iofDescriptions:{}
+        };
+    }
+
+    if(compact.v!==1)return compact;
 
     const points={};
     (compact.pts||[]).forEach(row=>{
