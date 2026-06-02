@@ -8647,6 +8647,32 @@ downloadClassificationExcel=async function(){
             const iframe = document.createElement("iframe");
             iframe.className = "participant-integrated-frame";
             iframe.setAttribute("title", "MILITOPO Participante");
+
+            // Carga directa del recorrido en el iframe participante.
+            // El QR abre la web y la app principal ya tiene eventData, pero algunos móviles
+            // no ejecutan a tiempo la autocarga interna del iframe srcdoc.
+            // Por eso, además de pasar EVENT_DATA, forzamos loadParticipant() desde fuera
+            // cuando el iframe termina de cargar.
+            const autoPid = String((participantPack && participantPack.pid) || eventData.webParticipantId || (eventData.routes && eventData.routes[0] && eventData.routes[0].participantId) || "");
+            const autoRouteId = String((eventData.routes && eventData.routes[0] && eventData.routes[0].routeId) || "");
+            iframe.onload = ()=>{
+                const forceLoad = ()=>{
+                    try{
+                        const w = iframe.contentWindow;
+                        if(!w || typeof w.loadParticipant !== "function") return false;
+                        w.loadParticipant({id:autoPid,routeId:autoRouteId,eventData:eventData});
+                        return true;
+                    }catch(e){
+                        console.warn("No se pudo forzar carga directa del participante", e);
+                        return false;
+                    }
+                };
+                if(forceLoad()) return;
+                setTimeout(forceLoad, 250);
+                setTimeout(forceLoad, 800);
+                setTimeout(forceLoad, 1500);
+            };
+
             iframe.srcdoc = participantOfflineAppHtml(eventData);
             content.appendChild(iframe);
         }catch(err){
