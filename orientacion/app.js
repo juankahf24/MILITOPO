@@ -6915,7 +6915,9 @@ function participantPlanHtml(route){
     const routeNumber=escapeHtml(String(route.routeId||"").replace(/^R/i,"")||route.routeId||"-");
     const difficulty=escapeHtml(metric.difficulty||"-");
     const distance=metric.distanceKm!=null?`${metric.distanceKm} km`:"-";
-    const climb=metric.globalM!=null?`${metric.globalM} m`:"-";
+    // En la cabecera lateral de la tabla IOF del plano PDF se muestra el desnivel positivo.
+    // Antes se usaba metric.globalM, por eso podía salir -1 m si el desnivel global era negativo.
+    const climb=metric.positiveM!=null?`${metric.positiveM} m`:"-";
     const planScale=Number(state.planScale||10000)===7500?7500:10000;
     const planEquidistance=Number(state.planEquidistanceM||5)||5;
     const scaleLabel=`1/${planScale.toLocaleString("es-ES")}`;
