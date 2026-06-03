@@ -1707,3 +1707,81 @@ th,td{
         min-height: calc(100vh - 220px);
     }
 }
+
+
+/* Ajuste final cabecera participante:
+   - Bloque fijo arriba, no se mueve al hacer scroll.
+   - "PARTICIPANTE" centrado.
+   - Oculta "Vista de corredor integrada".
+   - No toca lógica ni app.js. */
+#militopoParticipantOnlyShell .participant-only-topbar {
+    position: fixed !important;
+    top: max(10px, env(safe-area-inset-top)) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 99999 !important;
+    width: min(92vw, 640px) !important;
+    margin: 0 !important;
+    display: block !important;
+    text-align: center !important;
+    pointer-events: none !important;
+}
+
+#militopoParticipantOnlyShell .participant-only-topbar > div {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+}
+
+#militopoParticipantOnlyShell .participant-only-topbar strong {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 auto !important;
+    text-align: center !important;
+    white-space: normal !important;
+    transform: none !important;
+}
+
+#militopoParticipantOnlyShell .participant-only-topbar small {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+#militopoParticipantOnlyShell #militopoBackToAccessBtn,
+#militopoParticipantOnlyShell .participant-only-topbar button {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+/* Dejamos hueco real arriba para que el contenido no quede debajo del bloque fijo */
+#militopoParticipantOnlyContent {
+    padding-top: 330px !important;
+}
+
+#militopoParticipantOnlyShell .participant-integrated-frame {
+    min-height: calc(100vh - 330px) !important;
+}
+
+@media (max-width: 640px) {
+    #militopoParticipantOnlyShell .participant-only-topbar {
+        width: calc(100vw - 28px) !important;
+        top: max(8px, env(safe-area-inset-top)) !important;
+    }
+
+    #militopoParticipantOnlyContent {
+        padding-top: 295px !important;
+    }
+
+    #militopoParticipantOnlyShell .participant-integrated-frame {
+        min-height: calc(100vh - 295px) !important;
+    }
+}
