@@ -1889,3 +1889,28 @@ th,td{
         min-height: calc(100vh - 238px) !important;
     }
 }
+
+
+/* Participante: todos los bloques se deslizan juntos.
+   La cabecera ya no queda fija y el iframe se estira para evitar scroll interno. */
+#militopoParticipantOnlyShell .participant-only-topbar {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    z-index: 1 !important;
+}
+
+#militopoParticipantOnlyShell {
+    overflow-y: auto !important;
+}
+
+#militopoParticipantOnlyContent {
+    padding-top: 0 !important;
+    overflow: visible !important;
+}
+
+#militopoParticipantOnlyShell .participant-integrated-frame {
+    overflow: hidden !important;
+    height: auto;
+}

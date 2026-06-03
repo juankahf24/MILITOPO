@@ -8655,26 +8655,51 @@ downloadClassificationExcel=async function(){
             // cuando el iframe termina de cargar.
             const autoPid = String((participantPack && participantPack.pid) || eventData.webParticipantId || (eventData.routes && eventData.routes[0] && eventData.routes[0].participantId) || "");
             const autoRouteId = String((eventData.routes && eventData.routes[0] && eventData.routes[0].routeId) || "");
+            iframe.setAttribute("scrolling","no");
+            iframe.style.overflow = "hidden";
+
+            function resizeParticipantFrame(){
+                try{
+                    const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+                    if(!doc) return;
+                    const body = doc.body;
+                    const root = doc.documentElement;
+                    const h = Math.max(
+                        body ? body.scrollHeight : 0,
+                        root ? root.scrollHeight : 0,
+                        body ? body.offsetHeight : 0,
+                        root ? root.offsetHeight : 0,
+                        900
+                    );
+                    iframe.style.height = (h + 24) + "px";
+                    iframe.style.minHeight = (h + 24) + "px";
+                }catch(e){}
+            }
+
             iframe.onload = ()=>{
                 const forceLoad = ()=>{
                     try{
                         const w = iframe.contentWindow;
                         if(!w || typeof w.loadParticipant !== "function") return false;
                         w.loadParticipant({id:autoPid,routeId:autoRouteId,eventData:eventData});
+                        resizeParticipantFrame();
                         return true;
                     }catch(e){
                         console.warn("No se pudo forzar carga directa del participante", e);
                         return false;
                     }
                 };
-                if(forceLoad()) return;
-                setTimeout(forceLoad, 250);
-                setTimeout(forceLoad, 800);
-                setTimeout(forceLoad, 1500);
+                forceLoad();
+                setTimeout(()=>{forceLoad();resizeParticipantFrame();}, 250);
+                setTimeout(()=>{forceLoad();resizeParticipantFrame();}, 800);
+                setTimeout(()=>{forceLoad();resizeParticipantFrame();}, 1500);
+                setTimeout(resizeParticipantFrame, 2500);
             };
 
             iframe.srcdoc = participantOfflineAppHtml(eventData);
             content.appendChild(iframe);
+            setTimeout(resizeParticipantFrame, 1000);
+            setTimeout(resizeParticipantFrame, 2500);
         }catch(err){
             console.error(err);
             content.innerHTML = `<div class="participant-empty-card">
