@@ -1612,3 +1612,58 @@ th,td{
 #militopoParticipantOnlyContent {
     width: 100% !important;
 }
+
+
+/* Corrección: mantener cabecera MILITOPO PARTICIPANTE fija arriba.
+   Se oculta solo el botón "Cambiar acceso", no el logo/título. */
+#militopoParticipantOnlyShell .participant-only-topbar {
+    display: flex !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: 72px !important;
+    padding: 12px 14px !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 9999 !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    background: linear-gradient(180deg, rgba(18,31,15,.96), rgba(18,31,15,.88)) !important;
+    border-bottom: 1px solid rgba(240,193,106,.35) !important;
+    backdrop-filter: blur(8px);
+}
+
+#militopoParticipantOnlyShell .participant-only-topbar > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+}
+
+#militopoParticipantOnlyShell .participant-only-topbar strong {
+    display: block !important;
+    color: #f0c16a !important;
+    letter-spacing: 1.8px !important;
+    font-weight: 900 !important;
+    line-height: 1.05 !important;
+}
+
+#militopoParticipantOnlyShell .participant-only-topbar small {
+    display: block !important;
+    color: #f5e6c8 !important;
+    opacity: .9 !important;
+    margin-top: 3px !important;
+}
+
+#militopoParticipantOnlyShell #militopoBackToAccessBtn {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+#militopoParticipantOnlyShell {
+    padding-top: 0 !important;
+}
