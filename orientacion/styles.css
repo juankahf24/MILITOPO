@@ -1590,3 +1590,25 @@ th,td{
     max-height: 0 !important;
     overflow: hidden !important;
 }
+
+
+/* Participante limpio: ocultar barra superior de cambio de acceso/rama.
+   No elimina lógica ni datos; solo quita visualmente la barra para que el corredor vea la vista simple. */
+#militopoParticipantOnlyShell .participant-only-topbar {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+}
+
+#militopoParticipantOnlyShell {
+    padding-top: 0 !important;
+}
+
+#militopoParticipantOnlyContent {
+    width: 100% !important;
+}
