@@ -6896,6 +6896,7 @@ function allControlsPlanHtml(){
         .replace(/Recorrido: GENERAL \/ TODAS_BALIZAS/g, "Plano general: todas las balizas")
         .replace(/const segs=\[\];[\s\S]*?lines\.innerHTML=segs\.join\(''\);/, "lines.innerHTML='';")
         .replace(/\+p\.markerOrder\+/g, "+p.id+")
+        .replace(/font-size="23" font-weight="900"/g, "font-size=\"17\" font-weight=\"700\"")
         .replace(/Fondo común del evento · escala fija correcta/g, "Plano general de todas las balizas · escala fija correcta")
         .replace("</style>", overflowCss+"</style>");
 
