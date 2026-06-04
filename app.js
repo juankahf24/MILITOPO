@@ -2178,6 +2178,179 @@ let MODULOS = 8;
     /* ZIP SUCCESS CELEBRATION JS END */
 
 
+    /* ZIP GENERATION PROGRESS MODAL JS START */
+    function ensureZipProgressStyles() {
+        if (document.getElementById('zipProgressStyles')) return;
+        const style = document.createElement('style');
+        style.id = 'zipProgressStyles';
+        style.textContent = `
+            .zip-progress-overlay {
+                position: fixed;
+                inset: 0;
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 18px;
+                pointer-events: none;
+                background: rgba(10, 18, 12, 0.10);
+                backdrop-filter: blur(2px);
+                -webkit-backdrop-filter: blur(2px);
+            }
+            .zip-progress-card {
+                width: min(560px, 94vw);
+                border-radius: 28px;
+                border: 2px solid rgba(246, 210, 137, 0.50);
+                background: linear-gradient(145deg, rgba(32, 58, 32, 0.97), rgba(17, 34, 22, 0.98));
+                box-shadow: 0 28px 70px rgba(0,0,0,.40), inset 0 1px 0 rgba(255,255,255,.10);
+                padding: 24px 22px 22px;
+                color: #fff3d6;
+                text-align: center;
+                overflow: hidden;
+                position: relative;
+            }
+            .zip-progress-card::before {
+                content: "";
+                position: absolute;
+                inset: -45%;
+                background: repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 10px, transparent 10px 22px);
+                animation: zipProgressMove 10s linear infinite;
+                opacity: .45;
+                pointer-events: none;
+            }
+            .zip-progress-content { position: relative; z-index: 1; }
+            .zip-progress-icon {
+                width: 74px;
+                height: 74px;
+                margin: 0 auto 12px;
+                border-radius: 22px;
+                display: grid;
+                place-items: center;
+                background: linear-gradient(180deg, #ffd778, #d99437);
+                box-shadow: 0 12px 26px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.35);
+                font-size: 36px;
+                animation: zipPulse 1.35s ease-in-out infinite;
+            }
+            .zip-progress-title {
+                font-family: inherit;
+                font-weight: 900;
+                letter-spacing: .08em;
+                text-transform: uppercase;
+                font-size: clamp(1.15rem, 4.4vw, 1.85rem);
+                margin: 6px 0 8px;
+                text-shadow: 0 3px 0 rgba(0,0,0,.24);
+            }
+            .zip-progress-msg {
+                min-height: 2.5em;
+                font-size: clamp(.92rem, 3.4vw, 1.05rem);
+                line-height: 1.35;
+                color: rgba(255, 243, 214, .90);
+                margin: 0 auto 18px;
+                max-width: 440px;
+            }
+            .zip-progress-track {
+                height: 24px;
+                border-radius: 999px;
+                padding: 4px;
+                background: rgba(5, 15, 8, .62);
+                border: 1px solid rgba(246, 210, 137, .42);
+                box-shadow: inset 0 2px 10px rgba(0,0,0,.38);
+                overflow: hidden;
+            }
+            .zip-progress-fill {
+                height: 100%;
+                width: 0%;
+                border-radius: 999px;
+                background: linear-gradient(90deg, #89d66c, #ffd36a, #f3a33a);
+                box-shadow: 0 0 18px rgba(255,211,106,.35);
+                transition: width .65s cubic-bezier(.22,.9,.25,1);
+                position: relative;
+                overflow: hidden;
+            }
+            .zip-progress-fill::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,.42), transparent);
+                transform: translateX(-100%);
+                animation: zipShine 1.2s linear infinite;
+            }
+            .zip-progress-percent {
+                font-size: clamp(1.35rem, 6vw, 2rem);
+                font-weight: 900;
+                margin-top: 12px;
+                color: #ffd777;
+                text-shadow: 0 2px 0 rgba(0,0,0,.28);
+            }
+            .zip-progress-hint {
+                margin-top: 10px;
+                font-size: .86rem;
+                color: rgba(255, 243, 214, .72);
+            }
+            .zip-progress-overlay.done .zip-progress-icon { animation: none; }
+            .zip-progress-overlay.error .zip-progress-card { border-color: rgba(255, 122, 94, .70); }
+            .zip-progress-overlay.error .zip-progress-fill { background: linear-gradient(90deg, #d94f45, #ff9b6a); }
+            @keyframes zipProgressMove { from { transform: translate3d(0,0,0); } to { transform: translate3d(90px,90px,0); } }
+            @keyframes zipPulse { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-3px) scale(1.045); } }
+            @keyframes zipShine { to { transform: translateX(100%); } }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function openZipProgressOverlay() {
+        ensureZipProgressStyles();
+        document.querySelectorAll('.zip-progress-overlay').forEach(el => el.remove());
+        const overlay = document.createElement('div');
+        overlay.className = 'zip-progress-overlay';
+        overlay.id = 'zipProgressOverlay';
+        overlay.setAttribute('role', 'status');
+        overlay.setAttribute('aria-live', 'polite');
+        overlay.innerHTML = `
+            <div class="zip-progress-card">
+                <div class="zip-progress-content">
+                    <div class="zip-progress-icon">📦</div>
+                    <div class="zip-progress-title">Generando ZIP</div>
+                    <div class="zip-progress-msg" id="zipProgressMsg">Preparando archivos para descargar...</div>
+                    <div class="zip-progress-track"><div class="zip-progress-fill" id="zipProgressFill"></div></div>
+                    <div class="zip-progress-percent" id="zipProgressPercent">0%</div>
+                    <div class="zip-progress-hint">No pulses otra vez. La descarga empezará automáticamente al llegar al 100%.</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        updateZipProgressOverlay(1, 'Preparando archivos para descargar...');
+    }
+
+    function updateZipProgressOverlay(percent, msg) {
+        const overlay = document.getElementById('zipProgressOverlay');
+        if (!overlay) return;
+        const cleanPercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)));
+        const fill = document.getElementById('zipProgressFill');
+        const label = document.getElementById('zipProgressPercent');
+        const text = document.getElementById('zipProgressMsg');
+        if (fill) fill.style.width = `${cleanPercent}%`;
+        if (label) label.textContent = `${cleanPercent}%`;
+        if (text && msg) text.textContent = msg;
+    }
+
+    function completeZipProgressOverlay() {
+        const overlay = document.getElementById('zipProgressOverlay');
+        if (!overlay) return;
+        overlay.classList.add('done');
+        updateZipProgressOverlay(100, 'ZIP listo. Iniciando descarga automáticamente...');
+        setTimeout(() => overlay.remove(), 2600);
+    }
+
+    function failZipProgressOverlay(message) {
+        const overlay = document.getElementById('zipProgressOverlay');
+        if (!overlay) return;
+        overlay.classList.add('error');
+        updateZipProgressOverlay(100, `Error al generar el ZIP: ${message || 'revisa los datos e inténtalo de nuevo.'}`);
+        setTimeout(() => overlay.remove(), 4200);
+    }
+    /* ZIP GENERATION PROGRESS MODAL JS END */
+
+
 
     function normalizarCabeceraClasificacion(value) {
         return String(value ?? "")
@@ -2491,11 +2664,17 @@ let MODULOS = 8;
         if (!v.ok) throw new Error(`Faltan ${v.faltantes.length} puntos por completar o coordenadas inválidas`);
         let tipo = currentCoordType;
 
+        openZipProgressOverlay();
+
         const divRes = document.getElementById("resultadosGen");
         divRes.innerHTML = `<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div><div id="progressMsg" style="font-family:monospace; font-size:0.8rem; margin-top:8px;">Iniciando...</div>`;
         const progressFill = divRes.querySelector('.progress-fill');
         const progressMsg = document.getElementById("progressMsg");
-        function setProgress(percent, msg) { progressFill.style.width = `${percent}%`; progressMsg.innerText = msg; }
+        function setProgress(percent, msg) {
+            progressFill.style.width = `${percent}%`;
+            progressMsg.innerText = msg;
+            updateZipProgressOverlay(percent, msg);
+        }
 
         setProgress(5, "Usando los últimos recorridos calculados en el paso 3...");
         let recorridos = getRoutesForZip(num);
@@ -2634,7 +2813,8 @@ let MODULOS = 8;
         setProgress(95, "Comprimiendo archivos...");
         let content = await zip.generateAsync({ type: "blob" });
         saveAs(content, `MILITOPO_${MODULOS}mod_${PUNTOS_POR_MODULO}puntos_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.zip`);
-        setProgress(100, "¡Completado!");
+        setProgress(100, "ZIP listo. Iniciando descarga automáticamente...");
+        completeZipProgressOverlay();
         document.getElementById("zipNotification").innerHTML = `<div class="alert alert-success">✅ ZIP descargado correctamente. MILITOPO ha completado la misión.</div>`;
         launchZipSuccessCelebration();
         setTimeout(() => { divRes.innerHTML = ""; }, 3000);
@@ -4509,11 +4689,12 @@ function openMapModal() {
         document.getElementById("generarBtn")?.addEventListener("click", async () => {
             let btn = document.getElementById("generarBtn");
             btn.disabled = true;
-            btn.textContent = "⏳ Generando...";
+            btn.textContent = "📦 GENERANDO ZIP...";
             document.getElementById("zipNotification").innerHTML = "";
             try {
                 await generarTodo();
             } catch (err) {
+                failZipProgressOverlay(err && err.message ? err.message : String(err));
                 document.getElementById("resultadosGen").innerHTML = `<div class="alert alert-error">❌ Error: ${err.message}</div>`;
             } finally {
                 btn.disabled = false;
