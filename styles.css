@@ -6802,3 +6802,171 @@ body {
     z-index: 999999 !important;
     transform: translate(-7px, -16px) scale(1.14) !important;
 }
+
+
+/* =========================================================
+   AJUSTE VISIBILIDAD · FUENTE MÁS GRANDE EN TODA LA APP
+   - Aumenta tamaño general de textos, botones, inputs y tablas.
+   - Pensado para móvil/iPhone: lectura más cómoda sin cambiar estructura.
+   ========================================================= */
+
+html{
+    font-size: 17.5px !important;
+    -webkit-text-size-adjust: 115% !important;
+    text-size-adjust: 115% !important;
+}
+
+body{
+    font-size: 1.04rem !important;
+    line-height: 1.42 !important;
+}
+
+/* Todo el texto interactivo se agranda y gana legibilidad */
+button,
+.btn,
+input,
+select,
+textarea,
+label,
+.pill,
+.badge,
+.step-tab,
+.chip,
+.route-chip,
+.tab,
+.nav-btn,
+.branch-btn,
+.action-btn{
+    font-size: 1.04rem !important;
+    line-height: 1.28 !important;
+}
+
+/* Botones más cómodos al dedo y más visibles */
+button,
+.btn,
+.action-btn,
+.nav-btn,
+.branch-btn{
+    min-height: 48px !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+    font-weight: 900 !important;
+}
+
+/* Textos secundarios que antes se veían pequeños */
+small,
+.help,
+.hint,
+.muted,
+.note,
+.footer,
+.footer-note,
+.status,
+.card p,
+.block p,
+.hero p,
+.restore-status,
+.zip-progress-meta{
+    font-size: .98rem !important;
+    line-height: 1.42 !important;
+}
+
+/* Títulos y cabeceras más claros */
+h1{
+    font-size: clamp(2.2rem, 9vw, 4.2rem) !important;
+    line-height: 1.05 !important;
+}
+h2{
+    font-size: clamp(1.45rem, 5.8vw, 2.35rem) !important;
+    line-height: 1.14 !important;
+}
+h3,
+.card-title,
+.section-title,
+.route-title{
+    font-size: clamp(1.16rem, 4.6vw, 1.55rem) !important;
+    line-height: 1.18 !important;
+}
+
+/* Tarjetas, bloques y métricas */
+.card,
+.block,
+.panel,
+.metric-card{
+    font-size: 1.03rem !important;
+}
+
+.metric-card small{
+    font-size: .88rem !important;
+}
+.metric-card strong{
+    font-size: clamp(1.65rem, 6.2vw, 2.55rem) !important;
+}
+
+/* Tablas más legibles */
+table,
+.results-table,
+.results-table th,
+.results-table td{
+    font-size: .98rem !important;
+    line-height: 1.32 !important;
+}
+th,
+td{
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+}
+
+/* Inputs/selects: mejor lectura en móvil */
+input,
+select,
+textarea{
+    min-height: 48px !important;
+}
+
+/* Modal/loader generación recorridos también más grande */
+.route-generation-title,
+.zip-progress-title{
+    font-size: 1.32rem !important;
+}
+.route-generation-text{
+    font-size: 1.04rem !important;
+    line-height: 1.42 !important;
+}
+.route-generation-percent{
+    font-size: 1.18rem !important;
+}
+
+/* En pantallas pequeñas subimos otro punto la base */
+@media (max-width: 520px){
+    html{
+        font-size: 18.5px !important;
+    }
+    body{
+        font-size: 1.05rem !important;
+    }
+    button,
+    .btn,
+    input,
+    select,
+    textarea,
+    label,
+    .step-tab,
+    .chip,
+    .route-chip{
+        font-size: 1.06rem !important;
+    }
+    small,
+    .help,
+    .hint,
+    .muted,
+    .note,
+    .footer,
+    .footer-note,
+    .status,
+    .card p,
+    .block p,
+    .hero p{
+        font-size: 1rem !important;
+    }
+}
