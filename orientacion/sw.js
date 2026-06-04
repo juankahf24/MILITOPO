@@ -66,3 +66,5 @@ self.addEventListener("fetch", event => {
     }
   })());
 });
+
+// cache bump: sin-password-organizador

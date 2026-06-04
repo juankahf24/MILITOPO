@@ -8826,7 +8826,7 @@ downloadClassificationExcel=async function(){
         const gate = gateEl();
         if(!gate) return;
 
-        document.getElementById("militopoOrganizerAccessBtn")?.addEventListener("click", showPasswordPanel);
+        document.getElementById("militopoOrganizerAccessBtn")?.addEventListener("click", showOrganizer);
         document.getElementById("militopoParticipantAccessBtn")?.addEventListener("click", showParticipant);
         document.getElementById("militopoPasswordEnterBtn")?.addEventListener("click", checkOrganizerPassword);
         document.getElementById("militopoPasswordCancelBtn")?.addEventListener("click", showGate);
@@ -8855,7 +8855,7 @@ downloadClassificationExcel=async function(){
 
         if(mode === "participante"){
             showParticipant();
-        }else if(mode === "organizador" && unlocked){
+        }else if(mode === "organizador"){
             showOrganizer();
         }else{
             showGate();
