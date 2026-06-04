@@ -1699,11 +1699,12 @@ let MODULOS = 8;
         }
     }
 
-    async function fetchElevationBatchReal(batch, timeoutMs = 12000) {
+    async function fetchElevationBatchReal(batch, timeoutMs = 16000) {
         const latitudes = batch.map(c => Number(c.lat).toFixed(6)).join(",");
         const longitudes = batch.map(c => Number(c.lon).toFixed(6)).join(",");
+        const locs = batch.map(c => `${Number(c.lat).toFixed(6)},${Number(c.lon).toFixed(6)}`).join("|");
 
-        // 1) Servicio principal: Open-Meteo Elevation.
+        // 1) Servicio principal real: Open-Meteo Elevation.
         const om = await fetchJsonWithTimeout(`https://api.open-meteo.com/v1/elevation?latitude=${encodeURIComponent(latitudes)}&longitude=${encodeURIComponent(longitudes)}`, timeoutMs);
         if (om && Array.isArray(om.elevation) && om.elevation.length >= batch.length) {
             const arr = om.elevation.slice(0, batch.length).map(Number);
@@ -1711,7 +1712,6 @@ let MODULOS = 8;
         }
 
         // 2) Respaldo real: OpenTopoData SRTM 30 m.
-        const locs = batch.map(c => `${Number(c.lat).toFixed(6)},${Number(c.lon).toFixed(6)}`).join("|");
         const srtm = await fetchJsonWithTimeout(`https://api.opentopodata.org/v1/srtm30m?locations=${encodeURIComponent(locs)}`, timeoutMs);
         if (srtm && Array.isArray(srtm.results) && srtm.results.length >= batch.length) {
             const arr = srtm.results.slice(0, batch.length).map(r => Number(r && r.elevation));
@@ -1725,22 +1725,32 @@ let MODULOS = 8;
             if (arr.every(Number.isFinite)) return arr;
         }
 
+        // 4) Respaldo real alternativo: Open-Elevation.
+        const oe = await fetchJsonWithTimeout(`https://api.open-elevation.com/api/v1/lookup?locations=${encodeURIComponent(locs)}`, timeoutMs);
+        if (oe && Array.isArray(oe.results) && oe.results.length >= batch.length) {
+            const arr = oe.results.slice(0, batch.length).map(r => Number(r && r.elevation));
+            if (arr.every(Number.isFinite)) return arr;
+        }
+
         return null;
     }
 
     async function fetchElevationsForResults(coords) {
         if (!Array.isArray(coords) || coords.length === 0) return [];
+
+        // MODO ESTRICTO: no se inventa desnivel, no se usa 0 y no se continúa con cotas nulas.
+        // Si las APIs reales no devuelven todas las cotas, se para y se avisa para evitar resultados falsos.
         const batchSize = 20;
         const all = [];
         for (let i = 0; i < coords.length; i += batchSize) {
             const batch = coords.slice(i, i + batchSize);
             let elevs = null;
             for (let attempt = 0; attempt < 4 && !Array.isArray(elevs); attempt++) {
-                elevs = await fetchElevationBatchReal(batch, 14000);
-                if (!Array.isArray(elevs)) await topoSleep(450);
+                elevs = await fetchElevationBatchReal(batch, 16000);
+                if (!Array.isArray(elevs)) await new Promise(r => setTimeout(r, 650));
             }
-            if (!Array.isArray(elevs) || elevs.length !== batch.length) {
-                throw new Error("No se pudo leer el desnivel real. Revisa conexión y vuelve a generar; no se usará desnivel inventado.");
+            if (!Array.isArray(elevs) || elevs.length !== batch.length || !elevs.every(e => Number.isFinite(Number(e)))) {
+                throw new Error("No se pudo leer desnivel real de todos los puntos. Revisa conexión o vuelve a generar con internet estable.");
             }
             all.push(...elevs.map(e => Math.round(Number(e))));
         }
@@ -1926,9 +1936,9 @@ let MODULOS = 8;
                     : `<div class="alert alert-success"><strong>Sin avisos:</strong> los recorridos salen equilibrados dentro de los márgenes previstos.</div>`;
             }
         } catch (err) {
-            console.warn("MILITOPO: resumen técnico no disponible, se continúa sin bloquear el paso 3:", err);
-            box.innerHTML = `<div class="tech-item"><div class="k">Recorridos</div><div class="v">Listos</div></div>`;
-            avisosBox.innerHTML = `<div class="alert alert-success">✅ Puedes continuar: el resumen técnico no se ha podido calcular, pero los recorridos no quedan bloqueados.</div>`;
+            console.warn("MILITOPO: desnivel real no disponible:", err);
+            box.innerHTML = `<div class="tech-item"><div class="k">ERROR</div><div class="v">Desnivel real no leído</div></div>`;
+            avisosBox.innerHTML = `<div class="alert alert-error">❌ No continúes: no se ha podido leer el desnivel real de todos los puntos. Comprueba conexión y pulsa regenerar.</div>`;
         }
     }
 
