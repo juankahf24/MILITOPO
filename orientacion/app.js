@@ -6453,7 +6453,6 @@ function renderIofDescriptionsEditor(){
 
             </div>
             <div id="iofPreview_${id}" class="iof-preview">${iofPreviewCells(id)}</div>
-            <div id="iofGManualSvgEditor" class="status warn" style="display:none;margin-top:12px;"></div>
         </div>
     </div>`;
 
@@ -6467,8 +6466,7 @@ function iofSelectHtml(id,field,label,value){
     }).join("");
     const cSvg=`<svg class="iof-c-letter-svg" viewBox="0 0 28 28" aria-label="C" role="img"><path d="M19.2 7.7C17.9 6.6 16.2 6 14.3 6C10.4 6 7.7 9.2 7.7 14C7.7 18.8 10.4 22 14.3 22C16.3 22 18 21.4 19.3 20.3" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>`;
     const labelHtml=field==="c"?`<label class="iof-c-label-fixed">${cSvg}<span class="iof-c-dot">·</span><span>SIMILAR</span></label>`:`<label>${escapeHtml(label)}</label>`;
-    const gEditButton=field==="g"?`<button type="button" class="btn secondary" style="margin-top:7px;width:100%;font-size:.78rem;padding:8px 10px;" onclick="openIofGManualSvgEditor('${id}')">✏️ EDITAR SVG G</button>`:"";
-    return `<div>${labelHtml}<select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select>${gEditButton}</div>`;
+    return `<div>${labelHtml}<select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select></div>`;
 }
 
 
