@@ -1914,3 +1914,17 @@ th,td{
     overflow: hidden !important;
     height: auto;
 }
+
+
+/* FIX · Loader de generación sin fondo oscuro
+   Deja visible la página exactamente como está y muestra solo la ventana de progreso. */
+.route-generation-loader{
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+.route-generation-loader::before,
+.route-generation-loader::after{
+    display: none !important;
+    content: none !important;
+}
