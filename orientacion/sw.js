@@ -70,5 +70,3 @@ self.addEventListener("fetch", event => {
 // cache bump: sin-password-organizador
 
 // cache bump: loader-generacion-sin-fondo-oscuro
-
-// cache bump: fuente-mas-grande-visible
