@@ -1681,21 +1681,68 @@ let MODULOS = 8;
         return (totalMeters / 1000).toFixed(3);
     }
 
+    function topoSleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+    async function fetchJsonWithTimeout(url, timeoutMs = 12000) {
+        if (!window.fetch) return null;
+        const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        let timer = null;
+        try {
+            if (controller) timer = setTimeout(() => controller.abort(), timeoutMs);
+            const res = await fetch(url, controller ? { signal: controller.signal, cache: "no-store" } : { cache: "no-store" });
+            if (timer) clearTimeout(timer);
+            if (!res || !res.ok) return null;
+            return await res.json();
+        } catch (e) {
+            if (timer) clearTimeout(timer);
+            return null;
+        }
+    }
+
+    async function fetchElevationBatchReal(batch, timeoutMs = 12000) {
+        const latitudes = batch.map(c => Number(c.lat).toFixed(6)).join(",");
+        const longitudes = batch.map(c => Number(c.lon).toFixed(6)).join(",");
+
+        // 1) Servicio principal: Open-Meteo Elevation.
+        const om = await fetchJsonWithTimeout(`https://api.open-meteo.com/v1/elevation?latitude=${encodeURIComponent(latitudes)}&longitude=${encodeURIComponent(longitudes)}`, timeoutMs);
+        if (om && Array.isArray(om.elevation) && om.elevation.length >= batch.length) {
+            const arr = om.elevation.slice(0, batch.length).map(Number);
+            if (arr.every(Number.isFinite)) return arr;
+        }
+
+        // 2) Respaldo real: OpenTopoData SRTM 30 m.
+        const locs = batch.map(c => `${Number(c.lat).toFixed(6)},${Number(c.lon).toFixed(6)}`).join("|");
+        const srtm = await fetchJsonWithTimeout(`https://api.opentopodata.org/v1/srtm30m?locations=${encodeURIComponent(locs)}`, timeoutMs);
+        if (srtm && Array.isArray(srtm.results) && srtm.results.length >= batch.length) {
+            const arr = srtm.results.slice(0, batch.length).map(r => Number(r && r.elevation));
+            if (arr.every(Number.isFinite)) return arr;
+        }
+
+        // 3) Respaldo real alternativo: ASTER 30 m.
+        const aster = await fetchJsonWithTimeout(`https://api.opentopodata.org/v1/aster30m?locations=${encodeURIComponent(locs)}`, timeoutMs);
+        if (aster && Array.isArray(aster.results) && aster.results.length >= batch.length) {
+            const arr = aster.results.slice(0, batch.length).map(r => Number(r && r.elevation));
+            if (arr.every(Number.isFinite)) return arr;
+        }
+
+        return null;
+    }
+
     async function fetchElevationsForResults(coords) {
         if (!Array.isArray(coords) || coords.length === 0) return [];
-        const batchSize = 100;
+        const batchSize = 20;
         const all = [];
         for (let i = 0; i < coords.length; i += batchSize) {
             const batch = coords.slice(i, i + batchSize);
-            const latitudes = batch.map(c => c.lat.toFixed(6)).join(",");
-            const longitudes = batch.map(c => c.lon.toFixed(6)).join(",");
-            const url = `https://api.open-meteo.com/v1/elevation?latitude=${encodeURIComponent(latitudes)}&longitude=${encodeURIComponent(longitudes)}`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error("No se pudo consultar la elevación.");
-            const json = await res.json();
-            if (!json || !Array.isArray(json.elevation)) throw new Error("Respuesta de elevación no válida.");
-            if (json.elevation.length !== batch.length) throw new Error("La API de elevación devolvió un número inesperado de resultados.");
-            all.push(...json.elevation);
+            let elevs = null;
+            for (let attempt = 0; attempt < 4 && !Array.isArray(elevs); attempt++) {
+                elevs = await fetchElevationBatchReal(batch, 14000);
+                if (!Array.isArray(elevs)) await topoSleep(450);
+            }
+            if (!Array.isArray(elevs) || elevs.length !== batch.length) {
+                throw new Error("No se pudo leer el desnivel real. Revisa conexión y vuelve a generar; no se usará desnivel inventado.");
+            }
+            all.push(...elevs.map(e => Math.round(Number(e))));
         }
         return all;
     }
@@ -1873,11 +1920,15 @@ let MODULOS = 8;
             if (resumen.raros.length) {
                 avisosBox.innerHTML = `<div class="alert alert-error"><strong>⚠️ Aviso:</strong> recorridos raros en distancia o desnivel: ${resumen.raros.slice(0,6).join(" · ")}${resumen.raros.length > 6 ? " ..." : ""}</div>`;
             } else {
-                avisosBox.innerHTML = `<div class="alert alert-success"><strong>Sin avisos:</strong> los recorridos salen equilibrados dentro de los márgenes previstos.</div>`;
+                const sinDesnivel = (resumen.metricas || []).every(m => !Number(m.desnivelPositivo) && !Number(m.desnivelNegativo) && !Number(m.desnivelGlobal));
+                avisosBox.innerHTML = sinDesnivel
+                    ? `<div class="alert alert-success"><strong>Recorridos generados:</strong> la elevación externa no está disponible ahora, pero la generación sigue funcionando.</div>`
+                    : `<div class="alert alert-success"><strong>Sin avisos:</strong> los recorridos salen equilibrados dentro de los márgenes previstos.</div>`;
             }
         } catch (err) {
-            box.innerHTML = `<div class="tech-item"><div class="k">Error</div><div class="v">--</div></div>`;
-            avisosBox.innerHTML = `<div class="alert alert-error">❌ No se pudo calcular el resumen técnico: ${err.message}</div>`;
+            console.warn("MILITOPO: resumen técnico no disponible, se continúa sin bloquear el paso 3:", err);
+            box.innerHTML = `<div class="tech-item"><div class="k">Recorridos</div><div class="v">Listos</div></div>`;
+            avisosBox.innerHTML = `<div class="alert alert-success">✅ Puedes continuar: el resumen técnico no se ha podido calcular, pero los recorridos no quedan bloqueados.</div>`;
         }
     }
 
