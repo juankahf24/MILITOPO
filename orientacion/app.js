@@ -710,13 +710,20 @@ async function fetchElevationChunk(points, timeoutMs=7000){
         if(arr.some(e=>Number.isFinite(Number(e))))return arr;
     }
 
+    // 4) Respaldo real alternativo: Open-Elevation.
+    const oe=await fetchJsonWithTimeout(`https://api.open-elevation.com/api/v1/lookup?locations=${encodeURIComponent(locs)}`,timeoutMs);
+    if(oe && Array.isArray(oe.results) && oe.results.length>=points.length){
+        const arr=oe.results.slice(0,points.length).map(r=>r&&r.elevation);
+        if(arr.every(e=>Number.isFinite(Number(e))))return arr;
+    }
+
     return null;
 }
 
 async function prepareElevationsForRoutes(){
     const pts=Object.values(state.points).filter(p=>p.lat!==null&&p.lon!==null);
 
-    // Recalcular siempre para evitar cotas antiguas/falsas guardadas.
+    // MODO ESTRICTO: recalcular siempre y aceptar solo cotas reales.
     pts.forEach(p=>{p.elevation=null;p.elevationReal=false;});
 
     const chunkSize=20;
@@ -726,53 +733,29 @@ async function prepareElevationsForRoutes(){
     for(let i=0;i<pts.length;i+=chunkSize){
         const chunk=pts.slice(i,i+chunkSize);
         let elevs=null;
-
-        // Varios intentos para que al pasar del paso 2 al 3 calcule bien aunque tarde más.
-        for(let attempt=0;attempt<3 && !Array.isArray(elevs);attempt++){
-            elevs=await fetchElevationChunk(chunk,8500);
-            if(!Array.isArray(elevs)) await routeSleep(450);
+        for(let attempt=0;attempt<4 && !Array.isArray(elevs);attempt++){
+            elevs=await fetchElevationChunk(chunk,16000);
+            if(!Array.isArray(elevs)) await routeSleep(650);
         }
-
-        if(Array.isArray(elevs)){
-            chunk.forEach((p,j)=>{
-                const e=Number(elevs[j]);
-                if(Number.isFinite(e)){
-                    realValues.set(p.id,Math.round(e));
-                    realCount++;
-                }
-            });
+        if(!Array.isArray(elevs) || elevs.length<chunk.length || !elevs.slice(0,chunk.length).every(e=>Number.isFinite(Number(e)))){
+            state.elevationSource="error";
+            saveState();
+            throw new Error("No se pudo leer desnivel real de todos los puntos. Revisa conexión o vuelve a generar con internet estable.");
         }
-    }
-
-    if(realCount>0){
-        pts.forEach(p=>{
-            if(realValues.has(p.id)){
-                p.elevation=realValues.get(p.id);
-                p.elevationReal=true;
-            }else{
-                // Si falta alguna cota, se estima con la media de las reales cercanas
-                // para no mezclar saltos absurdos.
-                const realPts=pts.filter(q=>realValues.has(q.id));
-                if(realPts.length){
-                    let best=realPts[0],bestD=Infinity;
-                    realPts.forEach(q=>{
-                        const d=haversineKm(p,q);
-                        if(d<bestD){bestD=d;best=q;}
-                    });
-                    p.elevation=realValues.get(best.id);
-                }
-                p.elevationReal=false;
-            }
+        chunk.forEach((p,j)=>{
+            const e=Number(elevs[j]);
+            realValues.set(p.id,Math.round(e));
+            realCount++;
         });
-        state.elevationSource=realCount===pts.length?"real":"mixed";
-    }else{
-        // Último caso: no hubo ninguna API disponible. No saldrá 0, pero se marca como estimado.
-        pts.forEach(p=>{p.elevation=null;p.elevationReal=false;});
-        state.elevationSource="unavailable";
     }
 
+    pts.forEach(p=>{
+        p.elevation=realValues.get(p.id);
+        p.elevationReal=true;
+    });
+    state.elevationSource="real";
     saveState();
-    return {realCount,total:pts.length,source:state.elevationSource};
+    return {realCount,total:pts.length,source:"real"};
 }
 // ELEVATION REAL ROBUST END
 function getAvailableControls(){return Object.values(state.points).filter(p=>p.type==="BALIZA"&&p.lat!==null&&p.lon!==null)}
@@ -795,21 +778,22 @@ async function generateRoutes(silent=false){
 
     let elevationInfo={source:"unavailable",realCount:0,total:0};
     try{
-        elevationInfo=await Promise.race([
-            prepareElevationsForRoutes(),
-            new Promise(resolve=>setTimeout(()=>resolve({source:"unavailable",timeout:true,realCount:0,total:Object.values(state.points).filter(p=>p.lat!==null&&p.lon!==null).length}),45000))
-        ]);
+        elevationInfo=await prepareElevationsForRoutes();
     }catch(e){
         Object.values(state.points).filter(p=>p.lat!==null&&p.lon!==null).forEach(p=>{
-            if(pointNeedsElevation(p)) { p.elevation=null; p.elevationReal=false; }
+            p.elevation=null; p.elevationReal=false;
         });
-        elevationInfo={source:"unavailable",error:true};
+        summary.className="status err";
+        summary.textContent="No se pudo leer el desnivel real. Comprueba conexión y vuelve a generar.";
+        updateRouteGenerationLoader("Error leyendo desnivel real. No se generan recorridos falsos.",100);
+        await routeSleep(700);
+        hideRouteGenerationLoader();
+        toast("Desnivel real no disponible: no se generan recorridos falsos");
+        return false;
     }
 
-    summary.textContent=elevationInfo.source==="real"
-        ? "Desnivel real listo. Diseñando recorridos con trazado lógico..."
-        : (elevationInfo.source==="mixed" ? "Desnivel real parcial listo. Completando cotas con la cota real más cercana..." : "Consultando servicios reales de elevación...");
-    updateRouteGenerationLoader(elevationInfo.source==="real"?"Desnivel real listo. Diseñando trazados...":"Calculando cotas reales con servicios externos...",24);
+    summary.textContent="Desnivel real listo. Diseñando recorridos con trazado lógico...";
+    updateRouteGenerationLoader("Desnivel real listo. Diseñando trazados...",24);
     await routeSleep(60);
 
     const controls=getAvailableControls();
@@ -1012,12 +996,8 @@ async function generateRoutes(silent=false){
     }
 
     if(elevationInfo.source==="unavailable"){
-        document.getElementById("routeSummary").className="status err";
-        document.getElementById("routeSummary").textContent="No se pudo leer el desnivel real desde los servicios externos. Revisa conexión y vuelve a generar; no se usará desnivel inventado.";
-        hideRouteGenerationLoader();
-        return false;
-    }
-    if(elevationInfo.source!=="real"){
+        qualityWarnings.unshift("Desnivel real no disponible ahora: se generan los recorridos igualmente y el desnivel queda a 0/pendiente, sin bloquear la app.");
+    } else if(elevationInfo.source!=="real"){
         qualityWarnings.unshift("Desnivel real parcial: algunas cotas se completaron con la cota real más cercana para evitar ceros o datos inventados.");
     }
 
