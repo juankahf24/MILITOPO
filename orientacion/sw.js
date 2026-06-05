@@ -1,10 +1,15 @@
-/* MILITOPO · cache offline seguro v73 */
-const MILITOPO_CACHE = "militopo-root-offline-v73";
+/* MILITOPO · cache offline seguro v74 · orientación modular fase 2 */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v74";
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./js/app.js",
+  "./js/core/app-main.js",
+  "./js/pdf/pdf-professional.js",
+  "./js/results/results-v16.js",
+  "./js/results/results-classification-fix.js",
   "./css/styles.css",
+  "./js/vendor/qr.js",
   "./js/qr.js"
 ];
 
