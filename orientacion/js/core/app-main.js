@@ -6295,8 +6295,32 @@ function effectiveIofFValue(desc){
     if(d.combo)return fValueFromComboKey(d.combo);
     return "";
 }
+
+function normalizeIofFSymbolSvg(svg){
+    let s=String(svg||"").trim();
+    if(!s || !/^<svg[\s>]/i.test(s))return "";
+    const firstTagEnd=s.indexOf(">");
+    if(firstTagEnd<0)return s;
+    let first=s.slice(0,firstTagEnd);
+    const rest=s.slice(firstTagEnd);
+    if(!/\sclass=/i.test(first)){
+        first=first.replace(/^<svg/i,'<svg class="iof-combo-svg"');
+    }else if(!/iof-combo-svg/i.test(first)){
+        first=first.replace(/class=(["'])(.*?)\1/i,function(m,q,cls){return 'class='+q+'iof-combo-svg '+cls+q;});
+    }
+    if(!/\saria-hidden=/i.test(first))first+=' aria-hidden="true"';
+    return first+rest;
+}
+function getExternalIofFSymbolSvg(key){
+    const k=String(key||"");
+    const src=(window.MILITOPO_IOF_F_SYMBOLS||window.MILITOPO_IOF_F_SYMBOL_OVERRIDES||{});
+    return normalizeIofFSymbolSvg(src[k]||"");
+}
+
 function iofComboSymbolSvg(key){
     const k=String(key||"");
+    const externalSvg=getExternalIofFSymbolSvg(k);
+    if(externalSvg)return externalSvg;
     const base='class="iof-combo-svg" viewBox="0 0 500 500" aria-hidden="true"';
 
     /* MILITOPO 20260605 · símbolos de combinación F
