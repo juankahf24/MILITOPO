@@ -1,9 +1,10 @@
-/* MILITOPO · cache offline seguro v81 · curva F corregida */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v81-curva-f-corregida";
+/* MILITOPO · cache offline seguro v82 · símbolos F por archivo global */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v82-symbols-f-config";
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./js/app.js",
+  "./js/config/iof-symbols-f.js",
   "./js/core/app-main.js",
   "./js/pdf/pdf-professional.js",
   "./js/results/results-v16.js",
