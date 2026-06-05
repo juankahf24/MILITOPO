@@ -498,6 +498,43 @@ function renderPointsTable(){
     }))
 }
 
+
+
+/* MILITOPO FIX MAPANT 20260605
+   Define la capa MAPANT WMTS correctamente. En la versión anterior se llamó a
+   createMapantWmtsLayer() pero la función no existía, por eso el mapa quedaba
+   a medias y los botones de capa dejaban de responder. */
+function createMapantWmtsLayer(options={}){
+    const maxZoom=Number(options.maxZoom||22);
+    const maxNativeZoom=Number(options.maxNativeZoom||19);
+    const template='https://raster.trailmap.fi/mapproxy/service?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=spain_mapant&STYLE=default&TILEMATRIXSET=GLOBAL_WEBMERCATOR&TILEMATRIX={matrix}&TILEROW={y}&TILECOL={x}&FORMAT=image/png';
+    const layer=L.tileLayer(template,{
+        attribution:'© MapAnt / Trailmap',
+        minZoom:0,
+        maxZoom:maxZoom,
+        maxNativeZoom:maxNativeZoom,
+        tileSize:256,
+        crossOrigin:true,
+        updateWhenIdle:true,
+        keepBuffer:3,
+        errorTileUrl:''
+    });
+    layer.getTileUrl=function(coords){
+        let z=Number(coords.z)||0;
+        let x=Number(coords.x)||0;
+        let y=Number(coords.y)||0;
+        if(z>maxNativeZoom){
+            const factor=Math.pow(2,z-maxNativeZoom);
+            x=Math.floor(x/factor);
+            y=Math.floor(y/factor);
+            z=maxNativeZoom;
+        }
+        z=Math.max(0,Math.min(maxNativeZoom,z));
+        return L.Util.template(template,{x:x,y:y,matrix:String(z).padStart(2,'0')});
+    };
+    return layer;
+}
+
 function selectPoint(id){selectedPointId=id;document.getElementById("selectedPoint").value=id;loadSelectedPointFields();zoomSelectedPoint()}
 function initMap(){if(map)return;const step2MaxZoom=22;map=L.map("map",{zoomControl:true,maxZoom:step2MaxZoom,zoomSnap:.25,zoomDelta:.5,wheelPxPerZoomLevel:42}).setView([40.4168,-3.7038],7);layers.mapant=createMapantWmtsLayer({maxZoom:step2MaxZoom,maxNativeZoom:19});layers.ign=L.tileLayer("https://www.ign.es/wmts/mapa-raster?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=MTN&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© Instituto Geográfico Nacional",maxNativeZoom:18,maxZoom:step2MaxZoom});layers.pnoa=L.tileLayer("https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© PNOA",maxNativeZoom:19,maxZoom:step2MaxZoom});currentLayer=layers.mapant.addTo(map);markersLayer=L.layerGroup().addTo(map);routeLayer=L.layerGroup().addTo(map);map.on("click",e=>{const p=state.points[selectedPointId];if(!p)return;const utm=latLonToUtm(e.latlng.lat,e.latlng.lng);p.lat=e.latlng.lat;p.lon=e.latlng.lng;p.utm=utm;document.getElementById("selectedUtm").value=utm;renderPointsTable();renderMapMarkers();saveState();toast(`${p.id} colocado en el mapa`)});renderMapMarkers();fitAllPoints()}
 function switchLayer(name){if(!map||!layers[name])return;if(currentLayer)map.removeLayer(currentLayer);currentLayer=layers[name].addTo(map);document.querySelectorAll(".layer-btn").forEach(b=>b.classList.toggle("active",b.dataset.layer===name));setTimeout(()=>map.invalidateSize(),80)}
