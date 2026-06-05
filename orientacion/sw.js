@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v75 · orientación IOF F combinación */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v75-iof-f-combo";
+/* MILITOPO · cache offline seguro v76 · orientación IOF F unión corregida */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v76-iof-f-union-ok";
 const CORE_ASSETS = [
   "./",
   "./index.html",
