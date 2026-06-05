@@ -23,6 +23,12 @@ self.addEventListener("activate", event => {
     if (self.registration.navigationPreload) {
       try { await self.registration.navigationPreload.enable(); } catch (e) {}
     }
+    try {
+      const names = await caches.keys();
+      await Promise.all(names
+        .filter(name => name.startsWith("militopo-") && name !== MILITOPO_CACHE)
+        .map(name => caches.delete(name)));
+    } catch (e) {}
     await self.clients.claim();
   })());
 });
