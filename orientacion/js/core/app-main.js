@@ -6299,7 +6299,7 @@ function iofComboSymbolSvg(key){
     const k=String(key||"");
     const base='class="iof-combo-svg" viewBox="0 0 100 100" aria-hidden="true"';
     if(k==="cruce")return `<svg ${base}><path d="M24 24L76 76" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/><path d="M76 24L24 76" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/></svg>`;
-    if(k==="union")return `<svg ${base}><path d="M50 18V54" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/><path d="M23 82C35 61 43 54 50 54C57 54 65 61 77 82" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    if(k==="union")return `<svg ${base}><path d="M50 82V46" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/><path d="M23 18C35 39 43 46 50 46C57 46 65 39 77 18" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     if(k==="curva")return `<svg ${base}><path d="M20 62C36 30 64 30 80 62" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/></svg>`;
     return "";
 }
