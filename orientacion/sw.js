@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v69 · estructura js/css */
-const MILITOPO_CACHE = "militopo-orientacion-offline-v69";
+/* MILITOPO · cache offline seguro v68 */
+const MILITOPO_CACHE = "militopo-root-offline-v72";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -23,12 +23,6 @@ self.addEventListener("activate", event => {
     if (self.registration.navigationPreload) {
       try { await self.registration.navigationPreload.enable(); } catch (e) {}
     }
-    try {
-      const names = await caches.keys();
-      await Promise.all(names
-        .filter(name => name.startsWith("militopo-") && name !== MILITOPO_CACHE)
-        .map(name => caches.delete(name)));
-    } catch (e) {}
     await self.clients.claim();
   })());
 });
