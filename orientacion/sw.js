@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v77 · orientación editor SVG F */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v77-editor-svg-f";
+/* MILITOPO · cache offline seguro v78 · símbolos unión/cruce F */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v78-combo-svg-f";
 const CORE_ASSETS = [
   "./",
   "./index.html",
