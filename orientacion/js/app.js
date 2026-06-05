@@ -499,7 +499,7 @@ function renderPointsTable(){
 }
 
 function selectPoint(id){selectedPointId=id;document.getElementById("selectedPoint").value=id;loadSelectedPointFields();zoomSelectedPoint()}
-function initMap(){if(map)return;const step2MaxZoom=22;map=L.map("map",{zoomControl:true,maxZoom:step2MaxZoom,zoomSnap:.25,zoomDelta:.5,wheelPxPerZoomLevel:42}).setView([40.4168,-3.7038],7);layers.mapant=L.tileLayer.wms("https://mapant.es/wms",{layers:"mapant",format:"image/png",transparent:false,version:"1.3.0",attribution:"© Mapant.es",maxZoom:step2MaxZoom});layers.ign=L.tileLayer("https://www.ign.es/wmts/mapa-raster?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=MTN&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© Instituto Geográfico Nacional",maxNativeZoom:18,maxZoom:step2MaxZoom});layers.pnoa=L.tileLayer("https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© PNOA",maxNativeZoom:19,maxZoom:step2MaxZoom});currentLayer=layers.mapant.addTo(map);markersLayer=L.layerGroup().addTo(map);routeLayer=L.layerGroup().addTo(map);map.on("click",e=>{const p=state.points[selectedPointId];if(!p)return;const utm=latLonToUtm(e.latlng.lat,e.latlng.lng);p.lat=e.latlng.lat;p.lon=e.latlng.lng;p.utm=utm;document.getElementById("selectedUtm").value=utm;renderPointsTable();renderMapMarkers();saveState();toast(`${p.id} colocado en el mapa`)});renderMapMarkers();fitAllPoints()}
+function initMap(){if(map)return;const step2MaxZoom=22;map=L.map("map",{zoomControl:true,maxZoom:step2MaxZoom,zoomSnap:.25,zoomDelta:.5,wheelPxPerZoomLevel:42}).setView([40.4168,-3.7038],7);layers.mapant=L.tileLayer("https://raster.trailmap.fi/mapproxy/service?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=spain_mapant&STYLE=default&TILEMATRIXSET=GLOBAL_WEBMERCATOR&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png",{attribution:"© Mapant.es / Trailmap MapProxy",crossOrigin:true,maxNativeZoom:18,maxZoom:step2MaxZoom,tileSize:256});layers.ign=L.tileLayer("https://www.ign.es/wmts/mapa-raster?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=MTN&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© Instituto Geográfico Nacional",maxNativeZoom:18,maxZoom:step2MaxZoom});layers.pnoa=L.tileLayer("https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© PNOA",maxNativeZoom:19,maxZoom:step2MaxZoom});currentLayer=layers.mapant.addTo(map);markersLayer=L.layerGroup().addTo(map);routeLayer=L.layerGroup().addTo(map);map.on("click",e=>{const p=state.points[selectedPointId];if(!p)return;const utm=latLonToUtm(e.latlng.lat,e.latlng.lng);p.lat=e.latlng.lat;p.lon=e.latlng.lng;p.utm=utm;document.getElementById("selectedUtm").value=utm;renderPointsTable();renderMapMarkers();saveState();toast(`${p.id} colocado en el mapa`)});renderMapMarkers();fitAllPoints()}
 function switchLayer(name){if(!map||!layers[name])return;if(currentLayer)map.removeLayer(currentLayer);currentLayer=layers[name].addTo(map);document.querySelectorAll(".layer-btn").forEach(b=>b.classList.toggle("active",b.dataset.layer===name));setTimeout(()=>map.invalidateSize(),80)}
 
 // ORIENTATION POINT POPUP JS START
@@ -5240,19 +5240,26 @@ async function ensureHtml2Canvas(){
 function waitMs(ms){return new Promise(r=>setTimeout(r,ms));}
 
 function mapantWmsImageUrlForExport(bounds,widthPx=2200,heightPx=1580){
+    /*
+      MAPANT FIX 20260605:
+      La capa oficial https://mapant.es/wms puede no renderizar en algunos navegadores/entornos.
+      Para los PDF usamos el servicio MapProxy con la capa spain_mapant, que es la misma base
+      MapAnt de España servida en WebMercator/WMS y además funciona como respaldo del paso 2.
+    */
     const q=new URLSearchParams({
         SERVICE:"WMS",
         REQUEST:"GetMap",
         VERSION:"1.1.1",
-        LAYERS:"mapant",
+        LAYERS:"spain_mapant",
         STYLES:"",
         SRS:"EPSG:4326",
         BBOX:[bounds.west,bounds.south,bounds.east,bounds.north].join(","),
         WIDTH:String(widthPx),
         HEIGHT:String(heightPx),
-        FORMAT:"image/png"
+        FORMAT:"image/png",
+        TRANSPARENT:"FALSE"
     });
-    return "https://mapant.es/wms?"+q.toString();
+    return "https://raster.trailmap.fi/mapproxy/service?"+q.toString();
 }
 
 async function imageUrlToDataUrlForPdf(url){
@@ -5271,118 +5278,41 @@ async function imageUrlToDataUrlForPdf(url){
     return dataUrl;
 }
 
-function makePlanFrameSafeForHtml2Canvas(frame,hasCleanBackground){
-    /*
-      FIX PDF PLANOS 20260605:
-      html2canvas falla si intenta pintar teselas Leaflet externas dentro del iframe
-      (canvas tainted/CORS). El plano ya tiene su propio fondo MAPANT limpio en dataURL
-      cuando se puede descargar. Por eso se ignora/elimina el mapa Leaflet antes de capturar.
-      Si MAPANT no se puede convertir, igualmente se genera el PDF con fondo neutro, símbolos,
-      recorrido, tabla IOF y escala, en vez de romper el ZIP.
-    */
-    try{
-        const doc=frame&&frame.contentDocument;
-        if(!doc)return;
-        const wrap=doc.querySelector(".map-wrap");
-        const mapDiv=doc.querySelector("#participantPlanMap");
-
-        if(wrap&&!hasCleanBackground&&!doc.getElementById("militopoPdfMapFallback")){
-            const fallback=doc.createElement("div");
-            fallback.id="militopoPdfMapFallback";
-            fallback.textContent="Fondo MAPANT no disponible · plano generado con símbolos y tabla IOF";
-            fallback.style.position="absolute";
-            fallback.style.inset="0";
-            fallback.style.zIndex="100";
-            fallback.style.background="linear-gradient(135deg,#e9ead7,#d8d8bd)";
-            fallback.style.color="#354126";
-            fallback.style.font="900 13px Arial, sans-serif";
-            fallback.style.display="flex";
-            fallback.style.alignItems="center";
-            fallback.style.justifyContent="center";
-            fallback.style.textAlign="center";
-            fallback.style.padding="16px";
-            fallback.style.boxSizing="border-box";
-            wrap.insertBefore(fallback,wrap.firstChild);
-        }
-
-        if(mapDiv){
-            mapDiv.setAttribute("data-html2canvas-ignore","true");
-            mapDiv.style.display="none";
-            mapDiv.style.visibility="hidden";
-            mapDiv.style.opacity="0";
-        }
-        doc.querySelectorAll(".leaflet-container,.leaflet-pane,.leaflet-tile,.leaflet-layer,.leaflet-control-container").forEach(el=>{
-            el.setAttribute("data-html2canvas-ignore","true");
-        });
-    }catch(e){
-        console.warn("MILITOPO: no se pudo activar modo seguro de captura PDF",e);
-    }
-}
-
-function shouldIgnorePlanPdfElementForCanvas(el){
-    if(!el)return false;
-    try{
-        return el.id==="participantPlanMap" ||
-            (el.classList&&(el.classList.contains("leaflet-container")||
-                            el.classList.contains("leaflet-pane")||
-                            el.classList.contains("leaflet-tile")||
-                            el.classList.contains("leaflet-layer")||
-                            el.classList.contains("leaflet-control-container")));
-    }catch(e){return false;}
-}
-
 async function injectMapantBackgroundIntoPlanFrame(frame){
-    /*
-      FIX PDF PLANOS 20260605:
-      La generación fallaba antes de dividir archivos porque html2canvas intentaba capturar
-      teselas externas de Leaflet/MAPANT. Ahora se intenta crear un fondo MAPANT limpio
-      como dataURL y después se oculta el mapa Leaflet para evitar CORS. Si MAPANT falla,
-      no se rompe el ZIP: se genera PDF con fondo neutro y todo el recorrido/IOF.
-    */
-    let ok=false;
-    try{
-        const win=frame.contentWindow;
-        const doc=frame.contentDocument;
-        const bounds=win&&win.militopoPlanExportBounds;
-        const wrap=doc&&doc.querySelector(".map-wrap");
-        if(!bounds||!wrap)throw new Error("No se pudo leer la ventana común del mapa para el PDF");
-        const url=mapantWmsImageUrlForExport(bounds);
-        const dataUrl=await imageUrlToDataUrlForPdf(url);
+    const win=frame.contentWindow;
+    const doc=frame.contentDocument;
+    const bounds=win&&win.militopoPlanExportBounds;
+    const wrap=doc&&doc.querySelector(".map-wrap");
+    if(!bounds||!wrap)throw new Error("No se pudo leer la ventana común del mapa para el PDF");
+    const url=mapantWmsImageUrlForExport(bounds);
+    const dataUrl=await imageUrlToDataUrlForPdf(url);
 
-        let img=doc.getElementById("militopoPdfMapantBackground");
-        if(!img){
-            img=doc.createElement("img");
-            img.id="militopoPdfMapantBackground";
-            img.alt="Fondo MAPANT exportado";
-            img.style.position="absolute";
-            img.style.inset="0";
-            img.style.width="100%";
-            img.style.height="100%";
-            img.style.objectFit="fill";
-            img.style.zIndex="120";
-            img.style.pointerEvents="none";
-            wrap.insertBefore(img,wrap.firstChild);
-        }
-        img.src=dataUrl;
-
-        await new Promise((resolve,reject)=>{
-            if(img.complete&&img.naturalWidth>0)return resolve();
-            img.onload=()=>resolve();
-            img.onerror=()=>reject(new Error("No cargó la imagen incrustada MAPANT"));
-        });
-        ok=true;
-    }catch(err){
-        console.warn("MILITOPO: no se pudo incrustar MAPANT limpio en PDF; se genera plano PDF con fondo neutro:",err);
-        try{
-            const doc=frame.contentDocument;
-            const failedBg=doc&&doc.getElementById("militopoPdfMapantBackground");
-            if(failedBg)failedBg.remove();
-        }catch(e){}
-        ok=false;
-    }finally{
-        makePlanFrameSafeForHtml2Canvas(frame,ok);
+    let img=doc.getElementById("militopoPdfMapantBackground");
+    if(!img){
+        img=doc.createElement("img");
+        img.id="militopoPdfMapantBackground";
+        img.alt="Fondo MAPANT exportado";
+        img.style.position="absolute";
+        img.style.inset="0";
+        img.style.width="100%";
+        img.style.height="100%";
+        img.style.objectFit="fill";
+        img.style.zIndex="120";
+        img.style.pointerEvents="none";
+        wrap.insertBefore(img,wrap.firstChild);
     }
-    return ok;
+    img.src=dataUrl;
+
+    const mapDiv=doc.querySelector("#participantPlanMap");
+    if(mapDiv){
+        mapDiv.style.opacity="0";
+    }
+
+    await new Promise((resolve,reject)=>{
+        if(img.complete&&img.naturalWidth>0)return resolve();
+        img.onload=()=>resolve();
+        img.onerror=()=>reject(new Error("No cargó la imagen incrustada MAPANT"));
+    });
 }
 
 
@@ -5453,15 +5383,12 @@ async function participantPlanPdfBlob(route){
         sheet.style.boxSizing="border-box";
         sheet.style.padding="5mm";
 
-        makePlanFrameSafeForHtml2Canvas(frame,!!docEl.getElementById("militopoPdfMapantBackground"));
-
         const canvas=await html2canvas(sheet,{
             scale:3,
             useCORS:true,
             allowTaint:false,
             backgroundColor:"#ebe3c8",
             logging:false,
-            ignoreElements:shouldIgnorePlanPdfElementForCanvas,
             windowWidth:1123,
             windowHeight:794
         });
@@ -5593,15 +5520,12 @@ async function allControlsPlanPdfBlob(){
         const sheet=docEl&&docEl.querySelector(".sheet");
         if(!sheet)throw new Error("No se encontró la hoja del plano general");
 
-        makePlanFrameSafeForHtml2Canvas(frame,!!docEl.getElementById("militopoPdfMapantBackground"));
-
         const canvas=await html2canvas(sheet,{
             scale:2.1,
             useCORS:true,
             allowTaint:false,
             backgroundColor:"#ffffff",
             logging:false,
-            ignoreElements:shouldIgnorePlanPdfElementForCanvas,
             width:sheet.scrollWidth,
             height:sheet.scrollHeight,
             windowWidth:sheet.scrollWidth,
@@ -7213,7 +7137,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 <script>
 const points=${json}; const commonBounds=${boundsJson}; window.militopoPlanExportBounds=commonBounds;
 const map=L.map('participantPlanMap',{zoomControl:false,attributionControl:false,preferCanvas:true,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false}).setView([commonBounds.centerLat,commonBounds.centerLon],15);
-const mapant=L.tileLayer.wms('https://mapant.es/wms',{layers:'mapant',format:'image/png',transparent:false,version:'1.3.0',attribution:'© Mapant.es'});
+const mapant=L.tileLayer('https://raster.trailmap.fi/mapproxy/service?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=spain_mapant&STYLE=default&TILEMATRIXSET=GLOBAL_WEBMERCATOR&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png',{attribution:'© Mapant.es / Trailmap MapProxy',crossOrigin:true,maxNativeZoom:18,maxZoom:22,tileSize:256});
 mapant.addTo(map);
 const bounds=[[commonBounds.south,commonBounds.west],[commonBounds.north,commonBounds.east]];
 function drawCourse(){
