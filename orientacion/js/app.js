@@ -500,38 +500,27 @@ function renderPointsTable(){
 
 
 
-/* MILITOPO FIX MAPANT 20260605
-   Define la capa MAPANT WMTS correctamente. En la versión anterior se llamó a
-   createMapantWmtsLayer() pero la función no existía, por eso el mapa quedaba
-   a medias y los botones de capa dejaban de responder. */
+/* MILITOPO FIX MAPANT 20260605 V3
+   MAPANT con WMS de Trailmap/MapProxy, no WMTS manual.
+   Motivo: el WMTS mostraba gris al acercar porque algunas teselas de zoom alto no
+   respondían bien. WMS recalcula por BBOX en cada zoom y mantiene el zoom cercano. */
 function createMapantWmtsLayer(options={}){
     const maxZoom=Number(options.maxZoom||22);
-    const maxNativeZoom=Number(options.maxNativeZoom||19);
-    const template='https://raster.trailmap.fi/mapproxy/service?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=spain_mapant&STYLE=default&TILEMATRIXSET=GLOBAL_WEBMERCATOR&TILEMATRIX={matrix}&TILEROW={y}&TILECOL={x}&FORMAT=image/png';
-    const layer=L.tileLayer(template,{
+    const layer=L.tileLayer.wms('https://raster.trailmap.fi/mapproxy/service',{
+        layers:'spain_mapant',
+        styles:'',
+        format:'image/png',
+        transparent:false,
+        version:'1.1.1',
         attribution:'© MapAnt / Trailmap',
         minZoom:0,
         maxZoom:maxZoom,
-        maxNativeZoom:maxNativeZoom,
         tileSize:256,
         crossOrigin:true,
-        updateWhenIdle:true,
-        keepBuffer:3,
-        errorTileUrl:''
+        updateWhenIdle:false,
+        updateWhenZooming:true,
+        keepBuffer:4
     });
-    layer.getTileUrl=function(coords){
-        let z=Number(coords.z)||0;
-        let x=Number(coords.x)||0;
-        let y=Number(coords.y)||0;
-        if(z>maxNativeZoom){
-            const factor=Math.pow(2,z-maxNativeZoom);
-            x=Math.floor(x/factor);
-            y=Math.floor(y/factor);
-            z=maxNativeZoom;
-        }
-        z=Math.max(0,Math.min(maxNativeZoom,z));
-        return L.Util.template(template,{x:x,y:y,matrix:String(z).padStart(2,'0')});
-    };
     return layer;
 }
 
@@ -7251,7 +7240,7 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 <script>
 const points=${json}; const commonBounds=${boundsJson}; window.militopoPlanExportBounds=commonBounds;
 const map=L.map('participantPlanMap',{zoomControl:false,attributionControl:false,preferCanvas:true,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false}).setView([commonBounds.centerLat,commonBounds.centerLon],15);
-function createPdfMapantLayer(){const template='https://raster.trailmap.fi/mapproxy/service?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=spain_mapant&STYLE=default&TILEMATRIXSET=GLOBAL_WEBMERCATOR&TILEMATRIX={matrix}&TILEROW={y}&TILECOL={x}&FORMAT=image/png';const layer=L.tileLayer(template,{attribution:'© MapAnt / Trailmap',minZoom:0,maxZoom:22,maxNativeZoom:19,tileSize:256,crossOrigin:true,updateWhenIdle:true,keepBuffer:3});layer.getTileUrl=function(coords){const nativeZ=Math.max(0,Math.min(19,Number(coords.z)||0));const matrix=String(nativeZ).padStart(2,'0');return L.Util.template(template,{x:coords.x,y:coords.y,z:coords.z,matrix});};return layer;}
+function createPdfMapantLayer(){return L.tileLayer.wms('https://raster.trailmap.fi/mapproxy/service',{layers:'spain_mapant',styles:'',format:'image/png',transparent:false,version:'1.1.1',attribution:'© MapAnt / Trailmap',minZoom:0,maxZoom:22,tileSize:256,crossOrigin:true,updateWhenIdle:false,updateWhenZooming:true,keepBuffer:4});}
 const mapant=createPdfMapantLayer();
 mapant.addTo(map);
 const bounds=[[commonBounds.south,commonBounds.west],[commonBounds.north,commonBounds.east]];
