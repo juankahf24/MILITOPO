@@ -6226,13 +6226,6 @@ function cleanIofLabel(label){
 function iofOfficialSymbol(group,value){
     return (IOF_SYMBOLS[group]&&IOF_SYMBOLS[group][value])||"";
 }
-function iofComboFallbackSvg(value){
-    const v=String(value||"").trim();
-    if(v==="cruce") return '<svg class="iof-svg iof-combo-svg" viewBox="0 0 100 100" aria-label="Cruce" role="img"><line x1="22" y1="22" x2="78" y2="78"/><line x1="78" y1="22" x2="22" y2="78"/></svg>';
-    if(v==="union") return '<svg class="iof-svg iof-combo-svg" viewBox="0 0 100 100" aria-label="Unión" role="img"><line x1="24" y1="80" x2="50" y2="50"/><line x1="50" y1="50" x2="76" y2="24"/><line x1="50" y1="50" x2="28" y2="24"/></svg>';
-    if(v==="curva") return '<svg class="iof-svg iof-combo-svg" viewBox="0 0 100 100" aria-label="Curva" role="img"><path d="M18 62 Q50 30 82 46"/></svg>';
-    return "";
-}
 
 function shortIofTextForSelect(txt){
     return String(txt||"")
@@ -6633,7 +6626,7 @@ function iofPreviewCells(id){
     const cSymbol=iofSymbol("c",d.c);
     const dSymbol=iofSymbol("d",d.d);
     const eSymbol=iofSymbol("e",d.e);
-    const fSymbol=iofSymbol("f",d.f)||iofSymbol("combo",d.combo)||iofComboFallbackSvg(d.combo);
+    const fSymbol=iofSymbol("f",d.f)||iofSymbol("combo",d.combo);
     const gSymbol=iofSymbol("g",d.g);
     const hSymbol=iofSymbol("h",d.h);
     return `<div>A</div><div>${escapeHtml(code)}</div><div>${iofSymbolBox(cSymbol,"small")}</div><div>${iofSymbolBox(dSymbol,"small")}</div><div>${iofSymbolBox(eSymbol,"small")}</div><div>${iofSymbolBox(fSymbol,"small")}</div><div>${iofSymbolBox(gSymbol,"small")}</div><div>${iofSymbolBox(hSymbol,"small")}</div>`;
@@ -6750,7 +6743,7 @@ function renderIofCellSymbol(symbol){
     return escapeHtml(s);
 }
 
-function getIofDescription(id){ensureIofDescriptions();const d=state.iofDescriptions[id]||{},p=state.points[id]||{};const comboSymbol=iofSymbol("combo",d.combo)||iofComboFallbackSvg(d.combo);return {c:d.c||"",d:d.d||"",e:d.e||"",f:d.f||"",g:d.g||"",h:d.h||"",combo:d.combo||"",text:d.text||p.desc||"",cSymbol:iofSymbol("c",d.c),dSymbol:iofSymbol("d",d.d),eSymbol:iofSymbol("e",d.e),fSymbol:iofSymbol("f",d.f)||comboSymbol,gSymbol:iofSymbol("g",d.g),gText:iofText("g",d.g)||"",hSymbol:iofSymbol("h",d.h),dText:iofText("d",d.d)||p.desc||"",eText:iofText("e",d.e),fText:iofText("f",d.f)||iofText("combo",d.combo),hText:iofText("h",d.h)}}
+function getIofDescription(id){ensureIofDescriptions();const d=state.iofDescriptions[id]||{},p=state.points[id]||{};return {c:d.c||"",d:d.d||"",e:d.e||"",f:d.f||"",g:d.g||"",h:d.h||"",combo:d.combo||"",text:d.text||p.desc||"",cSymbol:iofSymbol("c",d.c),dSymbol:iofSymbol("d",d.d),eSymbol:iofSymbol("e",d.e),fSymbol:iofSymbol("f",d.f)||iofSymbol("combo",d.combo),gSymbol:iofSymbol("g",d.g),gText:iofText("g",d.g)||"",hSymbol:iofSymbol("h",d.h),dText:iofText("d",d.d)||p.desc||"",eText:iofText("e",d.e),fText:iofText("f",d.f)||iofText("combo",d.combo),hText:iofText("h",d.h)}}
 
 
 function iofSymbolBox(symbol, extraClass=""){
