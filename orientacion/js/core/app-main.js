@@ -6307,7 +6307,7 @@ function iofComboSymbolSvg(key){
 
     if(k==="cruce")return `<svg ${base}><title>Cruce</title><path d="M95 95L405 405" fill="none" stroke="currentColor" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/><path d="M405 95L95 405" fill="none" stroke="currentColor" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-    if(k==="curva")return `<svg ${base}><title>Curva</title><path d="M85 315C160 165 340 165 415 315" fill="none" stroke="currentColor" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    if(k==="curva")return `<svg ${base}><title>Curva</title><path d="M118 372C118 222 190 136 308 136H382" fill="none" stroke="currentColor" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/><path d="M118 372H178" fill="none" stroke="currentColor" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     return "";
 }
 
