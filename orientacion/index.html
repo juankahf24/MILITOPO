@@ -9,8 +9,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-<script src="qr.js"></script>
-<link rel="stylesheet" href="styles.css" />
+<script src="js/qr.js"></script>
+<link rel="stylesheet" href="css/styles.css" />
 
 
 
@@ -356,15 +356,15 @@
     </div>
 </div>
 
-<script src="app.js?v=pdf-tablas-fix-v2-20260527"></script>
+<script src="js/app.js?v=orientacion-dividida-segura-v1"></script>
 <script>
 (function(){
   if (!("serviceWorker" in navigator) || !("caches" in window) || !/^https?:$/.test(location.protocol)) return;
   async function cacheCurrentMilitopoPage(){
     try {
-      const cache = await caches.open("militopo-page-snapshot-v52");
+      const cache = await caches.open("militopo-page-snapshot-v53");
       await cache.add(new Request(location.href, { cache: "reload" })).catch(function(){});
-      await Promise.allSettled(["./", "./index.html", "./app.js", "./styles.css", "./qr.js"].map(function(url){
+      await Promise.allSettled(["./", "./index.html", "./js/app.js", "./css/styles.css", "./js/qr.js"].map(function(url){
         return cache.add(new Request(url, { cache: "reload" }));
       }));
     } catch (e) {}

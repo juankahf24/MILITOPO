@@ -1,11 +1,11 @@
-/* MILITOPO · cache offline seguro v68 */
-const MILITOPO_CACHE = "militopo-root-offline-v68";
+/* MILITOPO · cache offline seguro v69 · estructura js/css */
+const MILITOPO_CACHE = "militopo-orientacion-offline-v69";
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./app.js",
-  "./styles.css",
-  "./qr.js"
+  "./js/app.js",
+  "./css/styles.css",
+  "./js/qr.js"
 ];
 
 self.addEventListener("install", event => {
