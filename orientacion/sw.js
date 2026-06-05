@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v80 · curva F actualizada */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v80-curva-f-actualizada";
+/* MILITOPO · cache offline seguro v81 · curva F corregida */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v81-curva-f-corregida";
 const CORE_ASSETS = [
   "./",
   "./index.html",
