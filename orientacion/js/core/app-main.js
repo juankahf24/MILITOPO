@@ -6443,7 +6443,7 @@ function iofOptionTextOnly(group,value){
 function iofSymbol(group,value){
     const g=String(group||"");
     const v=String(value||"");
-    if(customIofSymbols&&customIofSymbols[g]&&customIofSymbols[g][v]) return customIofSymbols[g][v];
+    if(g!=="f"&&customIofSymbols&&customIofSymbols[g]&&customIofSymbols[g][v]) return customIofSymbols[g][v];
     return iofOfficialSymbol(g,v);
 }
 function iofText(group,value){return iofOptionTextOnly(group,value);}
@@ -6501,26 +6501,125 @@ function resetCustomIofSymbol(group){}
 function exportCustomIofLibrary(group){}
 function importCustomIofLibrary(group,file){}
 
-function exportFullIofCHBackup(){
+async function exportFullIofCHBackup(){
     const groups=["c","d","e","f","g","h"];
-    const symbols={};
+    const now=new Date();
+    const stamp=now.toISOString().replace(/[:.]/g,"-").slice(0,19);
+
+    const escapeCsvValue=value=>`"${String(value??"").replace(/"/g,'""')}"`;
+    const stripHtml=value=>String(value??"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();
+    const htmlEscapeLocal=value=>String(value??"")
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#39;");
+    const saveBlob=(filename,blob)=>{
+        if(typeof saveAs==="function"){
+            saveAs(blob,filename);
+            return;
+        }
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url;
+        a.download=filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},800);
+    };
+
     const options={};
-    groups.forEach(g=>{
-        symbols[g]={...(IOF_SYMBOLS[g]||{}),...((customIofSymbols&&customIofSymbols[g])||{})};
-        options[g]=IOF_OPTIONS[g]||[];
+    const officialSymbols={};
+    const customSymbols={};
+    const effectiveSymbols={};
+    const summary=[];
+
+    groups.forEach(group=>{
+        const groupOptions=IOF_OPTIONS[group]||[];
+        options[group]=groupOptions.map(([value,label])=>({
+            value,
+            label:cleanIofLabel(label),
+            selectLabel:iofOptionLabel(group,value)
+        }));
+
+        officialSymbols[group]={...(IOF_SYMBOLS[group]||{})};
+        customSymbols[group]=(group==="f")?{}:{...((customIofSymbols&&customIofSymbols[group])||{})};
+        effectiveSymbols[group]={};
+
+        groupOptions.forEach(([value,label])=>{
+            if(!value)return;
+            const official=iofOfficialSymbol(group,value)||officialSymbols[group][value]||"";
+            const custom=customSymbols[group][value]||"";
+            const finalSvg=custom||official;
+            if(finalSvg)effectiveSymbols[group][value]=finalSvg;
+            summary.push({
+                group:group.toUpperCase(),
+                value,
+                label:cleanIofLabel(label),
+                selectLabel:iofOptionLabel(group,value),
+                hasSymbol:!!finalSvg,
+                source:custom?"custom":"official"
+            });
+        });
     });
+
     const data={
         type:"MILITOPO_IOF_SYMBOL_LIBRARY_BACKUP",
-        version:2,
+        version:3,
         scope:"C-H",
-        exportedAt:new Date().toISOString(),
-        description:"Backup completo generado desde la app. Incluye símbolos embebidos y símbolos personalizados guardados en este navegador.",
-        counts:Object.fromEntries(groups.map(g=>[g,Object.keys(symbols[g]||{}).length])),
-        symbols,
-        options
+        exportedAt:now.toISOString(),
+        app:"MILITOPO_ORIENTACION",
+        description:"Backup mejorado de la biblioteca IOF C-H. Incluye opciones, SVG efectivos usados por la app, SVG oficiales, SVG personalizados compatibles y resumen.",
+        notes:[
+            "La columna F usa los SVG fijos actuales de MILITOPO; el editor manual F está desactivado.",
+            "El bloque effectiveSymbols contiene los símbolos que debe usar la app en la tabla previa y en PDFs.",
+            "El bloque options conserva etiquetas y valores de los desplegables C-H."
+        ],
+        counts:{
+            groups:groups.length,
+            options:Object.fromEntries(groups.map(g=>[g,(options[g]||[]).length])),
+            effectiveSymbols:Object.fromEntries(groups.map(g=>[g,Object.keys(effectiveSymbols[g]||{}).length])),
+            customSymbols:Object.fromEntries(groups.map(g=>[g,Object.keys(customSymbols[g]||{}).length]))
+        },
+        options,
+        effectiveSymbols,
+        officialSymbols,
+        customSymbols,
+        summary
     };
-    downloadText("biblioteca_svg_IOF_C_H_backup_completo.json",JSON.stringify(data,null,2));
-    toast("Backup de símbolos C-H exportado");
+
+    const json=JSON.stringify(data,null,2);
+    const csv=[
+        ["grupo","valor","etiqueta","etiqueta_desplegable","tiene_svg","origen"].map(escapeCsvValue).join(","),
+        ...summary.map(r=>[r.group,r.value,r.label,r.selectLabel,r.hasSymbol?"sí":"no",r.source].map(escapeCsvValue).join(","))
+    ].join("\n");
+
+    const previewRows=summary.map(r=>{
+        const svg=(effectiveSymbols[r.group.toLowerCase()]||{})[r.value]||"";
+        return `<tr><td>${htmlEscapeLocal(r.group)}</td><td>${htmlEscapeLocal(r.value)}</td><td>${htmlEscapeLocal(r.label)}</td><td class="symbol">${svg||"—"}</td><td>${htmlEscapeLocal(r.source)}</td></tr>`;
+    }).join("\n");
+    const previewHtml=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MILITOPO · Backup IOF C-H</title><style>body{font-family:Arial,sans-serif;background:#f4efe2;color:#151515;margin:24px}h1{font-size:24px}.meta{background:#fff;border:1px solid #ccb98e;border-radius:12px;padding:12px;margin:12px 0 18px}table{border-collapse:collapse;width:100%;background:#fff}th,td{border:1px solid #999;padding:7px 8px;vertical-align:middle;font-size:13px}th{background:#25331d;color:#fff}.symbol{width:90px;height:56px;text-align:center}.symbol svg{max-width:42px;max-height:42px;stroke:#000;fill:none;stroke-width:6}.symbol svg.filled{fill:#000;stroke:#000}</style></head><body><h1>MILITOPO · Backup símbolos IOF C-H</h1><div class="meta"><b>Exportado:</b> ${htmlEscapeLocal(now.toLocaleString("es-ES"))}<br><b>Grupos:</b> C, D, E, F, G, H<br><b>Nota:</b> columna F con símbolos fijos actuales; editor manual F desactivado.</div><table><thead><tr><th>Grupo</th><th>Valor</th><th>Etiqueta</th><th>Símbolo</th><th>Origen</th></tr></thead><tbody>${previewRows}</tbody></table></body></html>`;
+
+    const readme=`MILITOPO · Backup símbolos IOF C-H\n\nExportado: ${now.toISOString()}\n\nContenido:\n- simbolos_IOF_C-H_backup.json: backup completo para conservar/restaurar biblioteca.\n- resumen_simbolos_C-H.csv: listado rápido de opciones.\n- vista_previa_simbolos_C-H.html: vista visual de los símbolos.\n\nNotas:\n- El editor SVG F se ha eliminado.\n- La columna F usa símbolos fijos oficiales/embebidos, incluyendo combinación: cruce, unión y curva.\n`;
+
+    try{
+        if(typeof JSZip==="function"){
+            const zip=new JSZip();
+            zip.file("simbolos_IOF_C-H_backup.json",json);
+            zip.file("resumen_simbolos_C-H.csv",csv);
+            zip.file("vista_previa_simbolos_C-H.html",previewHtml);
+            zip.file("LEEME_BACKUP_IOF_C-H.txt",readme);
+            const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6}});
+            saveBlob(`MILITOPO_backup_simbolos_IOF_C-H_${stamp}.zip`,blob);
+            toast("Backup C-H exportado en ZIP con JSON, CSV y vista previa");
+            return;
+        }
+    }catch(e){
+        console.warn("No se pudo crear ZIP de backup IOF; se descarga JSON:",e);
+    }
+
+    downloadText(`MILITOPO_backup_simbolos_IOF_C-H_${stamp}.json`,json);
+    toast("Backup C-H exportado en JSON");
 }
 
 function syncIofEventName(){const input=document.getElementById("iofEventName");if(input&&input.value.trim()){state.eventName=input.value.trim();const main=document.getElementById("eventName");if(main)main.value=state.eventName;scheduleSaveState()}}
@@ -6600,7 +6699,6 @@ function renderIofDescriptionsEditor(){
 
             </div>
             <div id="iofPreview_${id}" class="iof-preview">${iofPreviewCells(id)}</div>
-            <div id="iofFManualSvgEditor" class="status warn" style="display:none;margin-top:12px;"></div>
         </div>
     </div>`;
 
@@ -6614,93 +6712,16 @@ function iofSelectHtml(id,field,label,value){
     }).join("");
     const cSvg=`<svg class="iof-c-letter-svg" viewBox="0 0 28 28" aria-label="C" role="img"><path d="M19.2 7.7C17.9 6.6 16.2 6 14.3 6C10.4 6 7.7 9.2 7.7 14C7.7 18.8 10.4 22 14.3 22C16.3 22 18 21.4 19.3 20.3" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>`;
     const labelHtml=field==="c"?`<label class="iof-c-label-fixed">${cSvg}<span class="iof-c-dot">·</span><span>SIMILAR</span></label>`:`<label>${escapeHtml(label)}</label>`;
-    const fEditButton=field==="f"?`<button type="button" class="btn secondary" style="margin-top:7px;width:100%;font-size:.78rem;padding:8px 10px;" onclick="openIofFManualSvgEditor('${id}')">✏️ EDITAR SVG F</button>`:"";
+    const fEditButton="";
     return `<div>${labelHtml}<select onchange="updateIofDescription('${id}','${field}',this.value)">${options}</select>${fEditButton}</div>`;
 }
 
 
-function openIofFManualSvgEditor(id){
-    ensureIofDescriptions();
-    selectedIofPointId=id||selectedIofPointId;
-    const d=(state.iofDescriptions&&state.iofDescriptions[selectedIofPointId])||{};
-    const value=effectiveIofFValue(d)||currentIofOptionValue("f");
-    const panel=document.getElementById("iofFManualSvgEditor");
-    if(!panel)return;
-    if(!value){
-        panel.style.display="block";
-        panel.className="status warn";
-        panel.innerHTML="Selecciona primero una opción en la columna F.";
-        return;
-    }
-
-    const official=iofOfficialSymbol("f",value)||"";
-    const custom=(customIofSymbols&&customIofSymbols.f&&customIofSymbols.f[value])||"";
-    const current=custom||official;
-    const label=iofOptionLabel("f",value);
-
-    panel.dataset.fValue=value;
-    panel.style.display="block";
-    panel.className="status warn";
-    panel.innerHTML=`<div style="display:grid;gap:10px;">
-        <div style="font-weight:900;color:#f0c16a;">✏️ EDITAR SVG MANUAL · COLUMNA F</div>
-        <div style="font-size:.9rem;">Editando: <b>${escapeHtml(label)}</b></div>
-        <div id="iofFManualSvgPreview" style="min-height:52px;display:flex;align-items:center;justify-content:center;background:#fff;color:#000;border-radius:12px;border:1px solid rgba(0,0,0,.25);padding:8px;">${iofSymbolBox(current,"small")}</div>
-        <textarea id="iofFManualSvgTextarea" spellcheck="false" style="width:100%;min-height:150px;box-sizing:border-box;border-radius:14px;border:1px solid rgba(240,193,106,.45);background:rgba(0,0,0,.25);color:#f5e6c8;padding:10px;font-family:monospace;font-size:.78rem;line-height:1.35;" oninput="previewIofFManualSvgEditor()">${escapeHtml(current)}</textarea>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <button type="button" class="btn green" onclick="saveIofFManualSvg()">💾 GUARDAR SVG F</button>
-            <button type="button" class="btn secondary" onclick="resetIofFManualSvg()">↩️ RESTAURAR OFICIAL</button>
-        </div>
-        <button type="button" class="btn secondary" onclick="closeIofFManualSvgEditor()">CERRAR</button>
-        <div style="font-size:.78rem;opacity:.85;line-height:1.35;">Debe empezar por <b>&lt;svg</b> y terminar en <b>&lt;/svg&gt;</b>. Se bloquean scripts/eventos por seguridad.</div>
-    </div>`;
-}
-
-function previewIofFManualSvgEditor(){
-    const panel=document.getElementById("iofFManualSvgEditor");
-    const ta=document.getElementById("iofFManualSvgTextarea");
-    const preview=document.getElementById("iofFManualSvgPreview");
-    if(!panel||!ta||!preview)return;
-    try{
-        const svg=sanitizeCustomSvg(ta.value);
-        preview.innerHTML=iofSymbolBox(svg,"small");
-        panel.className="status warn";
-    }catch(e){
-        preview.innerHTML=`<span style="color:#b00020;font-weight:900;">${escapeHtml(e.message||String(e))}</span>`;
-        panel.className="status err";
-    }
-}
-
-function saveIofFManualSvg(){
-    const panel=document.getElementById("iofFManualSvgEditor");
-    const ta=document.getElementById("iofFManualSvgTextarea");
-    const value=panel&&panel.dataset?panel.dataset.fValue:"";
-    if(!ta||!value)return;
-    try{
-        const svg=sanitizeCustomSvg(ta.value);
-        if(!customIofSymbols)customIofSymbols={combo:{},f:{},g:{}};
-        if(!customIofSymbols.f)customIofSymbols.f={};
-        customIofSymbols.f[value]=svg;
-        saveCustomIofSymbols();
-        renderIofDescriptionsEditor();
-        scheduleSaveState();
-        toast("SVG F guardado");
-    }catch(e){
-        toast(e.message||String(e));
-        previewIofFManualSvgEditor();
-    }
-}
-
-function resetIofFManualSvg(){
-    const panel=document.getElementById("iofFManualSvgEditor");
-    const value=panel&&panel.dataset?panel.dataset.fValue:"";
-    if(!value)return;
-    if(customIofSymbols&&customIofSymbols.f) delete customIofSymbols.f[value];
-    saveCustomIofSymbols();
-    renderIofDescriptionsEditor();
-    scheduleSaveState();
-    toast("SVG F restaurado al oficial");
-}
-
+/* Editor manual SVG F eliminado: la columna F usa ahora símbolos fijos embebidos. */
+function openIofFManualSvgEditor(id){toast("El editor SVG F ya no está disponible: F usa símbolos fijos.");}
+function previewIofFManualSvgEditor(){}
+function saveIofFManualSvg(){}
+function resetIofFManualSvg(){}
 function closeIofFManualSvgEditor(){
     const panel=document.getElementById("iofFManualSvgEditor");
     if(panel)panel.style.display="none";
