@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v79 · sin editor SVG F + backup C-H mejorado */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v79-sin-editor-f-backup-ch";
+/* MILITOPO · cache offline seguro v80 · curva F actualizada */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v80-curva-f-actualizada";
 const CORE_ASSETS = [
   "./",
   "./index.html",
