@@ -6297,10 +6297,17 @@ function effectiveIofFValue(desc){
 }
 function iofComboSymbolSvg(key){
     const k=String(key||"");
-    const base='class="iof-combo-svg" viewBox="0 0 100 100" aria-hidden="true"';
-    if(k==="cruce")return `<svg ${base}><path d="M24 24L76 76" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/><path d="M76 24L24 76" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/></svg>`;
-    if(k==="union")return `<svg ${base}><path d="M50 82V46" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/><path d="M23 18C35 39 43 46 50 46C57 46 65 39 77 18" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    if(k==="curva")return `<svg ${base}><path d="M20 62C36 30 64 30 80 62" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"/></svg>`;
+    const base='class="iof-combo-svg" viewBox="0 0 500 500" aria-hidden="true"';
+
+    /* MILITOPO 20260605 · símbolos de combinación F
+       Reemplazados por SVG fijo para que se vea igual en tabla previa,
+       planos PDF individuales y plano completo PDF.
+    */
+    if(k==="union")return `<svg ${base}><title>Unión</title><path d="M250 430V245" fill="none" stroke="currentColor" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/><path d="M95 82L250 245L405 82" fill="none" stroke="currentColor" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+    if(k==="cruce")return `<svg ${base}><title>Cruce</title><path d="M95 95L405 405" fill="none" stroke="currentColor" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/><path d="M405 95L95 405" fill="none" stroke="currentColor" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+    if(k==="curva")return `<svg ${base}><title>Curva</title><path d="M85 315C160 165 340 165 415 315" fill="none" stroke="currentColor" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     return "";
 }
 
