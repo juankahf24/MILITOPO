@@ -1,5 +1,5 @@
 /* MILITOPO · cache offline seguro v88 · IOF rosa fase 1C inline fixed */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v88-iof-rosa-fase1c-fixed-inline";
+const MILITOPO_CACHE = "militopo-orientacion-modular-v89-iof-rosa-header-fixc-fixed-inline";
 const CORE_ASSETS = [
   "./",
   "./index.html",
