@@ -5380,6 +5380,48 @@ function shouldIgnorePlanPdfElementForCanvas(el){
     }catch(e){return false;}
 }
 
+function forcePinkIofPdfInDocument(doc){
+    try{
+        if(!doc)return;
+        const pink="#ff6fa3";
+        const setImportant=(el,prop,val)=>{try{el.style.setProperty(prop,val,"important");}catch(e){}};
+        doc.querySelectorAll(".iof,.iof *").forEach(el=>{
+            setImportant(el,"color",pink);
+            setImportant(el,"border-color",pink);
+            setImportant(el,"text-decoration-color",pink);
+        });
+        doc.querySelectorAll(".iof,.iof-head,.iof-title,.iof-difficulty,.iof-metrics,.iof-metrics div,.iof-letters,.iof-letters div,.iof-table,.iof-table td").forEach(el=>{
+            setImportant(el,"border-color",pink);
+        });
+        doc.querySelectorAll(".iof").forEach(el=>setImportant(el,"border",`2px solid ${pink}`));
+        doc.querySelectorAll(".iof-head").forEach(el=>setImportant(el,"border-bottom",`2px solid ${pink}`));
+        doc.querySelectorAll(".iof-title,.iof-difficulty,.iof-metrics,.iof-letters").forEach(el=>setImportant(el,"border-bottom",`1.3px solid ${pink}`));
+        doc.querySelectorAll(".iof-metrics div,.iof-letters div").forEach(el=>setImportant(el,"border-right",`1.3px solid ${pink}`));
+        doc.querySelectorAll(".iof-table td").forEach(el=>{
+            setImportant(el,"border",`1.3px solid ${pink}`);
+            setImportant(el,"color",pink);
+        });
+        doc.querySelectorAll(".iof svg").forEach(svg=>{
+            setImportant(svg,"color",pink);
+            setImportant(svg,"stroke",pink);
+            setImportant(svg,"fill",pink);
+            svg.setAttribute("color",pink);
+        });
+        doc.querySelectorAll(".iof svg path,.iof svg line,.iof svg polyline,.iof svg rect,.iof svg circle,.iof svg ellipse,.iof svg polygon,.iof svg text,.iof svg tspan").forEach(node=>{
+            const fill=(node.getAttribute("fill")||"").trim().toLowerCase();
+            const stroke=(node.getAttribute("stroke")||"").trim().toLowerCase();
+            if(fill!=="none"&&fill!=="transparent")node.setAttribute("fill",pink);
+            if(stroke!=="none"&&stroke!=="transparent")node.setAttribute("stroke",pink);
+            setImportant(node,"color",pink);
+            setImportant(node,"stroke",pink);
+            if(fill!=="none"&&fill!=="transparent")setImportant(node,"fill",pink);
+        });
+        doc.querySelectorAll(".iof svg image").forEach(img=>{
+            setImportant(img,"filter","brightness(0) saturate(100%) invert(72%) sepia(38%) saturate(4586%) hue-rotate(294deg) brightness(103%) contrast(101%)");
+        });
+    }catch(e){console.warn("MILITOPO: no se pudo forzar IOF rosa en DOM",e);}
+}
+
 async function injectMapantBackgroundIntoPlanFrame(frame){
     /*
       FIX PDF PLANOS 20260605:
@@ -5503,6 +5545,7 @@ async function participantPlanPdfBlob(route){
         sheet.style.padding="5mm";
 
         makePlanFrameSafeForHtml2Canvas(frame,!!docEl.getElementById("militopoPdfMapantBackground"));
+        forcePinkIofPdfInDocument(docEl);
 
         const canvas=await html2canvas(sheet,{
             scale:3,
@@ -5643,6 +5686,7 @@ async function allControlsPlanPdfBlob(){
         if(!sheet)throw new Error("No se encontró la hoja del plano general");
 
         makePlanFrameSafeForHtml2Canvas(frame,!!docEl.getElementById("militopoPdfMapantBackground"));
+        forcePinkIofPdfInDocument(docEl);
 
         const canvas=await html2canvas(sheet,{
             scale:2.1,
@@ -7228,6 +7272,7 @@ async function appendAllControlsIofOverflowPdfPages(pdf){
             const doc=frame.contentDocument;
             const sheet=doc&&doc.querySelector(".sheet");
             if(!sheet)continue;
+            forcePinkIofPdfInDocument(doc);
 
             const canvas=await html2canvas(sheet,{
                 scale:2.2,
