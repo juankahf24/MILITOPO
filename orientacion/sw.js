@@ -1,5 +1,5 @@
 /* MILITOPO · cache offline seguro v94 · IOF rosa C manual */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v94-iof-c-pink-manual";
+const MILITOPO_CACHE = "militopo-orientacion-modular-v96-iof-rosa-columna-c-fallback";
 const CORE_ASSETS = [
   "./",
   "./index.html",
