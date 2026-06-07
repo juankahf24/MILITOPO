@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v85 · paso 3 visual */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v85-step3-visual";
+/* MILITOPO · cache offline seguro v86 · paso 3 visual */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v86-paso3-textos";
 const CORE_ASSETS = [
   "./",
   "./index.html",
