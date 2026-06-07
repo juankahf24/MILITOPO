@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v88 · dificultad paso 3 corregida*/
-const MILITOPO_CACHE = "militopo-orientacion-modular-v88-iof-pdf-rosa";
+/* MILITOPO · cache offline seguro v89 · iof pdf rosa retry fuerte*/
+const MILITOPO_CACHE = "militopo-orientacion-modular-v89-iof-pdf-rosa-retry";
 const CORE_ASSETS = [
   "./",
   "./index.html",
