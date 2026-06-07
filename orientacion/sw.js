@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v84 · lógica anterior recorridos restaurada*/
-const MILITOPO_CACHE = "militopo-orientacion-modular-v82-symbols-f-config";
+/* MILITOPO · cache offline seguro v85 · paso 3 visual */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v85-step3-visual";
 const CORE_ASSETS = [
   "./",
   "./index.html",
