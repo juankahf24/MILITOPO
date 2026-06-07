@@ -1041,8 +1041,7 @@ async function generateRoutes(silent=false){
         qualityWarnings.unshift("Desnivel real parcial/no disponible. Se usó estimación conservadora para evitar desniveles falsos.");
     }
 
-    const routeSelection=selectRoutesReplacingForcedWithRepeats(routes,state.participantCount,qualityWarnings);
-    const finalRoutes=routeSelection.routes;
+    const finalRoutes=routes.slice(0,state.participantCount);
     state.routes=finalRoutes.map((x,i)=>({
         participantId:"P"+String(i+1).padStart(2,"0"),
         routeId:"R"+String(i+1).padStart(2,"0"),
@@ -1050,14 +1049,9 @@ async function generateRoutes(silent=false){
     }));
     state.metrics=finalRoutes.map(x=>x.metrics);
     state.skippedRoutes={};
-    state.repeatedRouteInfo={
-        repeatedCount:routeSelection.repeatedCount||0,
-        preferredCount:routeSelection.preferredCount||0,
-        total:finalRoutes.length
-    };
     assignBalancedDifficulties(state.metrics);
     state.routeQualitySummary=buildRouteQualitySummary(state.metrics);
-    state.routeWarnings=routeSelection.warnings;
+    state.routeWarnings=qualityWarnings;
 
     updateRouteGenerationLoader("Pintando resultados...",94);
     await routeSleep(80);
@@ -1068,8 +1062,7 @@ async function generateRoutes(silent=false){
     saveState();
 
     updateRouteGenerationLoader("Recorridos generados correctamente",100);
-    if(state.repeatedRouteInfo&&state.repeatedRouteInfo.repeatedCount>0)toast(`Recorridos generados. ${state.repeatedRouteInfo.repeatedCount} repetido(s) para evitar forzados`);
-    else if((state.routeQualitySummary&&state.routeQualitySummary.forced)||0)toast("Recorridos generados con algún trazado forzado");
+    if(qualityWarnings.some(w=>/forzado/i.test(w)))toast("Recorridos generados con algún trazado forzado");
     else toast("Recorridos generados con trazado lógico");
     if(!silent){
         await routeSleep(450);
@@ -1078,62 +1071,6 @@ async function generateRoutes(silent=false){
     return true;
 }
 
-
-
-function cloneGeneratedRouteForParticipant(item, sourceIndex, repeated=false){
-    const clone={
-        route:Array.isArray(item.route)?[...item.route]:[],
-        controls:Array.isArray(item.controls)?[...item.controls]:[],
-        metrics:Object.assign({},item.metrics||{}),
-        quality:Object.assign({},item.quality||{}),
-        score:item.score,
-        sequencePenalty:item.sequencePenalty,
-        balancePenalty:item.balancePenalty,
-        direction:item.direction
-    };
-    if(repeated){
-        const sourceId="R"+String(sourceIndex+1).padStart(2,"0");
-        clone.metrics.repeatedFrom=sourceId;
-        clone.metrics.variantOf=sourceId;
-        clone.metrics.quality=(clone.metrics.quality||clone.quality.label||"Recorrido válido")+" · repetido";
-    }
-    return clone;
-}
-
-function selectRoutesReplacingForcedWithRepeats(generatedRoutes, requestedCount, qualityWarnings){
-    const requested=Math.max(0,Number(requestedCount)||0);
-    const generated=Array.isArray(generatedRoutes)?generatedRoutes.filter(Boolean):[];
-    const clean=generated.map((item,index)=>({item,index})).filter(x=>x.item&&x.item.quality&&x.item.quality.code==="clean");
-    const acceptable=generated.map((item,index)=>({item,index})).filter(x=>x.item&&x.item.quality&&x.item.quality.code==="acceptable");
-    const preferred=[...clean,...acceptable];
-    const elevationWarnings=(Array.isArray(qualityWarnings)?qualityWarnings:[]).filter(w=>/Desnivel real/i.test(String(w||"")));
-
-    if(!preferred.length){
-        const fallback=generated.slice(0,requested);
-        return {
-            routes:fallback,
-            warnings:[...elevationWarnings,"No había recorridos limpios ni aceptables suficientes; se han usado recorridos forzados como último recurso."],
-            repeatedCount:0,
-            preferredCount:0
-        };
-    }
-
-    const selected=[];
-    let repeatedCount=0;
-    for(let i=0;selected.length<requested;i++){
-        const src=preferred[i%preferred.length];
-        const repeated=i>=preferred.length;
-        if(repeated)repeatedCount++;
-        selected.push(cloneGeneratedRouteForParticipant(src.item,src.index,repeated));
-    }
-
-    const warnings=[...elevationWarnings];
-    if(repeatedCount>0){
-        warnings.unshift(`Se han repetido ${repeatedCount} recorrido(s) para evitar asignar recorridos forzados. Se han reutilizado primero los recorridos limpios y después los aceptables.`);
-    }
-
-    return {routes:selected,warnings,repeatedCount,preferredCount:preferred.length};
-}
 
 function routeEntryToPenaltyRoute(routeEntry){
     const ids=(routeEntry&&Array.isArray(routeEntry.points))?routeEntry.points:[];
