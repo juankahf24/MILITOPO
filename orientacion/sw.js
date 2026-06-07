@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v93 · IOF rosa header sin margen */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v93-iof-rosa-header-gap";
+/* MILITOPO · cache offline seguro v94 · IOF rosa símbolos por trazo */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v94-iof-rosa-symbol-strokes";
 const CORE_ASSETS = [
   "./",
   "./index.html",
