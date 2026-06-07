@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v82 · símbolos F por archivo global */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v82-symbols-f-config";
+/* MILITOPO · cache offline seguro v83 · símbolos F por archivo global */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v83-repetir-sin-forzados";
 const CORE_ASSETS = [
   "./",
   "./index.html",
