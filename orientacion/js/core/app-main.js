@@ -1936,7 +1936,7 @@ function renderRoutes(){
         const cleanCount=q.clean||0;
         const acceptableCount=q.acceptable||0;
         const totalRoutes=state.routes.length||0;
-        const diffHtml=buckets.total?`<div class="metric"><small>Dificultad</small><b>${buckets.faciles||0} fácil · ${buckets.medias||0} media · ${buckets.dificiles||0} difícil</b></div>`:"";
+        const diffHtml=buckets.total?`<div class="metric difficulty-metric"><small>Dificultad</small><b><span>${buckets.faciles||0} fácil</span><span>${buckets.medias||0} media</span><span>${buckets.dificiles||0} difícil</span></b></div>`:"";
         const forcedAdvice=forcedCount>0
             ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,193,7,.16);border:1px solid rgba(255,193,7,.45);"><b>⚠️ Consejo:</b> hay <b>${forcedCount}</b> recorrido(s) forzado(s). Para reducirlos, añade o mueve balizas, baja controles por recorrido o reduce participantes.</div>`
             : `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.38);"><b>✅ Consejo:</b> no hay recorridos forzados. La distribución actual es buena para generar planos.</div>`;
@@ -1953,8 +1953,8 @@ function renderRoutes(){
                 </div>
 
                 <div class="metric-grid" style="margin-top:0;">
-                    <div class="metric"><small>Total</small><b>${totalRoutes}</b></div>
-                    <div class="metric"><small>🟢 Lógicos / limpios</small><b>${cleanCount}</b></div>
+                    <div class="metric"><small>Total recorridos</small><b>${totalRoutes}</b></div>
+                    <div class="metric"><small>🟢 Lógicos</small><b>${cleanCount}</b></div>
                     <div class="metric"><small>🟡 Aceptables</small><b>${acceptableCount}</b></div>
                     <div class="metric"><small>🔴 Forzados</small><b>${forcedCount}</b></div>
                     <div class="metric"><small>Distancia media</small><b>${avgD} km</b></div>
