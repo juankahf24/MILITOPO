@@ -1929,21 +1929,43 @@ function renderRoutes(){
     const warnings=Array.isArray(state.routeWarnings)?state.routeWarnings:[];
     const buckets=state.difficultyBuckets||{};
     const q=state.routeQualitySummary||buildRouteQualitySummary(state.metrics||[]);
-    const dificultad=buckets.total?`<div>Dificultad: <b>${buckets.faciles} fácil</b> / <b>${buckets.medias} media</b> / <b>${buckets.dificiles} difícil</b></div>`:"";
-    const calidad=`<div>Calidad: <b>${q.clean||0} limpios</b> / <b>${q.acceptable||0} aceptables</b> / <b>${q.forced||0} forzados</b></div>`;
-    const avisos=warnings.length?`<div style="margin-top:10px;"><b>⚠️ Avisos de calidad</b></div>${warnings.slice(0,6).map(w=>`<div style="margin-top:6px;">${escapeHtml(w)}</div>`).join("")}`:"";
     const hasForced=(q.forced||0)>0 || warnings.some(w=>/forzado/i.test(w));
     const routeSummary=document.getElementById("routeSummary");
     if(routeSummary){
+        const forcedCount=q.forced||0;
+        const cleanCount=q.clean||0;
+        const acceptableCount=q.acceptable||0;
+        const totalRoutes=state.routes.length||0;
+        const diffHtml=buckets.total?`<div class="metric"><small>Dificultad</small><b>${buckets.faciles||0} fácil · ${buckets.medias||0} media · ${buckets.dificiles||0} difícil</b></div>`:"";
+        const forcedAdvice=forcedCount>0
+            ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,193,7,.16);border:1px solid rgba(255,193,7,.45);"><b>⚠️ Consejo:</b> hay <b>${forcedCount}</b> recorrido(s) forzado(s). Para reducirlos, añade o mueve balizas, baja controles por recorrido o reduce participantes.</div>`
+            : `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.38);"><b>✅ Consejo:</b> no hay recorridos forzados. La distribución actual es buena para generar planos.</div>`;
+        const extraWarnings=warnings.length?`<details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:800;">Ver avisos técnicos (${warnings.length})</summary><div style="margin-top:8px;display:grid;gap:6px;">${warnings.slice(0,8).map(w=>`<div style="padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.05);">${escapeHtml(w)}</div>`).join("")}${warnings.length>8?`<div style="font-size:12px;opacity:.75;">+ ${warnings.length-8} aviso(s) más.</div>`:""}</div></details>`:"";
         routeSummary.className=hasForced?"status warn":"status ok";
-        routeSummary.innerHTML=`<div style="display:grid;gap:6px;line-height:1.45;">
-            <div><b>✅ ${state.routes.length} recorridos generados</b></div>
-            <div>Distancia media: <b>${avgD} km</b></div>
-            <div>Desnivel positivo medio: <b>${avgC} m</b></div>
-            ${dificultad}
-            ${calidad}
-            ${avisos}
-        </div>`;
+        routeSummary.innerHTML=`
+            <div style="display:grid;gap:12px;line-height:1.35;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                    <div>
+                        <div style="font-size:18px;font-weight:900;">✅ ${totalRoutes} recorridos generados</div>
+                        <div style="font-size:12px;opacity:.8;margin-top:2px;">Resumen automático del paso 3</div>
+                    </div>
+                    <div style="font-size:12px;font-weight:900;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.6);border:1px solid rgba(0,0,0,.12);">${hasForced?"REVISAR FORZADOS":"TRAZADO OK"}</div>
+                </div>
+
+                <div class="metric-grid" style="margin-top:0;">
+                    <div class="metric"><small>Total</small><b>${totalRoutes}</b></div>
+                    <div class="metric"><small>🟢 Lógicos / limpios</small><b>${cleanCount}</b></div>
+                    <div class="metric"><small>🟡 Aceptables</small><b>${acceptableCount}</b></div>
+                    <div class="metric"><small>🔴 Forzados</small><b>${forcedCount}</b></div>
+                    <div class="metric"><small>Distancia media</small><b>${avgD} km</b></div>
+                    <div class="metric"><small>Desnivel + medio</small><b>${avgC} m</b></div>
+                    ${diffHtml}
+                </div>
+
+                ${forcedAdvice}
+                <div style="font-size:12px;opacity:.82;">Tip: si pides muchos participantes y aparecen demasiados forzados, suele mejorar añadiendo balizas intermedias y evitando zonas con pocas alternativas.</div>
+                ${extraWarnings}
+            </div>`;
     }
 
     state.routes.forEach((r,i)=>{
