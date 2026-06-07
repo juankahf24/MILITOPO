@@ -1,11 +1,10 @@
-/* MILITOPO · cache offline seguro v94 · IOF rosa C manual */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v96-iof-rosa-columna-c-fallback";
+/* MILITOPO · cache offline seguro v93 · IOF rosa header sin margen */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v93-iof-rosa-header-gap";
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./js/app.js",
   "./js/config/iof-symbols-f.js",
-  "./js/config/iof-symbols-pink.js",
   "./js/core/app-main.js",
   "./js/pdf/pdf-professional.js",
   "./js/results/results-v16.js",
@@ -65,7 +64,7 @@ self.addEventListener("fetch", event => {
         if (fallback) return fallback;
         return new Response(
           "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>MILITOPO offline</title><body style='font-family:monospace;background:#10190b;color:#f5e6c8;padding:24px'><h1>MILITOPO sin cobertura</h1><p>Esta página todavía no estaba guardada en este dispositivo. Vuelve a abrirla una vez con cobertura antes de iniciar la carrera.</p></body>",
-          { headers: { "Content-Type": "text/html;charset=utf-8" } }
+          { header-gaps: { "Content-Type": "text/html;charset=utf-8" } }
         );
       }
 
