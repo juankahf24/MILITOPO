@@ -1936,7 +1936,7 @@ function renderRoutes(){
         const cleanCount=q.clean||0;
         const acceptableCount=q.acceptable||0;
         const totalRoutes=state.routes.length||0;
-        const diffHtml=buckets.total?`<div class="metric difficulty-metric"><small>Dificultad</small><b><span>${buckets.faciles||0} fácil</span><span>${buckets.medias||0} media</span><span>${buckets.dificiles||0} difícil</span></b></div>`:"";
+        const diffHtml=buckets.total?`<div class="metric difficulty-metric"><small>Dificultad</small><div style="display:grid;gap:3px;margin-top:6px;font-size:16px;font-weight:900;line-height:1.15;"><div style="display:grid;grid-template-columns:28px 1fr;align-items:center;"><b>${buckets.faciles||0}</b><span>fácil</span></div><div style="display:grid;grid-template-columns:28px 1fr;align-items:center;"><b>${buckets.medias||0}</b><span>media</span></div><div style="display:grid;grid-template-columns:28px 1fr;align-items:center;"><b>${buckets.dificiles||0}</b><span>difícil</span></div></div></div>`:"";
         const forcedAdvice=forcedCount>0
             ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,193,7,.16);border:1px solid rgba(255,193,7,.45);"><b>⚠️ Consejo:</b> hay <b>${forcedCount}</b> recorrido(s) forzado(s). Para reducirlos, añade o mueve balizas, baja controles por recorrido o reduce participantes.</div>`
             : `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.38);"><b>✅ Consejo:</b> no hay recorridos forzados. La distribución actual es buena para generar planos.</div>`;
