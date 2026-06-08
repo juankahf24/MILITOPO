@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v95 · IOF rosa canvas tabla automática */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v95-iof-rosa-canvas-auto";
+/* MILITOPO · cache offline seguro v96 · IOF rosa canvas + logo escudo nuevo */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v96-iof-rosa-canvas-auto-logo-escudo";
 const CORE_ASSETS = [
   "./",
   "./index.html",
