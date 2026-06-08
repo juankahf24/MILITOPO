@@ -449,10 +449,38 @@ function cleanupStep2ImportAndTableUi(){
     // MILITOPO · Paso 2 limpieza visual solicitada: solo cambia textos/botones, no funciones.
     try{
         const norm=s=>String(s||"").replace(/\s+/g," ").trim();
+        const stripImportPrefix=s=>String(s||"").replace(/^\s*CSV\s*o\s*texto\s*:\s*/i,"");
+
+        document.querySelectorAll("textarea,input").forEach(el=>{
+            if(typeof el.placeholder==="string" && /^\s*CSV\s*o\s*texto\s*:/i.test(el.placeholder)){
+                el.placeholder=stripImportPrefix(el.placeholder);
+            }
+            if((el.tagName||"").toLowerCase()==="textarea" && typeof el.value==="string" && /^\s*CSV\s*o\s*texto\s*:/i.test(el.value)){
+                el.value=stripImportPrefix(el.value);
+            }
+            if(el.dataset && typeof el.dataset.placeholder==="string" && /^\s*CSV\s*o\s*texto\s*:/i.test(el.dataset.placeholder)){
+                el.dataset.placeholder=stripImportPrefix(el.dataset.placeholder);
+            }
+        });
+
+        document.querySelectorAll("button,label,.btn,[role='button']").forEach(btn=>{
+            const t=norm(btn.textContent);
+            if(t.includes("IMPORTAR") && t.includes("GPX") && t.includes("ATAK")){
+                btn.innerHTML="🎯 IMPORTAR POR ATAK GPX";
+                btn.setAttribute("aria-label","Importar por ATAK GPX");
+                return;
+            }
+        });
+
         document.querySelectorAll("button").forEach(btn=>{
             const t=norm(btn.textContent);
+            if(t.includes("IMPORTAR") && t.includes("GPX") && t.includes("ATAK")){
+                btn.innerHTML="🎯 IMPORTAR POR ATAK GPX";
+                btn.setAttribute("aria-label","Importar por ATAK GPX");
+                return;
+            }
             if(t.includes("VER TODO")){
-                btn.innerHTML="👁️ Centrar plano en todos los puntos";
+                btn.innerHTML="👁️ CENTRAR PLANO EN TODOS LOS PUNTOS";
                 btn.setAttribute("aria-label","Centrar plano en todos los puntos");
                 return;
             }
@@ -465,6 +493,18 @@ function cleanupStep2ImportAndTableUi(){
                 btn.style.display="none";
                 btn.setAttribute("aria-hidden","true");
                 btn.tabIndex=-1;
+            }
+        });
+
+        document.querySelectorAll("small,p,div,span,label").forEach(el=>{
+            if(el.dataset&&el.dataset.militopoExamplePrefixCleaned)return;
+            const raw=String(el.textContent||"");
+            if(/^\s*CSV\s*o\s*texto\s*:/i.test(raw)){
+                const hasInteractive=el.querySelector&&el.querySelector("input,select,textarea,button,table,#map");
+                if(!hasInteractive){
+                    el.textContent=stripImportPrefix(raw);
+                    el.dataset.militopoExamplePrefixCleaned="1";
+                }
             }
         });
 
