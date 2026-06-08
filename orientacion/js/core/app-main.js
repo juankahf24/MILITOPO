@@ -446,6 +446,43 @@ function cleanupStep2ImportAndTableUi(){
         atakGpxFile.tabIndex=-1;
     }
 
+    // MILITOPO · Paso 2 limpieza visual solicitada: solo cambia textos/botones, no funciones.
+    try{
+        const norm=s=>String(s||"").replace(/\s+/g," ").trim();
+        document.querySelectorAll("button").forEach(btn=>{
+            const t=norm(btn.textContent);
+            if(t.includes("VER TODO")){
+                btn.innerHTML="👁️ Centrar plano en todos los puntos";
+                btn.setAttribute("aria-label","Centrar plano en todos los puntos");
+                return;
+            }
+            if(t.includes("IMPORTAR TEXTO") && (t.includes("EXCEL") || t.includes("CSV"))){
+                btn.innerHTML="📥 IMPORTAR TEXTO";
+                btn.setAttribute("aria-label","Importar texto");
+                return;
+            }
+            if(t.includes("EXPORTAR CSV")){
+                btn.style.display="none";
+                btn.setAttribute("aria-hidden","true");
+                btn.tabIndex=-1;
+            }
+        });
+
+        const target="Salida · Llegada · Balizas con etiqueta";
+        document.querySelectorAll("small,p,div,span").forEach(el=>{
+            if(el.dataset&&el.dataset.militopoStep2Cleaned)return;
+            const t=norm(el.textContent);
+            if(t===target || t.includes(target)){
+                const hasInputs=el.querySelector&&el.querySelector("input,select,textarea,button,table,#map");
+                if(!hasInputs){
+                    el.dataset.militopoStep2Cleaned="1";
+                    el.style.display="none";
+                    el.setAttribute("aria-hidden","true");
+                }
+            }
+        });
+    }catch(e){console.warn("No se pudo limpiar visualmente el paso 2",e)}
+
     const table=document.querySelector(".points-base-table");
     if(table){
         const headRow=table.querySelector("thead tr");
