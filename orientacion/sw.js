@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v99 · IOF rosa canvas + logo escudo + paso2 icono TAK importación */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v99-iof-rosa-canvas-auto-logo-escudo-step2-atak-icon";
+/* MILITOPO · cache offline seguro v100 · IOF rosa canvas + logo escudo + paso2 icono TAK importación */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v100-iof-rosa-canvas-auto-logo-escudo-step2-atak-icon-hq";
 const CORE_ASSETS = [
   "./",
   "./index.html",
