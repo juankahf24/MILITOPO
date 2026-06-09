@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v104 · restaurar index bueno */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v104-restaurar-index-bueno";
+/* MILITOPO · cache offline seguro v104 · paso2 reorden ATAK principal correcto */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v104-step2-atak-principal-appmain";
 const CORE_ASSETS = [
   "./",
   "./index.html",
