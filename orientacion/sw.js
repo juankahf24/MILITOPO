@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v112 · paso2 capas con emoji + bloques modernos */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v112-step2-capas-emoji-bloques-modernos";
+/* MILITOPO · cache offline seguro v113 · paso2 tabla puntos compacta sin tipo */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v113-step2-tabla-puntos-compacta";
 const CORE_ASSETS = [
   "./",
   "./index.html",
