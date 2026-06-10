@@ -775,14 +775,16 @@ function cleanupStep2ImportAndTableUi(){
             const ths=[...headRow.children];
             if(ths[0]){
                 ths[0].textContent="ID / ESTADO";
-                ths[0].style.width="44%";
+                ths[0].style.width="48%";
             }
             if(ths[1]){
                 ths[1].textContent="UTM";
-                ths[1].style.width="56%";
+                ths[1].style.width="52%";
+                ths[1].style.textAlign="left";
+                ths[1].style.paddingLeft="6px";
             }
             ths.forEach(th=>{
-                th.style.padding="7px 6px";
+                th.style.padding="7px 5px";
                 th.style.fontSize=".70rem";
                 th.style.letterSpacing=".045em";
                 th.style.lineHeight="1";
@@ -795,9 +797,12 @@ function cleanupStep2ImportAndTableUi(){
         });
         table.querySelectorAll('input[data-field="utm"]').forEach(inp=>{
             inp.style.width="100%";
-            inp.style.maxWidth="165px";
+            inp.style.maxWidth="145px";
             inp.style.minWidth="0";
             inp.style.boxSizing="border-box";
+            inp.style.display="block";
+            inp.style.marginLeft="0";
+            inp.style.marginRight="auto";
         });
     }
 }
@@ -813,7 +818,7 @@ function renderPointsTable(){
         const statusClass=st.ok?"ok":"warn";
         const tr=document.createElement("tr");
         tr.className=st.ok?"point-row-ok":"point-row-warn";
-        tr.innerHTML=`<td class="point-id-status-cell" style="width:44%;padding:4px 4px;vertical-align:middle">
+        tr.innerHTML=`<td class="point-id-status-cell" style="width:48%;padding:4px 4px;vertical-align:middle">
                 <div style="display:flex;align-items:center;gap:4px;min-width:0">
                     <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:9px;background:rgba(237,214,145,.12);border:1px solid rgba(237,214,145,.16);font-weight:900;flex:0 0 22px;font-size:.78rem">${typeIcon}</span>
                     <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
@@ -822,7 +827,7 @@ function renderPointsTable(){
                     </div>
                 </div>
             </td>
-            <td style="width:56%;padding:4px 4px;vertical-align:middle"><input class="${st.utmOk?"":"point-input-invalid"}" style="width:100%;max-width:165px;min-width:0;box-sizing:border-box;min-height:30px;padding:5px 7px;border-radius:10px;font-size:.75rem;letter-spacing:.005em" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>`;
+            <td style="width:52%;padding:4px 4px;vertical-align:middle;text-align:left"><input class="${st.utmOk?"":"point-input-invalid"}" style="display:block;margin-left:0;margin-right:auto;width:100%;max-width:145px;min-width:0;box-sizing:border-box;min-height:30px;padding:5px 7px;border-radius:10px;font-size:.75rem;letter-spacing:.005em" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>`;
         tbody.appendChild(tr);
     });
     tbody.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{
