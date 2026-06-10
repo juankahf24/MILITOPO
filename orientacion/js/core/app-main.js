@@ -579,9 +579,61 @@ function cleanupStep2ImportAndTableUi(){
                 });
                 atakBlock.appendChild(atakInput);
                 header.insertAdjacentElement("afterend", atakBlock);
-                searchBlock.style.marginTop="28px";
+                searchBlock.style.marginTop="34px";
+                searchBlock.style.padding="18px";
+                searchBlock.style.borderRadius="28px";
                 atakBlock.insertAdjacentElement("afterend", searchBlock);
-                layerPills.style.marginTop="12px";
+
+                const searchTitleEl=searchBlock.querySelector("label,h3,h4,strong,.block-title,.section-title")||searchBlock.firstElementChild;
+                if(searchTitleEl && !searchTitleEl.dataset.militopoSearchStyled){
+                    const cleanTitle=String(searchTitleEl.textContent||"").replace(/^\s*[🗺️🔎📍]+\s*/u,"").trim()||"BUSCAR ZONA DEL MAPA";
+                    searchTitleEl.textContent=`🗺️ ${cleanTitle}`;
+                    searchTitleEl.style.display="block";
+                    searchTitleEl.style.marginBottom="14px";
+                    searchTitleEl.dataset.militopoSearchStyled="1";
+                }
+
+                const searchInput=searchBox;
+                if(searchInput){
+                    searchInput.style.minHeight="70px";
+                    searchInput.style.padding="0 22px";
+                    searchInput.style.fontSize="1.02rem";
+                    searchInput.style.fontWeight="700";
+                    searchInput.style.letterSpacing=".015em";
+                    searchInput.style.borderRadius="22px";
+                    searchInput.style.border="1.4px solid rgba(233, 194, 116, .65)";
+                    searchInput.style.background="linear-gradient(180deg, rgba(85,53,28,.96), rgba(59,36,21,.96))";
+                    searchInput.style.boxShadow="inset 0 1px 0 rgba(255,255,255,.10), 0 10px 22px rgba(35,22,10,.22)";
+                }
+
+                const searchButtons=[...searchBlock.querySelectorAll("button")].filter(btn=>btn.offsetParent!==null || btn.style.display!=="none");
+                const primaryBtn=searchButtons[0];
+                const secondaryBtn=searchButtons[1];
+                [primaryBtn,secondaryBtn].forEach(btn=>{
+                    if(!btn)return;
+                    btn.style.width="100%";
+                    btn.style.maxWidth="unset";
+                    btn.style.minHeight="58px";
+                    btn.style.padding="14px 18px";
+                    btn.style.borderRadius="999px";
+                    btn.style.fontSize="1.02rem";
+                    btn.style.letterSpacing=".03em";
+                    btn.style.marginTop="14px";
+                });
+                if(primaryBtn){
+                    primaryBtn.innerHTML="🔎 BUSCAR";
+                    primaryBtn.style.background="linear-gradient(180deg, #efd185 0%, #e0b45a 100%)";
+                    primaryBtn.style.color="#2b1908";
+                    primaryBtn.style.boxShadow="0 10px 22px rgba(97,69,23,.24), inset 0 1px 0 rgba(255,255,255,.35)";
+                }
+                if(secondaryBtn){
+                    secondaryBtn.innerHTML="👁️ CENTRAR PLANO EN TODOS LOS PUNTOS";
+                    secondaryBtn.style.background="linear-gradient(180deg, rgba(112,72,40,.96), rgba(77,47,27,.96))";
+                    secondaryBtn.style.color="#f7f1e2";
+                    secondaryBtn.style.boxShadow="0 10px 22px rgba(38,24,13,.22), inset 0 1px 0 rgba(255,255,255,.08)";
+                    secondaryBtn.style.marginTop="16px";
+                }
+                layerPills.style.marginTop="16px";
                 searchBlock.insertAdjacentElement("afterend", layerPills);
                 layerPills.insertAdjacentElement("afterend", mapEl);
                 step2.dataset.militopoStep2AtakReordered="1";
