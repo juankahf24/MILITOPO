@@ -760,10 +760,12 @@ function cleanupStep2ImportAndTableUi(){
 
     const table=document.querySelector(".points-base-table");
     if(table){
-        table.style.fontSize=".92rem";
+        table.style.fontSize=".84rem";
         table.style.borderCollapse="separate";
         table.style.borderSpacing="0";
         table.style.width="100%";
+        table.style.maxWidth="100%";
+        table.style.tableLayout="fixed";
         const headRow=table.querySelector("thead tr");
         if(headRow){
             [...headRow.children].forEach(th=>{
@@ -771,19 +773,31 @@ function cleanupStep2ImportAndTableUi(){
                 if(label==="ESTADO" || label==="TIPO") th.remove();
             });
             const ths=[...headRow.children];
-            if(ths[0])ths[0].textContent="ID / ESTADO";
-            if(ths[1])ths[1].textContent="COORDENADA UTM";
+            if(ths[0]){
+                ths[0].textContent="ID / ESTADO";
+                ths[0].style.width="38%";
+            }
+            if(ths[1]){
+                ths[1].textContent="UTM";
+                ths[1].style.width="62%";
+            }
             ths.forEach(th=>{
-                th.style.padding="10px 12px";
-                th.style.fontSize=".78rem";
-                th.style.letterSpacing=".05em";
-                th.style.lineHeight="1.05";
+                th.style.padding="8px 8px";
+                th.style.fontSize=".70rem";
+                th.style.letterSpacing=".045em";
+                th.style.lineHeight="1";
                 th.style.whiteSpace="nowrap";
             });
         }
         table.querySelectorAll("td").forEach(td=>{
-            td.style.padding="8px 10px";
+            td.style.padding="5px 6px";
             td.style.verticalAlign="middle";
+        });
+        table.querySelectorAll('input[data-field="utm"]').forEach(inp=>{
+            inp.style.width="100%";
+            inp.style.maxWidth="205px";
+            inp.style.minWidth="0";
+            inp.style.boxSizing="border-box";
         });
     }
 }
@@ -799,16 +813,16 @@ function renderPointsTable(){
         const statusClass=st.ok?"ok":"warn";
         const tr=document.createElement("tr");
         tr.className=st.ok?"point-row-ok":"point-row-warn";
-        tr.innerHTML=`<td class="point-id-status-cell" style="width:145px;min-width:120px;padding:7px 10px;vertical-align:middle">
-                <div style="display:flex;align-items:center;gap:8px;min-width:0">
-                    <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:10px;background:rgba(237,214,145,.14);border:1px solid rgba(237,214,145,.18);font-weight:900;flex:0 0 28px">${typeIcon}</span>
-                    <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
-                        <b style="font-size:.96rem;line-height:1;letter-spacing:.02em">${escapeHtml(p.id)}</b>
-                        <span class="point-status-badge ${statusClass}" style="display:inline-flex;align-items:center;width:max-content;max-width:105px;padding:3px 7px;border-radius:999px;font-size:.68rem;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${st.ok?"✅ ":"⚠️ "}${statusText}</span>
+        tr.innerHTML=`<td class="point-id-status-cell" style="width:38%;padding:5px 6px;vertical-align:middle">
+                <div style="display:flex;align-items:center;gap:6px;min-width:0">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:9px;background:rgba(237,214,145,.12);border:1px solid rgba(237,214,145,.16);font-weight:900;flex:0 0 24px;font-size:.82rem">${typeIcon}</span>
+                    <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                        <b style="font-size:.84rem;line-height:1;letter-spacing:.015em">${escapeHtml(p.id)}</b>
+                        <span class="point-status-badge ${statusClass}" style="display:inline-flex;align-items:center;width:max-content;max-width:88px;padding:2px 6px;border-radius:999px;font-size:.60rem;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${st.ok?"✅ ":"⚠️ "}${statusText}</span>
                     </div>
                 </div>
             </td>
-            <td style="padding:7px 10px;vertical-align:middle"><input class="${st.utmOk?"":"point-input-invalid"}" style="min-height:38px;padding:8px 11px;border-radius:12px;font-size:.92rem" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>`;
+            <td style="width:62%;padding:5px 6px;vertical-align:middle"><input class="${st.utmOk?"":"point-input-invalid"}" style="width:100%;max-width:205px;min-width:0;box-sizing:border-box;min-height:32px;padding:6px 8px;border-radius:10px;font-size:.78rem;letter-spacing:.01em" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>`;
         tbody.appendChild(tr);
     });
     tbody.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{
