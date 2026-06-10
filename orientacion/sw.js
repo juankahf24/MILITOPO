@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v113 · paso2 tabla puntos compacta sin tipo */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v113-step2-tabla-puntos-compacta";
+/* MILITOPO · cache offline seguro v114 · tabla puntos compacta utm estrecha */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v114-tabla-puntos-utm-estrecha";
 const CORE_ASSETS = [
   "./",
   "./index.html",
