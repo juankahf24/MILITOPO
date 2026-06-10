@@ -760,12 +760,31 @@ function cleanupStep2ImportAndTableUi(){
 
     const table=document.querySelector(".points-base-table");
     if(table){
+        table.style.fontSize=".92rem";
+        table.style.borderCollapse="separate";
+        table.style.borderSpacing="0";
+        table.style.width="100%";
         const headRow=table.querySelector("thead tr");
         if(headRow){
+            [...headRow.children].forEach(th=>{
+                const label=String(th.textContent||"").trim().toUpperCase();
+                if(label==="ESTADO" || label==="TIPO") th.remove();
+            });
             const ths=[...headRow.children];
-            const estadoTh=ths.find(th=>String(th.textContent||"").trim().toUpperCase()==="ESTADO");
-            if(estadoTh)estadoTh.remove();
+            if(ths[0])ths[0].textContent="ID / ESTADO";
+            if(ths[1])ths[1].textContent="COORDENADA UTM";
+            ths.forEach(th=>{
+                th.style.padding="10px 12px";
+                th.style.fontSize=".78rem";
+                th.style.letterSpacing=".05em";
+                th.style.lineHeight="1.05";
+                th.style.whiteSpace="nowrap";
+            });
         }
+        table.querySelectorAll("td").forEach(td=>{
+            td.style.padding="8px 10px";
+            td.style.verticalAlign="middle";
+        });
     }
 }
 
@@ -775,11 +794,21 @@ function renderPointsTable(){
     tbody.innerHTML="";
     Object.values(state.points).forEach(p=>{
         const st=pointBaseStatus(p.id);
+        const typeIcon=symbolForType(p.type);
+        const statusText=st.ok?"Completo":`Pendiente · ${escapeHtml(st.missing.join(", "))}`;
+        const statusClass=st.ok?"ok":"warn";
         const tr=document.createElement("tr");
         tr.className=st.ok?"point-row-ok":"point-row-warn";
-        tr.innerHTML=`<td><b>${p.id}</b><br>${pointStatusBadgeHtml(p.id)}</td>
-            <td>${p.type}</td>
-            <td><input class="${st.utmOk?"":"point-input-invalid"}" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>`;
+        tr.innerHTML=`<td class="point-id-status-cell" style="width:145px;min-width:120px;padding:7px 10px;vertical-align:middle">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:10px;background:rgba(237,214,145,.14);border:1px solid rgba(237,214,145,.18);font-weight:900;flex:0 0 28px">${typeIcon}</span>
+                    <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                        <b style="font-size:.96rem;line-height:1;letter-spacing:.02em">${escapeHtml(p.id)}</b>
+                        <span class="point-status-badge ${statusClass}" style="display:inline-flex;align-items:center;width:max-content;max-width:105px;padding:3px 7px;border-radius:999px;font-size:.68rem;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${st.ok?"✅ ":"⚠️ "}${statusText}</span>
+                    </div>
+                </div>
+            </td>
+            <td style="padding:7px 10px;vertical-align:middle"><input class="${st.utmOk?"":"point-input-invalid"}" style="min-height:38px;padding:8px 11px;border-radius:12px;font-size:.92rem" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>`;
         tbody.appendChild(tr);
     });
     tbody.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{
