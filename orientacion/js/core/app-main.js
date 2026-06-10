@@ -633,8 +633,51 @@ function cleanupStep2ImportAndTableUi(){
                     secondaryBtn.style.boxShadow="0 10px 22px rgba(38,24,13,.22), inset 0 1px 0 rgba(255,255,255,.08)";
                     secondaryBtn.style.marginTop="16px";
                 }
-                layerPills.style.marginTop="16px";
+                layerPills.style.marginTop="18px";
+                layerPills.style.display="grid";
+                layerPills.style.gridTemplateColumns="repeat(3,minmax(0,1fr))";
+                layerPills.style.gap="10px";
+                layerPills.style.padding="8px";
+                layerPills.style.borderRadius="22px";
+                layerPills.style.background="linear-gradient(180deg, rgba(28,41,17,.10), rgba(15,25,9,.04))";
+                layerPills.style.border="1px solid rgba(237,214,145,.12)";
+                layerPills.style.boxShadow="inset 0 1px 0 rgba(255,255,255,.06)";
                 searchBlock.insertAdjacentElement("afterend", layerPills);
+
+                const styleLayerPillButtons=()=>{
+                    const layerButtons=[...layerPills.querySelectorAll("button")];
+                    layerButtons.forEach(btn=>{
+                        const active=btn.classList.contains("active") || btn.getAttribute("aria-pressed")==="true" || btn.dataset.active==="1";
+                        btn.style.width="100%";
+                        btn.style.minWidth="0";
+                        btn.style.minHeight="44px";
+                        btn.style.padding="10px 12px";
+                        btn.style.borderRadius="16px";
+                        btn.style.fontSize=".88rem";
+                        btn.style.lineHeight="1.05";
+                        btn.style.fontWeight="800";
+                        btn.style.letterSpacing=".02em";
+                        btn.style.boxShadow=active
+                            ? "0 8px 18px rgba(68,90,34,.22), inset 0 1px 0 rgba(255,255,255,.20)"
+                            : "0 6px 14px rgba(35,22,10,.14), inset 0 1px 0 rgba(255,255,255,.08)";
+                        btn.style.border=active
+                            ? "1.2px solid rgba(216,181,96,.55)"
+                            : "1.1px solid rgba(237,214,145,.18)";
+                        btn.style.background=active
+                            ? "linear-gradient(180deg, #9ec56a 0%, #7faa4f 100%)"
+                            : "linear-gradient(180deg, rgba(109,72,41,.92), rgba(77,48,27,.95))";
+                        btn.style.color=active ? "#20300f" : "#f7f1e2";
+                        btn.style.whiteSpace="normal";
+                        btn.style.textAlign="center";
+                        btn.style.justifyContent="center";
+                        btn.style.display="inline-flex";
+                        btn.style.alignItems="center";
+                        btn.style.gap="6px";
+                    });
+                };
+                styleLayerPillButtons();
+                layerPills.addEventListener("click",()=>setTimeout(styleLayerPillButtons,0));
+
                 layerPills.insertAdjacentElement("afterend", mapEl);
                 step2.dataset.militopoStep2AtakReordered="1";
             }
