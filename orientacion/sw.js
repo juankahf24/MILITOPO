@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v110 · paso2 botones de capas más modernos y compactos */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v110-step2-atak-principal-appmain";
+/* MILITOPO · cache offline seguro v111 · paso2 capas MAPANT IGN AÉREO y bloques modernos */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v111-step2-atak-principal-appmain";
 const CORE_ASSETS = [
   "./",
   "./index.html",
