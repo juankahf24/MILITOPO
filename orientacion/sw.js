@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v109 · paso2 bloque buscar zona más moderno */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v109-step2-atak-principal-appmain";
+/* MILITOPO · cache offline seguro v110 · paso2 botones de capas más modernos y compactos */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v110-step2-atak-principal-appmain";
 const CORE_ASSETS = [
   "./",
   "./index.html",
