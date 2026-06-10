@@ -556,16 +556,15 @@ function cleanupStep2ImportAndTableUi(){
                     atakBlock=document.createElement("div");
                     atakBlock.className="block militopo-atak-main-block";
                     atakBlock.style.marginTop="0";
+                    atakBlock.style.padding="18px";
                     atakBlock.innerHTML=`
-                        <div style="border-radius:24px;padding:18px 18px 16px;background:linear-gradient(180deg,rgba(216,232,191,.18),rgba(112,145,78,.14));border:1.5px solid rgba(237,214,145,.34);box-shadow:0 14px 34px rgba(0,0,0,.14), inset 0 1px 0 rgba(255,255,255,.10)">
-                            <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px">
-                                <span style="display:inline-flex;align-items:center;justify-content:center;width:102px;height:102px;border-radius:26px;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.12),rgba(255,255,255,0) 58%), linear-gradient(180deg,rgba(24,36,14,.24),rgba(18,25,12,.10));border:1.4px solid rgba(237,214,145,.25);box-shadow:inset 0 1px 0 rgba(255,255,255,.10)">${ATAK_BUTTON_ICON.replace('width:3.35em;height:3.35em;vertical-align:-0.56em;margin-left:-0.75em;margin-right:0.85em;','width:86px;height:86px;vertical-align:0;margin-left:0;margin-right:0;')}</span>
-                                <label style="margin:0;font-size:1.18rem;line-height:1.12;text-align:center">IMPORTAR PUNTOS CON ATAK</label>
-                                <button class="btn green militopo-atak-main-btn" style="width:100%;max-width:520px;min-height:66px;font-size:1.04rem;letter-spacing:.03em;box-shadow:0 10px 22px rgba(0,0,0,.14)" onclick="document.getElementById('atakGpxFile').click()">${ATAK_BUTTON_ICON}IMPORTAR POR ATAK GPX</button>
-                            </div>
-                            <div style="margin-top:14px;padding:13px 14px;border-radius:18px;background:rgba(18,30,11,.18);border:1px solid rgba(237,214,145,.15)">
-                                <div class="help" style="margin:0;color:rgba(245,239,223,.96)">Los waypoints del GPX deben guardarse con nombre o descripción: <b>START</b>, <b>FINISH</b>, <b>B01</b>, <b>B02</b>, etc. La app actualiza automáticamente el punto cuyo ID coincida.</div>
-                            </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px">
+                            <span style="display:inline-flex;align-items:center;justify-content:center;width:104px;height:104px;border-radius:24px;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.10),rgba(255,255,255,0) 58%), linear-gradient(180deg,rgba(24,36,14,.18),rgba(18,25,12,.08));border:1.2px solid rgba(237,214,145,.20);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)">${ATAK_BUTTON_ICON.replace('width:3.35em;height:3.35em;vertical-align:-0.56em;margin-left:-0.75em;margin-right:0.85em;','width:88px;height:88px;vertical-align:0;margin-left:0;margin-right:0;')}</span>
+                            <label style="margin:0;font-size:1.2rem;line-height:1.12;text-align:center">IMPORTAR PUNTOS CON ATAK</label>
+                            <button class="btn green militopo-atak-main-btn" style="width:100%;max-width:560px;min-height:68px;font-size:1.06rem;letter-spacing:.03em;box-shadow:0 10px 22px rgba(0,0,0,.14)" onclick="document.getElementById('atakGpxFile').click()">IMPORTAR POR ATAK GPX</button>
+                        </div>
+                        <div style="margin-top:14px;padding:14px 15px;border-radius:18px;background:rgba(18,30,11,.15);border:1px solid rgba(237,214,145,.12)">
+                            <div class="help" style="margin:0;color:rgba(245,239,223,.96)">Los waypoints del GPX deben guardarse con nombre o descripción: <b>START</b>, <b>FINISH</b>, <b>B01</b>, <b>B02</b>, etc. La app actualiza automáticamente el punto cuyo ID coincida.</div>
                         </div>`;
                 }
                 // Quitar el botón ATAK duplicado del bloque antiguo de importación de texto.
