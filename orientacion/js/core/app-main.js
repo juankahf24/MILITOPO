@@ -647,16 +647,20 @@ function cleanupStep2ImportAndTableUi(){
                 const styleLayerPillButtons=()=>{
                     const layerButtons=[...layerPills.querySelectorAll("button")];
                     layerButtons.forEach(btn=>{
+                        const layerKey=String(btn.dataset.layer||"").toLowerCase();
+                        if(layerKey.includes("mapant")) btn.textContent="MAPANT";
+                        else if(layerKey.includes("ign")) btn.textContent="IGN";
+                        else if(layerKey.includes("pnoa") || layerKey.includes("aereo") || layerKey.includes("aéreo")) btn.textContent="AÉREO";
                         const active=btn.classList.contains("active") || btn.getAttribute("aria-pressed")==="true" || btn.dataset.active==="1";
                         btn.style.width="100%";
                         btn.style.minWidth="0";
-                        btn.style.minHeight="44px";
-                        btn.style.padding="10px 12px";
-                        btn.style.borderRadius="16px";
-                        btn.style.fontSize=".88rem";
-                        btn.style.lineHeight="1.05";
-                        btn.style.fontWeight="800";
-                        btn.style.letterSpacing=".02em";
+                        btn.style.minHeight="42px";
+                        btn.style.padding="9px 10px";
+                        btn.style.borderRadius="15px";
+                        btn.style.fontSize=".9rem";
+                        btn.style.lineHeight="1";
+                        btn.style.fontWeight="900";
+                        btn.style.letterSpacing=".055em";
                         btn.style.boxShadow=active
                             ? "0 8px 18px rgba(68,90,34,.22), inset 0 1px 0 rgba(255,255,255,.20)"
                             : "0 6px 14px rgba(35,22,10,.14), inset 0 1px 0 rgba(255,255,255,.08)";
@@ -667,18 +671,88 @@ function cleanupStep2ImportAndTableUi(){
                             ? "linear-gradient(180deg, #9ec56a 0%, #7faa4f 100%)"
                             : "linear-gradient(180deg, rgba(109,72,41,.92), rgba(77,48,27,.95))";
                         btn.style.color=active ? "#20300f" : "#f7f1e2";
-                        btn.style.whiteSpace="normal";
+                        btn.style.whiteSpace="nowrap";
                         btn.style.textAlign="center";
                         btn.style.justifyContent="center";
                         btn.style.display="inline-flex";
                         btn.style.alignItems="center";
-                        btn.style.gap="6px";
+                        btn.style.gap="0";
                     });
                 };
                 styleLayerPillButtons();
                 layerPills.addEventListener("click",()=>setTimeout(styleLayerPillButtons,0));
 
                 layerPills.insertAdjacentElement("afterend", mapEl);
+
+                const selectedPoint=document.getElementById("selectedPoint");
+                const editBlock=selectedPoint?selectedPoint.closest(".block"):null;
+                const tableBlock=document.querySelector(".points-base-table")?.closest(".block")||null;
+                const modernBlocks=[editBlock,importBlock,tableBlock].filter(Boolean);
+                modernBlocks.forEach(block=>{
+                    if(block.classList.contains("autofill-test-panel"))return;
+                    block.style.marginTop="22px";
+                    block.style.padding="18px";
+                    block.style.borderRadius="26px";
+                    block.style.background="linear-gradient(180deg, rgba(216,232,191,.12), rgba(68,91,46,.10))";
+                    block.style.border="1.2px solid rgba(237,214,145,.20)";
+                    block.style.boxShadow="inset 0 1px 0 rgba(255,255,255,.07), 0 10px 26px rgba(0,0,0,.09)";
+                    block.querySelectorAll("label").forEach(label=>{
+                        label.style.display="block";
+                        label.style.marginBottom="10px";
+                        label.style.letterSpacing=".055em";
+                        label.style.fontWeight="900";
+                    });
+                    block.querySelectorAll("input,select,textarea").forEach(el=>{
+                        el.style.borderRadius=el.tagName==="TEXTAREA"?"18px":"16px";
+                        el.style.border="1.2px solid rgba(233,194,116,.48)";
+                        el.style.background="linear-gradient(180deg, rgba(69,43,25,.92), rgba(48,31,18,.94))";
+                        el.style.boxShadow="inset 0 1px 0 rgba(255,255,255,.08)";
+                    });
+                    block.querySelectorAll("button").forEach(btn=>{
+                        btn.style.minHeight="48px";
+                        btn.style.padding="12px 16px";
+                        btn.style.borderRadius="999px";
+                        btn.style.fontSize=".95rem";
+                        btn.style.letterSpacing=".025em";
+                    });
+                });
+                if(importBlock){
+                    const title=importBlock.querySelector("label");
+                    if(title)title.textContent="📥 IMPORTAR PUNTOS";
+                    importBlock.querySelectorAll("button").forEach(btn=>{
+                        if(norm(btn.textContent).includes("IMPORTAR TEXTO")){
+                            btn.innerHTML="📥 IMPORTAR TEXTO";
+                            btn.style.width="100%";
+                            btn.style.background="linear-gradient(180deg, #efd185 0%, #e0b45a 100%)";
+                            btn.style.color="#2b1908";
+                        }
+                    });
+                }
+                if(editBlock){
+                    const title=editBlock.querySelector("label");
+                    if(title)title.textContent="📍 EDITAR PUNTO DEL PLANO";
+                    editBlock.querySelectorAll("button").forEach(btn=>{
+                        const t=norm(btn.textContent);
+                        if(t.includes("GUARDAR")){
+                            btn.style.background="linear-gradient(180deg, #9ec56a 0%, #7faa4f 100%)";
+                            btn.style.color="#20300f";
+                        }else if(t.includes("LIMPIAR")){
+                            btn.style.background="linear-gradient(180deg, #c9654d 0%, #a74735 100%)";
+                            btn.style.color="#fff6ea";
+                        }
+                    });
+                }
+                if(tableBlock){
+                    const title=tableBlock.querySelector("label");
+                    if(title)title.textContent="📋 TABLA EDITABLE DE PUNTOS";
+                    const wrap=tableBlock.querySelector(".table-wrap");
+                    if(wrap){
+                        wrap.style.borderRadius="18px";
+                        wrap.style.overflow="hidden";
+                        wrap.style.border="1px solid rgba(237,214,145,.16)";
+                    }
+                }
+
                 step2.dataset.militopoStep2AtakReordered="1";
             }
         }
