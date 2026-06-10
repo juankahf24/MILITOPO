@@ -648,9 +648,9 @@ function cleanupStep2ImportAndTableUi(){
                     const layerButtons=[...layerPills.querySelectorAll("button")];
                     layerButtons.forEach(btn=>{
                         const layerKey=String(btn.dataset.layer||"").toLowerCase();
-                        if(layerKey.includes("mapant")) btn.textContent="MAPANT";
-                        else if(layerKey.includes("ign")) btn.textContent="IGN";
-                        else if(layerKey.includes("pnoa") || layerKey.includes("aereo") || layerKey.includes("aéreo")) btn.textContent="AÉREO";
+                        if(layerKey.includes("mapant")) btn.textContent="🗺️ MAPANT";
+                        else if(layerKey.includes("ign")) btn.textContent="🧭 IGN";
+                        else if(layerKey.includes("pnoa") || layerKey.includes("aereo") || layerKey.includes("aéreo")) btn.textContent="🛰️ AÉREO";
                         const active=btn.classList.contains("active") || btn.getAttribute("aria-pressed")==="true" || btn.dataset.active==="1";
                         btn.style.width="100%";
                         btn.style.minWidth="0";
