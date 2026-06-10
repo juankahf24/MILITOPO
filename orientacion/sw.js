@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v116 · tabla puntos columnas juntas según raya*/
-const MILITOPO_CACHE = "militopo-orientacion-modular-v116-tabla-columnas-juntas-raya";
+/* MILITOPO · cache offline seguro v116 · tabla UTM hacia la izquierda */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v116-tabla-utm-hacia-izquierda";
 const CORE_ASSETS = [
   "./",
   "./index.html",
