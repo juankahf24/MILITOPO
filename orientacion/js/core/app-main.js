@@ -750,8 +750,6 @@ function cleanupStep2ImportAndTableUi(){
                         wrap.style.borderRadius="18px";
                         wrap.style.overflow="hidden";
                         wrap.style.border="1px solid rgba(237,214,145,.16)";
-                        wrap.style.width="100%";
-                        wrap.style.maxWidth="100%";
                     }
                 }
 
@@ -776,17 +774,17 @@ function cleanupStep2ImportAndTableUi(){
             });
             const ths=[...headRow.children];
             if(ths[0]){
-                ths[0].textContent="ID / ESTADO";
-                ths[0].style.width="52%";
+                ths[0].textContent="ID";
+                ths[0].style.width="17%";
                 ths[0].style.textAlign="left";
             }
             if(ths[1]){
                 ths[1].textContent="UTM";
-                ths[1].style.width="48%";
+                ths[1].style.width="83%";
                 ths[1].style.textAlign="left";
             }
             ths.forEach(th=>{
-                th.style.padding="6px 4px";
+                th.style.padding="7px 3px";
                 th.style.fontSize=".70rem";
                 th.style.letterSpacing=".045em";
                 th.style.lineHeight="1";
@@ -794,21 +792,18 @@ function cleanupStep2ImportAndTableUi(){
             });
         }
         table.querySelectorAll("td").forEach(td=>{
-            td.style.padding="3px 3px";
+            td.style.padding="4px 4px";
             td.style.verticalAlign="middle";
             td.style.textAlign="left";
         });
         table.querySelectorAll('input[data-field="utm"]').forEach(inp=>{
             inp.style.width="100%";
-            inp.style.maxWidth="142px";
+            inp.style.maxWidth="168px";
             inp.style.minWidth="0";
             inp.style.display="block";
             inp.style.marginLeft="0";
             inp.style.marginRight="auto";
             inp.style.boxSizing="border-box";
-            inp.style.marginLeft="0";
-            inp.style.display="block";
-            inp.style.textAlign="left";
         });
     }
 }
@@ -824,16 +819,16 @@ function renderPointsTable(){
         const statusClass=st.ok?"ok":"warn";
         const tr=document.createElement("tr");
         tr.className=st.ok?"point-row-ok":"point-row-warn";
-        tr.innerHTML=`<td class="point-id-status-cell" style="width:22%;padding:4px 3px;vertical-align:middle;text-align:left">
-                <div style="display:flex;align-items:center;gap:3px;min-width:0">
-                    <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:9px;background:rgba(237,214,145,.12);border:1px solid rgba(237,214,145,.16);font-weight:900;flex:0 0 20px;font-size:.72rem">${typeIcon}</span>
-                    <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
-                        <b style="font-size:.80rem;line-height:1;letter-spacing:.01em">${escapeHtml(p.id)}</b>
-                        <span class="point-status-badge ${statusClass}" style="display:inline-flex;align-items:center;width:max-content;max-width:70px;padding:2px 4px;border-radius:999px;font-size:.56rem;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${st.ok?"✅ ":"⚠️ "}${statusText}</span>
+        tr.innerHTML=`<td class="point-id-status-cell" style="width:17%;padding:4px 2px;vertical-align:middle;text-align:left">
+                <div style="display:flex;align-items:center;gap:2px;min-width:0">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:9px;background:rgba(237,214,145,.12);border:1px solid rgba(237,214,145,.16);font-weight:900;flex:0 0 18px;font-size:.68rem">${typeIcon}</span>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                        <b style="font-size:.76rem;line-height:1;letter-spacing:.01em">${escapeHtml(p.id)}</b>
+                        <span class="point-status-badge ${statusClass}" style="display:inline-flex;align-items:center;width:max-content;max-width:62px;padding:2px 4px;border-radius:999px;font-size:.54rem;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${st.ok?"✅ ":"⚠️ "}${statusText}</span>
                     </div>
                 </div>
             </td>
-            <td style="width:78%;padding:4px 3px;vertical-align:middle;text-align:left"><input class="${st.utmOk?"":"point-input-invalid"}" style="width:100%;max-width:168px;min-width:0;display:block;margin-left:0;margin-right:auto;box-sizing:border-box;min-height:32px;padding:6px 8px;border-radius:10px;font-size:.78rem;letter-spacing:.01em" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>`;
+            <td style="width:83%;padding:4px 2px;vertical-align:middle;text-align:left"><input class="${st.utmOk?"":"point-input-invalid"}" style="width:100%;max-width:160px;min-width:0;display:block;margin-left:0;margin-right:auto;box-sizing:border-box;min-height:32px;padding:6px 7px;border-radius:10px;font-size:.76rem;letter-spacing:.01em" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>`;
         tbody.appendChild(tr);
     });
     tbody.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{
@@ -1012,7 +1007,7 @@ function renderMapMarkers(){if(!markersLayer)return;markersLayer.clearLayers();r
     navigator.geolocation.getCurrentPosition(pos=>{
         const lat=pos.coords.latitude,lon=pos.coords.longitude,acc=pos.coords.accuracy||0;
         const icon=L.divIcon({
-            html:`<div style="width:20px;height:20px;border-radius:50%;background:#2f8cff;border:4px solid white;box-shadow:0 0 0 4px rgba(47,140,255,.28),0 4px 12px rgba(0,0,0,.35);"></div>`,
+            html:`<div style="width:18px;height:18px;border-radius:50%;background:#2f8cff;border:4px solid white;box-shadow:0 0 0 4px rgba(47,140,255,.28),0 4px 12px rgba(0,0,0,.35);"></div>`,
             className:"",
             iconSize:[24,24],
             iconAnchor:[12,12]
@@ -2302,7 +2297,7 @@ function renderRoutes(){
         const cleanCount=q.clean||0;
         const acceptableCount=q.acceptable||0;
         const totalRoutes=state.routes.length||0;
-        const diffHtml=buckets.total?`<div class="metric difficulty-metric"><small>Dificultad</small><div style="display:grid;gap:3px;margin-top:6px;font-size:16px;font-weight:900;line-height:1.15;"><div style="display:grid;grid-template-columns:28px 1fr;align-items:center;"><b>${buckets.faciles||0}</b><span>fácil</span></div><div style="display:grid;grid-template-columns:28px 1fr;align-items:center;"><b>${buckets.medias||0}</b><span>media</span></div><div style="display:grid;grid-template-columns:28px 1fr;align-items:center;"><b>${buckets.dificiles||0}</b><span>difícil</span></div></div></div>`:"";
+        const diffHtml=buckets.total?`<div class="metric difficulty-metric"><small>Dificultad</small><div style="display:grid;gap:2px;margin-top:6px;font-size:16px;font-weight:900;line-height:1.15;"><div style="display:grid;grid-template-columns:28px 1fr;align-items:center;"><b>${buckets.faciles||0}</b><span>fácil</span></div><div style="display:grid;grid-template-columns:28px 1fr;align-items:center;"><b>${buckets.medias||0}</b><span>media</span></div><div style="display:grid;grid-template-columns:28px 1fr;align-items:center;"><b>${buckets.dificiles||0}</b><span>difícil</span></div></div></div>`:"";
         const forcedAdvice=forcedCount>0
             ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,193,7,.16);border:1px solid rgba(255,193,7,.45);"><b>⚠️ Consejo:</b> hay <b>${forcedCount}</b> recorrido(s) forzado(s). Para reducirlos, añade o mueve balizas, baja controles por recorrido o reduce participantes.</div>`
             : `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.38);"><b>✅ Consejo:</b> no hay recorridos forzados. La distribución actual es buena para generar planos.</div>`;
@@ -2717,7 +2712,7 @@ function ensureStep5FlowVisualStyles(){
 .step5-status-panel{margin-top:16px;border-radius:24px;border:1.8px solid rgba(240,193,106,.42);background:linear-gradient(180deg,rgba(38,58,25,.74),rgba(7,16,8,.42));padding:14px;overflow:hidden;box-shadow:0 18px 44px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.06)}
 .step5-status-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;color:#f0c16a;font-weight:900;letter-spacing:.08em;text-transform:uppercase;font-size:.86rem;line-height:1.25}
 .step5-status-title-main{display:block;font-size:1.02rem;color:#ffe3a0;letter-spacing:.10em}.step5-status-title-sub{display:block;margin-top:5px;color:#f5e6c8;font-size:.72rem;letter-spacing:.03em;text-transform:none;line-height:1.35;font-weight:800;opacity:.92}.step5-status-active-pill{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid rgba(139,181,106,.55);background:rgba(139,181,106,.18);color:#f7ffe9;padding:8px 11px;font-size:.78rem;line-height:1.15;white-space:normal;text-align:center}
-.step5-status-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;margin-bottom:12px}.step5-status-summary span{border-radius:999px;padding:6px 9px;background:rgba(255,255,255,.07);border:1px solid rgba(230,188,122,.18);font-size:.72rem;font-weight:900;color:#f5e6c8;line-height:1.15}.step5-status-summary-clear > span{display:none}.step5-count-card{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;border-radius:18px;padding:10px 12px;background:rgba(0,0,0,.20);border:1.3px solid rgba(230,188,122,.25);min-height:58px}.step5-count-card .ico{font-size:1.55rem;line-height:1}.step5-count-card b{display:block;color:#f5e6c8;font-size:.80rem;line-height:1.15;letter-spacing:.035em}.step5-count-card small{display:block;color:#cbb894;font-size:.66rem;line-height:1.2;margin-top:3px}.step5-count-card em{font-style:normal;color:#ffe3a0;font-size:1.55rem;font-weight:900;line-height:1}.step5-count-card.race{border-color:rgba(93,168,255,.42);background:rgba(65,130,205,.14)}.step5-count-card.finished,.step5-count-card.result{border-color:rgba(139,181,106,.48);background:rgba(139,181,106,.12)}.step5-count-card.discarded{border-color:rgba(200,94,69,.50);background:rgba(200,94,69,.12)}
+.step5-status-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;margin-bottom:12px}.step5-status-summary span{border-radius:999px;padding:6px 9px;background:rgba(255,255,255,.07);border:1px solid rgba(230,188,122,.18);font-size:.72rem;font-weight:900;color:#f5e6c8;line-height:1.15}.step5-status-summary-clear > span{display:none}.step5-count-card{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;border-radius:18px;padding:10px 12px;background:rgba(0,0,0,.20);border:1.3px solid rgba(230,188,122,.25);min-height:58px}.step5-count-card .ico{font-size:1.55rem;line-height:1}.step5-count-card b{display:block;color:#f5e6c8;font-size:.82rem;line-height:1.15;letter-spacing:.035em}.step5-count-card small{display:block;color:#cbb894;font-size:.66rem;line-height:1.2;margin-top:3px}.step5-count-card em{font-style:normal;color:#ffe3a0;font-size:1.55rem;font-weight:900;line-height:1}.step5-count-card.race{border-color:rgba(93,168,255,.42);background:rgba(65,130,205,.14)}.step5-count-card.finished,.step5-count-card.result{border-color:rgba(139,181,106,.48);background:rgba(139,181,106,.12)}.step5-count-card.discarded{border-color:rgba(200,94,69,.50);background:rgba(200,94,69,.12)}
 .step5-status-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:9px;margin-top:10px}.step5-status-list-title{margin:4px 0 8px;color:#ffe3a0;font-weight:900;letter-spacing:.08em;text-transform:uppercase;font-size:.76rem}
 .step5-status-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;border-radius:18px;padding:11px;background:rgba(0,0,0,.17);border:1.4px solid rgba(230,188,122,.24);overflow:hidden}
 .step5-status-card.ok{border-color:rgba(139,181,106,.55);background:rgba(139,181,106,.11)}
@@ -7460,7 +7455,7 @@ function iofDescriptionsSheetHtml(){
             <td>${escapeHtml(io.text||"")}</td>
         </tr>`;
     }).join("");
-    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Descripciones_${state.eventId}</title><style>@page{size:A4 portrait;margin:8mm}body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#eee;color:#111}.page{background:#fff;max-width:1120px;margin:0 auto;padding:18px}.title{font-size:36px;font-weight:900;color:#c000a0}.meta{margin:8px 0 16px;font-size:14px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:6px;vertical-align:middle}th{background:#f4d7ef;color:#6d005d}.symbol{font-size:18px;text-align:center;font-weight:900}.symbol .iof-c-svg{width:20px;height:20px;color:#111;display:inline-block;vertical-align:middle}.symbol .iof-c-svg path,.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.symbol .iof-c-svg{width:26px;height:26px;color:#111}.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.symbol .iof-combo-svg{width:26px;height:26px;color:#111;display:inline-block;vertical-align:middle}.toolbar{margin:10px 0 14px}.toolbar button{border:0;border-radius:999px;background:#c000a0;color:white;font-weight:800;padding:9px 13px}@media print{body{background:white}.page{max-width:none;padding:0}.toolbar{display:none}.title{font-size:28px}table{font-size:10px}}</style></head><body><div class="page"><div class="title">Descripciones de control · ${escapeHtml(state.eventName||"Orientación")}</div><div class="meta"><b>Evento:</b> ${escapeHtml(state.eventId)} · <b>Formato:</b> IOF A-H · <b>Fecha:</b> ${new Date().toLocaleDateString("es-ES")}</div><div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div><table><thead><tr><th>A<br>Nº</th><th>B<br>Código</th><th>C</th><th>D<br>Símbolo</th><th>D<br>Elemento</th><th>E<br>Aspecto</th><th>F<br>Dim.</th><th>G<br>Situación</th><th>H<br>Info</th><th>Texto</th></tr></thead><tbody>${rows}</tbody></table></div></body></html>`;
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Descripciones_${state.eventId}</title><style>@page{size:A4 portrait;margin:8mm}body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#eee;color:#111}.page{background:#fff;max-width:1120px;margin:0 auto;padding:18px}.title{font-size:36px;font-weight:900;color:#c000a0}.meta{margin:8px 0 16px;font-size:14px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:6px;vertical-align:middle}th{background:#f4d7ef;color:#6d005d}.symbol{font-size:18px;text-align:center;font-weight:900}.symbol .iof-c-svg{width:18px;height:18px;color:#111;display:inline-block;vertical-align:middle}.symbol .iof-c-svg path,.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.symbol .iof-c-svg{width:26px;height:26px;color:#111}.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.symbol .iof-combo-svg{width:26px;height:26px;color:#111;display:inline-block;vertical-align:middle}.toolbar{margin:10px 0 14px}.toolbar button{border:0;border-radius:999px;background:#c000a0;color:white;font-weight:800;padding:9px 13px}@media print{body{background:white}.page{max-width:none;padding:0}.toolbar{display:none}.title{font-size:28px}table{font-size:10px}}</style></head><body><div class="page"><div class="title">Descripciones de control · ${escapeHtml(state.eventName||"Orientación")}</div><div class="meta"><b>Evento:</b> ${escapeHtml(state.eventId)} · <b>Formato:</b> IOF A-H · <b>Fecha:</b> ${new Date().toLocaleDateString("es-ES")}</div><div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div><table><thead><tr><th>A<br>Nº</th><th>B<br>Código</th><th>C</th><th>D<br>Símbolo</th><th>D<br>Elemento</th><th>E<br>Aspecto</th><th>F<br>Dim.</th><th>G<br>Situación</th><th>H<br>Info</th><th>Texto</th></tr></thead><tbody>${rows}</tbody></table></div></body></html>`;
 }
 
 function openIofDescriptionsSheet(){
@@ -8140,7 +8135,7 @@ function renderResultsControl(){
         summary.innerHTML=`
             <div style="display:grid;gap:14px;text-align:left;">
                 <div style="display:grid;gap:6px;padding:14px;border-radius:18px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);">
-                    <div style="opacity:.78;font-size:.80rem;letter-spacing:.12em;text-transform:uppercase;">Evento</div>
+                    <div style="opacity:.78;font-size:.82rem;letter-spacing:.12em;text-transform:uppercase;">Evento</div>
                     <div style="font-size:1.15rem;font-weight:900;word-break:break-word;">${escapeHtml(state.eventId||"--")}</div>
                     <div style="font-weight:800;line-height:1.25;">${statusText}</div>
                     <div style="opacity:.84;line-height:1.3;">${reviewText}</div>
@@ -8293,7 +8288,7 @@ function renderClassificationTable(){
                 <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${time}</td>
                 <td style="vertical-align:top;text-align:center;white-space:normal;">${controls}</td>
                 <td style="vertical-align:top;text-align:center;white-space:normal;">${missingCount}</td>
-                <td style="vertical-align:top;text-align:center;white-space:normal;"><span class="result-chip" style="display:inline-flex;align-items:center;justify-content:center;gap:3px;white-space:normal;line-height:1.1;max-width:100%;padding:.35em .55em;">${r.completed?"✅ OK":"⚠️ AVISO"}</span></td>
+                <td style="vertical-align:top;text-align:center;white-space:normal;"><span class="result-chip" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:normal;line-height:1.1;max-width:100%;padding:.35em .55em;">${r.completed?"✅ OK":"⚠️ AVISO"}</span></td>
             </tr>`;
         }).join("")}</tbody>
     </table></div>`;
