@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v117 · tabla columnas más juntas */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v117-tabla-columnas-muy-juntas";
+/* MILITOPO · cache offline seguro v118 · tabla fija UTM más a la izquierda */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v118-tabla-fija-utm-izquierda";
 const CORE_ASSETS = [
   "./",
   "./index.html",
