@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v121 · tabla sin scroll ajustada a margen */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v121-tabla-sin-scroll-ajustada-margen";
+/* MILITOPO · cache offline seguro v121 · tabla scroll vertical sin horizontal */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v121-tabla-scroll-vertical-sin-horizontal";
 const CORE_ASSETS = [
   "./",
   "./index.html",
