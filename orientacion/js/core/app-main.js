@@ -432,6 +432,19 @@ function pointStatusBadgeHtml(id){
 
 
 function cleanupStep2ImportAndTableUi(){
+    if(!document.getElementById("militopo-points-table-no-x-scroll")){
+        const st=document.createElement("style");
+        st.id="militopo-points-table-no-x-scroll";
+        st.textContent=`
+            .points-base-table,
+            .points-base-table *{box-sizing:border-box!important;}
+            .points-base-table{width:100%!important;max-width:100%!important;min-width:0!important;table-layout:fixed!important;border-collapse:separate!important;}
+            .points-base-table th,.points-base-table td{min-width:0!important;max-width:none!important;overflow:hidden!important;}
+            .points-base-table input[data-field="utm"]{width:100%!important;max-width:160px!important;min-width:0!important;box-sizing:border-box!important;display:block!important;margin-left:0!important;margin-right:auto!important;}
+            .table-wrap:has(.points-base-table){width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important;overflow-y:visible!important;overscroll-behavior-x:none!important;-webkit-overflow-scrolling:auto!important;touch-action:pan-y!important;}
+        `;
+        document.head.appendChild(st);
+    }
     const gpxFile=document.getElementById("gpxFile");
     if(gpxFile){
         gpxFile.style.display="none";
@@ -748,6 +761,7 @@ function cleanupStep2ImportAndTableUi(){
                     const wrap=tableBlock.querySelector(".table-wrap");
                     if(wrap){
                         wrap.style.borderRadius="18px";
+                        wrap.style.overflow="visible";
                         wrap.style.overflowX="hidden";
                         wrap.style.overflowY="visible";
                         wrap.style.border="1px solid rgba(237,214,145,.16)";
@@ -756,6 +770,8 @@ function cleanupStep2ImportAndTableUi(){
                         wrap.style.boxSizing="border-box";
                         wrap.style.touchAction="pan-y";
                         wrap.style.overscrollBehaviorX="none";
+                        wrap.style.webkitOverflowScrolling="auto";
+                        wrap.style.scrollbarWidth="none";
                     }
                 }
 
@@ -767,6 +783,7 @@ function cleanupStep2ImportAndTableUi(){
 
         document.querySelectorAll(".table-wrap").forEach(wrapEl=>{
             if(wrapEl.querySelector(".points-base-table")){
+                wrapEl.style.overflow="visible";
                 wrapEl.style.overflowX="hidden";
                 wrapEl.style.overflowY="visible";
                 wrapEl.style.width="100%";
@@ -774,6 +791,8 @@ function cleanupStep2ImportAndTableUi(){
                 wrapEl.style.boxSizing="border-box";
                 wrapEl.style.touchAction="pan-y";
                 wrapEl.style.overscrollBehaviorX="none";
+                wrapEl.style.webkitOverflowScrolling="auto";
+                wrapEl.style.scrollbarWidth="none";
             }
         });
 
@@ -785,6 +804,8 @@ function cleanupStep2ImportAndTableUi(){
         table.style.width="100%";
         table.style.maxWidth="100%";
         table.style.tableLayout="fixed";
+        table.style.minWidth="0";
+        table.style.boxSizing="border-box";
         const headRow=table.querySelector("thead tr");
         if(headRow){
             [...headRow.children].forEach(th=>{
@@ -814,6 +835,8 @@ function cleanupStep2ImportAndTableUi(){
             td.style.padding="4px 4px";
             td.style.verticalAlign="middle";
             td.style.textAlign="left";
+            td.style.boxSizing="border-box";
+            td.style.overflow="hidden";
         });
         table.querySelectorAll('input[data-field="utm"]').forEach(inp=>{
             inp.style.width="100%";
