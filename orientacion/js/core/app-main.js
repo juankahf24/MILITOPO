@@ -440,8 +440,8 @@ function cleanupStep2ImportAndTableUi(){
             .points-base-table *{box-sizing:border-box!important;}
             .points-base-table{width:100%!important;max-width:100%!important;min-width:0!important;table-layout:fixed!important;border-collapse:separate!important;}
             .points-base-table th,.points-base-table td{min-width:0!important;max-width:none!important;overflow:hidden!important;}
-            .points-base-table input[data-field="utm"]{width:100%!important;max-width:160px!important;min-width:0!important;box-sizing:border-box!important;display:block!important;margin-left:0!important;margin-right:auto!important;}
-            .table-wrap:has(.points-base-table){width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important;overflow-y:visible!important;overscroll-behavior-x:none!important;-webkit-overflow-scrolling:auto!important;touch-action:pan-y!important;}
+            .points-base-table input[data-field="utm"]{width:100%!important;max-width:280px!important;min-width:0!important;box-sizing:border-box!important;display:block!important;margin-left:0!important;margin-right:auto!important;text-align:left!important;}
+            .table-wrap:has(.points-base-table){width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important;overflow-y:hidden!important;overscroll-behavior-x:none!important;-webkit-overflow-scrolling:auto!important;touch-action:pan-y!important;}
         `;
         document.head.appendChild(st);
     }
@@ -763,7 +763,7 @@ function cleanupStep2ImportAndTableUi(){
                         wrap.style.borderRadius="18px";
                         wrap.style.overflow="visible";
                         wrap.style.overflowX="hidden";
-                        wrap.style.overflowY="visible";
+                        wrap.style.overflowY="hidden";
                         wrap.style.border="1px solid rgba(237,214,145,.16)";
                         wrap.style.width="100%";
                         wrap.style.maxWidth="100%";
@@ -785,7 +785,7 @@ function cleanupStep2ImportAndTableUi(){
             if(wrapEl.querySelector(".points-base-table")){
                 wrapEl.style.overflow="visible";
                 wrapEl.style.overflowX="hidden";
-                wrapEl.style.overflowY="visible";
+                wrapEl.style.overflowY="hidden";
                 wrapEl.style.width="100%";
                 wrapEl.style.maxWidth="100%";
                 wrapEl.style.boxSizing="border-box";
@@ -815,12 +815,12 @@ function cleanupStep2ImportAndTableUi(){
             const ths=[...headRow.children];
             if(ths[0]){
                 ths[0].textContent="ID";
-                ths[0].style.width="17%";
+                ths[0].style.width="32%";
                 ths[0].style.textAlign="left";
             }
             if(ths[1]){
                 ths[1].textContent="UTM";
-                ths[1].style.width="83%";
+                ths[1].style.width="68%";
                 ths[1].style.textAlign="left";
             }
             ths.forEach(th=>{
@@ -840,13 +840,13 @@ function cleanupStep2ImportAndTableUi(){
         });
         table.querySelectorAll('input[data-field="utm"]').forEach(inp=>{
             inp.style.width="100%";
-            inp.style.maxWidth="168px";
+            inp.style.maxWidth="280px";
             inp.style.minWidth="0";
             inp.style.display="block";
             inp.style.marginLeft="0";
             inp.style.marginRight="auto";
             inp.style.boxSizing="border-box";
-            inp.style.maxWidth="160px";
+            inp.style.maxWidth="280px";
         });
     }
 }
@@ -862,7 +862,7 @@ function renderPointsTable(){
         const statusClass=st.ok?"ok":"warn";
         const tr=document.createElement("tr");
         tr.className=st.ok?"point-row-ok":"point-row-warn";
-        tr.innerHTML=`<td class="point-id-status-cell" style="width:17%;padding:4px 2px;vertical-align:middle;text-align:left">
+        tr.innerHTML=`<td class="point-id-status-cell" style="width:32%;padding:4px 3px;vertical-align:middle;text-align:left">
                 <div style="display:flex;align-items:center;gap:2px;min-width:0">
                     <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:9px;background:rgba(237,214,145,.12);border:1px solid rgba(237,214,145,.16);font-weight:900;flex:0 0 18px;font-size:.68rem">${typeIcon}</span>
                     <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
@@ -871,7 +871,7 @@ function renderPointsTable(){
                     </div>
                 </div>
             </td>
-            <td style="width:83%;padding:4px 2px;vertical-align:middle;text-align:left"><input class="${st.utmOk?"":"point-input-invalid"}" style="width:100%;max-width:160px;min-width:0;display:block;margin-left:0;margin-right:auto;box-sizing:border-box;min-height:32px;padding:6px 7px;border-radius:10px;font-size:.76rem;letter-spacing:.01em" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>`;
+            <td style="width:68%;padding:4px 3px;vertical-align:middle;text-align:left"><input class="${st.utmOk?"":"point-input-invalid"}" style="width:100%;max-width:280px;min-width:0;display:block;margin-left:0;margin-right:auto;box-sizing:border-box;min-height:32px;padding:6px 7px;border-radius:10px;font-size:.76rem;letter-spacing:.01em" value="${escapeHtml(p.utm||"")}" data-id="${p.id}" data-field="utm" placeholder="30T 463941 4106198"></td>`;
         tbody.appendChild(tr);
     });
     tbody.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",e=>{
