@@ -441,7 +441,7 @@ function cleanupStep2ImportAndTableUi(){
             .points-base-table{width:100%!important;max-width:100%!important;min-width:0!important;table-layout:fixed!important;border-collapse:separate!important;}
             .points-base-table th,.points-base-table td{min-width:0!important;max-width:none!important;overflow:hidden!important;}
             .points-base-table input[data-field="utm"]{width:100%!important;max-width:280px!important;min-width:0!important;box-sizing:border-box!important;display:block!important;margin-left:0!important;margin-right:auto!important;text-align:left!important;}
-            .table-wrap:has(.points-base-table){width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important;overflow-y:hidden!important;overscroll-behavior-x:none!important;-webkit-overflow-scrolling:auto!important;touch-action:pan-y!important;}
+            .table-wrap:has(.points-base-table){width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior-x:none!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;}
         `;
         document.head.appendChild(st);
     }
@@ -761,15 +761,16 @@ function cleanupStep2ImportAndTableUi(){
                     const wrap=tableBlock.querySelector(".table-wrap");
                     if(wrap){
                         wrap.style.borderRadius="18px";
-                        wrap.style.overflow="visible";
                         wrap.style.overflowX="hidden";
-                        wrap.style.overflowY="hidden";
+                        wrap.style.overflowY="auto";
+                        wrap.style.webkitOverflowScrolling="touch";
                         wrap.style.border="1px solid rgba(237,214,145,.16)";
                         wrap.style.width="100%";
                         wrap.style.maxWidth="100%";
                         wrap.style.boxSizing="border-box";
                         wrap.style.touchAction="pan-y";
                         wrap.style.overscrollBehaviorX="none";
+                        wrap.style.maxHeight="430px";
                         wrap.style.webkitOverflowScrolling="auto";
                         wrap.style.scrollbarWidth="none";
                     }
@@ -783,14 +784,15 @@ function cleanupStep2ImportAndTableUi(){
 
         document.querySelectorAll(".table-wrap").forEach(wrapEl=>{
             if(wrapEl.querySelector(".points-base-table")){
-                wrapEl.style.overflow="visible";
                 wrapEl.style.overflowX="hidden";
-                wrapEl.style.overflowY="hidden";
+                wrapEl.style.overflowY="auto";
+                wrapEl.style.webkitOverflowScrolling="touch";
                 wrapEl.style.width="100%";
                 wrapEl.style.maxWidth="100%";
                 wrapEl.style.boxSizing="border-box";
                 wrapEl.style.touchAction="pan-y";
                 wrapEl.style.overscrollBehaviorX="none";
+                wrapEl.style.maxHeight="430px";
                 wrapEl.style.webkitOverflowScrolling="auto";
                 wrapEl.style.scrollbarWidth="none";
             }
