@@ -748,8 +748,14 @@ function cleanupStep2ImportAndTableUi(){
                     const wrap=tableBlock.querySelector(".table-wrap");
                     if(wrap){
                         wrap.style.borderRadius="18px";
-                        wrap.style.overflow="hidden";
+                        wrap.style.overflowX="hidden";
+                        wrap.style.overflowY="visible";
                         wrap.style.border="1px solid rgba(237,214,145,.16)";
+                        wrap.style.width="100%";
+                        wrap.style.maxWidth="100%";
+                        wrap.style.boxSizing="border-box";
+                        wrap.style.touchAction="pan-y";
+                        wrap.style.overscrollBehaviorX="none";
                     }
                 }
 
@@ -757,6 +763,19 @@ function cleanupStep2ImportAndTableUi(){
             }
         }
     }catch(e){console.warn("No se pudo limpiar visualmente el paso 2",e)}
+
+
+        document.querySelectorAll(".table-wrap").forEach(wrapEl=>{
+            if(wrapEl.querySelector(".points-base-table")){
+                wrapEl.style.overflowX="hidden";
+                wrapEl.style.overflowY="visible";
+                wrapEl.style.width="100%";
+                wrapEl.style.maxWidth="100%";
+                wrapEl.style.boxSizing="border-box";
+                wrapEl.style.touchAction="pan-y";
+                wrapEl.style.overscrollBehaviorX="none";
+            }
+        });
 
     const table=document.querySelector(".points-base-table");
     if(table){
@@ -804,6 +823,7 @@ function cleanupStep2ImportAndTableUi(){
             inp.style.marginLeft="0";
             inp.style.marginRight="auto";
             inp.style.boxSizing="border-box";
+            inp.style.maxWidth="160px";
         });
     }
 }
