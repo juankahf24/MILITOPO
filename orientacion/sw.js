@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v124 · rectángulo automático del plano PDF */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v124-pdf-window-preview";
+/* MILITOPO · cache offline seguro v126 · borde plano verde */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v126-borde-plano-verde";
 const CORE_ASSETS = [
   "./",
   "./index.html",
