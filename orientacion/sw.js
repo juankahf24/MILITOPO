@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v122 · IOF E usa D cuando G es Entre */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v123-index-modular-app-fix";
+/* MILITOPO · cache offline seguro v121 · participante QR final automático */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v121-participante-qr-final";
 const CORE_ASSETS = [
   "./",
   "./index.html",
