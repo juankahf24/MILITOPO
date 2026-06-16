@@ -4893,7 +4893,7 @@ document.addEventListener("DOMContentLoaded", setupTopoVisualEnhancements);
         installButton.classList.remove("is-ready");
         installButton.disabled = true;
         installButton.setAttribute("aria-label", "MILITOPO ya está instalado");
-        if (textNode) textNode.textContent = "Instalada";
+        if (textNode) textNode.textContent = "APP ✓";
     };
 
     if (isStandalone()) {
@@ -4905,7 +4905,7 @@ document.addEventListener("DOMContentLoaded", setupTopoVisualEnhancements);
         deferredInstallPrompt = event;
         installButton.disabled = false;
         installButton.classList.add("is-ready");
-        if (textNode) textNode.textContent = "Instalar app";
+        if (textNode) textNode.textContent = "APP";
     });
 
     installButton.addEventListener("click", async () => {
@@ -4925,7 +4925,7 @@ document.addEventListener("DOMContentLoaded", setupTopoVisualEnhancements);
             return;
         }
 
-        alert("En Android abre MILITOPO con Google Chrome, pulsa el menú ⋮ y elige ‘Instalar aplicación’ o ‘Añadir a pantalla de inicio’. Cuando Chrome habilite la instalación, este botón abrirá la ventana automáticamente.");
+        alert("Chrome todavía no ha habilitado la instalación automática. Comprueba que estás usando Chrome, que la web está publicada por HTTPS y recarga la página una vez. Después pulsa APP de nuevo. Si Chrome sigue sin ofrecerla, usa el menú ⋮ → Instalar aplicación.");
     });
 
     window.addEventListener("appinstalled", () => {
