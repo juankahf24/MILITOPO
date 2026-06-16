@@ -3,7 +3,7 @@
 /* MILITOPO_V39_ESTADO_PASO5_ICONOS_LIMPIOS */
 const state={eventId:"",eventName:"ENTRENAMIENTO ORIENTACIÓN",
     planScale:10000,
-    planEquidistanceM:5,participantCount:10,controlCount:25,controlsPerRoute:8,maxControlReuse:6,points:{},routes:[],metrics:[],elevations:{},participantLogs:{},participantNames:{},skippedRoutes:{},importedResults:[]};let map=null,layers={},currentLayer=null,markersLayer=null,routeLayer=null,userLocationMarker=null,userAccuracyCircle=null,selectedPointId="START";let currentAppStep=1;let __autoSaveTimer=null;let selectedIofPointId="START";
+    planEquidistanceM:5,participantCount:10,controlCount:25,controlsPerRoute:8,maxControlReuse:6,points:{},routes:[],metrics:[],elevations:{},participantLogs:{},participantNames:{},skippedRoutes:{},importedResults:[]};let map=null,layers={},currentLayer=null,markersLayer=null,routeLayer=null,pdfPlanPreviewLayer=null,userLocationMarker=null,userAccuracyCircle=null,selectedPointId="START";let currentAppStep=1;let __autoSaveTimer=null;let selectedIofPointId="START";
 
 function createFreshEventId(){
     return "ORI_"+new Date().toISOString().slice(0,10).replaceAll("-","")+"_"+Math.random().toString(36).slice(2,7).toUpperCase();
@@ -145,6 +145,7 @@ function syncPlanScaleFromUiNow(){
 
 function updatePlanScaleSetting(){
     syncPlanScaleFromUiNow();
+    renderPlanPdfPreview();
     scheduleSaveState();
 }
 function syncPlanScaleSettingUi(){
@@ -931,6 +932,84 @@ function createMapantWmtsLayer(options={}){
 }
 
 function selectPoint(id){selectedPointId=id;document.getElementById("selectedPoint").value=id;loadSelectedPointFields();zoomSelectedPoint()}
+
+/* MILITOPO · previsualización exacta de la ventana del plano PDF en el mapa del paso 2 */
+function getPlanPdfPreviewGeometry(){
+    const pts=Object.values(state.points||{}).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+    if(!pts.length)return null;
+
+    // Debe coincidir exactamente con participantPlanHtml().
+    const planScale=Number(state.planScale||10000)===7500?7500:10000;
+    const planHtmlToPdfMeasuredFactor=1.10;
+    const mapPaperWidthMm=230;
+    const mapPaperHeightMm=158;
+    const terrainWidthM=mapPaperWidthMm*planHtmlToPdfMeasuredFactor*planScale/1000;
+    const terrainHeightM=mapPaperHeightMm*planHtmlToPdfMeasuredFactor*planScale/1000;
+
+    // Incluye SALIDA, LLEGADA y todas las balizas con coordenadas válidas.
+    const center={
+        lat:pts.reduce((sum,p)=>sum+p.lat,0)/pts.length,
+        lon:pts.reduce((sum,p)=>sum+p.lon,0)/pts.length
+    };
+    const mPerLat=111320;
+    const mPerLon=111320*Math.cos(center.lat*Math.PI/180);
+    const halfLat=(terrainHeightM/2)/mPerLat;
+    const halfLon=(terrainWidthM/2)/(mPerLon||1);
+    const bounds={
+        north:center.lat+halfLat,
+        south:center.lat-halfLat,
+        west:center.lon-halfLon,
+        east:center.lon+halfLon
+    };
+    const inside=p=>p.lat<=bounds.north&&p.lat>=bounds.south&&p.lon>=bounds.west&&p.lon<=bounds.east;
+    const outside=pts.filter(p=>!inside(p));
+    return {pts,center,bounds,outside,planScale,terrainWidthM,terrainHeightM};
+}
+
+function renderPlanPdfPreview(){
+    if(!map||typeof L==="undefined")return;
+    if(!pdfPlanPreviewLayer)pdfPlanPreviewLayer=L.layerGroup().addTo(map);
+    pdfPlanPreviewLayer.clearLayers();
+
+    const geometry=getPlanPdfPreviewGeometry();
+    if(!geometry)return;
+    const {center,bounds,outside,planScale,terrainWidthM,terrainHeightM}=geometry;
+    const hasOutside=outside.length>0;
+    const lineColor=hasOutside?"#ff4d4d":"#ff4fa3";
+
+    const rectangle=L.rectangle(
+        [[bounds.south,bounds.west],[bounds.north,bounds.east]],
+        {color:lineColor,weight:3,opacity:.96,fillColor:lineColor,fillOpacity:.055,dashArray:"12 8",interactive:false}
+    ).addTo(pdfPlanPreviewLayer);
+    if(rectangle.bringToBack)rectangle.bringToBack();
+
+    const scaleText=`1:${planScale.toLocaleString("es-ES")}`;
+    const infoText=hasOutside
+        ? `PLANO PDF ${scaleText} · ${outside.length} punto${outside.length===1?"":"s"} fuera`
+        : `PLANO PDF ${scaleText} · todos dentro`;
+    const labelIcon=L.divIcon({
+        className:"",
+        iconSize:null,
+        iconAnchor:[0,0],
+        html:`<div style="pointer-events:none;white-space:nowrap;padding:6px 9px;border-radius:10px;background:${hasOutside?"rgba(115,14,14,.94)":"rgba(45,24,40,.94)"};border:2px solid ${lineColor};color:#fff;font:900 11px/1.15 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.35)">${infoText}<br><span style="font-size:9px;opacity:.82">${Math.round(terrainWidthM)} × ${Math.round(terrainHeightM)} m</span></div>`
+    });
+    L.marker([bounds.north,bounds.west],{icon:labelIcon,interactive:false,zIndexOffset:900}).addTo(pdfPlanPreviewLayer);
+
+    const centerIcon=L.divIcon({
+        className:"",
+        iconSize:[18,18],
+        iconAnchor:[9,9],
+        html:`<div style="width:18px;height:18px;position:relative;pointer-events:none"><span style="position:absolute;left:8px;top:0;width:2px;height:18px;background:${lineColor}"></span><span style="position:absolute;left:0;top:8px;width:18px;height:2px;background:${lineColor}"></span></div>`
+    });
+    L.marker([center.lat,center.lon],{icon:centerIcon,interactive:false,zIndexOffset:500}).addTo(pdfPlanPreviewLayer);
+
+    outside.forEach(p=>{
+        L.circleMarker([p.lat,p.lon],{
+            radius:15,color:"#ff3030",weight:4,opacity:1,fillColor:"#ff3030",fillOpacity:.10,interactive:false
+        }).addTo(pdfPlanPreviewLayer);
+    });
+}
+
 function initMap(){if(map)return;const step2MaxZoom=22;map=L.map("map",{zoomControl:true,maxZoom:step2MaxZoom,zoomSnap:.25,zoomDelta:.5,wheelPxPerZoomLevel:42}).setView([40.4168,-3.7038],7);layers.mapant=createMapantWmtsLayer({maxZoom:step2MaxZoom,maxNativeZoom:19});layers.ign=L.tileLayer("https://www.ign.es/wmts/mapa-raster?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=MTN&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© Instituto Geográfico Nacional",maxNativeZoom:18,maxZoom:step2MaxZoom});layers.pnoa=L.tileLayer("https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© PNOA",maxNativeZoom:19,maxZoom:step2MaxZoom});currentLayer=layers.mapant.addTo(map);markersLayer=L.layerGroup().addTo(map);routeLayer=L.layerGroup().addTo(map);map.on("click",e=>{const p=state.points[selectedPointId];if(!p)return;const utm=latLonToUtm(e.latlng.lat,e.latlng.lng);p.lat=e.latlng.lat;p.lon=e.latlng.lng;p.utm=utm;document.getElementById("selectedUtm").value=utm;renderPointsTable();renderMapMarkers();saveState();toast(`${p.id} colocado en el mapa`)});renderMapMarkers();fitAllPoints()}
 function switchLayer(name){if(!map||!layers[name])return;if(currentLayer)map.removeLayer(currentLayer);currentLayer=layers[name].addTo(map);document.querySelectorAll(".layer-btn").forEach(b=>b.classList.toggle("active",b.dataset.layer===name));setTimeout(()=>map.invalidateSize(),80)}
 
@@ -1038,7 +1117,7 @@ function deleteOrientationPopupPoint(pointId){
 }
 // ORIENTATION POINT POPUP JS END
 
-function renderMapMarkers(){if(!markersLayer)return;markersLayer.clearLayers();routeLayer?.clearLayers();Object.values(state.points).forEach(p=>{if(p.lat===null||p.lon===null)return;const icon=L.divIcon({html:`<div class="${iconClassForType(p.type)}">${p.type==="BALIZA"?p.id.replace("B",""):""}</div>`,className:"",iconSize:[22,22],iconAnchor:[11,11]});const marker=L.marker([p.lat,p.lon],{icon,draggable:true}).bindTooltip(`${p.id}`,{permanent:true,direction:"right",className:"marker-label"}).on("dragend",ev=>{const ll=ev.target.getLatLng();p.lat=ll.lat;p.lon=ll.lng;p.utm=latLonToUtm(ll.lat,ll.lng);p.elevation=null;selectedPointId=p.id;renderPointsTable();loadSelectedPointFields();saveState();marker.setPopupContent(buildOrientationPointPopup(p.id))}).on("click",()=>openOrientationPointPopup(marker,p.id)).addTo(markersLayer);marker.bindPopup(buildOrientationPointPopup(p.id),{className:"orientation-point-popup",closeButton:true,autoPan:true,maxWidth:330})})}function iconClassForType(type){return type==="SALIDA"?"ori-start-icon":type==="LLEGADA"?"ori-finish-icon":"ori-control-icon"}function zoomSelectedPoint(){const p=state.points[selectedPointId];if(!map||!p||p.lat===null)return;map.setView([p.lat,p.lon],19)}function fitAllPoints(){
+function renderMapMarkers(){if(!markersLayer)return;markersLayer.clearLayers();routeLayer?.clearLayers();renderPlanPdfPreview();Object.values(state.points).forEach(p=>{if(p.lat===null||p.lon===null)return;const icon=L.divIcon({html:`<div class="${iconClassForType(p.type)}">${p.type==="BALIZA"?p.id.replace("B",""):""}</div>`,className:"",iconSize:[22,22],iconAnchor:[11,11]});const marker=L.marker([p.lat,p.lon],{icon,draggable:true}).bindTooltip(`${p.id}`,{permanent:true,direction:"right",className:"marker-label"}).on("dragend",ev=>{const ll=ev.target.getLatLng();p.lat=ll.lat;p.lon=ll.lng;p.utm=latLonToUtm(ll.lat,ll.lng);p.elevation=null;selectedPointId=p.id;renderPointsTable();loadSelectedPointFields();saveState();renderPlanPdfPreview();marker.setPopupContent(buildOrientationPointPopup(p.id))}).on("click",()=>openOrientationPointPopup(marker,p.id)).addTo(markersLayer);marker.bindPopup(buildOrientationPointPopup(p.id),{className:"orientation-point-popup",closeButton:true,autoPan:true,maxWidth:330})})}function iconClassForType(type){return type==="SALIDA"?"ori-start-icon":type==="LLEGADA"?"ori-finish-icon":"ori-control-icon"}function zoomSelectedPoint(){const p=state.points[selectedPointId];if(!map||!p||p.lat===null)return;map.setView([p.lat,p.lon],19)}function fitAllPoints(){
     if(!map)return;
     const latlngs=Object.values(state.points||{})
         .filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon))
