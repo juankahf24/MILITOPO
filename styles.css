@@ -6907,3 +6907,269 @@ body {
     #headerModeTabs .header-branch-btn { min-height: 55px !important; padding: 6px 2px !important; }
     #headerModeTabs .branch-tab-text { font-size: .52rem !important; }
 }
+
+
+/* ===== MILITOPO Android · experiencia de entrada moderna ===== */
+:root {
+    --mt-modern-title: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mt-modern-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+    font-family: var(--mt-modern-body), sans-serif;
+}
+
+.mt-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: radial-gradient(circle at 50% 18%, rgba(154,219,97,.18), transparent 34%), linear-gradient(180deg, #193219 0%, #102410 100%);
+    opacity: 1;
+    visibility: visible;
+    transition: opacity .45s ease, visibility .45s ease;
+}
+.mt-splash.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+.mt-splash-backdrop {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,.03) 0 16px, rgba(255,255,255,0) 16px 32px);
+    mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+}
+.mt-splash-card {
+    position: relative;
+    width: min(100%, 430px);
+    min-height: min(78vh, 720px);
+    padding: clamp(28px, 5vw, 40px);
+    border-radius: 34px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    text-align: center;
+    background: linear-gradient(180deg, rgba(163, 214, 112, .18), rgba(76, 109, 49, .12));
+    border: 1px solid rgba(255,245,200,.24);
+    box-shadow: 0 36px 100px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.12);
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+.mt-splash-card::before {
+    content: '';
+    position: absolute;
+    inset: 18px;
+    border-radius: 28px;
+    border: 1px solid rgba(255,245,200,.14);
+    pointer-events: none;
+}
+.mt-splash-orbit {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255,245,200,.10);
+    pointer-events: none;
+}
+.mt-splash-orbit.orbit-a { width: 310px; height: 310px; top: 70px; animation: mtOrbit 13s linear infinite; }
+.mt-splash-orbit.orbit-b { width: 380px; height: 380px; top: 36px; border-style: dashed; opacity: .55; animation: mtOrbitReverse 18s linear infinite; }
+.mt-splash-logo-wrap {
+    position: relative;
+    width: clamp(148px, 38vw, 220px);
+    height: clamp(148px, 38vw, 220px);
+    display: grid;
+    place-items: center;
+    border-radius: 36px;
+    background: radial-gradient(circle at 50% 20%, rgba(255,255,255,.12), rgba(255,255,255,.04));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 24px 54px rgba(0,0,0,.28);
+}
+.mt-splash-logo-glow {
+    position: absolute;
+    inset: -12px;
+    border-radius: 44px;
+    background: radial-gradient(circle, rgba(223,245,174,.32), rgba(223,245,174,0));
+    filter: blur(16px);
+    animation: mtPulse 2.8s ease-in-out infinite;
+}
+.mt-splash-logo {
+    position: relative;
+    width: 74%;
+    height: 74%;
+    object-fit: cover;
+    border-radius: 26px;
+    box-shadow: 0 18px 38px rgba(0,0,0,.32);
+    animation: mtFloat 3.4s ease-in-out infinite;
+}
+.mt-splash-copy { position: relative; z-index: 1; }
+.mt-splash-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #f9ebc8;
+    background: rgba(0,0,0,.18);
+    border: 1px solid rgba(255,245,200,.16);
+}
+.mt-splash-copy h1 {
+    margin: 14px 0 8px;
+    font-family: var(--mt-modern-title), sans-serif !important;
+    font-size: clamp(2.5rem, 10vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: .12em;
+    color: #fffaf1;
+    text-transform: uppercase;
+    text-shadow: 0 10px 30px rgba(0,0,0,.32);
+}
+.mt-splash-copy p {
+    margin: 0;
+    max-width: 260px;
+    font-size: clamp(.95rem, 3.8vw, 1.08rem);
+    line-height: 1.45;
+    color: rgba(255,249,236,.82);
+}
+.mt-splash-loader {
+    width: min(100%, 240px);
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.2);
+}
+.mt-splash-loader span {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #f0c97b, #dff6c4, #8bb56a);
+    box-shadow: 0 0 16px rgba(223,245,174,.35);
+    animation: mtLoader 2.2s ease forwards;
+}
+.mt-splash-enter {
+    appearance: none;
+    border: 1px solid rgba(255,245,200,.26);
+    padding: 14px 28px;
+    border-radius: 999px;
+    font-family: var(--mt-modern-title), sans-serif;
+    font-size: .95rem;
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #1f170c;
+    background: linear-gradient(180deg, #f3cd84, #d9a34d);
+    box-shadow: 0 18px 34px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.38);
+    transform: translateY(10px);
+    opacity: 0;
+    transition: opacity .28s ease, transform .28s ease, filter .2s ease;
+}
+.mt-splash.is-ready .mt-splash-enter { opacity: 1; transform: translateY(0); }
+.mt-splash-enter:hover, .mt-splash-enter:focus-visible { filter: brightness(1.08); transform: translateY(-1px); outline: none; }
+
+.header-clean-topografia {
+    position: relative;
+    padding: 28px 20px 24px !important;
+    border-radius: 36px !important;
+    background: radial-gradient(circle at 50% 0%, rgba(223,245,174,.14), transparent 30%), linear-gradient(180deg, rgba(31,49,29,.96), rgba(19,31,18,.95)) !important;
+    border: 1px solid rgba(255,245,200,.18) !important;
+    box-shadow: 0 26px 70px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08) !important;
+    overflow: hidden;
+}
+.header-clean-topografia::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,.08), transparent 22%, transparent 70%, rgba(255,255,255,.04)), repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 14px, transparent 14px 28px);
+    pointer-events: none;
+}
+.logo-imagen-clean {
+    width: clamp(142px, 24vw, 212px) !important;
+    height: clamp(142px, 24vw, 212px) !important;
+    border-radius: 38px !important;
+    padding: 8px !important;
+    background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.06)) !important;
+    box-shadow: 0 24px 56px rgba(0,0,0,.34) !important;
+}
+.topo-info-clean h1 {
+    font-family: var(--mt-modern-title), sans-serif !important;
+    font-size: clamp(2.6rem, 7vw, 4.6rem) !important;
+    font-weight: 900 !important;
+    letter-spacing: .14em !important;
+}
+.topografia-subtitle-clean {
+    font-family: var(--mt-modern-title), sans-serif !important;
+    font-size: clamp(1.05rem, 3.4vw, 1.5rem) !important;
+    letter-spacing: .42em !important;
+    color: rgba(255,248,233,.88) !important;
+}
+.header-branch-tabs-modern {
+    margin-top: 20px !important;
+    gap: 10px !important;
+    width: 100%;
+}
+.header-branch-btn {
+    min-height: 60px !important;
+    border-radius: 22px !important;
+    box-shadow: 0 18px 36px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.16) !important;
+}
+.header-branch-btn .branch-tab-icon { font-size: 1.22rem !important; }
+.header-branch-btn .branch-tab-text {
+    font-family: var(--mt-modern-title), sans-serif !important;
+    font-weight: 800 !important;
+    letter-spacing: .06em !important;
+}
+
+.workflow-steps.steps-container {
+    padding: 12px !important;
+    gap: 14px !important;
+    border-radius: 32px !important;
+    background: linear-gradient(180deg, rgba(18,29,18,.98), rgba(28,44,24,.96)) !important;
+    border: 1px solid rgba(255,245,200,.17) !important;
+    box-shadow: 0 26px 60px rgba(0,0,0,.20) !important;
+}
+.workflow-steps .step {
+    min-height: 88px !important;
+    padding: 16px 18px !important;
+    border-radius: 26px !important;
+    transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease !important;
+}
+.workflow-steps .step:hover, .workflow-steps .step:active {
+    transform: translateY(-3px) scale(1.01) !important;
+    box-shadow: 0 18px 34px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.10) !important;
+}
+.workflow-steps .step-number {
+    width: 38px !important; height: 38px !important; border-radius: 14px !important;
+}
+.workflow-steps .step-icon {
+    width: 48px !important; height: 48px !important; border-radius: 18px !important; font-size: 1.28rem !important;
+}
+.workflow-steps .step-copy strong {
+    font-family: var(--mt-modern-title), sans-serif !important;
+    font-size: 1rem !important;
+    letter-spacing: .01em !important;
+}
+.workflow-steps .step-copy small {
+    font-family: var(--mt-modern-body), sans-serif !important;
+    font-size: .74rem !important;
+}
+
+@media (max-width: 760px) {
+    .mt-splash-card { min-height: 72vh; padding: 28px 20px; }
+    .mt-splash-copy h1 { letter-spacing: .10em; }
+    .header-clean-topografia { padding: 24px 16px 20px !important; }
+    .workflow-steps.steps-container { grid-template-columns: 1fr !important; }
+    .workflow-steps .step { min-height: 78px !important; }
+}
+
+@keyframes mtFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes mtPulse { 0%,100% { opacity: .8; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
+@keyframes mtLoader { from { width: 0; } to { width: 100%; } }
+@keyframes mtOrbit { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+@keyframes mtOrbitReverse { from { transform: rotate(360deg);} to { transform: rotate(0deg);} }

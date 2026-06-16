@@ -4941,3 +4941,34 @@ document.addEventListener("DOMContentLoaded", setupTopoVisualEnhancements);
         });
     }
 })();
+
+
+/* MILITOPO · splash moderno de acceso */
+function setupMilitopoOpeningSplash() {
+    const splash = document.getElementById('militopoSplash');
+    const enterBtn = document.getElementById('mtSplashEnter');
+    if (!splash || !enterBtn) return;
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const MIN_READY_DELAY = reducedMotion ? 250 : 1100;
+    const AUTO_HIDE_DELAY = reducedMotion ? 900 : 2500;
+    let hidden = false;
+
+    const hideSplash = () => {
+        if (hidden) return;
+        hidden = true;
+        splash.classList.add('is-hidden');
+        window.setTimeout(() => splash.remove(), 520);
+    };
+
+    window.setTimeout(() => splash.classList.add('is-ready'), MIN_READY_DELAY);
+    window.setTimeout(hideSplash, AUTO_HIDE_DELAY);
+
+    enterBtn.addEventListener('click', hideSplash);
+    splash.addEventListener('click', event => {
+        if (event.target === splash || event.target.classList.contains('mt-splash-backdrop')) hideSplash();
+    });
+    document.addEventListener('keydown', hideSplash, { once: true });
+}
+
+document.addEventListener('DOMContentLoaded', setupMilitopoOpeningSplash);
