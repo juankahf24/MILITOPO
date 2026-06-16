@@ -975,7 +975,7 @@ function renderPlanPdfPreview(){
     if(!geometry)return;
     const {center,bounds,outside,planScale,terrainWidthM,terrainHeightM}=geometry;
     const hasOutside=outside.length>0;
-    const lineColor=hasOutside?"#ff4d4d":"#ff4fa3";
+    const lineColor=hasOutside?"#ff4d4d":"#39b54a";
 
     const rectangle=L.rectangle(
         [[bounds.south,bounds.west],[bounds.north,bounds.east]],
@@ -983,17 +983,16 @@ function renderPlanPdfPreview(){
     ).addTo(pdfPlanPreviewLayer);
     if(rectangle.bringToBack)rectangle.bringToBack();
 
-    const scaleText=`1:${planScale.toLocaleString("es-ES")}`;
-    const infoText=hasOutside
-        ? `PLANO PDF ${scaleText} · ${outside.length} punto${outside.length===1?"":"s"} fuera`
-        : `PLANO PDF ${scaleText} · todos dentro`;
+    // Etiqueta compacta colocada fuera del rectángulo para no tapar el plano.
+    const labelText="BORDE PLANOS RECORRIDOS";
     const labelIcon=L.divIcon({
         className:"",
         iconSize:null,
-        iconAnchor:[0,0],
-        html:`<div style="pointer-events:none;white-space:nowrap;padding:6px 9px;border-radius:10px;background:${hasOutside?"rgba(115,14,14,.94)":"rgba(45,24,40,.94)"};border:2px solid ${lineColor};color:#fff;font:900 11px/1.15 Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.35)">${infoText}<br><span style="font-size:9px;opacity:.82">${Math.round(terrainWidthM)} × ${Math.round(terrainHeightM)} m</span></div>`
+        iconAnchor:[0,24],
+        html:`<div style="pointer-events:none;white-space:nowrap;padding:4px 7px;border-radius:7px;background:${hasOutside?"rgba(115,14,14,.94)":"rgba(24,76,35,.94)"};border:2px solid ${lineColor};color:#fff;font:900 9px/1 Arial,sans-serif;letter-spacing:.02em;box-shadow:0 3px 10px rgba(0,0,0,.30)">${labelText}</div>`
     });
-    L.marker([bounds.north,bounds.west],{icon:labelIcon,interactive:false,zIndexOffset:900}).addTo(pdfPlanPreviewLayer);
+    const labelLat=bounds.north+((bounds.north-bounds.south)*0.015);
+    L.marker([labelLat,bounds.west],{icon:labelIcon,interactive:false,zIndexOffset:900}).addTo(pdfPlanPreviewLayer);
 
     const centerIcon=L.divIcon({
         className:"",
