@@ -4,13 +4,21 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0" />
 <title>MILITOPO · Orientación V1</title>
+<meta name="theme-color" content="#20351f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/militopo-192.png">
+<link rel="apple-touch-icon" href="../icons/militopo-192.png">
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-<script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css" />
+<script src="qr.js"></script>
+<link rel="stylesheet" href="styles.css" />
 
 
 
@@ -75,6 +83,10 @@
 <span class="orientation-branch-icon">🧭</span>
 <span>Orientación</span>
 </a>
+<button id="installMilitopoOrientationBtn" type="button" class="orientation-branch-btn orientation-install-btn" aria-label="Instalar MILITOPO como aplicación en Android">
+<span class="orientation-branch-icon">📲</span>
+<span class="orientation-branch-text">APP</span>
+</button>
 </div>
 </div></div></header>
 <nav class="steps"><button class="step-tab active" data-step="1">PASO 1 · CONFIGURAR</button><button class="step-tab" data-step="2">PASO 2 · BALIZAS Y MAPA</button><button class="step-tab" data-step="3">PASO 3 · RECORRIDOS</button><button class="step-tab" data-step="4">PASO 4 · MATERIAL QR</button><button class="step-tab" data-step="5">PASO 5 · 🚦 SECUENCIA</button><button class="step-tab" data-step="6">PASO 6 · RESULTADOS</button></nav>
@@ -356,15 +368,15 @@
     </div>
 </div>
 
-<script src="js/app.js?v=modular-fase2-20260605"></script>
+<script src="app.js?v=pdf-tablas-fix-v2-20260527"></script>
 <script>
 (function(){
   if (!("serviceWorker" in navigator) || !("caches" in window) || !/^https?:$/.test(location.protocol)) return;
   async function cacheCurrentMilitopoPage(){
     try {
-      const cache = await caches.open("militopo-page-snapshot-v74");
+      const cache = await caches.open("militopo-page-snapshot-v52");
       await cache.add(new Request(location.href, { cache: "reload" })).catch(function(){});
-      await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js"].map(function(url){
+      await Promise.allSettled(["./", "./index.html", "./app.js", "./styles.css", "./qr.js"].map(function(url){
         return cache.add(new Request(url, { cache: "reload" }));
       }));
     } catch (e) {}
@@ -375,6 +387,69 @@
       .then(cacheCurrentMilitopoPage)
       .catch(cacheCurrentMilitopoPage);
   });
+})();
+</script>
+
+
+<script>
+/* MILITOPO · instalación PWA desde la rama Orientación */
+(() => {
+    let deferredInstallPrompt = null;
+    const installButton = document.getElementById("installMilitopoOrientationBtn");
+    if (!installButton) return;
+
+    const textNode = installButton.querySelector(".orientation-branch-text");
+    const isStandalone = () =>
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true;
+
+    const setInstalledState = () => {
+        installButton.classList.remove("is-ready");
+        installButton.disabled = true;
+        installButton.setAttribute("aria-label", "MILITOPO ya está instalado");
+        if (textNode) textNode.textContent = "APP ✓";
+    };
+
+    if (isStandalone()) setInstalledState();
+
+    window.addEventListener("beforeinstallprompt", event => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        installButton.disabled = false;
+        installButton.classList.add("is-ready");
+        if (textNode) textNode.textContent = "APP";
+    });
+
+    installButton.addEventListener("click", async () => {
+        if (isStandalone()) {
+            setInstalledState();
+            return;
+        }
+        if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt();
+            try {
+                await deferredInstallPrompt.userChoice;
+            } finally {
+                deferredInstallPrompt = null;
+                installButton.classList.remove("is-ready");
+            }
+            return;
+        }
+        alert("Chrome todavía no ha habilitado la instalación automática. Recarga la página y pulsa APP otra vez. Si sigue sin aparecer, usa el menú ⋮ → Instalar aplicación.");
+    });
+
+    window.addEventListener("appinstalled", () => {
+        deferredInstallPrompt = null;
+        setInstalledState();
+    });
+
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register("../sw.js").catch(error => {
+                console.warn("No se pudo registrar el instalador principal de MILITOPO:", error);
+            });
+        });
+    }
 })();
 </script>
 

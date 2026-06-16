@@ -1,5 +1,5 @@
 /* MILITOPO · cache offline seguro v122 · IOF E usa D cuando G es Entre */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v122-iof-e-d-cuando-g-entre";
+const MILITOPO_CACHE = "militopo-orientacion-modular-v121-app-tab-orientacion";
 const CORE_ASSETS = [
   "./",
   "./index.html",
