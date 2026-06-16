@@ -6573,7 +6573,7 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
                 id,
                 typeof iofText==="function"?iofText("c",d.c):"",
                 typeof iofText==="function"?iofText("d",d.d):"",
-                typeof iofText==="function"?iofText("e",d.e):"",
+                typeof iofEText==="function"?iofEText(d):"",
                 typeof iofText==="function"?iofText("f",d.f):"",
                 typeof iofText==="function"?iofText("g",d.g):"",
                 typeof iofText==="function"?iofText("h",d.h):"",
@@ -6769,6 +6769,27 @@ function effectiveIofFValue(desc){
     return "";
 }
 
+function iofFUsesSecondObject(fValue){
+    const v=String(fValue||"");
+    return v==="combo_cruce" || v==="combo_union";
+}
+function iofEUsesDOptions(desc){
+    return iofFUsesSecondObject(effectiveIofFValue(desc||{}));
+}
+function iofEOptionsForPoint(id){
+    const desc=(state.iofDescriptions&&state.iofDescriptions[id])||{};
+    if(iofEUsesDOptions(desc)) return [["","—"],...(IOF_OPTIONS.d||[])];
+    return IOF_OPTIONS.e||[];
+}
+function iofESymbol(desc){
+    const d=desc||{};
+    return iofSymbol(iofEUsesDOptions(d)?"d":"e",d.e);
+}
+function iofEText(desc){
+    const d=desc||{};
+    return iofText(iofEUsesDOptions(d)?"d":"e",d.e);
+}
+
 function normalizeIofFSymbolSvg(svg){
     let s=String(svg||"").trim();
     if(!s || !/^<svg[\s>]/i.test(s))return "";
@@ -6811,7 +6832,13 @@ function iofComboSymbolSvg(key){
 function ensureIofDescriptions(){
     if(!state.iofDescriptions)state.iofDescriptions={};
     const validFields=["c","d","e","f","g","h","combo"];
-    const isValid=(field,value)=>!value || (IOF_OPTIONS[field]||[]).some(x=>x[0]===value);
+    const isValid=(field,value)=>{
+        if(!value)return true;
+        if(field==="e"){
+            return (IOF_OPTIONS.e||[]).some(x=>x[0]===value) || (IOF_OPTIONS.d||[]).some(x=>x[0]===value);
+        }
+        return (IOF_OPTIONS[field]||[]).some(x=>x[0]===value);
+    };
 
     Object.keys(state.points||{}).forEach(id=>{
         if(!state.iofDescriptions[id]){
@@ -7204,8 +7231,10 @@ function renderIofDescriptionsEditor(){
 }
 
 function iofSelectHtml(id,field,label,value){
-    const options=(IOF_OPTIONS[field]||[]).map(([val,txt])=>{
-        return `<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(iofOptionLabel(field,val))}</option>`;
+    const sourceOptions=field==="e"?iofEOptionsForPoint(id):(IOF_OPTIONS[field]||[]);
+    const optionGroup=field==="e"&&iofEUsesDOptions((state.iofDescriptions&&state.iofDescriptions[id])||{})?"d":field;
+    const options=sourceOptions.map(([val,txt])=>{
+        return `<option value="${escapeHtml(val)}" ${val===(value||"")?"selected":""}>${escapeHtml(iofOptionLabel(optionGroup,val))}</option>`;
     }).join("");
     const cSvg=`<svg class="iof-c-letter-svg" viewBox="0 0 28 28" aria-label="C" role="img"><path d="M19.2 7.7C17.9 6.6 16.2 6 14.3 6C10.4 6 7.7 9.2 7.7 14C7.7 18.8 10.4 22 14.3 22C16.3 22 18 21.4 19.3 20.3" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>`;
     const labelHtml=field==="c"?`<label class="iof-c-label-fixed">${cSvg}<span class="iof-c-dot">·</span><span>SIMILAR</span></label>`:`<label>${escapeHtml(label)}</label>`;
@@ -7292,7 +7321,7 @@ function iofPreviewCells(id){
     const code=id==="START"?"▶":id==="FINISH"?"◎":escapeHtml(id);
     const cSymbol=iofSymbol("c",d.c);
     const dSymbol=iofSymbol("d",d.d);
-    const eSymbol=iofSymbol("e",d.e);
+    const eSymbol=iofESymbol(d);
     const fValue=effectiveIofFValue(d);
     const fSymbol=iofSymbol("f",fValue)||iofSymbol("combo",d.combo);
     const gSymbol=iofSymbol("g",d.g);
@@ -7302,18 +7331,26 @@ function iofPreviewCells(id){
 
 function updateIofDescription(id,field,value){
     ensureIofDescriptions();
+    const desc=state.iofDescriptions[id];
     if(field==="f"){
-        state.iofDescriptions[id].f=value;
+        desc.f=value;
         // Compatibilidad: el selector antiguo de combinación queda absorbido dentro de F.
-        state.iofDescriptions[id].combo="";
+        desc.combo="";
+        // Al cambiar el tipo de F, E cambia de biblioteca. Evita conservar un valor incompatible.
+        const allowedE=(iofFUsesSecondObject(value)?IOF_OPTIONS.d:IOF_OPTIONS.e).some(x=>x[0]===desc.e);
+        if(desc.e&&!allowedE)desc.e="";
     }else{
-        state.iofDescriptions[id][field]=value;
+        desc[field]=value;
     }
-    if(field!=="complete") state.iofDescriptions[id].complete=false;
-    const preview=document.getElementById("iofPreview_"+id);
-    if(preview)preview.innerHTML=iofPreviewCells(id);
-    renderIofStatus();
-    renderIofPointSelector();
+    if(field!=="complete") desc.complete=false;
+    if(field==="f"){
+        renderIofDescriptionsEditor();
+    }else{
+        const preview=document.getElementById("iofPreview_"+id);
+        if(preview)preview.innerHTML=iofPreviewCells(id);
+        renderIofStatus();
+        renderIofPointSelector();
+    }
     scheduleSaveState();
 }
 
@@ -7417,7 +7454,7 @@ function renderIofCellSymbol(symbol){
     return escapeHtml(s);
 }
 
-function getIofDescription(id){ensureIofDescriptions();const d=state.iofDescriptions[id]||{},p=state.points[id]||{};const fValue=effectiveIofFValue(d);return {c:d.c||"",d:d.d||"",e:d.e||"",f:fValue,g:d.g||"",h:d.h||"",combo:d.combo||"",text:d.text||p.desc||"",cSymbol:iofSymbol("c",d.c),dSymbol:iofSymbol("d",d.d),eSymbol:iofSymbol("e",d.e),fSymbol:iofSymbol("f",fValue)||iofSymbol("combo",d.combo),gSymbol:iofSymbol("g",d.g),gText:iofText("g",d.g)||"",hSymbol:iofSymbol("h",d.h),dText:iofText("d",d.d)||p.desc||"",eText:iofText("e",d.e),fText:iofText("f",fValue)||iofText("combo",d.combo),hText:iofText("h",d.h)}}
+function getIofDescription(id){ensureIofDescriptions();const d=state.iofDescriptions[id]||{},p=state.points[id]||{};const fValue=effectiveIofFValue(d);return {c:d.c||"",d:d.d||"",e:d.e||"",f:fValue,g:d.g||"",h:d.h||"",combo:d.combo||"",text:d.text||p.desc||"",cSymbol:iofSymbol("c",d.c),dSymbol:iofSymbol("d",d.d),eSymbol:iofESymbol(d),fSymbol:iofSymbol("f",fValue)||iofSymbol("combo",d.combo),gSymbol:iofSymbol("g",d.g),gText:iofText("g",d.g)||"",hSymbol:iofSymbol("h",d.h),dText:iofText("d",d.d)||p.desc||"",eText:iofEText(d),fText:iofText("f",fValue)||iofText("combo",d.combo),hText:iofText("h",d.h)}}
 
 
 function iofSymbolBox(symbol, extraClass=""){
@@ -7472,7 +7509,7 @@ function downloadIofDescriptionsCsv(){
         return order(a)-order(b);
     }).forEach(id=>{
         const d=state.iofDescriptions[id]||{};
-        rows.push([id,iofText("c",d.c),iofText("d",d.d),iofText("e",d.e),iofText("f",effectiveIofFValue(d)),iofText("g",d.g),iofText("h",d.h),iofText("combo",d.combo),d.text||""]);
+        rows.push([id,iofText("c",d.c),iofText("d",d.d),iofEText(d),iofText("f",effectiveIofFValue(d)),iofText("g",d.g),iofText("h",d.h),iofText("combo",d.combo),d.text||""]);
     });
     downloadText(`descripciones_IOF_${state.eventId}.csv`,rows.map(r=>r.map(csvEscape).join(";")).join("\n"));
 }
