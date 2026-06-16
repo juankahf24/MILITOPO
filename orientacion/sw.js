@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v123 · contraste global desplegables Windows */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v123-all-selects-windows-contrast";
+/* MILITOPO · cache offline seguro v124 · rectángulo automático del plano PDF */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v124-pdf-window-preview";
 const CORE_ASSETS = [
   "./",
   "./index.html",
