@@ -11,13 +11,12 @@
 <link rel="manifest" href="../manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="../icons/militopo-192.png">
 <link rel="apple-touch-icon" href="../icons/militopo-192.png">
-
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-<script src="qr.js"></script>
+<script src="js/vendor/qr.js?v=modular-fase2"></script>
 <link rel="stylesheet" href="css/styles.css" />
 
 
@@ -368,15 +367,15 @@
     </div>
 </div>
 
-<script src="app.js?v=pdf-tablas-fix-v2-20260527"></script>
+<script src="js/app.js?v=modular-fase2-20260605"></script>
 <script>
 (function(){
   if (!("serviceWorker" in navigator) || !("caches" in window) || !/^https?:$/.test(location.protocol)) return;
   async function cacheCurrentMilitopoPage(){
     try {
-      const cache = await caches.open("militopo-page-snapshot-v52");
+      const cache = await caches.open("militopo-page-snapshot-v74");
       await cache.add(new Request(location.href, { cache: "reload" })).catch(function(){});
-      await Promise.allSettled(["./", "./index.html", "./app.js", "./styles.css", "./qr.js"].map(function(url){
+      await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js"].map(function(url){
         return cache.add(new Request(url, { cache: "reload" }));
       }));
     } catch (e) {}
@@ -397,21 +396,15 @@
     let deferredInstallPrompt = null;
     const installButton = document.getElementById("installMilitopoOrientationBtn");
     if (!installButton) return;
-
     const textNode = installButton.querySelector(".orientation-branch-text");
-    const isStandalone = () =>
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.navigator.standalone === true;
-
+    const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
     const setInstalledState = () => {
         installButton.classList.remove("is-ready");
         installButton.disabled = true;
         installButton.setAttribute("aria-label", "MILITOPO ya está instalado");
         if (textNode) textNode.textContent = "APP ✓";
     };
-
     if (isStandalone()) setInstalledState();
-
     window.addEventListener("beforeinstallprompt", event => {
         event.preventDefault();
         deferredInstallPrompt = event;
@@ -419,39 +412,18 @@
         installButton.classList.add("is-ready");
         if (textNode) textNode.textContent = "APP";
     });
-
     installButton.addEventListener("click", async () => {
-        if (isStandalone()) {
-            setInstalledState();
-            return;
-        }
+        if (isStandalone()) { setInstalledState(); return; }
         if (deferredInstallPrompt) {
             deferredInstallPrompt.prompt();
-            try {
-                await deferredInstallPrompt.userChoice;
-            } finally {
-                deferredInstallPrompt = null;
-                installButton.classList.remove("is-ready");
-            }
+            try { await deferredInstallPrompt.userChoice; }
+            finally { deferredInstallPrompt = null; installButton.classList.remove("is-ready"); }
             return;
         }
-        alert("Chrome todavía no ha habilitado la instalación automática. Recarga la página y pulsa APP otra vez. Si sigue sin aparecer, usa el menú ⋮ → Instalar aplicación.");
+        window.location.href = "../?militopo_install=1";
     });
-
-    window.addEventListener("appinstalled", () => {
-        deferredInstallPrompt = null;
-        setInstalledState();
-    });
-
-    if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-            navigator.serviceWorker.register("../sw.js").catch(error => {
-                console.warn("No se pudo registrar el instalador principal de MILITOPO:", error);
-            });
-        });
-    }
+    window.addEventListener("appinstalled", () => { deferredInstallPrompt = null; setInstalledState(); });
 })();
 </script>
-
 </body>
 </html>

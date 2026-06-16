@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v123 · corrige ruta CSS y pestaña APP */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v123-app-tab-css-correcto";
+/* MILITOPO · cache offline seguro v122 · IOF E usa D cuando G es Entre */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v123-index-modular-app-fix";
 const CORE_ASSETS = [
   "./",
   "./index.html",
