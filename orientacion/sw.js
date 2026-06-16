@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v121 · tabla scroll vertical sin horizontal */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v121-tabla-scroll-vertical-sin-horizontal";
+/* MILITOPO · cache offline seguro v121 · IOF E usa objetos D en cruce y unión */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v121-iof-e-segundo-objeto";
 const CORE_ASSETS = [
   "./",
   "./index.html",
