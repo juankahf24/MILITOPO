@@ -1914,3 +1914,76 @@ th,td{
     overflow: hidden !important;
     height: auto;
 }
+
+
+/* ===== Orientación · tres pestañas ordenadas con APP ===== */
+.orientation-install-btn {
+    appearance: none;
+    cursor: pointer;
+}
+.orientation-install-btn.is-ready::after {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4fbe57;
+    box-shadow: 0 0 0 3px rgba(79,190,87,.18);
+}
+.orientation-install-btn:disabled {
+    opacity: .72;
+    cursor: default;
+}
+
+@media (max-width: 760px) {
+    .orientation-branch-tabs {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        gap: 6px !important;
+        padding: 6px !important;
+        margin: 16px 0 0 !important;
+        box-sizing: border-box !important;
+        align-items: stretch !important;
+    }
+
+    .orientation-branch-btn {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        min-height: 58px !important;
+        padding: 7px 3px !important;
+        margin: 0 !important;
+        border-radius: 22px !important;
+        gap: 3px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+        font-size: clamp(.53rem, 2.35vw, .68rem) !important;
+        line-height: 1.05 !important;
+        letter-spacing: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    .orientation-branch-icon {
+        display: block !important;
+        flex: 0 0 auto !important;
+        font-size: 1.02rem !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+    }
+
+    .orientation-install-btn .orientation-branch-text {
+        font-size: .76rem !important;
+        font-weight: 900 !important;
+        letter-spacing: .06em !important;
+    }
+}
+
+@media (max-width: 380px) {
+    .orientation-branch-tabs { gap: 4px !important; padding: 4px !important; }
+    .orientation-branch-btn { min-height: 55px !important; padding: 6px 2px !important; font-size: .52rem !important; }
+}
