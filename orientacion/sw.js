@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v121 · participante QR final automático */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v121-participante-qr-final";
+/* MILITOPO · cache offline seguro v122 · contraste IOF Windows */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v122-iof-windows-contrast";
 const CORE_ASSETS = [
   "./",
   "./index.html",
