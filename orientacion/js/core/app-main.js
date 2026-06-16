@@ -8802,52 +8802,61 @@ window.addEventListener("load",init);
 
 
 
-/* MILITOPO · mejora visual IOF solo para Windows de escritorio */
-function setupWindowsIofSelectContrast(){
+/* MILITOPO · mejora visual de todos los desplegables solo para Windows de escritorio */
+function setupWindowsAllSelectContrast(){
     const ua=String(navigator.userAgent||navigator.platform||"");
     const isWindows=/Windows/i.test(ua);
     const isDesktopPointer=window.matchMedia("(hover: hover) and (pointer: fine)").matches;
     if(!isWindows || !isDesktopPointer) return;
 
     document.documentElement.classList.add("militopo-windows-desktop");
-    if(document.getElementById("militopoWindowsIofSelectStyles")) return;
+    if(document.getElementById("militopoWindowsAllSelectStyles")) return;
 
     const style=document.createElement("style");
-    style.id="militopoWindowsIofSelectStyles";
+    style.id="militopoWindowsAllSelectStyles";
     style.textContent=`
-        .militopo-windows-desktop #iofDescriptionsEditor .iof-fields select,
-        .militopo-windows-desktop #iofPointSelector {
+        .militopo-windows-desktop select {
             color-scheme: dark !important;
-            background: linear-gradient(180deg,#51331f 0%,#352216 100%) !important;
+            background-color:#3b2719 !important;
+            background-image:linear-gradient(180deg,#563720 0%,#342116 100%) !important;
             color:#fff4dd !important;
             border:1.5px solid rgba(238,194,112,.78) !important;
             box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 8px 20px rgba(0,0,0,.18) !important;
             text-shadow:none !important;
+            font-weight:700 !important;
+            opacity:1 !important;
         }
-        .militopo-windows-desktop #iofDescriptionsEditor .iof-fields select:focus,
-        .militopo-windows-desktop #iofPointSelector:focus {
+        .militopo-windows-desktop select:hover {
+            border-color:#f4cf88 !important;
+            filter:brightness(1.05) !important;
+        }
+        .militopo-windows-desktop select:focus,
+        .militopo-windows-desktop select:focus-visible {
             outline:none !important;
             border-color:#ffd98a !important;
-            box-shadow:0 0 0 3px rgba(240,193,106,.22),inset 0 1px 0 rgba(255,255,255,.10) !important;
+            box-shadow:0 0 0 3px rgba(240,193,106,.24),inset 0 1px 0 rgba(255,255,255,.10) !important;
         }
-        .militopo-windows-desktop #iofDescriptionsEditor .iof-fields select option,
-        .militopo-windows-desktop #iofPointSelector option {
+        .militopo-windows-desktop select option,
+        .militopo-windows-desktop select optgroup {
             background:#2d2118 !important;
             color:#fff7e8 !important;
             font-weight:700 !important;
         }
-        .militopo-windows-desktop #iofDescriptionsEditor .iof-fields select option:checked,
-        .militopo-windows-desktop #iofPointSelector option:checked {
+        .militopo-windows-desktop select option:checked {
             background:#d8a54d !important;
             color:#211509 !important;
         }
-        .militopo-windows-desktop #iofDescriptionsEditor .iof-fields select:disabled,
-        .militopo-windows-desktop #iofPointSelector:disabled {
+        .militopo-windows-desktop select option:hover {
+            background:#6b4a2c !important;
+            color:#fffaf0 !important;
+        }
+        .militopo-windows-desktop select:disabled {
             opacity:.62 !important;
             color:#d8cbb5 !important;
+            cursor:not-allowed !important;
         }
     `;
     document.head.appendChild(style);
 }
 
-document.addEventListener("DOMContentLoaded",setupWindowsIofSelectContrast);
+document.addEventListener("DOMContentLoaded",setupWindowsAllSelectContrast);
