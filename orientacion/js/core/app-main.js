@@ -949,14 +949,27 @@ function getSavedManualPlanPdfCenter(){
         : null;
 }
 function ensurePlanPdfAdjustControls(){
-    const mapEl=document.getElementById("map");
-    if(!mapEl||document.getElementById("pdfPlanAdjustControls"))return;
-    const mapBlock=mapEl.closest(".block")||mapEl.parentElement||mapEl;
-    const box=document.createElement("div");
+    const step2=document.getElementById("step2");
+    const mapEl=step2?.querySelector("#map");
+    const quickBlock=step2?.querySelector(".autofill-test-panel");
+    if(!step2||!mapEl||!quickBlock)return;
+
+    let box=document.getElementById("pdfPlanAdjustControls");
+    if(box && !step2.contains(box)){
+        box.remove();
+        box=null;
+    }
+    if(box){
+        if(box.nextElementSibling!==quickBlock)quickBlock.insertAdjacentElement("beforebegin",box);
+        return;
+    }
+
+    box=document.createElement("div");
     box.id="pdfPlanAdjustControls";
-    box.style.cssText="position:relative;z-index:20;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;width:calc(100% - 4px);max-width:100%;box-sizing:border-box;margin:16px 2px 20px;padding:10px 11px;border-radius:15px;background:rgba(22,36,20,.94);border:1px solid rgba(235,215,151,.32);box-shadow:0 10px 24px rgba(0,0,0,.22);backdrop-filter:blur(8px)";
+    box.className="block pdf-plan-adjust-controls-block";
+    box.style.cssText="position:relative;z-index:20;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;width:100%;max-width:100%;grid-column:1 / -1;box-sizing:border-box;margin:14px 0 14px;padding:12px 11px;border-radius:18px;background:rgba(22,36,20,.94);border:1px solid rgba(235,215,151,.32);box-shadow:0 10px 24px rgba(0,0,0,.22);backdrop-filter:blur(8px)";
     box.innerHTML=`<button id="pdfPlanAdjustBtn" type="button" style="border:0;border-radius:999px;padding:8px 11px;font-weight:900;font-size:.72rem;background:#e7c46f;color:#231707;cursor:pointer">✥ AJUSTAR BORDE</button><button id="pdfPlanSaveCenterBtn" type="button" style="display:none;border:0;border-radius:999px;padding:8px 11px;font-weight:900;font-size:.72rem;background:#83b85f;color:#10200c;cursor:pointer">✓ GUARDAR POSICIÓN</button><button id="pdfPlanAutoCenterBtn" type="button" style="border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:8px 11px;font-weight:900;font-size:.72rem;background:rgba(255,255,255,.08);color:#fff;cursor:pointer">↺ CENTRO AUTOMÁTICO</button><span id="pdfPlanCenterModeText" style="align-self:center;padding:0 4px;color:#f6ead0;font:800 .67rem/1.1 Arial,sans-serif"></span>`;
-    mapBlock.insertAdjacentElement("afterend",box);
+    quickBlock.insertAdjacentElement("beforebegin",box);
     document.getElementById("pdfPlanAdjustBtn")?.addEventListener("click",()=>{
         pdfPlanAdjustMode=!pdfPlanAdjustMode;
         updatePlanPdfAdjustControls();
