@@ -4,7 +4,7 @@
 const state={eventId:"",eventName:"ENTRENAMIENTO ORIENTACIÓN",
     planScale:10000,
     pdfPlanCenterManual:null,
-    planEquidistanceM:5,participantCount:10,controlCount:25,controlsPerRoute:8,maxControlReuse:6,points:{},routes:[],metrics:[],elevations:{},participantLogs:{},participantNames:{},skippedRoutes:{},importedResults:[]};let map=null,layers={},currentLayer=null,markersLayer=null,routeLayer=null,pdfPlanPreviewLayer=null,pdfPlanCenterMarker=null,pdfPlanAdjustMode=false,userLocationMarker=null,userAccuracyCircle=null,selectedPointId="START";let currentAppStep=1;let __autoSaveTimer=null;let selectedIofPointId="START";
+    planEquidistanceM:5,participantCount:10,controlCount:25,controlsPerRoute:8,maxControlReuse:6,points:{},routes:[],metrics:[],elevations:{},participantLogs:{},participantNames:{},skippedRoutes:{},importedResults:[]};let map=null,layers={},currentLayer=null,markersLayer=null,routeLayer=null,pdfPlanPreviewLayer=null,pdfPlanPreviewRectangle=null,pdfPlanPreviewLabelMarker=null,pdfPlanCenterMarker=null,pdfPlanAdjustMode=false,pdfPlanDragFrame=null,userLocationMarker=null,userAccuracyCircle=null,selectedPointId="START";let currentAppStep=1;let __autoSaveTimer=null;let selectedIofPointId="START";
 
 function createFreshEventId(){
     return "ORI_"+new Date().toISOString().slice(0,10).replaceAll("-","")+"_"+Math.random().toString(36).slice(2,7).toUpperCase();
@@ -951,13 +951,12 @@ function getSavedManualPlanPdfCenter(){
 function ensurePlanPdfAdjustControls(){
     const mapEl=document.getElementById("map");
     if(!mapEl||document.getElementById("pdfPlanAdjustControls"))return;
-    const host=mapEl.parentElement||mapEl;
-    if(getComputedStyle(host).position==="static")host.style.position="relative";
+    const mapBlock=mapEl.closest(".block")||mapEl.parentElement||mapEl;
     const box=document.createElement("div");
     box.id="pdfPlanAdjustControls";
-    box.style.cssText="position:absolute;left:12px;bottom:12px;z-index:850;display:flex;flex-wrap:wrap;gap:6px;max-width:calc(100% - 24px);padding:7px;border-radius:13px;background:rgba(22,36,20,.92);border:1px solid rgba(235,215,151,.32);box-shadow:0 8px 24px rgba(0,0,0,.28);backdrop-filter:blur(8px)";
+    box.style.cssText="position:relative;z-index:20;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;width:calc(100% - 4px);max-width:100%;box-sizing:border-box;margin:16px 2px 20px;padding:10px 11px;border-radius:15px;background:rgba(22,36,20,.94);border:1px solid rgba(235,215,151,.32);box-shadow:0 10px 24px rgba(0,0,0,.22);backdrop-filter:blur(8px)";
     box.innerHTML=`<button id="pdfPlanAdjustBtn" type="button" style="border:0;border-radius:999px;padding:8px 11px;font-weight:900;font-size:.72rem;background:#e7c46f;color:#231707;cursor:pointer">✥ AJUSTAR BORDE</button><button id="pdfPlanSaveCenterBtn" type="button" style="display:none;border:0;border-radius:999px;padding:8px 11px;font-weight:900;font-size:.72rem;background:#83b85f;color:#10200c;cursor:pointer">✓ GUARDAR POSICIÓN</button><button id="pdfPlanAutoCenterBtn" type="button" style="border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:8px 11px;font-weight:900;font-size:.72rem;background:rgba(255,255,255,.08);color:#fff;cursor:pointer">↺ CENTRO AUTOMÁTICO</button><span id="pdfPlanCenterModeText" style="align-self:center;padding:0 4px;color:#f6ead0;font:800 .67rem/1.1 Arial,sans-serif"></span>`;
-    host.appendChild(box);
+    mapBlock.insertAdjacentElement("afterend",box);
     document.getElementById("pdfPlanAdjustBtn")?.addEventListener("click",()=>{
         pdfPlanAdjustMode=!pdfPlanAdjustMode;
         updatePlanPdfAdjustControls();
@@ -1043,11 +1042,11 @@ function renderPlanPdfPreview(){
     const hasOutside=outside.length>0;
     const lineColor=hasOutside?"#ff4d4d":"#39b54a";
 
-    const rectangle=L.rectangle(
+    pdfPlanPreviewRectangle=L.rectangle(
         [[bounds.south,bounds.west],[bounds.north,bounds.east]],
         {color:lineColor,weight:3,opacity:.96,fillColor:lineColor,fillOpacity:.055,dashArray:"12 8",interactive:false}
     ).addTo(pdfPlanPreviewLayer);
-    if(rectangle.bringToBack)rectangle.bringToBack();
+    if(pdfPlanPreviewRectangle.bringToBack)pdfPlanPreviewRectangle.bringToBack();
 
     // Etiqueta compacta colocada fuera del rectángulo para no tapar el plano.
     const labelText="BORDE PLANOS RECORRIDOS";
@@ -1058,7 +1057,7 @@ function renderPlanPdfPreview(){
         html:`<div style="pointer-events:none;white-space:nowrap;padding:4px 7px;border-radius:7px;background:${hasOutside?"rgba(115,14,14,.94)":"rgba(24,76,35,.94)"};border:2px solid ${lineColor};color:#fff;font:900 9px/1 Arial,sans-serif;letter-spacing:.02em;box-shadow:0 3px 10px rgba(0,0,0,.30)">${labelText}</div>`
     });
     const labelLat=bounds.north+((bounds.north-bounds.south)*0.015);
-    L.marker([labelLat,bounds.west],{icon:labelIcon,interactive:false,zIndexOffset:900}).addTo(pdfPlanPreviewLayer);
+    pdfPlanPreviewLabelMarker=L.marker([labelLat,bounds.west],{icon:labelIcon,interactive:false,zIndexOffset:900}).addTo(pdfPlanPreviewLayer);
 
     const centerIcon=L.divIcon({
         className:"",
@@ -1070,12 +1069,29 @@ function renderPlanPdfPreview(){
     });
     pdfPlanCenterMarker=L.marker([center.lat,center.lon],{icon:centerIcon,interactive:pdfPlanAdjustMode,draggable:pdfPlanAdjustMode,zIndexOffset:1000}).addTo(pdfPlanPreviewLayer);
     if(pdfPlanAdjustMode){
+        pdfPlanCenterMarker.on("dragstart",()=>{
+            if(map&&map.dragging)map.dragging.disable();
+        });
         pdfPlanCenterMarker.on("drag",ev=>{
             const ll=ev.target.getLatLng();
             state.pdfPlanCenterManual={lat:ll.lat,lon:ll.lng};
-            renderPlanPdfPreview();
+            if(pdfPlanDragFrame)cancelAnimationFrame(pdfPlanDragFrame);
+            pdfPlanDragFrame=requestAnimationFrame(()=>{
+                pdfPlanDragFrame=null;
+                const mPerLat=111320;
+                const mPerLon=111320*Math.cos(ll.lat*Math.PI/180);
+                const halfLat=(terrainHeightM/2)/mPerLat;
+                const halfLon=(terrainWidthM/2)/(mPerLon||1);
+                const liveBounds=[[ll.lat-halfLat,ll.lng-halfLon],[ll.lat+halfLat,ll.lng+halfLon]];
+                if(pdfPlanPreviewRectangle)pdfPlanPreviewRectangle.setBounds(liveBounds);
+                if(pdfPlanPreviewLabelMarker){
+                    const labelLatLive=(ll.lat+halfLat)+(halfLat*2*.015);
+                    pdfPlanPreviewLabelMarker.setLatLng([labelLatLive,ll.lng-halfLon]);
+                }
+            });
         });
         pdfPlanCenterMarker.on("dragend",ev=>{
+            if(map&&map.dragging)map.dragging.enable();
             const ll=ev.target.getLatLng();
             state.pdfPlanCenterManual={lat:ll.lat,lon:ll.lng};
             scheduleSaveState();
