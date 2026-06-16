@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v122 · contraste IOF Windows */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v122-iof-windows-contrast";
+/* MILITOPO · cache offline seguro v123 · contraste global desplegables Windows */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v123-all-selects-windows-contrast";
 const CORE_ASSETS = [
   "./",
   "./index.html",
