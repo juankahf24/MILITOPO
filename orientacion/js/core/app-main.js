@@ -3,7 +3,8 @@
 /* MILITOPO_V39_ESTADO_PASO5_ICONOS_LIMPIOS */
 const state={eventId:"",eventName:"ENTRENAMIENTO ORIENTACIÓN",
     planScale:10000,
-    planEquidistanceM:5,participantCount:10,controlCount:25,controlsPerRoute:8,maxControlReuse:6,points:{},routes:[],metrics:[],elevations:{},participantLogs:{},participantNames:{},skippedRoutes:{},importedResults:[]};let map=null,layers={},currentLayer=null,markersLayer=null,routeLayer=null,pdfPlanPreviewLayer=null,userLocationMarker=null,userAccuracyCircle=null,selectedPointId="START";let currentAppStep=1;let __autoSaveTimer=null;let selectedIofPointId="START";
+    pdfPlanCenterManual:null,
+    planEquidistanceM:5,participantCount:10,controlCount:25,controlsPerRoute:8,maxControlReuse:6,points:{},routes:[],metrics:[],elevations:{},participantLogs:{},participantNames:{},skippedRoutes:{},importedResults:[]};let map=null,layers={},currentLayer=null,markersLayer=null,routeLayer=null,pdfPlanPreviewLayer=null,pdfPlanCenterMarker=null,pdfPlanAdjustMode=false,userLocationMarker=null,userAccuracyCircle=null,selectedPointId="START";let currentAppStep=1;let __autoSaveTimer=null;let selectedIofPointId="START";
 
 function createFreshEventId(){
     return "ORI_"+new Date().toISOString().slice(0,10).replaceAll("-","")+"_"+Math.random().toString(36).slice(2,7).toUpperCase();
@@ -14,6 +15,7 @@ function resetStateToFreshEvent(){
     state.eventId=freshId;
     state.eventName="ENTRENAMIENTO ORIENTACIÓN";
     state.planScale=10000;
+    state.pdfPlanCenterManual=null;
     state.planEquidistanceM=5;
     state.participantCount=10;
     state.controlCount=25;
@@ -933,6 +935,70 @@ function createMapantWmtsLayer(options={}){
 
 function selectPoint(id){selectedPointId=id;document.getElementById("selectedPoint").value=id;loadSelectedPointFields();zoomSelectedPoint()}
 
+/* MILITOPO · ajuste manual seguro del centro del plano PDF */
+function getAutomaticPlanPdfCenter(pts){
+    return pts.length?{
+        lat:pts.reduce((sum,p)=>sum+p.lat,0)/pts.length,
+        lon:pts.reduce((sum,p)=>sum+p.lon,0)/pts.length
+    }:{lat:40.4168,lon:-3.7038};
+}
+function getSavedManualPlanPdfCenter(){
+    const c=state.pdfPlanCenterManual;
+    return c&&Number.isFinite(Number(c.lat))&&Number.isFinite(Number(c.lon))
+        ? {lat:Number(c.lat),lon:Number(c.lon)}
+        : null;
+}
+function ensurePlanPdfAdjustControls(){
+    const mapEl=document.getElementById("map");
+    if(!mapEl||document.getElementById("pdfPlanAdjustControls"))return;
+    const host=mapEl.parentElement||mapEl;
+    if(getComputedStyle(host).position==="static")host.style.position="relative";
+    const box=document.createElement("div");
+    box.id="pdfPlanAdjustControls";
+    box.style.cssText="position:absolute;left:12px;bottom:12px;z-index:850;display:flex;flex-wrap:wrap;gap:6px;max-width:calc(100% - 24px);padding:7px;border-radius:13px;background:rgba(22,36,20,.92);border:1px solid rgba(235,215,151,.32);box-shadow:0 8px 24px rgba(0,0,0,.28);backdrop-filter:blur(8px)";
+    box.innerHTML=`<button id="pdfPlanAdjustBtn" type="button" style="border:0;border-radius:999px;padding:8px 11px;font-weight:900;font-size:.72rem;background:#e7c46f;color:#231707;cursor:pointer">✥ AJUSTAR BORDE</button><button id="pdfPlanSaveCenterBtn" type="button" style="display:none;border:0;border-radius:999px;padding:8px 11px;font-weight:900;font-size:.72rem;background:#83b85f;color:#10200c;cursor:pointer">✓ GUARDAR POSICIÓN</button><button id="pdfPlanAutoCenterBtn" type="button" style="border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:8px 11px;font-weight:900;font-size:.72rem;background:rgba(255,255,255,.08);color:#fff;cursor:pointer">↺ CENTRO AUTOMÁTICO</button><span id="pdfPlanCenterModeText" style="align-self:center;padding:0 4px;color:#f6ead0;font:800 .67rem/1.1 Arial,sans-serif"></span>`;
+    host.appendChild(box);
+    document.getElementById("pdfPlanAdjustBtn")?.addEventListener("click",()=>{
+        pdfPlanAdjustMode=!pdfPlanAdjustMode;
+        updatePlanPdfAdjustControls();
+        renderPlanPdfPreview();
+        toast(pdfPlanAdjustMode?"Arrastra el marcador central para mover el borde del plano":"Ajuste del borde desactivado");
+    });
+    document.getElementById("pdfPlanSaveCenterBtn")?.addEventListener("click",()=>{
+        if(pdfPlanCenterMarker){
+            const ll=pdfPlanCenterMarker.getLatLng();
+            state.pdfPlanCenterManual={lat:ll.lat,lon:ll.lng};
+            pdfPlanAdjustMode=false;
+            saveState();
+            updatePlanPdfAdjustControls();
+            renderPlanPdfPreview();
+            toast("Posición manual del plano guardada");
+        }
+    });
+    document.getElementById("pdfPlanAutoCenterBtn")?.addEventListener("click",()=>{
+        state.pdfPlanCenterManual=null;
+        pdfPlanAdjustMode=false;
+        saveState();
+        updatePlanPdfAdjustControls();
+        renderPlanPdfPreview();
+        toast("Centro automático restaurado");
+    });
+    updatePlanPdfAdjustControls();
+}
+function updatePlanPdfAdjustControls(){
+    const adjust=document.getElementById("pdfPlanAdjustBtn");
+    const save=document.getElementById("pdfPlanSaveCenterBtn");
+    const mode=document.getElementById("pdfPlanCenterModeText");
+    const manual=!!getSavedManualPlanPdfCenter();
+    if(adjust){
+        adjust.textContent=pdfPlanAdjustMode?"✕ CANCELAR AJUSTE":"✥ AJUSTAR BORDE";
+        adjust.style.background=pdfPlanAdjustMode?"#c85f4d":"#e7c46f";
+        adjust.style.color=pdfPlanAdjustMode?"#fff":"#231707";
+    }
+    if(save)save.style.display=pdfPlanAdjustMode?"inline-block":"none";
+    if(mode)mode.textContent=pdfPlanAdjustMode?"Mueve el punto central":manual?"Centro manual activo":"Centro automático";
+}
+
 /* MILITOPO · previsualización exacta de la ventana del plano PDF en el mapa del paso 2 */
 function getPlanPdfPreviewGeometry(){
     const pts=Object.values(state.points||{}).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
@@ -947,10 +1013,8 @@ function getPlanPdfPreviewGeometry(){
     const terrainHeightM=mapPaperHeightMm*planHtmlToPdfMeasuredFactor*planScale/1000;
 
     // Incluye SALIDA, LLEGADA y todas las balizas con coordenadas válidas.
-    const center={
-        lat:pts.reduce((sum,p)=>sum+p.lat,0)/pts.length,
-        lon:pts.reduce((sum,p)=>sum+p.lon,0)/pts.length
-    };
+    const automaticCenter=getAutomaticPlanPdfCenter(pts);
+    const center=getSavedManualPlanPdfCenter()||automaticCenter;
     const mPerLat=111320;
     const mPerLon=111320*Math.cos(center.lat*Math.PI/180);
     const halfLat=(terrainHeightM/2)/mPerLat;
@@ -968,6 +1032,8 @@ function getPlanPdfPreviewGeometry(){
 
 function renderPlanPdfPreview(){
     if(!map||typeof L==="undefined")return;
+    ensurePlanPdfAdjustControls();
+    updatePlanPdfAdjustControls();
     if(!pdfPlanPreviewLayer)pdfPlanPreviewLayer=L.layerGroup().addTo(map);
     pdfPlanPreviewLayer.clearLayers();
 
@@ -996,11 +1062,26 @@ function renderPlanPdfPreview(){
 
     const centerIcon=L.divIcon({
         className:"",
-        iconSize:[18,18],
-        iconAnchor:[9,9],
-        html:`<div style="width:18px;height:18px;position:relative;pointer-events:none"><span style="position:absolute;left:8px;top:0;width:2px;height:18px;background:${lineColor}"></span><span style="position:absolute;left:0;top:8px;width:18px;height:2px;background:${lineColor}"></span></div>`
+        iconSize:pdfPlanAdjustMode?[32,32]:[18,18],
+        iconAnchor:pdfPlanAdjustMode?[16,16]:[9,9],
+        html:pdfPlanAdjustMode
+            ? `<div style="width:30px;height:30px;border-radius:50%;background:#f2cf78;border:4px solid #fff;box-shadow:0 4px 16px rgba(0,0,0,.45);cursor:grab;position:relative"><span style="position:absolute;left:12px;top:4px;width:2px;height:14px;background:#24331d"></span><span style="position:absolute;left:6px;top:10px;width:14px;height:2px;background:#24331d"></span></div>`
+            : `<div style="width:18px;height:18px;position:relative;pointer-events:none"><span style="position:absolute;left:8px;top:0;width:2px;height:18px;background:${lineColor}"></span><span style="position:absolute;left:0;top:8px;width:18px;height:2px;background:${lineColor}"></span></div>`
     });
-    L.marker([center.lat,center.lon],{icon:centerIcon,interactive:false,zIndexOffset:500}).addTo(pdfPlanPreviewLayer);
+    pdfPlanCenterMarker=L.marker([center.lat,center.lon],{icon:centerIcon,interactive:pdfPlanAdjustMode,draggable:pdfPlanAdjustMode,zIndexOffset:1000}).addTo(pdfPlanPreviewLayer);
+    if(pdfPlanAdjustMode){
+        pdfPlanCenterMarker.on("drag",ev=>{
+            const ll=ev.target.getLatLng();
+            state.pdfPlanCenterManual={lat:ll.lat,lon:ll.lng};
+            renderPlanPdfPreview();
+        });
+        pdfPlanCenterMarker.on("dragend",ev=>{
+            const ll=ev.target.getLatLng();
+            state.pdfPlanCenterManual={lat:ll.lat,lon:ll.lng};
+            scheduleSaveState();
+            renderPlanPdfPreview();
+        });
+    }
 
     outside.forEach(p=>{
         L.circleMarker([p.lat,p.lon],{
@@ -7850,10 +7931,8 @@ function participantPlanHtml(route){
     const terrainHeightM=mapPaperHeightMm*planHtmlToPdfMeasuredFactor*planScale/1000;
 
     const pts=allEventPoints.length?allEventPoints:fallbackPoints;
-    const center=pts.length?{
-        lat:pts.reduce((a,p)=>a+p.lat,0)/pts.length,
-        lon:pts.reduce((a,p)=>a+p.lon,0)/pts.length
-    }:{lat:40.4168,lon:-3.7038};
+    const automaticCenter=getAutomaticPlanPdfCenter(pts);
+    const center=getSavedManualPlanPdfCenter()||automaticCenter;
 
     const mPerLat=111320;
     const mPerLon=111320*Math.cos(center.lat*Math.PI/180);
@@ -8141,6 +8220,7 @@ function loadState(){
         if(!state.importedResults)state.importedResults=[];
         if(!state.participantNames)state.participantNames={};
         if(!state.skippedRoutes)state.skippedRoutes={};
+        if(state.pdfPlanCenterManual&&(!Number.isFinite(Number(state.pdfPlanCenterManual.lat))||!Number.isFinite(Number(state.pdfPlanCenterManual.lon))))state.pdfPlanCenterManual=null;
         return {restored:true,step:currentAppStep,reason:main.value===payload?"main":backup.value===payload?"backup":session.value===payload?"session":"window"};
     }
 
@@ -8149,6 +8229,7 @@ function loadState(){
         if(!state.importedResults)state.importedResults=[];
         if(!state.participantNames)state.participantNames={};
         if(!state.skippedRoutes)state.skippedRoutes={};
+        if(state.pdfPlanCenterManual&&(!Number.isFinite(Number(state.pdfPlanCenterManual.lat))||!Number.isFinite(Number(state.pdfPlanCenterManual.lon))))state.pdfPlanCenterManual=null;
         currentAppStep=normalizeAppStep(navStep||legacy.value.currentStep||1);
         return {restored:true,step:currentAppStep,reason:"legacy"};
     }
