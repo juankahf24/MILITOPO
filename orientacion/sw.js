@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v131 · controles bajo mapa y arrastre fluido */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v131-controles-bajo-mapa-arrastre-fluido";
+/* MILITOPO · cache offline seguro v131 · controles solo paso 2 */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v131-controles-solo-paso2";
 const CORE_ASSETS = [
   "./",
   "./index.html",
