@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v132 · centro manual plano con respaldo automático */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v132-centro-manual-plano-respaldo-auto";
+/* MILITOPO · cache offline seguro v131 · controles bajo mapa y arrastre fluido */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v131-controles-bajo-mapa-arrastre-fluido";
 const CORE_ASSETS = [
   "./",
   "./index.html",
