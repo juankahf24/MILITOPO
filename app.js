@@ -4877,3 +4877,67 @@ function setupTopoVisualEnhancements() {
 }
 
 document.addEventListener("DOMContentLoaded", setupTopoVisualEnhancements);
+
+/* MILITOPO · instalación PWA en Android */
+(() => {
+    let deferredInstallPrompt = null;
+    const installButton = document.getElementById("installMilitopoBtn");
+    if (!installButton) return;
+
+    const textNode = installButton.querySelector(".branch-tab-text");
+    const isStandalone = () =>
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true;
+
+    const setInstalledState = () => {
+        installButton.classList.remove("is-ready");
+        installButton.disabled = true;
+        installButton.setAttribute("aria-label", "MILITOPO ya está instalado");
+        if (textNode) textNode.textContent = "Instalada";
+    };
+
+    if (isStandalone()) {
+        setInstalledState();
+    }
+
+    window.addEventListener("beforeinstallprompt", event => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        installButton.disabled = false;
+        installButton.classList.add("is-ready");
+        if (textNode) textNode.textContent = "Instalar app";
+    });
+
+    installButton.addEventListener("click", async () => {
+        if (isStandalone()) {
+            setInstalledState();
+            return;
+        }
+
+        if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt();
+            try {
+                await deferredInstallPrompt.userChoice;
+            } finally {
+                deferredInstallPrompt = null;
+                installButton.classList.remove("is-ready");
+            }
+            return;
+        }
+
+        alert("En Android abre MILITOPO con Google Chrome, pulsa el menú ⋮ y elige ‘Instalar aplicación’ o ‘Añadir a pantalla de inicio’. Cuando Chrome habilite la instalación, este botón abrirá la ventana automáticamente.");
+    });
+
+    window.addEventListener("appinstalled", () => {
+        deferredInstallPrompt = null;
+        setInstalledState();
+    });
+
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register("./sw.js").catch(error => {
+                console.warn("No se pudo registrar la instalación de MILITOPO:", error);
+            });
+        });
+    }
+})();

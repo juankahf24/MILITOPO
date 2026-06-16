@@ -1,0 +1,28 @@
+{
+  "name": "MILITOPO",
+  "short_name": "MILITOPO",
+  "description": "Herramienta MILITOPO para Topografía y Orientación.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#20351f",
+  "theme_color": "#20351f",
+  "lang": "es",
+  "categories": ["navigation", "utilities", "sports"],
+  "icons": [
+    {
+      "src": "icons/militopo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/militopo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -6802,3 +6802,43 @@ body {
     z-index: 999999 !important;
     transform: translate(-7px, -16px) scale(1.14) !important;
 }
+
+/* MILITOPO · instalación como aplicación Android */
+.install-app-header-btn {
+    position: relative;
+    border-color: rgba(242, 204, 111, .68) !important;
+    background: linear-gradient(180deg, rgba(239, 209, 133, .98), rgba(211, 163, 72, .98)) !important;
+    color: #2b1908 !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255,255,255,.48) !important;
+}
+.install-app-header-btn .branch-tab-icon,
+.install-app-header-btn .branch-tab-text { color: inherit !important; }
+.install-app-header-btn.is-ready::after {
+    content: "";
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4fbe57;
+    box-shadow: 0 0 0 3px rgba(79,190,87,.18);
+}
+.install-app-header-btn:disabled {
+    opacity: .68;
+    cursor: default;
+}
+@media (max-width: 680px) {
+    .header-branch-tabs-modern {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+        gap: 7px !important;
+    }
+    .header-branch-tabs-modern .header-branch-btn {
+        min-width: 0 !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+    }
+    .install-app-header-btn .branch-tab-text { font-size: .72rem; }
+}

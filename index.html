@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>MILITOPO | Sistema de Recorridos Topográficos</title>
+    <meta name="theme-color" content="#20351f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/militopo-192.png">
+    <link rel="apple-touch-icon" href="icons/militopo-192.png">
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -41,6 +48,10 @@
                             <span class="branch-tab-icon">🧭</span>
                             <span class="branch-tab-text">Orientación</span>
                             
+                        </button>
+                        <button id="installMilitopoBtn" type="button" class="branch-tab header-branch-btn install-app-header-btn" aria-label="Instalar MILITOPO como aplicación en Android">
+                            <span class="branch-tab-icon">📲</span>
+                            <span class="branch-tab-text">Instalar app</span>
                         </button>
                     </div>
                 </div>
