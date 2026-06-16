@@ -6773,8 +6773,12 @@ function iofFUsesSecondObject(fValue){
     const v=String(fValue||"");
     return v==="combo_cruce" || v==="combo_union";
 }
+function iofGUsesSecondObject(gValue){
+    return String(gValue||"")==="entre";
+}
 function iofEUsesDOptions(desc){
-    return iofFUsesSecondObject(effectiveIofFValue(desc||{}));
+    const d=desc||{};
+    return iofFUsesSecondObject(effectiveIofFValue(d)) || iofGUsesSecondObject(d.g);
 }
 function iofEOptionsForPoint(id){
     const desc=(state.iofDescriptions&&state.iofDescriptions[id])||{};
@@ -7336,14 +7340,20 @@ function updateIofDescription(id,field,value){
         desc.f=value;
         // Compatibilidad: el selector antiguo de combinación queda absorbido dentro de F.
         desc.combo="";
-        // Al cambiar el tipo de F, E cambia de biblioteca. Evita conservar un valor incompatible.
-        const allowedE=(iofFUsesSecondObject(value)?IOF_OPTIONS.d:IOF_OPTIONS.e).some(x=>x[0]===desc.e);
-        if(desc.e&&!allowedE)desc.e="";
     }else{
         desc[field]=value;
     }
+
+    // E usa la biblioteca de D cuando F es cruce/unión o cuando G es "Entre".
+    // Al cambiar F o G se elimina cualquier valor de E que ya no sea compatible.
+    if(field==="f" || field==="g"){
+        const allowedLibrary=iofEUsesDOptions(desc)?IOF_OPTIONS.d:IOF_OPTIONS.e;
+        const allowedE=(allowedLibrary||[]).some(x=>x[0]===desc.e);
+        if(desc.e&&!allowedE)desc.e="";
+    }
+
     if(field!=="complete") desc.complete=false;
-    if(field==="f"){
+    if(field==="f" || field==="g"){
         renderIofDescriptionsEditor();
     }else{
         const preview=document.getElementById("iofPreview_"+id);
