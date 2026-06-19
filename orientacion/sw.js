@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v123 · JSON único restaurable */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v123-json-unico-restaurable";
+/* MILITOPO · importación restaurable ZIP/JSON al paso 5 */
+const MILITOPO_CACHE = "militopo-orientacion-modular-vIMPORT-RESTORE-STEP5";
 const CORE_ASSETS = [
   "./",
   "./index.html",
