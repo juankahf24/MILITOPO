@@ -41,6 +41,7 @@ function resetStateToFreshEvent(){
 }
 
 function init(){
+    setupReusableExerciseImporter();
     fillSelect("participantCount",1,100,10,n=>`${n} participantes`);
     fillSelect("controlCount",3,80,25,n=>`${n} balizas`);
     fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);
@@ -8212,6 +8213,206 @@ setTimeout(()=>{map.invalidateSize();map.fitBounds(bounds,{padding:[0,0],animate
 
 
 
+
+
+
+
+/* MILITOPO · importar y reutilizar un ejercicio completo desde ZIP o JSON */
+const STORAGE_KEY_PRE_IMPORT_BACKUP="militopo_orientacion_pre_import_backup_v1";
+
+function setupReusableExerciseImporter(){
+    const step1=document.getElementById("step1");
+    if(!step1 || document.getElementById("reuseExerciseImportBlock"))return;
+
+    const block=document.createElement("div");
+    block.id="reuseExerciseImportBlock";
+    block.className="block militopo-reuse-exercise-block";
+    block.innerHTML=`
+        <label>♻️ REUTILIZAR EJERCICIO ANTERIOR</label>
+        <div class="militopo-reuse-copy">
+            Importa el ZIP completo del evento o su archivo <b>evento_orientacion.json</b>.
+            Se conservarán puntos, recorridos, participantes, QR, planos y descripciones; se reiniciarán tiempos, escaneos y resultados.
+        </div>
+        <input id="reuseExerciseFileInput" type="file" accept=".zip,.json,application/zip,application/json" hidden>
+        <div class="btn-row militopo-reuse-actions">
+            <button id="reuseExerciseChooseBtn" type="button" class="btn green">📦 IMPORTAR EJERCICIO</button>
+        </div>
+        <div id="reuseExerciseImportStatus" class="status warn" style="display:none"></div>`;
+
+    const firstGrid=step1.querySelector(".grid.two");
+    if(firstGrid && firstGrid.parentNode){
+        firstGrid.insertAdjacentElement("afterend",block);
+    }else{
+        const nav=step1.querySelector(".nav-buttons,.btn-row");
+        if(nav)nav.insertAdjacentElement("beforebegin",block); else step1.appendChild(block);
+    }
+
+    const style=document.createElement("style");
+    style.id="militopoReusableExerciseStyles";
+    style.textContent=`
+        #reuseExerciseImportBlock{margin-top:18px;padding:18px;border-radius:24px;border:1px solid rgba(237,214,145,.24);background:linear-gradient(180deg,rgba(112,145,74,.16),rgba(36,52,29,.16));box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 12px 28px rgba(0,0,0,.10)}
+        #reuseExerciseImportBlock>label{display:block;margin-bottom:9px;font-weight:900;letter-spacing:.04em}
+        .militopo-reuse-copy{font-size:.82rem;line-height:1.45;color:rgba(255,248,234,.78);margin-bottom:13px}
+        .militopo-reuse-actions{display:flex;gap:10px;flex-wrap:wrap}
+        #reuseExerciseChooseBtn{min-height:46px}
+        #reuseExerciseImportStatus{margin-top:12px;white-space:pre-line}
+    `;
+    document.head.appendChild(style);
+
+    const input=document.getElementById("reuseExerciseFileInput");
+    document.getElementById("reuseExerciseChooseBtn")?.addEventListener("click",()=>input?.click());
+    input?.addEventListener("change",async event=>{
+        const file=event.target.files&&event.target.files[0];
+        event.target.value="";
+        if(file)await importReusableExerciseFile(file);
+    });
+}
+
+function setReusableExerciseStatus(message,type="warn"){
+    const el=document.getElementById("reuseExerciseImportStatus");
+    if(!el)return;
+    el.style.display="block";
+    el.className="status "+type;
+    el.textContent=message;
+}
+
+async function readReusableExerciseFile(file){
+    const name=String(file&&file.name||"").toLowerCase();
+    if(name.endsWith(".json")){
+        return JSON.parse(await file.text());
+    }
+    if(!name.endsWith(".zip"))throw new Error("Selecciona un archivo ZIP o JSON válido.");
+    if(typeof JSZip==="undefined")throw new Error("JSZip no está disponible. Recarga la aplicación e inténtalo de nuevo.");
+
+    const zip=await JSZip.loadAsync(file);
+    let entry=zip.file("Otros documentos/evento_orientacion.json");
+    if(!entry){
+        const candidates=Object.values(zip.files).filter(item=>!item.dir && /(^|\/)evento_orientacion\.json$/i.test(item.name));
+        entry=candidates[0]||null;
+    }
+    if(!entry)throw new Error("El ZIP no contiene Otros documentos/evento_orientacion.json.");
+    return JSON.parse(await entry.async("string"));
+}
+
+function validateReusableExerciseData(data){
+    if(!data || typeof data!=="object")throw new Error("El archivo no contiene un ejercicio válido.");
+    if(!data.eventId)throw new Error("Falta el identificador eventId. No se pueden reutilizar los QR impresos.");
+    if(!data.points || typeof data.points!=="object")throw new Error("El ejercicio no contiene puntos.");
+    if(!data.points.START || !data.points.FINISH)throw new Error("El ejercicio debe contener salida y llegada.");
+    if(!Array.isArray(data.routes) || !data.routes.length)throw new Error("El ejercicio no contiene recorridos generados.");
+    const invalidRoute=data.routes.find(route=>!route || !route.routeId || !route.participantId || !Array.isArray(route.points));
+    if(invalidRoute)throw new Error("Hay algún recorrido incompleto o incompatible.");
+    return true;
+}
+
+function applyReusableExerciseData(data){
+    const cfg=data.config||{};
+    const plan=data.plan||{};
+    const routes=safeJsonClone(data.routes||[],[]);
+    const points=safeJsonClone(data.points||{},{});
+
+    state.eventId=String(data.eventId);
+    state.eventName=String(data.eventName||"ENTRENAMIENTO ORIENTACIÓN");
+    state.participantCount=Number(cfg.participantCount)||routes.length||10;
+    state.controlCount=Number(cfg.controlCount)||Object.values(points).filter(p=>p&&p.type==="BALIZA").length;
+    state.controlsPerRoute=Number(cfg.controlsPerRoute)||Math.max(2,(routes[0]?.points||[]).filter(id=>id!=="START"&&id!=="FINISH").length);
+    state.maxControlReuse=Number(cfg.maxControlReuse)||6;
+    state.planScale=Number(plan.scale||cfg.planScale)===7500?7500:10000;
+    state.planEquidistanceM=Number(plan.equidistanceM||cfg.planEquidistanceM)||5;
+    state.pdfPlanCenterManual=plan.manualCenter&&Number.isFinite(Number(plan.manualCenter.lat))&&Number.isFinite(Number(plan.manualCenter.lon))
+        ? {lat:Number(plan.manualCenter.lat),lon:Number(plan.manualCenter.lon)}
+        : null;
+    state.points=points;
+    state.routes=routes;
+    state.metrics=safeJsonClone(data.metrics||[],[]);
+    state.elevations=safeJsonClone(data.elevations||{},{});
+    state.iofDescriptions=safeJsonClone(data.iofDescriptions||{},{});
+    state.participantNames=safeJsonClone(data.participantNames||{},{});
+    state.skippedRoutes=safeJsonClone(data.skippedRoutes||{},{});
+    state.routeWarnings=safeJsonClone(data.routeWarnings||[],[]);
+
+    // Nueva ejecución del mismo material: se limpia únicamente la actividad anterior.
+    state.participantLogs={};
+    state.importedResults=[];
+    state.startTimes={};
+    state.finishTimes={};
+    state.scanHistory=[];
+    state.classification=[];
+
+    const symbols=data.customIofSymbols||{};
+    try{
+        if(symbols.general){
+            localStorage.setItem("militopo_iof_custom_symbols_v4_c_h_combo_cruce_union_curva",JSON.stringify(symbols.general));
+            customIofSymbols=safeJsonClone(symbols.general,{combo:{},f:{},g:{}});
+        }
+        if(symbols.d)localStorage.setItem("militopo_iof_d_custom_symbols_v1",JSON.stringify(symbols.d));
+    }catch(e){}
+
+    selectedPointId="START";
+    selectedIofPointId="START";
+}
+
+async function importReusableExerciseFile(file){
+    const button=document.getElementById("reuseExerciseChooseBtn");
+    const beforeState=cloneStateForSave();
+    const beforeStep=currentAppStep;
+    try{
+        if(button){button.disabled=true;button.textContent="IMPORTANDO...";}
+        setReusableExerciseStatus("Leyendo y comprobando el ejercicio...","warn");
+        const data=await readReusableExerciseFile(file);
+        validateReusableExerciseData(data);
+
+        const routeCount=data.routes.length;
+        const pointCount=Object.keys(data.points||{}).length;
+        const confirmText=`Se va a restaurar “${data.eventName||data.eventId}” con ${routeCount} recorridos y ${pointCount} puntos.\n\nSe conservará el eventId para reutilizar los QR y planos impresos. Se borrarán únicamente tiempos, escaneos y resultados anteriores.\n\n¿Continuar?`;
+        if(!confirm(confirmText)){
+            setReusableExerciseStatus("Importación cancelada. No se ha modificado el ejercicio actual.","warn");
+            return;
+        }
+
+        try{localStorage.setItem(STORAGE_KEY_PRE_IMPORT_BACKUP,JSON.stringify({savedAt:new Date().toISOString(),currentStep:beforeStep,state:beforeState}))}catch(e){}
+        applyReusableExerciseData(data);
+
+        syncConfigToUi();
+        syncPlanScaleSettingUi();
+        renderPointSelectors();
+        renderPointsTable();
+        renderIofDescriptionsEditor();
+        updateParticipantSelect();
+        updateRouteCountInfo();
+        if(typeof renderMapMarkers==="function")renderMapMarkers();
+        if(typeof renderPlanPdfPreview==="function")renderPlanPdfPreview();
+        if(typeof updateOrganizerParticipantSelects==="function")updateOrganizerParticipantSelects();
+
+        currentAppStep=5;
+        saveState();
+        goStep(5,{silent:true});
+        setReusableExerciseStatus(`✅ Ejercicio restaurado: ${state.eventName}\n${state.routes.length} recorridos · listo en el Paso 5.`,"ok");
+        setRestoreStatus(`✅ Ejercicio importado y preparado para repetición · ${state.eventId}`,"ok");
+        toast("Ejercicio restaurado · listo en Paso 5");
+    }catch(error){
+        console.error("Error importando ejercicio reutilizable:",error);
+        Object.keys(state).forEach(key=>delete state[key]);
+        Object.assign(state,beforeState);
+        currentAppStep=beforeStep;
+        try{
+            syncConfigToUi();
+            syncPlanScaleSettingUi();
+            renderPointSelectors();
+            renderPointsTable();
+            renderIofDescriptionsEditor();
+            updateParticipantSelect();
+            updateRouteCountInfo();
+            goStep(beforeStep,{silent:true,noScroll:true});
+        }catch(e){}
+        setReusableExerciseStatus("❌ No se ha importado nada: "+(error&&error.message?error.message:error),"err");
+        toast("No se pudo importar el ejercicio");
+    }finally{
+        if(button){button.disabled=false;button.textContent="📦 IMPORTAR EJERCICIO";}
+    }
+}
+
+document.addEventListener("DOMContentLoaded",setupReusableExerciseImporter);
 
 
 const STORAGE_KEY_MAIN="militopo_orientacion_autosave_v2";
