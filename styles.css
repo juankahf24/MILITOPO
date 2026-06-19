@@ -7173,3 +7173,143 @@ body {
 @keyframes mtLoader { from { width: 0; } to { width: 100%; } }
 @keyframes mtOrbit { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
 @keyframes mtOrbitReverse { from { transform: rotate(360deg);} to { transform: rotate(0deg);} }
+
+
+/* ===== MILITOPO · selector APP Android / iPhone ===== */
+.militopo-platform-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(7, 14, 8, .72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.militopo-platform-modal.is-open { display: flex; }
+.militopo-platform-card {
+    width: min(100%, 430px);
+    border-radius: 28px;
+    padding: 22px;
+    color: #fff9ec;
+    background:
+        radial-gradient(circle at 20% 0%, rgba(223,246,196,.15), transparent 34%),
+        linear-gradient(180deg, #263d23, #172818);
+    border: 1px solid rgba(255,245,200,.22);
+    box-shadow: 0 30px 90px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.09);
+}
+.militopo-platform-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+.militopo-platform-head h3 {
+    margin: 0 0 5px;
+    font: 900 1.2rem/1.15 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    letter-spacing: .02em;
+}
+.militopo-platform-head p {
+    margin: 0;
+    color: rgba(255,249,236,.72);
+    font: 600 .82rem/1.4 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.militopo-platform-close {
+    appearance: none;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 13px;
+    border: 1px solid rgba(255,245,200,.18);
+    color: #fff9ec;
+    background: rgba(0,0,0,.18);
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+.militopo-platform-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.militopo-platform-choice {
+    appearance: none;
+    min-height: 112px;
+    padding: 16px 12px;
+    border-radius: 22px;
+    border: 1px solid rgba(255,245,200,.18);
+    color: #fff9ec;
+    background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.035));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 14px 28px rgba(0,0,0,.14);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+.militopo-platform-choice:hover,
+.militopo-platform-choice:focus-visible {
+    transform: translateY(-2px);
+    outline: none;
+    border-color: rgba(230,188,122,.64);
+    background: linear-gradient(180deg, rgba(243,205,132,.20), rgba(255,255,255,.05));
+}
+.militopo-platform-choice .platform-icon { font-size: 2.15rem; line-height: 1; }
+.militopo-platform-choice strong {
+    font: 900 .94rem/1 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    letter-spacing: .05em;
+}
+.militopo-platform-choice small {
+    color: rgba(255,249,236,.65);
+    font: 600 .68rem/1.25 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.militopo-iphone-instructions {
+    display: none;
+    margin-top: 4px;
+}
+.militopo-iphone-instructions.is-visible { display: block; }
+.militopo-iphone-instructions ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 9px;
+}
+.militopo-iphone-instructions li {
+    padding: 12px 13px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.065);
+    border: 1px solid rgba(255,245,200,.12);
+    font: 750 .83rem/1.35 Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.militopo-iphone-instructions li span {
+    display: inline-grid;
+    place-items: center;
+    width: 25px;
+    height: 25px;
+    margin-right: 8px;
+    border-radius: 9px;
+    color: #25190c;
+    background: linear-gradient(180deg, #f4d18d, #d8a24e);
+    font-weight: 900;
+}
+.militopo-platform-back {
+    width: 100%;
+    margin-top: 14px;
+    min-height: 44px;
+    border-radius: 15px;
+    border: 1px solid rgba(255,245,200,.16);
+    color: #fff9ec;
+    background: rgba(0,0,0,.18);
+    font-weight: 800;
+    cursor: pointer;
+}
+@media (max-width: 480px) {
+    .militopo-platform-options { grid-template-columns: 1fr 1fr; gap: 9px; }
+    .militopo-platform-card { padding: 18px; border-radius: 24px; }
+    .militopo-platform-choice { min-height: 102px; padding: 13px 8px; }
+}

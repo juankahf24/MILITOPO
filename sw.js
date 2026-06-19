@@ -1,5 +1,5 @@
-/* MILITOPO PWA · instalación Android · v2 · incluye últimos cambios IOF */
-const CACHE_NAME = "militopo-pwa-v2-iof-entre";
+/* MILITOPO PWA · instalación Android · v3 · selector Android/iPhone */
+const CACHE_NAME = "militopo-pwa-v3-selector-android-iphone";
 const APP_SHELL = [
   "./",
   "./index.html",
