@@ -8233,7 +8233,7 @@ function setupReusableExerciseImporter(){
             Importa el ZIP completo del evento o su archivo <b>evento_orientacion.json</b>.
             Se conservarán puntos, recorridos, participantes, QR, planos y descripciones; se reiniciarán tiempos, escaneos y resultados.
         </div>
-        <input id="reuseExerciseFileInput" type="file" accept=".zip,.json,application/zip,application/json" hidden>
+        <input id="reuseExerciseFileInput" type="file" hidden>
         <div class="btn-row militopo-reuse-actions">
             <button id="reuseExerciseChooseBtn" type="button" class="btn green">📦 IMPORTAR EJERCICIO</button>
         </div>
@@ -8277,21 +8277,44 @@ function setReusableExerciseStatus(message,type="warn"){
 }
 
 async function readReusableExerciseFile(file){
-    const name=String(file&&file.name||"").toLowerCase();
-    if(name.endsWith(".json")){
-        return JSON.parse(await file.text());
-    }
-    if(!name.endsWith(".zip"))throw new Error("Selecciona un archivo ZIP o JSON válido.");
-    if(typeof JSZip==="undefined")throw new Error("JSZip no está disponible. Recarga la aplicación e inténtalo de nuevo.");
+    if(!file)throw new Error("No se ha seleccionado ningún archivo.");
 
-    const zip=await JSZip.loadAsync(file);
-    let entry=zip.file("Otros documentos/evento_orientacion.json");
-    if(!entry){
-        const candidates=Object.values(zip.files).filter(item=>!item.dir && /(^|\/)evento_orientacion\.json$/i.test(item.name));
-        entry=candidates[0]||null;
+    // En iPhone/iPad el selector puede ocultar archivos ZIP si se limita con accept.
+    // Por eso se permite seleccionar cualquier archivo y se detecta su contenido.
+    const name=String(file.name||"").toLowerCase();
+    const type=String(file.type||"").toLowerCase();
+
+    const tryJson=async()=>{
+        const text=await file.text();
+        const trimmed=text.replace(/^\uFEFF/,"").trim();
+        if(!trimmed || (trimmed[0]!=="{" && trimmed[0]!=="["))throw new Error("No parece JSON");
+        return JSON.parse(trimmed);
+    };
+
+    const tryZip=async()=>{
+        if(typeof JSZip==="undefined")throw new Error("JSZip no está disponible. Recarga la aplicación e inténtalo de nuevo.");
+        const zip=await JSZip.loadAsync(file);
+        let entry=zip.file("Otros documentos/evento_orientacion.json");
+        if(!entry){
+            const candidates=Object.values(zip.files).filter(item=>!item.dir && /(^|\/)evento_orientacion\.json$/i.test(item.name));
+            entry=candidates[0]||null;
+        }
+        if(!entry)throw new Error("El ZIP no contiene Otros documentos/evento_orientacion.json.");
+        return JSON.parse(await entry.async("string"));
+    };
+
+    if(name.endsWith(".json") || type.includes("json")){
+        try{return await tryJson();}catch(e){}
     }
-    if(!entry)throw new Error("El ZIP no contiene Otros documentos/evento_orientacion.json.");
-    return JSON.parse(await entry.async("string"));
+    if(name.endsWith(".zip") || type.includes("zip") || type.includes("compressed")){
+        try{return await tryZip();}catch(e){throw e;}
+    }
+
+    // Si iOS entrega el archivo sin extensión o con MIME genérico, probamos ambos formatos.
+    try{return await tryJson();}catch(jsonError){}
+    try{return await tryZip();}catch(zipError){
+        throw new Error("El archivo seleccionado no contiene un ejercicio MILITOPO válido. Selecciona el ZIP del evento o evento_orientacion.json.");
+    }
 }
 
 function validateReusableExerciseData(data){
