@@ -6908,13 +6908,81 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
 }
 
 
+function safeJsonClone(value,fallback){
+    try{return JSON.parse(JSON.stringify(value))}catch(e){return fallback}
+}
+function safeReadJsonLocalStorage(key,fallback){
+    try{
+        const raw=localStorage.getItem(key);
+        if(!raw)return fallback;
+        const parsed=JSON.parse(raw);
+        return parsed&&typeof parsed==="object"?parsed:fallback;
+    }catch(e){return fallback}
+}
 function buildEventData(){
+    syncPlanScaleFromUiNow();
     const entries=(state.routes||[]).map((route,i)=>({route,metric:(state.metrics||[])[i]}));
+    const now=new Date().toISOString();
+    const routes=entries.map(x=>safeJsonClone(x.route,{}));
+    const metrics=entries.map(x=>safeJsonClone(x.metric||{},{}));
+    const points=safeJsonClone(state.points||{},{});
+    const participantNames=safeJsonClone(state.participantNames||{},{});
+    const iofDescriptions=safeJsonClone(state.iofDescriptions||{},{});
+    const skippedRoutes=safeJsonClone(state.skippedRoutes||{},{});
+    const routeWarnings=safeJsonClone(state.routeWarnings||[],[]);
+    const elevations=safeJsonClone(state.elevations||{},{});
+    const pdfPlanCenterManual=state.pdfPlanCenterManual&&Number.isFinite(Number(state.pdfPlanCenterManual.lat))&&Number.isFinite(Number(state.pdfPlanCenterManual.lon))
+        ? {lat:Number(state.pdfPlanCenterManual.lat),lon:Number(state.pdfPlanCenterManual.lon)}
+        : null;
+    const customSymbols=safeJsonClone(customIofSymbols||{combo:{},f:{},g:{}},{combo:{},f:{},g:{}});
+    const customDSymbols=safeReadJsonLocalStorage(STORAGE_KEY_IOF_D_CUSTOM_SYMBOLS,{});
+    const pointIds=Object.keys(points);
+    const routeIds=routes.map(r=>String(r.routeId||""));
+    const participantIds=routes.map(r=>String(r.participantId||""));
+
     return{
-        version:"orientacion_v1_offline",
+        version:"orientacion_v2_restorable",
+        legacyVersion:"orientacion_v1_offline",
+        schemaVersion:2,
+        format:"MILITOPO_ORIENTATION_EVENT",
+        generatedAt:now,
+        createdAt:now,
         eventId:state.eventId,
         eventName:state.eventName,
-        createdAt:new Date().toISOString(),
+        restore:{
+            ready:true,
+            recommendedImportSource:"zip",
+            acceptedImportSources:["zip","json"],
+            preferredMode:"repeat_existing_material",
+            targetStep:5,
+            preserveEventId:true,
+            preservePrintedMaterial:true,
+            preserveQrPayloads:true,
+            fallbackToAutomaticPlanCenter:true,
+            resetOnReuse:[
+                "participantLogs",
+                "importedResults",
+                "startTimes",
+                "finishTimes",
+                "scanHistory",
+                "classification"
+            ],
+            preserveOnReuse:[
+                "eventId",
+                "eventName",
+                "config",
+                "points",
+                "routes",
+                "metrics",
+                "iofDescriptions",
+                "participantNames",
+                "skippedRoutes",
+                "routeWarnings",
+                "elevations",
+                "plan",
+                "customIofSymbols"
+            ]
+        },
         config:{
             participantCount:entries.length||state.participantCount,
             activeParticipantCount:typeof activeRoutes==="function"?activeRoutes().length:entries.length,
@@ -6922,15 +6990,49 @@ function buildEventData(){
             controlCount:state.controlCount,
             controlsPerRoute:state.controlsPerRoute,
             maxControlReuse:state.maxControlReuse,
+            planScale:Number(state.planScale)||10000,
+            planEquidistanceM:Number(state.planEquidistanceM)||5,
             balance:{distance:.5,climb:.5},
             liveReadyInternals:true,
             liveVisible:false
         },
-        points:state.points,
-        routes:entries.map(x=>x.route),
-        metrics:entries.map(x=>x.metric||{}),
-        iofDescriptions:state.iofDescriptions||{},
-        skippedRoutes:state.skippedRoutes||{}
+        plan:{
+            scale:Number(state.planScale)||10000,
+            equidistanceM:Number(state.planEquidistanceM)||5,
+            centerMode:pdfPlanCenterManual?"manual":"automatic",
+            manualCenter:pdfPlanCenterManual,
+            automaticCenterFallback:true
+        },
+        points,
+        routes,
+        metrics,
+        elevations,
+        iofDescriptions,
+        participantNames,
+        skippedRoutes,
+        routeWarnings,
+        customIofSymbols:{
+            general:customSymbols,
+            d:customDSymbols
+        },
+        executionTemplate:{
+            targetStep:5,
+            participantLogs:{},
+            importedResults:[],
+            completedParticipants:[],
+            classification:[]
+        },
+        integrity:{
+            pointCount:pointIds.length,
+            routeCount:routes.length,
+            participantCount:participantIds.filter(Boolean).length,
+            pointIds,
+            routeIds,
+            participantIds,
+            hasStart:Object.prototype.hasOwnProperty.call(points,"START"),
+            hasFinish:Object.prototype.hasOwnProperty.call(points,"FINISH"),
+            generatedAt:now
+        }
     }
 }function pointsCsv(){const rows=[["ID","TIPO","UTM","LAT","LON","ELEVACION","QR"]];Object.values(state.points).forEach(p=>rows.push([p.id,p.type,p.utm||"",p.lat??"",p.lon??"",p.elevation??"",controlPayload(p.id)]));return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}function routesCsv(){const rows=[["PARTICIPANTE","RECORRIDO","ESTADO_MATERIAL","DISTANCIA_KM","TRAMO_LARGO_KM","DESNIVEL_POSITIVO_M","DESNIVEL_NEGATIVO_M","DESNIVEL_GLOBAL_M","DIFICULTAD","ORDEN"]];(state.routes||[]).forEach((r,i)=>{const m=state.metrics[i]||{};rows.push([r.participantId,r.routeId,isRouteSkipped(r)?"DESCARTADO_RESERVA":"ACTIVO",m.distanceKm,m.longestKm,m.positiveM,m.negativeM,m.globalM,m.difficulty,r.points.join(" > ")])});return rows.map(r=>r.map(csvEscape).join(",")).join("\n")}
 
