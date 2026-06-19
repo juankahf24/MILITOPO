@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v131 · controles solo paso 2 */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v131-controles-solo-paso2";
+/* MILITOPO · cache offline seguro v121 · participante código ORI RESULT visible */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v121-participante-codigo-result-visible";
 const CORE_ASSETS = [
   "./",
   "./index.html",
