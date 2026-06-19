@@ -1,5 +1,5 @@
-/* MILITOPO · selector APP Android / iPhone · fix Android orientación */
-const MILITOPO_CACHE = "militopo-orientacion-modular-vAPP-ANDROID-IPHONE-FIX-20260619";
+/* MILITOPO · ZIP nombrado desde nombre de la prueba */
+const MILITOPO_CACHE = "militopo-orientacion-modular-vZIP-NOMBRE-PRUEBA-20260619";
 const CORE_ASSETS = [
   "./",
   "./index.html",
