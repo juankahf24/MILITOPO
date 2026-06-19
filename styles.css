@@ -7402,20 +7402,54 @@ body {
 #step2 .topo-atak-import-btn:active { transform: translateY(0) scale(.99); }
 #step2 .topo-atak-info-btn {
     position: absolute;
-    z-index: 2;
+    z-index: 4;
     top: 18px;
     right: 18px;
-    width: 36px;
-    height: 36px;
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 17px;
+    border: 1.5px solid rgba(255,236,184,.72);
+    color: #2b210f;
+    background:
+        radial-gradient(circle at 30% 18%, rgba(255,255,255,.62), transparent 38%),
+        linear-gradient(180deg, #f6d991 0%, #d8a84d 100%);
+    font-family: var(--mt-font-tech, 'Courier New', monospace);
+    font-size: 1.05rem;
+    font-weight: 900;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow:
+        0 12px 24px rgba(0,0,0,.28),
+        0 0 0 4px rgba(238,194,103,.13),
+        inset 0 1px 0 rgba(255,255,255,.55);
+    transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+}
+#step2 .topo-atak-info-btn::before {
+    content: 'i';
+    width: 26px;
+    height: 26px;
     display: grid;
     place-items: center;
     border-radius: 50%;
-    border: 1px solid rgba(238,211,148,.30);
-    color: #fff4db;
-    background: rgba(0,0,0,.24);
-    font-weight: 900;
-    cursor: pointer;
+    color: #fff8e8;
+    background: rgba(54,72,34,.86);
+    border: 1px solid rgba(255,255,255,.24);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
 }
+#step2 .topo-atak-info-btn { font-size: 0; }
+#step2 .topo-atak-info-btn:hover,
+#step2 .topo-atak-info-btn:focus-visible {
+    transform: translateY(-2px) scale(1.04);
+    filter: brightness(1.08) saturate(1.05);
+    outline: none;
+    box-shadow:
+        0 16px 30px rgba(0,0,0,.34),
+        0 0 0 5px rgba(238,194,103,.20),
+        inset 0 1px 0 rgba(255,255,255,.62);
+}
+#step2 .topo-atak-info-btn:active { transform: translateY(0) scale(.98); }
 #step2 .topo-atak-help {
     position: relative;
     z-index: 1;
@@ -7444,7 +7478,7 @@ body {
     #step2 .topo-atak-logo-shell img { width: 108px; height: 128px; }
     #step2 .topo-atak-import-card h3 { margin-bottom: 18px; }
     #step2 .topo-atak-import-btn { min-height: 60px; padding: 13px 16px; }
-    #step2 .topo-atak-help { margin-top: 20px; padding: 18px; font-size: .83rem; }
+    #step2 .topo-atak-info-btn { top: 14px; right: 14px; width: 44px; height: 44px; border-radius: 15px; }
 }
 
 /* ===== Paso 2 Topografía · ATAK apilado y centrado ===== */
