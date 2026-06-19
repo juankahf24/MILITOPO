@@ -1,5 +1,5 @@
-/* MILITOPO · importación restaurable ZIP/JSON al paso 5 */
-const MILITOPO_CACHE = "militopo-orientacion-modular-vIMPORT-RESTORE-STEP5";
+/* MILITOPO · importación restaurable ZIP/JSON al paso 5 · selector iPhone sin filtro */
+const MILITOPO_CACHE = "militopo-orientacion-modular-vIMPORT-RESTORE-STEP5-IPHONE-ANYFILE";
 const CORE_ASSETS = [
   "./",
   "./index.html",
