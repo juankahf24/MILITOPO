@@ -8238,7 +8238,7 @@ function setupReusableExerciseImporter(){
     block.innerHTML=`
         <label>♻️ REUTILIZAR EJERCICIO ANTERIOR</label>
         <div class="militopo-reuse-copy">
-            Importa el ZIP completo del evento o su archivo <b>evento_orientacion.json</b>.
+            <b>Importa</b> el <b>ZIP completo del evento o</b> su archivo <b>evento_orientacion.json</b>.
             Se conservarán puntos, recorridos, participantes, QR, planos y descripciones; se reiniciarán tiempos, escaneos y resultados.
         </div>
         <input id="reuseExerciseFileInput" type="file" hidden>
