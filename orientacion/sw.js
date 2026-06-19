@@ -1,5 +1,5 @@
-/* MILITOPO · cache offline seguro v121 · participante código ORI RESULT visible */
-const MILITOPO_CACHE = "militopo-orientacion-modular-v121-participante-codigo-result-visible";
+/* MILITOPO · cache offline seguro v123 · JSON único restaurable */
+const MILITOPO_CACHE = "militopo-orientacion-modular-v123-json-unico-restaurable";
 const CORE_ASSETS = [
   "./",
   "./index.html",
