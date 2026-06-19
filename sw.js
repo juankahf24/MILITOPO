@@ -1,5 +1,5 @@
 /* MILITOPO PWA · instalación Android · v3 · selector Android/iPhone */
-const CACHE_NAME = "militopo-pwa-v3-selector-android-iphone";
+const CACHE_NAME = "militopo-topografia-atak-primer-bloque-v1";
 const APP_SHELL = [
   "./",
   "./index.html",

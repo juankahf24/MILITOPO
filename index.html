@@ -183,6 +183,20 @@
     <div id="step2" class="step-content">
         <div class="card">
             <div class="card-header"><h2>📍 EDITAR PUNTOS TOPOGRÁFICOS</h2></div>
+
+            <section id="gpxImportContainer" class="topo-atak-import-card" aria-labelledby="topoAtakTitle">
+                <div class="topo-atak-logo-shell" aria-hidden="true">
+                    <img src="assets/atak.png" alt="">
+                </div>
+                <h3 id="topoAtakTitle">IMPORTAR PUNTOS CON<br>ATAK</h3>
+                <button id="importGPXBtn" type="button" class="topo-atak-import-btn">IMPORTAR POR ATAK GPX</button>
+                <button type="button" id="importGPXInfoIcon" class="topo-atak-info-btn" aria-label="Información sobre importar GPX o KML">i</button>
+                <div class="topo-atak-help">
+                    Los waypoints del GPX deben guardarse con nombre o descripción:<br>
+                    <strong>P11, P12, P13, etc.</strong> La app actualiza automáticamente el punto cuyo ID coincida.
+                </div>
+            </section>
+
             <div class="edit-options">
                 <div class="option-card">
                     <div class="option-icon">🗺️</div>
@@ -201,10 +215,6 @@
                         <div style="display: flex; align-items: center; gap: 8px;" id="csvImportContainer">
                             <button id="importCSVBtn" class="btn btn-secondary btn-small">📂 Importar desde CSV/Excel</button>
                             <button type="button" id="importCSVInfoIcon" class="modern-info-btn modern-info-btn-inline" aria-label="Información sobre importar CSV o Excel"><span>i</span></button>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px;" id="gpxImportContainer">
-                            <button id="importGPXBtn" class="btn btn-secondary btn-small">📥 Importar desde GPX/KML (ATAK)</button>
-                            <button type="button" id="importGPXInfoIcon" class="modern-info-btn modern-info-btn-inline" aria-label="Información sobre importar GPX o KML"><span>i</span></button>
                         </div>
                     </div>
                 </div>
