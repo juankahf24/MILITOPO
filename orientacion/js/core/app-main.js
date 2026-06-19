@@ -6876,7 +6876,15 @@ async function generateZip(verificationFromButton=null){ensureZipProgressUi();up
         setZipStatus("warn","Comprimiendo ZIP...");
         const blob=await zip.generateAsync({type:"blob"});
 
-        const filename=`MILITOPO_ORIENTACION_${state.eventId}.zip`;
+        const eventNameForZip=String(document.getElementById("eventName")?.value||state.eventName||state.eventId||"MILITOPO_ORIENTACION").trim();
+        const safeEventNameForZip=eventNameForZip
+            .normalize("NFKC")
+            .replace(/[\/:*?"<>|]+/g,"-")
+            .replace(/\s+/g," ")
+            .replace(/[. ]+$/g,"")
+            .slice(0,120)
+            || `MILITOPO_ORIENTACION_${state.eventId||"EVENTO"}`;
+        const filename=`${safeEventNameForZip}.zip`;
 
         if(typeof saveAs==="function"){
             saveAs(blob,filename);
@@ -8235,7 +8243,7 @@ function setupReusableExerciseImporter(){
         </div>
         <input id="reuseExerciseFileInput" type="file" hidden>
         <div class="btn-row militopo-reuse-actions">
-            <button id="reuseExerciseChooseBtn" type="button" class="btn green">📦 IMPORTAR EJERCICIO</button>
+            <button id="reuseExerciseChooseBtn" type="button" class="btn green">🏃 IMPORTAR EJERCICIO ANTERIOR</button>
         </div>
         <div id="reuseExerciseImportStatus" class="status warn" style="display:none"></div>`;
 
@@ -8431,7 +8439,7 @@ async function importReusableExerciseFile(file){
         setReusableExerciseStatus("❌ No se ha importado nada: "+(error&&error.message?error.message:error),"err");
         toast("No se pudo importar el ejercicio");
     }finally{
-        if(button){button.disabled=false;button.textContent="📦 IMPORTAR EJERCICIO";}
+        if(button){button.disabled=false;button.textContent="🏃 IMPORTAR EJERCICIO ANTERIOR";}
     }
 }
 
