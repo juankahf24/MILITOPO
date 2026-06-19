@@ -7549,3 +7549,66 @@ body {
         white-space: normal !important;
     }
 }
+
+
+/* ===== Topografía · botón de información ATAK corregido ===== */
+#step2 .topo-atak-info-btn {
+    position: absolute !important;
+    top: 16px !important;
+    right: 16px !important;
+    z-index: 8 !important;
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    min-height: 52px !important;
+    padding: 0 !important;
+    display: inline-grid !important;
+    place-items: center !important;
+    border-radius: 50% !important;
+    border: 2px solid rgba(255,230,159,.92) !important;
+    background:
+        radial-gradient(circle at 32% 22%, rgba(255,255,255,.24), transparent 34%),
+        linear-gradient(180deg, #324b2b 0%, #1e321d 100%) !important;
+    color: #ffe09a !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 1.55rem !important;
+    font-weight: 900 !important;
+    font-style: normal !important;
+    line-height: 1 !important;
+    text-indent: 0 !important;
+    cursor: pointer !important;
+    box-shadow:
+        0 12px 28px rgba(0,0,0,.34),
+        0 0 0 5px rgba(236,191,96,.16),
+        inset 0 1px 0 rgba(255,255,255,.20) !important;
+    transition: transform .18s ease, filter .18s ease, box-shadow .18s ease !important;
+}
+#step2 .topo-atak-info-btn::before,
+#step2 .topo-atak-info-btn::after {
+    content: none !important;
+    display: none !important;
+}
+#step2 .topo-atak-info-btn:hover,
+#step2 .topo-atak-info-btn:focus-visible {
+    transform: translateY(-2px) scale(1.06) !important;
+    filter: brightness(1.12) !important;
+    outline: none !important;
+    box-shadow:
+        0 16px 34px rgba(0,0,0,.38),
+        0 0 0 6px rgba(236,191,96,.23),
+        inset 0 1px 0 rgba(255,255,255,.24) !important;
+}
+#step2 .topo-atak-info-btn:active {
+    transform: scale(.96) !important;
+}
+@media (max-width: 700px) {
+    #step2 .topo-atak-info-btn {
+        top: 14px !important;
+        right: 14px !important;
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        min-height: 48px !important;
+        font-size: 1.42rem !important;
+    }
+}

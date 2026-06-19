@@ -877,24 +877,50 @@ let MODULOS = 8;
         reader.readAsArrayBuffer(file);
     }
 
+    function avisarResultadoImportacionATAK(asignados, tipo, detalleError = "") {
+        const cantidad = Number(asignados) || 0;
+        if (cantidad > 0) {
+            const texto = `Se han importado correctamente ${cantidad} punto${cantidad === 1 ? "" : "s"} desde ${tipo}.`;
+            toast(`✅ ${texto}`, "success");
+            window.setTimeout(() => alert(`✅ IMPORTACIÓN COMPLETADA\n\n${texto}`), 80);
+            return;
+        }
+        const textoError = detalleError || `No se ha importado ningún punto desde ${tipo}. Comprueba que cada waypoint empiece por un ID válido, por ejemplo: P11 Cota.`;
+        toast(`❌ ${textoError}`, "error");
+        window.setTimeout(() => alert(`❌ ERROR DE IMPORTACIÓN\n\n${textoError}`), 80);
+    }
+
     function importFromGPXKML(file) {
+        if (!file) {
+            avisarResultadoImportacionATAK(0, "el archivo", "No se ha seleccionado ningún archivo.");
+            return;
+        }
         const reader = new FileReader();
+        reader.onerror = function() {
+            avisarResultadoImportacionATAK(0, file.name || "el archivo", "No se ha podido leer el archivo seleccionado.");
+        };
         reader.onload = function(e) {
             const content = e.target.result;
             const parser = new DOMParser();
             let xmlDoc;
             try {
                 xmlDoc = parser.parseFromString(content, "text/xml");
+                if (xmlDoc.querySelector("parsererror")) throw new Error("XML no válido");
             } catch(err) {
-                toast("Error al parsear el archivo", "error");
+                avisarResultadoImportacionATAK(0, file.name || "el archivo", "El archivo no tiene un formato GPX o KML válido.");
                 return;
             }
-            let waypoints = xmlDoc.getElementsByTagName("wpt");
-            if (waypoints.length === 0) {
-                let placemarks = xmlDoc.getElementsByTagName("Placemark");
-                if (placemarks.length > 0) procesarKML(placemarks);
-                else toast("No se encontraron waypoints en el archivo", "error");
-            } else procesarGPX(waypoints);
+            const waypoints = xmlDoc.getElementsByTagName("wpt");
+            if (waypoints.length > 0) {
+                procesarGPX(waypoints);
+                return;
+            }
+            const placemarks = xmlDoc.getElementsByTagName("Placemark");
+            if (placemarks.length > 0) {
+                procesarKML(placemarks);
+                return;
+            }
+            avisarResultadoImportacionATAK(0, file.name || "el archivo", "No se han encontrado waypoints GPX ni puntos KML dentro del archivo.");
         };
         reader.readAsText(file);
     }
@@ -923,7 +949,7 @@ let MODULOS = 8;
         renderizarPuntos();
         actualizarDashboard();
         pintarEstadoCamposPuntos();
-        toast(`✅ Importados ${asignados} puntos desde GPX`, "success");
+        avisarResultadoImportacionATAK(asignados, "GPX");
     }
 
     function procesarKML(placemarks) {
@@ -956,7 +982,7 @@ let MODULOS = 8;
         renderizarPuntos();
         actualizarDashboard();
         pintarEstadoCamposPuntos();
-        toast(`✅ Importados ${asignados} puntos desde KML`, "success");
+        avisarResultadoImportacionATAK(asignados, "KML");
     }
 
     function generarRecorridosBalanceados(numRecorridos) {
