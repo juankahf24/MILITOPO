@@ -1,5 +1,5 @@
-/* MILITOPO · fondo PDF según capa seleccionada en Paso 2 */
-const MILITOPO_CACHE = "militopo-orientacion-v20260622-fondo-pdf-capa-seleccionada";
+/* MILITOPO · clasificación Excel con puesto para todos */
+const MILITOPO_CACHE = "militopo-orientacion-v20260622-clasificacion-puesto-todos";
 const CORE_ASSETS = [
   "./",
   "./index.html",
