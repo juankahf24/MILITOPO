@@ -9,7 +9,7 @@ function applyResultsV16Styles(){
     st.id="militopoResultsV16Styles";
     st.textContent=`
 #classificationTable{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
-#classificationTable .results-table-v16{width:920px;min-width:920px;max-width:none!important;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:13px;line-height:1.2}
+#classificationTable .results-table-v16{width:1120px;min-width:1120px;max-width:none!important;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:13px;line-height:1.2}
 #classificationTable .results-table-v16 th,#classificationTable .results-table-v16 td{white-space:normal!important;word-break:normal!important;overflow-wrap:anywhere!important;vertical-align:top!important;text-align:left;padding:10px 8px;line-height:1.18}
 #classificationTable .results-table-v16 th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;vertical-align:top!important;text-align:center!important}
 #classificationTable .results-table-v16 td.center{text-align:center!important}
@@ -21,7 +21,7 @@ function applyResultsV16Styles(){
 #selectedResultDetail .result-detail-row-v16 b{display:block;color:#f0c16a;margin-bottom:2px;letter-spacing:.04em}
 #selectedResultDetail .split-v16{padding:7px 0;border-top:1px solid rgba(255,255,255,.12)}
 #selectedResultDetail .split-v16 b{display:block;color:#f0c16a;margin-bottom:2px}
-@media(max-width:720px){#classificationTable .results-table-v16{width:900px;min-width:900px;font-size:12px}#classificationTable .results-table-v16 th,#classificationTable .results-table-v16 td{padding:9px 7px}.results-table-v16-wrap:before{content:'Desliza lateralmente para ver toda la clasificación';display:block;margin:0 0 8px;color:#f0c16a;font-weight:900;font-size:12px;letter-spacing:.05em}}
+@media(max-width:720px){#classificationTable .results-table-v16{width:1080px;min-width:1080px;font-size:12px}#classificationTable .results-table-v16 th,#classificationTable .results-table-v16 td{padding:9px 7px}.results-table-v16-wrap:before{content:'Desliza lateralmente para ver toda la clasificación';display:block;margin:0 0 8px;color:#f0c16a;font-weight:900;font-size:12px;letter-spacing:.05em}}
 `;
     document.head.appendChild(st);
 }
@@ -48,61 +48,10 @@ function formatDateTimeSpainV16(value){
 
 renderClassificationTable=function(){
     applyResultsV16Styles();
-    const box=document.getElementById("classificationTable");
-    if(!box)return;
-
-    const rows=sortedImportedResults();
-    if(!rows.length){
-        box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;
-        return;
-    }
-
+    const box=document.getElementById("classificationTable");if(!box)return;
+    const rows=sortedImportedResults();if(!rows.length){box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;return;}
     let rank=0;
-    box.innerHTML=`<div class="results-table-v16-wrap" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;">
-    <table class="results-table results-table-v16">
-        <colgroup>
-            <col style="width:60px">
-            <col style="width:105px">
-            <col style="width:170px">
-            <col style="width:90px">
-            <col style="width:105px">
-            <col style="width:105px">
-            <col style="width:175px">
-            <col style="width:110px">
-        </colgroup>
-        <thead><tr>
-            <th>Puesto</th>
-            <th>Participante</th>
-            <th>Nombre</th>
-            <th>Recorrido</th>
-            <th>Tiempo</th>
-            <th>Controles<br>completados</th>
-            <th>Controles<br>pendientes</th>
-            <th>Estado</th>
-        </tr></thead>
-        <tbody>${rows.map(r=>{
-            rank++;
-            const displayRank=rank;
-            const ms=resultMs(r);
-            const time=ms!==null?formatDuration(ms):"--";
-            const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
-            const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;
-            const cls=classificationRankClass(displayRank,r.completed);
-            const estado=r.completed
-                ? `<div class="estado-v16"><span class="ico">✅</span><span class="txt">OK</span></div>`
-                : `<div class="estado-v16"><span class="ico">⚠️</span><span class="txt">AVISO</span></div>`;
-            return `<tr class="${cls}">
-                <td class="center">${displayRank}</td>
-                <td>${escapeHtml(r.participantId||"--")}</td>
-                <td>${escapeHtml(resultParticipantName(r)||"--")}</td>
-                <td class="center">${escapeHtml(r.routeId||"--")}</td>
-                <td class="center">${escapeHtml(time)}</td>
-                <td class="center">${controls}</td>
-                <td class="center">${missingCount}</td>
-                <td class="center">${estado}</td>
-            </tr>`;
-        }).join("")}</tbody>
-    </table></div>`;
+    box.innerHTML=`<div class="results-table-v16-wrap" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="results-table results-table-v16"><colgroup><col style="width:70px"><col style="width:220px"><col style="width:120px"><col style="width:105px"><col style="width:120px"><col style="width:125px"><col style="width:125px"><col style="width:145px"><col style="width:145px"></colgroup><thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th></tr></thead><tbody>${rows.map(r=>{rank++;const ms=resultMs(r),time=ms!==null?formatDuration(ms):"--",metric=typeof routeMetricForResult==="function"?routeMetricForResult(r):{};const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;const cls=classificationRankClass(rank,r.completed);return `<tr class="${cls}"><td class="center">${rank}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||"--")}</td><td class="center">${escapeHtml(time)}</td><td class="center">${escapeHtml(r.routeId||"--")}</td><td class="center">${escapeHtml(String(metric?.difficulty||"--"))}</td><td class="center">${escapeHtml(metric?.distanceKm!=null?`${metric.distanceKm} km`:"--")}</td><td class="center">${escapeHtml(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td class="center">${controls}</td><td class="center">${missingCount}</td></tr>`;}).join("")}</tbody></table></div>`;
 };
 
 renderSelectedResultDetail=function(){
@@ -144,23 +93,8 @@ renderSelectedResultDetail=function(){
 };
 
 classificationRowsForExport=function(){
-    const rows=[["Puesto","Participante","Nombre","Recorrido","Tiempo","Controles completados","Controles pendientes","Estado"]];
-    let rank=0;
-    sortedImportedResults().forEach(r=>{
-        rank++;
-        const ms=resultMs(r);
-        const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
-        rows.push([
-            rank,
-            r.participantId||"",
-            resultParticipantName(r)||"",
-            r.routeId||"--",
-            ms!==null?formatDuration(ms):"--",
-            controls,
-            (Array.isArray(r.missingControls)?r.missingControls.length:0),
-            r.completed?"OK":"AVISO"
-        ]);
-    });
+    const rows=[["Puesto","Nombre","Tiempo","Recorrido","Dificultad","Distancia","Desnivel +","Controles completados","Controles pendientes"]];let rank=0;
+    sortedImportedResults().forEach(r=>{rank++;const ms=resultMs(r),metric=typeof routeMetricForResult==="function"?routeMetricForResult(r):{};const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;rows.push([rank,resultParticipantName(r)||r.participantId||"",ms!==null?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null?`${metric.distanceKm} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0]);});
     return rows;
 };
 
@@ -181,9 +115,10 @@ downloadClassificationExcel=async function(){
         const maxLen=Math.max(...row.map(c=>String(c??"").length));
         return Math.min(120,Math.max(34,28+Math.ceil(maxLen/24)*9));
     };
+    const rankedResults=sortedImportedResults();
     const sheetRows=rows.map((row,ri)=>{
         const r=ri+1;
-        const completed=row[8]==="OK";
+        const completed=ri===0?true:!!rankedResults[ri-1]?.completed;
         const styleId=ri===0?1:classificationXlsxStyle(row[0],completed);
         const cells=row.map((cell,ci)=>{
             const ref=colName(ci+1)+r;
@@ -192,7 +127,7 @@ downloadClassificationExcel=async function(){
         return `<row r="${r}" ht="${rowHeight(row,ri)}" customHeight="1">${cells}</row>`;
     }).join("");
 
-    const widths=[8,13,20,11,13,16,24,10].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
+    const widths=[8,24,14,12,14,14,14,22,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
     const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
  <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
@@ -202,7 +137,7 @@ downloadClassificationExcel=async function(){
  <sheetData>${sheetRows}</sheetData>
  <printOptions horizontalCentered="1"/>
  <pageMargins left="0.20" right="0.20" top="0.35" bottom="0.35" header="0.15" footer="0.15"/>
- <pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>
+ <pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>
 </worksheet>`;
     const workbookXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Clasificacion" sheetId="1" r:id="rId1"/></sheets></workbook>`;
     const relsXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;

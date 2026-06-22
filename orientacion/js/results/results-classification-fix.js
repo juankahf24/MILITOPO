@@ -54,65 +54,22 @@
         return map[s]||String(status||"--");
     };
 
-    window.routeDifficultyForResult=function(resultOrRouteId){
+    window.routeMetricForResult=function(resultOrRouteId){
         const routeId=typeof resultOrRouteId==="string"?resultOrRouteId:String(resultOrRouteId?.routeId||"");
         const participantId=typeof resultOrRouteId==="object"?String(resultOrRouteId?.participantId||""):"";
         const routes=state.routes||[];
         let idx=routes.findIndex(r=>String(r.routeId||"")===routeId);
         if(idx<0&&participantId)idx=routes.findIndex(r=>String(r.participantId||"")===participantId);
-        const metric=idx>=0?(state.metrics||[])[idx]:null;
-        const diff=String(metric?.difficulty||"").trim();
-        return diff||"--";
+        return idx>=0?((state.metrics||[])[idx]||{}):{};
     };
+    window.routeDifficultyForResult=function(resultOrRouteId){const metric=routeMetricForResult(resultOrRouteId);const diff=String(metric?.difficulty||"").trim();return diff||"--";};
 
     window.renderClassificationTable=function(){
-        const box=document.getElementById("classificationTable");
-        if(!box)return;
-        const rows=(typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])]);
-        if(!rows.length){
-            box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;
-            return;
-        }
+        const box=document.getElementById("classificationTable");if(!box)return;
+        const rows=typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])];
+        if(!rows.length){box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;return;}
         let rank=0;
-        box.innerHTML=`<div class="classification-scroll-v18" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;">
-            <table class="results-table classification-table-v18" style="width:100%;min-width:980px;table-layout:fixed;border-collapse:separate;border-spacing:0;">
-                <colgroup>
-                    <col style="width:7%"><col style="width:12%"><col style="width:17%"><col style="width:10%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:13%"><col style="width:6%">
-                </colgroup>
-                <thead><tr>
-                    <th style="white-space:normal;line-height:1.12;vertical-align:top;">Puesto</th>
-                    <th style="white-space:normal;line-height:1.12;vertical-align:top;">Participante</th>
-                    <th style="white-space:normal;line-height:1.12;vertical-align:top;">Nombre</th>
-                    <th style="white-space:normal;line-height:1.12;vertical-align:top;">Recorrido</th>
-                    <th style="white-space:normal;line-height:1.12;vertical-align:top;">Dificultad</th>
-                    <th style="white-space:normal;line-height:1.12;vertical-align:top;">Tiempo</th>
-                    <th style="white-space:normal;line-height:1.12;vertical-align:top;">Controles<br>completados</th>
-                    <th style="white-space:normal;line-height:1.12;vertical-align:top;">Controles<br>pendientes</th>
-                    <th style="white-space:normal;line-height:1.12;vertical-align:top;text-align:center;">Estado</th>
-                </tr></thead>
-                <tbody>${rows.map(r=>{
-                    rank++;
-                    const displayRank=rank;
-                    const ms=typeof resultMs==="function"?resultMs(r):null;
-                    const time=ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--";
-                    const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;
-                    const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;
-                    const cls=typeof classificationRankClass==="function"?classificationRankClass(displayRank,r.completed):"";
-                    const difficulty=routeDifficultyForResult(r);
-                    return `<tr class="${cls}">
-                        <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${displayRank}</td>
-                        <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${esc(r.participantId||"--")}</td>
-                        <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${esc((typeof resultParticipantName==="function"?resultParticipantName(r):"")||"--")}</td>
-                        <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${esc(r.routeId||"--")}</td>
-                        <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;font-weight:900;">${esc(difficulty)}</td>
-                        <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${esc(time)}</td>
-                        <td style="vertical-align:top;text-align:center;white-space:normal;">${controls}</td>
-                        <td style="vertical-align:top;text-align:center;white-space:normal;">${missingCount}</td>
-                        <td style="vertical-align:top;text-align:center;white-space:normal;"><span class="result-chip" style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;line-height:1.05;white-space:normal;padding:.35em .45em;min-width:0;max-width:100%;"><span>${r.completed?"✅":"⚠️"}</span><span>${r.completed?"OK":"AVISO"}</span></span></td>
-                    </tr>`;
-                }).join("")}</tbody>
-            </table>
-        </div>`;
+        box.innerHTML=`<div class="classification-scroll-v18" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;"><table class="results-table classification-table-v18" style="width:100%;min-width:1120px;table-layout:fixed;border-collapse:separate;border-spacing:0;"><colgroup><col style="width:7%"><col style="width:18%"><col style="width:11%"><col style="width:10%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:10%"></colgroup><thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th></tr></thead><tbody>${rows.map(r=>{rank++;const ms=typeof resultMs==="function"?resultMs(r):null,time=ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--",metric=routeMetricForResult(r);const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;const cls=typeof classificationRankClass==="function"?classificationRankClass(rank,r.completed):"";const name=(typeof resultParticipantName==="function"?resultParticipantName(r):"")||r.participantId||"--";return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${esc(name)}</td><td style="text-align:center">${esc(time)}</td><td style="text-align:center">${esc(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${esc(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${esc(metric?.distanceKm!=null?`${metric.distanceKm} km`:"--")}</td><td style="text-align:center">${esc(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td></tr>`;}).join("")}</tbody></table></div>`;
     };
 
     window.renderSelectedResultDetail=function(){
@@ -152,26 +109,8 @@
     };
 
     window.classificationRowsForExport=function(){
-        const rows=[["Puesto","Participante","Nombre","Recorrido","Dificultad","Tiempo","Controles completados","Controles pendientes","Estado"]];
-        let rank=0;
-        const data=typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])];
-        data.forEach(r=>{
-            rank++;
-            const ms=typeof resultMs==="function"?resultMs(r):null;
-            const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;
-            rows.push([
-                rank,
-                r.participantId||"",
-                (typeof resultParticipantName==="function"?resultParticipantName(r):"")||"",
-                r.routeId||"--",
-                routeDifficultyForResult(r),
-                ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--",
-                controls,
-                (Array.isArray(r.missingControls)?r.missingControls.length:0),
-                r.completed?"OK":"AVISO"
-            ]);
-        });
-        return rows;
+        const rows=[["Puesto","Nombre","Tiempo","Recorrido","Dificultad","Distancia","Desnivel +","Controles completados","Controles pendientes"]];let rank=0;const data=typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])];
+        data.forEach(r=>{rank++;const ms=typeof resultMs==="function"?resultMs(r):null,metric=routeMetricForResult(r);const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;rows.push([rank,(typeof resultParticipantName==="function"?resultParticipantName(r):"")||r.participantId||"",ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null?`${metric.distanceKm} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0]);});return rows;
     };
 
     window.downloadClassificationExcel=async function(){
@@ -180,16 +119,17 @@
         if(typeof JSZip==="undefined")return toast("No se pudo crear XLSX: JSZip no está cargado");
         const escXml=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;");
         const colName=n=>{let s="";while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;};
+        const rankedResults=typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])];
         const sheetRows=rows.map((row,ri)=>{
             const r=ri+1;
-            const completed=row[8]==="OK";
+            const completed=ri===0?true:!!rankedResults[ri-1]?.completed;
             const styleId=ri===0?1:(typeof classificationXlsxStyle==="function"?classificationXlsxStyle(row[0],completed):0);
             const maxLen=Math.max(...row.map(cell=>String(cell??"").length));
             const rowHeight=ri===0?52:Math.min(125,Math.max(40,30+Math.ceil(maxLen/24)*12));
             const cells=row.map((cell,ci)=>`<c r="${colName(ci+1)+r}" t="inlineStr" s="${styleId}"><is><t>${escXml(cell)}</t></is></c>`).join("");
             return `<row r="${r}" ht="${rowHeight}" customHeight="1">${cells}</row>`;
         }).join("");
-        const widths=[8,14,24,12,14,16,22,24,11].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
+        const widths=[8,24,14,12,14,14,14,22,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
         const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
  <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
@@ -197,7 +137,7 @@
  <cols>${widths}</cols>
  <sheetData>${sheetRows}</sheetData>
  <pageMargins left="0.25" right="0.25" top="0.45" bottom="0.45" header="0.15" footer="0.15"/>
- <pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>
+ <pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>
 </worksheet>`;
         const workbookXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Clasificacion" sheetId="1" r:id="rId1"/></sheets></workbook>`;
         const relsXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
