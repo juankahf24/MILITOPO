@@ -232,14 +232,6 @@
                 <div class="btn-row" style="margin-top:10px;">
                     <button class="btn green" onclick="startStep5ResultQrCamera()">📷 ESCANEAR QR RESULTADO</button>
                 </div>
-                <div class="block" style="margin-top:12px;padding:12px;border-radius:18px;">
-                    <label>Importar resultado manual</label>
-                    <div class="help">Úsalo solo si la cámara no lee el QR final. Pega aquí el texto ORI|RESULT que enseña el móvil del participante.</div>
-                    <textarea id="step5ResultImportInput" placeholder="ORI|RESULT|EVENTO|P01|..." style="min-height:100px;"></textarea>
-                    <div class="btn-row">
-                        <button class="btn" onclick="importStep5ResultFromInput()">📥 IMPORTAR MANUAL</button>
-                    </div>
-                </div>
                 <div id="step5ResultQrCameraPanel" class="block" style="display:none;margin-top:12px;">
                     <label>LECTOR QR RESULTADO</label>
                     <video id="step5ResultQrVideo" playsinline muted style="width:100%;max-height:380px;border-radius:18px;background:#111;object-fit:cover;"></video>
@@ -247,6 +239,14 @@
                     <div id="step5ResultQrCameraStatus" class="status warn" style="margin-top:10px;">Preparando cámara...</div>
                     <div class="btn-row">
                         <button class="btn red" onclick="stopStep5ResultQrCamera()">DETENER CÁMARA</button>
+                    </div>
+                </div>
+                <div class="block" style="margin-top:12px;padding:12px;border-radius:18px;">
+                    <label>Importar resultado manual</label>
+                    <div class="help">Úsalo solo si la cámara no lee el QR final. Pega aquí el texto ORI|RESULT que enseña el móvil del participante.</div>
+                    <textarea id="step5ResultImportInput" placeholder="ORI|RESULT|EVENTO|P01|..." style="min-height:100px;"></textarea>
+                    <div class="btn-row">
+                        <button class="btn" onclick="importStep5ResultFromInput()">📥 IMPORTAR MANUAL</button>
                     </div>
                 </div>
             </div>
