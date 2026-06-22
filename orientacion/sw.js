@@ -1,5 +1,5 @@
-/* MILITOPO · ZIP nombrado desde nombre de la prueba */
-const MILITOPO_CACHE = "militopo-orientacion-modular-vZIP-NOMBRE-PRUEBA-20260619";
+/* MILITOPO · fondo PDF según capa seleccionada en Paso 2 */
+const MILITOPO_CACHE = "militopo-orientacion-v20260622-fondo-pdf-capa-seleccionada";
 const CORE_ASSETS = [
   "./",
   "./index.html",
