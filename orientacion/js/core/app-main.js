@@ -2511,9 +2511,20 @@ function assignBalancedDifficulties(metrics){
 }
 // BALANCED DIFFICULTY BUCKETS END
 
+function returnStep3MapPanelHome(){
+    const panel=document.getElementById("step3MapPanel");
+    const grid=document.getElementById("routesGrid");
+    const step3=document.getElementById("step3");
+    if(!panel||!grid||!step3)return;
+    if(panel.parentElement!==step3){
+        step3.insertBefore(panel,grid);
+    }
+}
+
 function renderRoutes(){
     const grid=document.getElementById("routesGrid");
     if(!grid)return;
+    returnStep3MapPanelHome();
     grid.innerHTML="";
     if(!state.routes.length)return;
 
@@ -2567,6 +2578,7 @@ function renderRoutes(){
         const m=state.metrics[i]||{};
         const div=document.createElement("div");
         div.className="route-card";
+        div.dataset.routeIndex=String(i);
         const quality=m.quality||"Recorrido aceptable";
         const qClass=m.qualityCode==="clean"?"ok":(m.qualityCode==="forced"?"err":"warn");
         div.innerHTML=`<div class="route-title"><span>${escapeHtml(r.routeId)} · ${escapeHtml(r.participantId)}</span><span>${escapeHtml(m.difficulty||"MEDIA")}</span></div>
@@ -2593,19 +2605,26 @@ function previewRoute(idx){
 
 function showStep3MapRoute(idx){
     const panel=document.getElementById("step3MapPanel");
-    if(!panel)return;
+    const grid=document.getElementById("routesGrid");
+    if(!panel||!grid)return;
 
+    const routeCard=grid.querySelector(`.route-card[data-route-index="${idx}"]`);
+    if(!routeCard)return;
+
+    // El plano compartido se mueve dentro del mismo bloque del recorrido pulsado.
+    // Así no se duplica Leaflet ni se altera la lógica del mapa.
+    routeCard.appendChild(panel);
     panel.style.display="block";
+    panel.style.marginTop="14px";
 
     const r=state.routes[idx];
     const title=document.getElementById("step3MapTitle");
     if(title) title.textContent=`${r.routeId} · ${r.participantId}`;
 
-    panel.scrollIntoView({behavior:"smooth",block:"start"});
-
     setTimeout(()=>{
         initStep3RouteMapIfNeeded();
         drawStep3MapRoute(idx);
+        if(step3RouteMap)step3RouteMap.invalidateSize();
     },180);
 }
 
