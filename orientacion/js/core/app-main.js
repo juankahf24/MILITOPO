@@ -4,6 +4,7 @@
 const state={eventId:"",eventName:"ENTRENAMIENTO ORIENTACIÓN",
     planScale:10000,
     pdfPlanCenterManual:null,
+    selectedMapLayer:"mapant",
     planEquidistanceM:5,participantCount:10,controlCount:25,controlsPerRoute:8,maxControlReuse:6,points:{},routes:[],metrics:[],elevations:{},participantLogs:{},participantNames:{},skippedRoutes:{},importedResults:[]};let map=null,layers={},currentLayer=null,markersLayer=null,routeLayer=null,pdfPlanPreviewLayer=null,pdfPlanPreviewRectangle=null,pdfPlanPreviewLabelMarker=null,pdfPlanCenterMarker=null,pdfPlanAdjustMode=false,pdfPlanDragFrame=null,userLocationMarker=null,userAccuracyCircle=null,selectedPointId="START";let currentAppStep=1;let __autoSaveTimer=null;let selectedIofPointId="START";
 
 function createFreshEventId(){
@@ -16,6 +17,7 @@ function resetStateToFreshEvent(){
     state.eventName="ENTRENAMIENTO ORIENTACIÓN";
     state.planScale=10000;
     state.pdfPlanCenterManual=null;
+    state.selectedMapLayer="mapant";
     state.planEquidistanceM=5;
     state.participantCount=10;
     state.controlCount=25;
@@ -1120,8 +1122,8 @@ function renderPlanPdfPreview(){
     });
 }
 
-function initMap(){if(map)return;const step2MaxZoom=22;map=L.map("map",{zoomControl:true,maxZoom:step2MaxZoom,zoomSnap:.25,zoomDelta:.5,wheelPxPerZoomLevel:42}).setView([40.4168,-3.7038],7);layers.mapant=createMapantWmtsLayer({maxZoom:step2MaxZoom,maxNativeZoom:19});layers.ign=L.tileLayer("https://www.ign.es/wmts/mapa-raster?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=MTN&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© Instituto Geográfico Nacional",maxNativeZoom:18,maxZoom:step2MaxZoom});layers.pnoa=L.tileLayer("https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© PNOA",maxNativeZoom:19,maxZoom:step2MaxZoom});currentLayer=layers.mapant.addTo(map);markersLayer=L.layerGroup().addTo(map);routeLayer=L.layerGroup().addTo(map);map.on("click",e=>{const p=state.points[selectedPointId];if(!p)return;const utm=latLonToUtm(e.latlng.lat,e.latlng.lng);p.lat=e.latlng.lat;p.lon=e.latlng.lng;p.utm=utm;document.getElementById("selectedUtm").value=utm;renderPointsTable();renderMapMarkers();saveState();toast(`${p.id} colocado en el mapa`)});renderMapMarkers();fitAllPoints()}
-function switchLayer(name){if(!map||!layers[name])return;if(currentLayer)map.removeLayer(currentLayer);currentLayer=layers[name].addTo(map);document.querySelectorAll(".layer-btn").forEach(b=>b.classList.toggle("active",b.dataset.layer===name));setTimeout(()=>map.invalidateSize(),80)}
+function initMap(){if(map)return;const step2MaxZoom=22;map=L.map("map",{zoomControl:true,maxZoom:step2MaxZoom,zoomSnap:.25,zoomDelta:.5,wheelPxPerZoomLevel:42}).setView([40.4168,-3.7038],7);layers.mapant=createMapantWmtsLayer({maxZoom:step2MaxZoom,maxNativeZoom:19});layers.ign=L.tileLayer("https://www.ign.es/wmts/mapa-raster?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=MTN&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© Instituto Geográfico Nacional",maxNativeZoom:18,maxZoom:step2MaxZoom});layers.pnoa=L.tileLayer("https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",{attribution:"© PNOA",maxNativeZoom:19,maxZoom:step2MaxZoom});const initialLayer=(state.selectedMapLayer&&layers[state.selectedMapLayer])?state.selectedMapLayer:"mapant";state.selectedMapLayer=initialLayer;currentLayer=layers[initialLayer].addTo(map);document.querySelectorAll(".layer-btn").forEach(b=>b.classList.toggle("active",b.dataset.layer===initialLayer));markersLayer=L.layerGroup().addTo(map);routeLayer=L.layerGroup().addTo(map);map.on("click",e=>{const p=state.points[selectedPointId];if(!p)return;const utm=latLonToUtm(e.latlng.lat,e.latlng.lng);p.lat=e.latlng.lat;p.lon=e.latlng.lng;p.utm=utm;document.getElementById("selectedUtm").value=utm;renderPointsTable();renderMapMarkers();saveState();toast(`${p.id} colocado en el mapa`)});renderMapMarkers();fitAllPoints()}
+function switchLayer(name){if(!map||!layers[name])return;if(currentLayer)map.removeLayer(currentLayer);currentLayer=layers[name].addTo(map);state.selectedMapLayer=name;document.querySelectorAll(".layer-btn").forEach(b=>b.classList.toggle("active",b.dataset.layer===name));saveState();setTimeout(()=>map.invalidateSize(),80)}
 
 // ORIENTATION POINT POPUP JS START
 function getPointPopupIcon(type){
@@ -5901,33 +5903,48 @@ async function ensureHtml2Canvas(){
 
 function waitMs(ms){return new Promise(r=>setTimeout(r,ms));}
 
-function mapantWmsImageUrlForExport(bounds,widthPx=2200,heightPx=1580){
-    // Fondo MAPANT para PDF desde MapProxy/Trailmap. Mantiene EPSG:4326 para usar el BBOX ya calculado.
+function getSelectedPdfLayerKey(){
+    const key=String(state.selectedMapLayer||"mapant").toLowerCase();
+    return ["mapant","ign","pnoa"].includes(key)?key:"mapant";
+}
+
+function getPdfBackgroundLayerMeta(layerKey=getSelectedPdfLayerKey()){
+    const defs={
+        mapant:{key:"mapant",label:"MAPANT",format:"image/png",endpoint:"https://raster.trailmap.fi/mapproxy/service",layer:"spain_mapant"},
+        ign:{key:"ign",label:"IGN",format:"image/jpeg",endpoint:"https://www.ign.es/wms-inspire/mapa-raster",layer:"mtn_rasterizado"},
+        pnoa:{key:"pnoa",label:"AÉREO PNOA",format:"image/jpeg",endpoint:"https://www.ign.es/wms-inspire/pnoa-ma",layer:"OI.OrthoimageCoverage"}
+    };
+    return defs[layerKey]||defs.mapant;
+}
+
+function pdfBackgroundImageUrlForExport(bounds,widthPx=2200,heightPx=1580,layerKey=getSelectedPdfLayerKey()){
+    const meta=getPdfBackgroundLayerMeta(layerKey);
     const q=new URLSearchParams({
         SERVICE:"WMS",
         REQUEST:"GetMap",
         VERSION:"1.1.1",
-        LAYERS:"spain_mapant",
+        LAYERS:meta.layer,
         STYLES:"",
         SRS:"EPSG:4326",
         BBOX:[bounds.west,bounds.south,bounds.east,bounds.north].join(","),
         WIDTH:String(widthPx),
         HEIGHT:String(heightPx),
-        FORMAT:"image/png"
+        FORMAT:meta.format,
+        TRANSPARENT:"FALSE"
     });
-    return "https://raster.trailmap.fi/mapproxy/service?"+q.toString();
+    return meta.endpoint+"?"+q.toString();
 }
 
 async function imageUrlToDataUrlForPdf(url){
     if(!window._militopoPdfBgCache)window._militopoPdfBgCache={};
     if(window._militopoPdfBgCache[url])return window._militopoPdfBgCache[url];
     const res=await fetch(url,{mode:"cors",cache:"force-cache"});
-    if(!res.ok)throw new Error("MAPANT no respondió para fondo PDF: "+res.status);
+    if(!res.ok)throw new Error("El servidor del fondo PDF no respondió: "+res.status);
     const blob=await res.blob();
     const dataUrl=await new Promise((resolve,reject)=>{
         const fr=new FileReader();
         fr.onload=()=>resolve(fr.result);
-        fr.onerror=()=>reject(new Error("No se pudo convertir el fondo MAPANT a imagen"));
+        fr.onerror=()=>reject(new Error("No se pudo convertir el fondo seleccionado a imagen"));
         fr.readAsDataURL(blob);
     });
     window._militopoPdfBgCache[url]=dataUrl;
@@ -5952,7 +5969,8 @@ function makePlanFrameSafeForHtml2Canvas(frame,hasCleanBackground){
         if(wrap&&!hasCleanBackground&&!doc.getElementById("militopoPdfMapFallback")){
             const fallback=doc.createElement("div");
             fallback.id="militopoPdfMapFallback";
-            fallback.textContent="Fondo MAPANT no disponible · plano generado con símbolos y tabla IOF";
+            const layerMeta=getPdfBackgroundLayerMeta();
+            fallback.textContent=`Fondo ${layerMeta.label} no disponible · plano generado con símbolos y tabla IOF`;
             fallback.style.position="absolute";
             fallback.style.inset="0";
             fallback.style.zIndex="100";
@@ -6009,14 +6027,16 @@ async function injectMapantBackgroundIntoPlanFrame(frame){
         const bounds=win&&win.militopoPlanExportBounds;
         const wrap=doc&&doc.querySelector(".map-wrap");
         if(!bounds||!wrap)throw new Error("No se pudo leer la ventana común del mapa para el PDF");
-        const url=mapantWmsImageUrlForExport(bounds);
+        const layerKey=getSelectedPdfLayerKey();
+        const layerMeta=getPdfBackgroundLayerMeta(layerKey);
+        const url=pdfBackgroundImageUrlForExport(bounds,2200,1580,layerKey);
         const dataUrl=await imageUrlToDataUrlForPdf(url);
 
-        let img=doc.getElementById("militopoPdfMapantBackground");
+        let img=doc.getElementById("militopoPdfSelectedBackground");
         if(!img){
             img=doc.createElement("img");
-            img.id="militopoPdfMapantBackground";
-            img.alt="Fondo MAPANT exportado";
+            img.id="militopoPdfSelectedBackground";
+            img.alt=`Fondo ${layerMeta.label} exportado`;
             img.style.position="absolute";
             img.style.inset="0";
             img.style.width="100%";
@@ -6031,14 +6051,14 @@ async function injectMapantBackgroundIntoPlanFrame(frame){
         await new Promise((resolve,reject)=>{
             if(img.complete&&img.naturalWidth>0)return resolve();
             img.onload=()=>resolve();
-            img.onerror=()=>reject(new Error("No cargó la imagen incrustada MAPANT"));
+            img.onerror=()=>reject(new Error(`No cargó la imagen incrustada ${layerMeta.label}`));
         });
         ok=true;
     }catch(err){
-        console.warn("MILITOPO: no se pudo incrustar MAPANT limpio en PDF; se genera plano PDF con fondo neutro:",err);
+        console.warn("MILITOPO: no se pudo incrustar el fondo seleccionado en PDF; se genera plano PDF con fondo neutro:",err);
         try{
             const doc=frame.contentDocument;
-            const failedBg=doc&&doc.getElementById("militopoPdfMapantBackground");
+            const failedBg=doc&&doc.getElementById("militopoPdfSelectedBackground");
             if(failedBg)failedBg.remove();
         }catch(e){}
         ok=false;
@@ -7020,6 +7040,7 @@ function buildEventData(){
             maxControlReuse:state.maxControlReuse,
             planScale:Number(state.planScale)||10000,
             planEquidistanceM:Number(state.planEquidistanceM)||5,
+            selectedMapLayer:getSelectedPdfLayerKey(),
             balance:{distance:.5,climb:.5},
             liveReadyInternals:true,
             liveVisible:false
@@ -7029,7 +7050,8 @@ function buildEventData(){
             equidistanceM:Number(state.planEquidistanceM)||5,
             centerMode:pdfPlanCenterManual?"manual":"automatic",
             manualCenter:pdfPlanCenterManual,
-            automaticCenterFallback:true
+            automaticCenterFallback:true,
+            backgroundLayer:getSelectedPdfLayerKey()
         },
         points,
         routes,
@@ -8074,6 +8096,8 @@ function participantPlanHtml(route){
     const planScale=Number(state.planScale||10000)===7500?7500:10000;
     const planEquidistance=Number(state.planEquidistanceM||5)||5;
     const scaleLabel=`1/${planScale.toLocaleString("es-ES")}`;
+    const pdfLayerKey=getSelectedPdfLayerKey();
+    const pdfLayerMeta=getPdfBackgroundLayerMeta(pdfLayerKey);
     // Corrección de escala del plano generado desde HTML/canvas.
     // En impresión real se midió 1,1 cm donde debía medir 1 cm; por eso se compensa el 10%.
     // La barra visible sale a 1 cm exacto y el terreno mostrado se ajusta en la misma proporción.
@@ -8165,14 +8189,17 @@ html,body{margin:0;padding:0;background:#eee;font-family:Arial,Helvetica,sans-se
 <div class="content"><div class="map-wrap"><div id="participantPlanMap"></div><svg class="routeOverlay" viewBox="0 0 1000 1000" preserveAspectRatio="none"><g id="courseLines"></g><g id="courseMarkers"></g></svg><div class="mapNorthCompass" aria-label="Norte del plano"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="43" fill="#efe6c8" stroke="#222" stroke-width="3"/><line x1="50" y1="12" x2="50" y2="88" stroke="#222" stroke-width="2"/><line x1="12" y1="50" x2="88" y2="50" stroke="#222" stroke-width="2"/><polygon points="50,8 38,58 50,48 62,58" fill="#b00024" stroke="#222" stroke-width="1.5"/><text x="50" y="95" text-anchor="middle" font-size="16" font-weight="900" fill="#222">N</text></svg></div><div class="realScaleCheck"><div class="realScaleBar"></div>1 cm = ${scaleCheckMeters} m<small>${scaleLabel}</small></div></div>
 <div class="iof" style="border:2px solid #ff4fa3!important;color:#ff4fa3!important;padding:0!important;margin:0!important;justify-content:flex-start!important;align-items:stretch!important"><div class="iof-desc-title" style="height:18px!important;min-height:18px!important;margin:0!important;padding:0!important;border-bottom:2px solid #ff4fa3!important;color:#ff4fa3!important;background:#f2f2f2!important">DESCRIPCIÓN IOF</div><div class="iof-head" style="border-bottom:2px solid #ff4fa3!important;color:#ff4fa3!important"><div class="iof-title" style="border-bottom:1.3px solid #ff4fa3!important;color:#ff4fa3!important">${eventTitle}</div><div class="iof-difficulty" style="border-bottom:1.3px solid #ff4fa3!important;color:#ff4fa3!important">${difficulty}</div><div class="iof-metrics" style="border-bottom:1.3px solid #ff4fa3!important;color:#ff4fa3!important"><div style="border-right:1.3px solid #ff4fa3!important;color:#ff4fa3!important">${routeNumber}</div><div style="border-right:1.3px solid #ff4fa3!important;color:#ff4fa3!important">${distance}</div><div style="color:#ff4fa3!important">${climb}</div></div><div class="iof-letters" style="border-bottom:1.3px solid #ff4fa3!important;color:#ff4fa3!important"><div style="border-right:1.3px solid #ff4fa3!important;color:#ff4fa3!important">A</div><div style="border-right:1.3px solid #ff4fa3!important;color:#ff4fa3!important">B</div><div style="border-right:1.3px solid #ff4fa3!important;color:#ff4fa3!important">C</div><div style="border-right:1.3px solid #ff4fa3!important;color:#ff4fa3!important">D</div><div style="border-right:1.3px solid #ff4fa3!important;color:#ff4fa3!important">E</div><div style="border-right:1.3px solid #ff4fa3!important;color:#ff4fa3!important">F</div><div style="border-right:1.3px solid #ff4fa3!important;color:#ff4fa3!important">G</div><div style="color:#ff4fa3!important">H</div></div></div>
 <table class="iof-table"><colgroup><col class="col-a"><col class="col-b"><col><col><col><col><col><col></colgroup><tbody>${pointData.map(p=>`<tr><td style="border:1.3px solid #ff4fa3!important;color:#ff4fa3!important;background:#fff!important">${escapeHtml(String(p.order))}</td><td class="code" style="border:1.3px solid #ff4fa3!important;color:#ff4fa3!important;background:#fff!important">${escapeHtml(p.type==="START"?"SALIDA":p.type==="FINISH"?"META":p.id)}</td><td style="border:1.3px solid #ff4fa3!important;color:#ff4fa3!important;background:#fff!important">${renderIofCellSymbol(p.c)}</td><td style="border:1.3px solid #ff4fa3!important;color:#ff4fa3!important;background:#fff!important">${renderIofCellSymbol(p.d)}</td><td style="border:1.3px solid #ff4fa3!important;color:#ff4fa3!important;background:#fff!important">${renderIofCellSymbol(p.e)}</td><td class="fcell" style="border:1.3px solid #ff4fa3!important;color:#ff4fa3!important;background:#fff!important">${renderIofCellSymbol(p.f)}</td><td class="gcell" style="border:1.3px solid #ff4fa3!important;color:#ff4fa3!important;background:#fff!important">${renderIofCellSymbol(p.g)}</td><td style="border:1.3px solid #ff4fa3!important;color:#ff4fa3!important;background:#fff!important">${renderIofCellSymbol(p.h)}</td></tr>`).join("")}</tbody></table></div></div>
-<div class="footer"><div class="tech">FICHA TÉCNICA:<br>Evento: ${escapeHtml(state.eventId||"")}<br>Plano: MAPANT<br>Escala: ${scaleLabel}<br>Equidistancia: ${planEquidistance} m<br>Ventana común: ${Math.round(terrainWidthM)} m × ${Math.round(terrainHeightM)} m = ${windowAreaKm2.toFixed(2)} km²<br>Centro UTM: ${escapeHtml(centerUtm)}<br>Recorrido: ${participant} / ${routeId}</div><div class="note">El deporte de orientación es respetuoso con el medio natural, cuida la naturaleza.</div></div></div>
+<div class="footer"><div class="tech">FICHA TÉCNICA:<br>Evento: ${escapeHtml(state.eventId||"")}<br>Plano: ${escapeHtml(pdfLayerMeta.label)}<br>Escala: ${scaleLabel}<br>Equidistancia: ${planEquidistance} m<br>Ventana común: ${Math.round(terrainWidthM)} m × ${Math.round(terrainHeightM)} m = ${windowAreaKm2.toFixed(2)} km²<br>Centro UTM: ${escapeHtml(centerUtm)}<br>Recorrido: ${participant} / ${routeId}</div><div class="note">El deporte de orientación es respetuoso con el medio natural, cuida la naturaleza.</div></div></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
 <script>
-const points=${json}; const commonBounds=${boundsJson}; window.militopoPlanExportBounds=commonBounds;
+const points=${json}; const commonBounds=${boundsJson}; const pdfLayerKey=${JSON.stringify(pdfLayerKey)}; window.militopoPlanExportBounds=commonBounds; window.militopoPlanExportLayer=pdfLayerKey;
 const map=L.map('participantPlanMap',{zoomControl:false,attributionControl:false,preferCanvas:true,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false}).setView([commonBounds.centerLat,commonBounds.centerLon],15);
-function createPdfMapantLayer(){return L.tileLayer.wms('https://raster.trailmap.fi/mapproxy/service',{layers:'spain_mapant',styles:'',format:'image/png',transparent:false,version:'1.1.1',attribution:'© MapAnt / Trailmap',minZoom:0,maxZoom:22,tileSize:256,crossOrigin:true,updateWhenIdle:false,updateWhenZooming:true,keepBuffer:4});}
-const mapant=createPdfMapantLayer();
-mapant.addTo(map);
+function createPdfSelectedLayer(key){
+    if(key==='ign')return L.tileLayer('https://www.ign.es/wmts/mapa-raster?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=MTN&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{maxNativeZoom:18,maxZoom:22,crossOrigin:true});
+    if(key==='pnoa')return L.tileLayer('https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=OI.OrthoimageCoverage&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{maxNativeZoom:19,maxZoom:22,crossOrigin:true});
+    return L.tileLayer.wms('https://raster.trailmap.fi/mapproxy/service',{layers:'spain_mapant',styles:'',format:'image/png',transparent:false,version:'1.1.1',attribution:'© MapAnt / Trailmap',minZoom:0,maxZoom:22,tileSize:256,crossOrigin:true,updateWhenIdle:false,updateWhenZooming:true,keepBuffer:4});
+}
+createPdfSelectedLayer(pdfLayerKey).addTo(map);
 const bounds=[[commonBounds.south,commonBounds.west],[commonBounds.north,commonBounds.east]];
 function drawCourse(){
     const lines=document.getElementById('courseLines'), markers=document.getElementById('courseMarkers');
@@ -8369,6 +8396,7 @@ function applyReusableExerciseData(data){
     state.maxControlReuse=Number(cfg.maxControlReuse)||6;
     state.planScale=Number(plan.scale||cfg.planScale)===7500?7500:10000;
     state.planEquidistanceM=Number(plan.equidistanceM||cfg.planEquidistanceM)||5;
+    state.selectedMapLayer=["mapant","ign","pnoa"].includes(String(plan.backgroundLayer||cfg.selectedMapLayer||"mapant"))?String(plan.backgroundLayer||cfg.selectedMapLayer||"mapant"):"mapant";
     state.pdfPlanCenterManual=plan.manualCenter&&Number.isFinite(Number(plan.manualCenter.lat))&&Number.isFinite(Number(plan.manualCenter.lon))
         ? {lat:Number(plan.manualCenter.lat),lon:Number(plan.manualCenter.lon)}
         : null;
