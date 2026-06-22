@@ -9069,11 +9069,11 @@ function classificationRowsForExport(){
     const rows=[["Puesto","Participante","Nombre","Recorrido","Dificultad","Tiempo","Controles completados","Controles pendientes","Estado"]];
     let rank=0;
     sortedImportedResults().forEach(r=>{
-        if(r.completed)rank++;
+        rank++;
         const ms=resultMs(r);
         const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
         rows.push([
-            r.completed?rank:"--",
+            rank,
             r.participantId||"",
             resultParticipantName(r)||"",
             r.routeId||"--",
