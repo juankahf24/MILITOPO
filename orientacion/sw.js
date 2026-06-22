@@ -1,5 +1,5 @@
-/* MILITOPO · ranking completo y cámara QR bajo su botón */
-const MILITOPO_CACHE = "militopo-orientacion-clasificacion-columnas-v1";
+/* MILITOPO · clasificación con distancia a dos decimales */
+const MILITOPO_CACHE = "militopo-orientacion-clasificacion-columnas-v2-distancia-2-decimales";
 const CORE_ASSETS = [
   "./",
   "./index.html",
