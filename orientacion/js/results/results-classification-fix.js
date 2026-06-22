@@ -91,8 +91,8 @@
                     <th style="white-space:normal;line-height:1.12;vertical-align:top;text-align:center;">Estado</th>
                 </tr></thead>
                 <tbody>${rows.map(r=>{
-                    if(r.completed)rank++;
-                    const displayRank=r.completed?rank:"--";
+                    rank++;
+                    const displayRank=rank;
                     const ms=typeof resultMs==="function"?resultMs(r):null;
                     const time=ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--";
                     const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;
@@ -156,11 +156,11 @@
         let rank=0;
         const data=typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])];
         data.forEach(r=>{
-            if(r.completed)rank++;
+            rank++;
             const ms=typeof resultMs==="function"?resultMs(r):null;
             const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;
             rows.push([
-                r.completed?rank:"--",
+                rank,
                 r.participantId||"",
                 (typeof resultParticipantName==="function"?resultParticipantName(r):"")||"",
                 r.routeId||"--",
