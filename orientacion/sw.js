@@ -1,5 +1,5 @@
 /* MILITOPO · ranking completo y cámara QR bajo su botón */
-const MILITOPO_CACHE = "militopo-orientacion-v20260622-ranking-todos-camara-bajo-boton";
+const MILITOPO_CACHE = "militopo-orientacion-clasificacion-columnas-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
