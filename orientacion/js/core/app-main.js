@@ -8722,13 +8722,17 @@ function resultMs(r){
     return Number.isFinite(ms)&&ms>=0?ms:null;
 }
 
-function routeDifficultyForResult(resultOrRouteId){
+function routeMetricForResult(resultOrRouteId){
     const routeId=typeof resultOrRouteId==="string"?resultOrRouteId:String(resultOrRouteId?.routeId||"");
     const participantId=typeof resultOrRouteId==="object"?String(resultOrRouteId?.participantId||""):"";
     const routes=state.routes||[];
     let idx=routes.findIndex(r=>String(r.routeId||"")===routeId);
     if(idx<0&&participantId)idx=routes.findIndex(r=>String(r.participantId||"")===participantId);
-    const metric=idx>=0?(state.metrics||[])[idx]:null;
+    return idx>=0?((state.metrics||[])[idx]||{}):{};
+}
+
+function routeDifficultyForResult(resultOrRouteId){
+    const metric=routeMetricForResult(resultOrRouteId);
     return String(metric?.difficulty||"--");
 }
 
@@ -8899,58 +8903,20 @@ function classificationXlsxStyle(rank,completed){
 function renderClassificationTable(){
     const box=document.getElementById("classificationTable");
     if(!box)return;
-
     const rows=sortedImportedResults();
-    if(!rows.length){
-        box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;
-        return;
-    }
-
+    if(!rows.length){box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;return;}
     let rank=0;
     box.innerHTML=`<div style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;">
-    <table class="results-table" style="width:100%;min-width:860px;table-layout:fixed;border-collapse:separate;border-spacing:0;">
-        <colgroup>
-            <col style="width:7%">
-            <col style="width:12%">
-            <col style="width:17%">
-            <col style="width:10%">
-            <col style="width:11%">
-            <col style="width:11%">
-            <col style="width:13%">
-            <col style="width:13%">
-            <col style="width:6%">
-        </colgroup>
-        <thead><tr>
-            <th style="white-space:normal;line-height:1.15;vertical-align:top;">Puesto</th>
-            <th style="white-space:normal;line-height:1.15;vertical-align:top;">Participante</th>
-            <th style="white-space:normal;line-height:1.15;vertical-align:top;">Nombre</th>
-            <th style="white-space:normal;line-height:1.15;vertical-align:top;">Recorrido</th>
-            <th style="white-space:normal;line-height:1.15;vertical-align:top;">Dificultad</th>
-            <th style="white-space:normal;line-height:1.15;vertical-align:top;">Tiempo</th>
-            <th style="white-space:normal;line-height:1.15;vertical-align:top;">Controles<br>completados</th>
-            <th style="white-space:normal;line-height:1.15;vertical-align:top;">Controles<br>pendientes</th>
-            <th style="white-space:normal;line-height:1.15;vertical-align:top;text-align:center;">Estado</th>
-        </tr></thead>
+    <table class="results-table" style="width:100%;min-width:1120px;table-layout:fixed;border-collapse:separate;border-spacing:0;">
+        <colgroup><col style="width:7%"><col style="width:18%"><col style="width:11%"><col style="width:10%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:10%"></colgroup>
+        <thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th></tr></thead>
         <tbody>${rows.map(r=>{
             rank++;
-            const displayRank=rank;
-            const ms=resultMs(r);
-            const time=ms!==null?formatDuration(ms):"--";
-            const difficulty=routeDifficultyForResult(r);
+            const ms=resultMs(r),time=ms!==null?formatDuration(ms):"--",metric=routeMetricForResult(r);
             const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
             const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;
-            const cls=classificationRankClass(displayRank,r.completed);
-            return `<tr class="${cls}">
-                <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${displayRank}</td>
-                <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${escapeHtml(r.participantId)}</td>
-                <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${escapeHtml(resultParticipantName(r)||"--")}</td>
-                <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${escapeHtml(r.routeId||"--")}</td>
-                <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${escapeHtml(difficulty)}</td>
-                <td style="vertical-align:top;white-space:normal;overflow-wrap:anywhere;">${time}</td>
-                <td style="vertical-align:top;text-align:center;white-space:normal;">${controls}</td>
-                <td style="vertical-align:top;text-align:center;white-space:normal;">${missingCount}</td>
-                <td style="vertical-align:top;text-align:center;white-space:normal;"><span class="result-chip" style="display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:normal;line-height:1.1;max-width:100%;padding:.35em .55em;">${r.completed?"✅ OK":"⚠️ AVISO"}</span></td>
-            </tr>`;
+            const cls=classificationRankClass(rank,r.completed);
+            return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||"--")}</td><td style="text-align:center">${escapeHtml(time)}</td><td style="text-align:center">${escapeHtml(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${escapeHtml(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${escapeHtml(metric?.distanceKm!=null?`${metric.distanceKm} km`:"--")}</td><td style="text-align:center">${escapeHtml(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td></tr>`;
         }).join("")}</tbody>
     </table></div>`;
 }
@@ -9066,23 +9032,13 @@ function importStep5ResultFromInput(){
 
 
 function classificationRowsForExport(){
-    const rows=[["Puesto","Participante","Nombre","Recorrido","Dificultad","Tiempo","Controles completados","Controles pendientes","Estado"]];
+    const rows=[["Puesto","Nombre","Tiempo","Recorrido","Dificultad","Distancia","Desnivel +","Controles completados","Controles pendientes"]];
     let rank=0;
     sortedImportedResults().forEach(r=>{
         rank++;
-        const ms=resultMs(r);
+        const ms=resultMs(r),metric=routeMetricForResult(r);
         const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
-        rows.push([
-            rank,
-            r.participantId||"",
-            resultParticipantName(r)||"",
-            r.routeId||"--",
-            routeDifficultyForResult(r),
-            ms!==null?formatDuration(ms):"--",
-            controls,
-            (Array.isArray(r.missingControls)?r.missingControls.length:0),
-            r.completed?"OK":"AVISO"
-        ]);
+        rows.push([rank,resultParticipantName(r)||r.participantId||"",ms!==null?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null?`${metric.distanceKm} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0]);
     });
     return rows;
 }
@@ -9113,9 +9069,10 @@ async function downloadClassificationExcel(){
         return s;
     };
 
+    const rankedResults=sortedImportedResults();
     const sheetRows=rows.map((row,ri)=>{
         const r=ri+1;
-        const completed=row[8]==="OK";
+        const completed=ri===0?true:!!rankedResults[ri-1]?.completed;
         const styleId=ri===0?1:classificationXlsxStyle(row[0],completed);
         const maxLen=Math.max(...row.map(cell=>String(cell??"").length));
         const rowHeight=ri===0?48:Math.min(110,Math.max(38,28+Math.ceil(maxLen/28)*12));
@@ -9126,7 +9083,7 @@ async function downloadClassificationExcel(){
         return `<row r="${r}" ht="${rowHeight}" customHeight="1">${cells}</row>`;
     }).join("");
 
-    const widths=[8,13,23,11,13,18,20,24,10].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
+    const widths=[8,24,14,12,14,14,14,22,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
 
     const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
@@ -9136,7 +9093,7 @@ async function downloadClassificationExcel(){
  <cols>${widths}</cols>
  <sheetData>${sheetRows}</sheetData>
  <pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>
- <pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>
+ <pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>
 </worksheet>`;
 
     const workbookXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
