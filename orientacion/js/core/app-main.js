@@ -8916,7 +8916,7 @@ function renderClassificationTable(){
             const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
             const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;
             const cls=classificationRankClass(rank,r.completed);
-            return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||"--")}</td><td style="text-align:center">${escapeHtml(time)}</td><td style="text-align:center">${escapeHtml(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${escapeHtml(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${escapeHtml(metric?.distanceKm!=null?`${metric.distanceKm} km`:"--")}</td><td style="text-align:center">${escapeHtml(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td></tr>`;
+            return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||"--")}</td><td style="text-align:center">${escapeHtml(time)}</td><td style="text-align:center">${escapeHtml(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${escapeHtml(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${escapeHtml(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td style="text-align:center">${escapeHtml(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td></tr>`;
         }).join("")}</tbody>
     </table></div>`;
 }
@@ -9038,7 +9038,7 @@ function classificationRowsForExport(){
         rank++;
         const ms=resultMs(r),metric=routeMetricForResult(r);
         const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
-        rows.push([rank,resultParticipantName(r)||r.participantId||"",ms!==null?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null?`${metric.distanceKm} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0]);
+        rows.push([rank,resultParticipantName(r)||r.participantId||"",ms!==null?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0]);
     });
     return rows;
 }
