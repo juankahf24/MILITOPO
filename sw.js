@@ -1,5 +1,5 @@
-/* MILITOPO PWA · instalación Android · v3 · selector Android/iPhone */
-const CACHE_NAME = "militopo-topografia-v20260619-atak-aviso-importacion";
+/* MILITOPO PWA · instalación Android · v4 · icono borde negro */
+const CACHE_NAME = "militopo-pwa-v4-icono-borde-negro";
 const APP_SHELL = [
   "./",
   "./index.html",
