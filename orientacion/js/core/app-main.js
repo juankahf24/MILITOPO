@@ -8932,8 +8932,8 @@ function renderClassificationTable(){
             <th style="white-space:normal;line-height:1.15;vertical-align:top;text-align:center;">Estado</th>
         </tr></thead>
         <tbody>${rows.map(r=>{
-            if(r.completed)rank++;
-            const displayRank=r.completed?rank:"--";
+            rank++;
+            const displayRank=rank;
             const ms=resultMs(r);
             const time=ms!==null?formatDuration(ms):"--";
             const difficulty=routeDifficultyForResult(r);
@@ -9221,11 +9221,11 @@ function downloadImportedResultsCsv(){
     const rows=[["Puesto","Participante","Nombre","Recorrido","Dificultad","Estado","Tiempo","Salida","Llegada","ControlesCorrectos","Pendientes"]];
     let rank=0;
     sortedImportedResults().forEach(r=>{
-        if(r.completed)rank++;
+        rank++;
         const ms=resultMs(r);
         const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
         rows.push([
-            r.completed?rank:"",
+            rank,
             r.participantId,
             resultParticipantName(r)||"",
             r.routeId||"",
@@ -9256,6 +9256,15 @@ async function startStep5ResultQrCamera(){
     const video=document.getElementById("step5ResultQrVideo");
     const status=document.getElementById("step5ResultQrCameraStatus");
     if(!panel||!video||!status)return;
+
+    // Coloca siempre la cámara justo debajo del botón ESCANEAR QR RESULTADO,
+    // antes del bloque de importación manual. Así no depende del orden previo del DOM.
+    const scanBlock=document.getElementById("step5ResultScanBlock");
+    const scanButton=scanBlock?.querySelector('button[onclick*="startStep5ResultQrCamera"]');
+    const scanButtonRow=scanButton?.closest(".btn-row");
+    if(scanButtonRow && scanButtonRow.nextElementSibling!==panel){
+        scanButtonRow.insertAdjacentElement("afterend",panel);
+    }
 
     panel.style.display="block";
     status.className="status warn";
