@@ -1,9 +1,10 @@
-/* MILITOPO · clasificación con distancia a dos decimales */
-const MILITOPO_CACHE = "militopo-orientacion-clasificacion-columnas-v2-distancia-2-decimales";
+/* MILITOPO LIVE · Fase 1 conexión experimental Firebase */
+const MILITOPO_CACHE = "militopo-orientacion-live-fase1-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./js/app.js",
+  "./js/live/live-phase1.js",
   "./js/config/iof-symbols-f.js",
   "./js/core/app-main.js",
   "./js/pdf/pdf-professional.js",

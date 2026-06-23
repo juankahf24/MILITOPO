@@ -368,6 +368,7 @@
 </div>
 
 <script src="js/app.js?v=modular-fase2-20260605"></script>
+<script type="module" src="js/live/live-phase1.js?v=firebase-phase1-20260623"></script>
 <script>
 (function(){
   if (!("serviceWorker" in navigator) || !("caches" in window) || !/^https?:$/.test(location.protocol)) return;
@@ -375,7 +376,7 @@
     try {
       const cache = await caches.open("militopo-page-snapshot-v74");
       await cache.add(new Request(location.href, { cache: "reload" })).catch(function(){});
-      await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js"].map(function(url){
+      await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/live/live-phase1.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js"].map(function(url){
         return cache.add(new Request(url, { cache: "reload" }));
       }));
     } catch (e) {}
