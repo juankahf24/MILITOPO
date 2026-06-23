@@ -1,10 +1,10 @@
-/* MILITOPO LIVE · Fase 1 conexión experimental Firebase */
-const MILITOPO_CACHE = "militopo-orientacion-live-fase1-v1";
+/* MILITOPO LIVE · Fase 2 carrera y progreso automático */
+const MILITOPO_CACHE = "militopo-orientacion-live-fase2-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./js/app.js",
-  "./js/live/live-phase1.js",
+  "./js/live/live-phase2.js",
   "./js/config/iof-symbols-f.js",
   "./js/core/app-main.js",
   "./js/pdf/pdf-professional.js",
