@@ -1,5 +1,5 @@
-/* MILITOPO LIVE · Fase 2 carrera y progreso automático */
-const MILITOPO_CACHE = "militopo-orientacion-live-fase2-v1";
+/* MILITOPO LIVE · Fase 2 tabla ampliada con tiempos */
+const MILITOPO_CACHE = "militopo-orientacion-live-fase2-v2-tabla-tiempos";
 const CORE_ASSETS = [
   "./",
   "./index.html",
