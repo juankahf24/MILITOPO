@@ -1,5 +1,5 @@
-/* MILITOPO LIVE · sincronización total con Paso 5 */
-const MILITOPO_CACHE = "militopo-orientacion-live-final-v2-sync-paso5";
+/* MILITOPO LIVE · sincronización total con desplegables Paso 5 */
+const MILITOPO_CACHE = "militopo-orientacion-live-final-v3-sync-desplegables";
 const CORE_ASSETS = [
   "./",
   "./index.html",
