@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · QR participante compacto v2 + orden dinámico en vivo */
-const MILITOPO_CACHE = "militopo-orientacion-live-final-v5-qr-participante-compacto";
+/* MILITOPO Orientación · limpieza textos bloque en vivo */
+const MILITOPO_CACHE = "militopo-orientacion-live-final-v6-limpieza-textos-vivo";
 const CORE_ASSETS = [
   "./",
   "./index.html",
