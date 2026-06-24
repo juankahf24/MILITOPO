@@ -2975,67 +2975,37 @@ function startFlowStatusForRoute(route){
     return {stage:"pending",cls:"pending",icon:"⏳",label:"Pendientes",hint:"Aún sin salida entregada"};
 }
 
-window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS=function(participantId,status,routeId=""){
+window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS=function(participantId,status){
     try{
-        const pid=String(participantId||"").trim();
-        const rid=String(routeId||"").trim();
-        const normalized=String(status||"").trim().toLowerCase();
-        const route=(state.routes||[]).find(r=>String(r.participantId||"").trim()===pid)
-            || (rid?(state.routes||[]).find(r=>String(r.routeId||"").trim()===rid):null);
+        const route=getRouteByParticipant(String(participantId||""));
         if(!route)return false;
-
         const store=ensureStartFlowStatusStore();
         const key=startFlowStatusKey(route);
         const current=store[key]||{participantId:route.participantId,routeId:route.routeId};
         const now=new Date().toISOString();
-        const isRacing=["racing","race","en_carrera","en carrera","started"].includes(normalized);
-        const isFinished=["finished","finalized","finalizado","finish","completed"].includes(normalized);
-
-        if(isRacing||isFinished){
+        if(status==="racing"){
             current.startQrShownAt=current.startQrShownAt||now;
             current.startQrDeliveredAt=current.startQrDeliveredAt||now;
         }
-        if(isFinished){
+        if(status==="finished"){
+            current.startQrShownAt=current.startQrShownAt||now;
+            current.startQrDeliveredAt=current.startQrDeliveredAt||now;
             current.finishQrShownAt=current.finishQrShownAt||now;
             current.finishQrDeliveredAt=current.finishQrDeliveredAt||now;
         }
-        current.liveStatus=normalized;
         current.updatedAt=now;
         store[key]=current;
-        saveState();
-
-        /* Actualizar absolutamente todas las vistas clásicas del Paso 5. */
+        renderStartFlowStatusPanel();
         if(typeof updateOrganizerParticipantSelects==="function")updateOrganizerParticipantSelects({keepQr:true});
-        if(typeof renderStep5RoutePicker==="function"){
-            renderStep5RoutePicker("start");
-            renderStep5RoutePicker("finish");
-        }
-        if(typeof renderStartFlowStatusPanel==="function")renderStartFlowStatusPanel();
-        if(typeof renderParticipantsStatusGrid==="function")renderParticipantsStatusGrid();
-        if(typeof renderResultsControl==="function")renderResultsControl();
+        try{
+            if(typeof renderStep5RoutePicker==="function"){
+                renderStep5RoutePicker("start");
+                renderStep5RoutePicker("finish");
+            }
+        }catch(_){ }
         return true;
-    }catch(error){
-        console.warn("MILITOPO LIVE · no se pudo sincronizar el estado clásico",error);
-        return false;
-    }
+    }catch(_){return false;}
 };
-
-/* El módulo LIVE puede cargar antes o después que app-main. Este puente evita
-   perder la primera actualización y mantiene sincronizados los desplegables. */
-if(!window.__MILITOPO_LIVE_CLASSIC_STATUS_BRIDGE__){
-    window.__MILITOPO_LIVE_CLASSIC_STATUS_BRIDGE__=true;
-    window.addEventListener("militopo-live-participant-status",event=>{
-        const d=event?.detail||{};
-        window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS(d.participantId,d.status,d.routeId);
-    });
-    const replay=()=>{
-        const cache=window.MILITOPO_LIVE_STATUS_CACHE||{};
-        Object.values(cache).forEach(d=>window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS(d.participantId,d.status,d.routeId));
-    };
-    if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(replay,250),{once:true});
-    else setTimeout(replay,250);
-}
-
 
 function ensureStep5FlowVisualStyles(){
     if(document.getElementById("step5FlowVisualStyles"))return;
