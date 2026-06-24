@@ -9431,6 +9431,206 @@ async function scanStep5ResultQrCameraLoop(){
 
 function downloadText(filename,content){const blob=new Blob([content],{type:"text/plain;charset=utf-8"});saveAs(blob,filename)}function csvEscape(v){const s=String(v??"");return /[",\n;]/.test(s)?`"${s.replaceAll('"','""')}"`:s}function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]))}
 const __renderPointsTableBase=renderPointsTable;renderPointsTable=function(){__renderPointsTableBase();renderIofDescriptionsEditor()};
+
+
+/* MILITOPO · modo opcional de validación GPS por proximidad (PWA en primer plano)
+   - Conserva QR/manual como respaldo.
+   - Valida únicamente el siguiente control del recorrido.
+   - No envía coordenadas; solo comunica el control validado al sistema en vivo.
+   - Incluye bloqueo interno de pantalla y Wake Lock cuando el navegador lo permite. */
+(function setupMilitopoGpsProximity(){
+    const RADIUS_M=10;
+    const MAX_ACCURACY_M=25;
+    const REQUIRED_HITS=2;
+    let watchId=null;
+    let wakeLock=null;
+    let insideHits=0;
+    let lastTargetId="";
+    let lastValidatedAt=0;
+    let locked=false;
+    let unlockTimer=null;
+
+    function isParticipantMode(){
+        try{
+            const q=new URLSearchParams(location.search||"");
+            return String(q.get("modo")||"").toLowerCase()==="participante" || localStorage.getItem("militopo_orientacion_access_mode_v1")==="participante";
+        }catch(e){return false}
+    }
+    function currentPid(){
+        try{
+            const q=new URLSearchParams(location.search||"");
+            return String(q.get("p")||document.getElementById("participantSelect")?.value||state.webParticipantId||"P01");
+        }catch(e){return String(document.getElementById("participantSelect")?.value||"P01")}
+    }
+    function currentRoute(){
+        const pid=currentPid();
+        return (state.routes||[]).find(r=>String(r.participantId||"")===pid)||(state.routes||[])[0]||null;
+    }
+    function currentLog(){return (state.participantLogs||{})[currentPid()]||null}
+    function completedCount(log){return (log?.scans||[]).filter(x=>x.status==="correct").length}
+    function nextControl(){
+        const route=currentRoute(),log=currentLog();
+        if(!route||!log?.startTime||log.finishTime)return null;
+        const ids=(route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");
+        const id=ids[completedCount(log)]||null;
+        const point=id?(state.points||{})[id]:null;
+        return id&&point&&Number.isFinite(Number(point.lat))&&Number.isFinite(Number(point.lon))?{id,point}:null;
+    }
+    function haversine(lat1,lon1,lat2,lon2){
+        const r=6371000,toRad=x=>x*Math.PI/180;
+        const p1=toRad(lat1),p2=toRad(lat2),dp=toRad(lat2-lat1),dl=toRad(lon2-lon1);
+        const a=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+        return 2*r*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    }
+    function el(id){return document.getElementById(id)}
+    function setGpsStatus(text,cls="warn"){
+        const box=el("militopoGpsStatus");if(box){box.className="status "+cls;box.textContent=text}
+        const lockStatus=el("militopoGpsLockStatus");if(lockStatus)lockStatus.textContent=text;
+    }
+    async function beep(){
+        try{
+            const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+            const ctx=new C(),osc=ctx.createOscillator(),gain=ctx.createGain();
+            osc.frequency.value=980;gain.gain.setValueAtTime(.18,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.42);
+            osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+.42);
+            setTimeout(()=>ctx.close().catch(()=>{}),700);
+        }catch(e){}
+    }
+    function notifyControl(id){
+        beep();
+        try{navigator.vibrate?.([220,90,220])}catch(e){}
+        toast("Baliza "+id+" validada por proximidad");
+    }
+    function livePayload(){
+        const pid=currentPid(),route=currentRoute(),log=currentLog();
+        const total=(route?.points||[]).filter(id=>id!=="START"&&id!=="FINISH").length;
+        return {
+            eventId:String(state.eventId||""),participantId:pid,participantName:String((state.participantNames||{})[pid]||""),
+            routeId:String(route?.routeId||""),totalControls:total,completedControls:completedCount(log),
+            startTime:log?.startTime||null,finishTime:log?.finishTime||null,completed:!!log?.completed,
+            missingControls:log?.missingControls||[],resultCode:log?.finishTime?`ORI|RESULT|${state.eventId}|${pid}|${buildRunnerResultPayload(pid)}`:"",
+            clientTime:new Date().toISOString()
+        };
+    }
+    function emitLive(kind,extra={}){
+        if(!isParticipantMode())return;
+        const payload={...livePayload(),...extra};
+        try{window.postMessage({source:"MILITOPO_LIVE_V2",kind,payload},"*")}catch(e){}
+        try{if(window.parent&&window.parent!==window)window.parent.postMessage({source:"MILITOPO_LIVE_V2",kind,payload},"*")}catch(e){}
+    }
+    function validateByGps(target){
+        const input=el("scanInput");
+        if(!input||Date.now()-lastValidatedAt<3500)return;
+        lastValidatedAt=Date.now();
+        const before=completedCount(currentLog());
+        input.value=`ORI|CONTROL|${state.eventId}|${target.id}`;
+        scanControl();
+        const after=completedCount(currentLog());
+        if(after>before){notifyControl(target.id);}
+        insideHits=0;lastTargetId="";
+        updateGpsPanel();
+    }
+    function onPosition(pos){
+        const target=nextControl();
+        if(!target){
+            insideHits=0;
+            const log=currentLog();
+            setGpsStatus(!log?.startTime?"GPS activo. Escanea SALIDA para comenzar.":log?.finishTime?"Recorrido finalizado. GPS detenido.":"No queda ninguna baliza pendiente.",log?.finishTime?"ok":"warn");
+            if(log?.finishTime)stopGps(false);
+            updateGpsPanel();return;
+        }
+        const acc=Number(pos.coords.accuracy)||9999;
+        const dist=haversine(pos.coords.latitude,pos.coords.longitude,Number(target.point.lat),Number(target.point.lon));
+        const distText=dist<100?dist.toFixed(1):Math.round(dist);
+        if(lastTargetId!==target.id){insideHits=0;lastTargetId=target.id}
+        if(acc>MAX_ACCURACY_M){insideHits=0;setGpsStatus(`Siguiente ${target.id} · ${distText} m · esperando mejor precisión GPS (${Math.round(acc)} m)`,"warn");}
+        else if(dist<=RADIUS_M){insideHits++;setGpsStatus(`Dentro de ${RADIUS_M} m de ${target.id} · confirmando ${insideHits}/${REQUIRED_HITS}`,"ok");if(insideHits>=REQUIRED_HITS)validateByGps(target);}
+        else{insideHits=0;setGpsStatus(`Siguiente ${target.id} · ${distText} m · precisión ±${Math.round(acc)} m`,"ok");}
+        updateGpsPanel(dist,acc,target.id);
+    }
+    function onGpsError(err){
+        const msg=err?.code===1?"Permiso de ubicación denegado. Activa ubicación precisa en el navegador.":err?.code===2?"No se puede obtener la ubicación. Revisa el GPS.":"El GPS tarda demasiado. Mantén la app abierta.";
+        setGpsStatus(msg,"err");
+    }
+    async function requestWakeLock(){
+        try{if("wakeLock" in navigator&&document.visibilityState==="visible"&&!wakeLock)wakeLock=await navigator.wakeLock.request("screen")}catch(e){}
+    }
+    async function releaseWakeLock(){try{await wakeLock?.release()}catch(e){}wakeLock=null}
+    async function startGps(){
+        if(!navigator.geolocation){setGpsStatus("Este dispositivo no permite geolocalización.","err");return}
+        if(watchId!==null){setGpsStatus("GPS de proximidad ya está activo.","ok");return}
+        setGpsStatus("Solicitando permiso de ubicación precisa...","warn");
+        await requestWakeLock();
+        watchId=navigator.geolocation.watchPosition(onPosition,onGpsError,{enableHighAccuracy:true,maximumAge:1000,timeout:15000});
+        el("militopoGpsStart")&&(el("militopoGpsStart").disabled=true);
+        el("militopoGpsStop")&&(el("militopoGpsStop").disabled=false);
+        updateGpsPanel();
+    }
+    function stopGps(show=true){
+        if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+        insideHits=0;lastTargetId="";releaseWakeLock();
+        el("militopoGpsStart")&&(el("militopoGpsStart").disabled=false);
+        el("militopoGpsStop")&&(el("militopoGpsStop").disabled=true);
+        if(show)setGpsStatus("GPS de proximidad detenido. El escaneo QR sigue disponible.","warn");
+        updateGpsPanel();
+    }
+    function updateGpsPanel(dist=null,acc=null,targetId=null){
+        const next=nextControl();
+        const target=targetId||next?.id||"—";
+        const t=el("militopoGpsTarget");if(t)t.textContent=target;
+        const d=el("militopoGpsDistance");if(d)d.textContent=dist==null?"—":`${dist<100?dist.toFixed(1):Math.round(dist)} m`;
+        const a=el("militopoGpsAccuracy");if(a)a.textContent=acc==null?"—":`±${Math.round(acc)} m`;
+        const active=el("militopoGpsActive");if(active)active.textContent=watchId===null?"DETENIDO":"ACTIVO";
+        const lockTarget=el("militopoGpsLockTarget");if(lockTarget)lockTarget.textContent=target;
+    }
+    function lockScreen(){
+        locked=true;requestWakeLock();
+        const overlay=el("militopoGpsLockOverlay");if(overlay)overlay.classList.add("is-open");
+        document.documentElement.classList.add("militopo-gps-locked");
+    }
+    function unlockScreen(){
+        locked=false;clearTimeout(unlockTimer);unlockTimer=null;
+        const overlay=el("militopoGpsLockOverlay");if(overlay)overlay.classList.remove("is-open");
+        document.documentElement.classList.remove("militopo-gps-locked");
+    }
+    function bindUnlockHold(btn){
+        const start=()=>{clearTimeout(unlockTimer);btn.classList.add("holding");unlockTimer=setTimeout(()=>{btn.classList.remove("holding");unlockScreen()},2200)};
+        const cancel=()=>{clearTimeout(unlockTimer);unlockTimer=null;btn.classList.remove("holding")};
+        ["pointerdown","touchstart"].forEach(ev=>btn.addEventListener(ev,start,{passive:true}));
+        ["pointerup","pointercancel","pointerleave","touchend","touchcancel"].forEach(ev=>btn.addEventListener(ev,cancel,{passive:true}));
+    }
+    function injectStyles(){
+        if(el("militopoGpsStyles"))return;
+        const st=document.createElement("style");st.id="militopoGpsStyles";st.textContent=`
+        .militopo-gps-panel{margin:14px 0;padding:14px;border:1px solid rgba(238,194,112,.55);border-radius:18px;background:linear-gradient(180deg,rgba(70,48,28,.96),rgba(37,28,20,.96));box-shadow:0 12px 28px rgba(0,0,0,.22)}
+        .militopo-gps-title{font-weight:900;font-size:16px;margin-bottom:8px}.militopo-gps-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}.militopo-gps-metric{padding:9px;border-radius:12px;background:rgba(255,255,255,.07);text-align:center}.militopo-gps-metric small{display:block;opacity:.75;font-size:10px}.militopo-gps-metric b{display:block;margin-top:3px;font-size:14px}
+        #militopoGpsLockOverlay{position:fixed;inset:0;z-index:999999;display:none;place-items:center;padding:18px;background:radial-gradient(circle at 50% 25%,#4b341f,#17120d 72%);color:#fff8e8;touch-action:none;user-select:none}#militopoGpsLockOverlay.is-open{display:grid}.militopo-gps-lock-card{width:min(92vw,520px);text-align:center;padding:26px 18px;border:2px solid #d9ab58;border-radius:28px;background:rgba(24,18,12,.92);box-shadow:0 18px 55px rgba(0,0,0,.55)}.militopo-gps-lock-icon{font-size:54px}.militopo-gps-lock-target{font-size:46px;font-weight:1000;margin:8px 0;color:#ffd982}.militopo-gps-unlock{margin-top:22px;width:100%;padding:18px;border-radius:18px;border:1px solid #e4bd78;background:#5b3b21;color:#fff;font-weight:900;position:relative;overflow:hidden}.militopo-gps-unlock:before{content:"";position:absolute;inset:0;transform:scaleX(0);transform-origin:left;background:rgba(255,217,130,.28)}.militopo-gps-unlock.holding:before{transform:scaleX(1);transition:transform 2.2s linear}.militopo-gps-locked body{overflow:hidden}.militopo-gps-note{font-size:12px;opacity:.82;margin-top:8px}@media(max-width:560px){.militopo-gps-metrics{grid-template-columns:repeat(2,1fr)}}`;
+        document.head.appendChild(st);
+    }
+    function ensureUi(){
+        if(!isParticipantMode()||el("militopoGpsPanel"))return;
+        const anchor=el("runnerNextInfo")||el("scanList")||el("scanInput")?.closest(".block")||document.querySelector("main")||document.body;
+        if(!anchor)return;
+        injectStyles();
+        const panel=document.createElement("div");panel.id="militopoGpsPanel";panel.className="militopo-gps-panel";panel.innerHTML=`
+          <div class="militopo-gps-title">📍 VALIDACIÓN AUTOMÁTICA POR PROXIMIDAD</div>
+          <div id="militopoGpsStatus" class="status warn">Actívala después de cargar el recorrido. Mantén MILITOPO abierta y la pantalla encendida.</div>
+          <div class="militopo-gps-metrics"><div class="militopo-gps-metric"><small>GPS</small><b id="militopoGpsActive">DETENIDO</b></div><div class="militopo-gps-metric"><small>Siguiente</small><b id="militopoGpsTarget">—</b></div><div class="militopo-gps-metric"><small>Distancia</small><b id="militopoGpsDistance">—</b></div><div class="militopo-gps-metric"><small>Precisión</small><b id="militopoGpsAccuracy">—</b></div></div>
+          <div class="btn-row"><button id="militopoGpsStart" class="btn green" type="button">📡 ACTIVAR GPS</button><button id="militopoGpsStop" class="btn secondary" type="button" disabled>DETENER GPS</button><button id="militopoGpsLock" class="btn" type="button">🔒 BLOQUEAR PANTALLA</button></div>
+          <div class="militopo-gps-note">Valida solo la siguiente baliza al permanecer dentro de 10 m con precisión suficiente. START, FINISH y el escaneo QR siguen funcionando como hasta ahora. No se comparte tu ubicación.</div>`;
+        anchor.parentNode?.insertBefore(panel,anchor.nextSibling);
+        const overlay=document.createElement("div");overlay.id="militopoGpsLockOverlay";overlay.innerHTML=`<div class="militopo-gps-lock-card"><div class="militopo-gps-lock-icon">🔒📍</div><div>MODO CARRERA BLOQUEADO</div><div id="militopoGpsLockTarget" class="militopo-gps-lock-target">—</div><div id="militopoGpsLockStatus">Activa el GPS para detectar la siguiente baliza.</div><button id="militopoGpsUnlock" class="militopo-gps-unlock" type="button">MANTÉN PULSADO 2 SEGUNDOS PARA DESBLOQUEAR</button></div>`;document.body.appendChild(overlay);
+        el("militopoGpsStart").addEventListener("click",startGps);el("militopoGpsStop").addEventListener("click",()=>stopGps(true));el("militopoGpsLock").addEventListener("click",lockScreen);bindUnlockHold(el("militopoGpsUnlock"));
+        updateGpsPanel();emitLive("READY");
+    }
+    const oldStart=window.registerStart; if(typeof oldStart==="function")window.registerStart=function(pid,route,source){const before=state.participantLogs?.[pid]?.startTime;const out=oldStart.apply(this,arguments);if(!before&&state.participantLogs?.[pid]?.startTime)emitLive("START");updateGpsPanel();return out};
+    const oldFinish=window.registerFinish; if(typeof oldFinish==="function")window.registerFinish=function(pid,route,source){const before=state.participantLogs?.[pid]?.finishTime;const out=oldFinish.apply(this,arguments);if(!before&&state.participantLogs?.[pid]?.finishTime){emitLive("FINISH");stopGps(false)}updateGpsPanel();return out};
+    const oldScan=window.scanControl; if(typeof oldScan==="function")window.scanControl=function(){const before=completedCount(currentLog());const out=oldScan.apply(this,arguments);const after=completedCount(currentLog());if(after>before)emitLive("CONTROL",{scanStatus:"correct"});updateGpsPanel();return out};
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&watchId!==null)requestWakeLock()});
+    window.addEventListener("pagehide",()=>{if(watchId!==null)stopGps(false)});
+    document.addEventListener("DOMContentLoaded",()=>{ensureUi();new MutationObserver(ensureUi).observe(document.documentElement,{childList:true,subtree:true});setTimeout(ensureUi,500);setTimeout(ensureUi,1800)},{once:true});
+})();
+
 window.addEventListener("load",init);
 
 
