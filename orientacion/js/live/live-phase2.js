@@ -1,8 +1,7 @@
-/* MILITOPO LIVE · Fase 2
-   Sesión de carrera automática por eventId.
-   Participantes: conexión silenciosa desde su QR, salida y progreso en vivo.
-   Organizador: panel en Paso 5 con nombre, estado y controles completados.
-   No modifica resultados, clasificación, PDF ni la lógica local de carrera. */
+/* MILITOPO LIVE · Fase final
+   Sincronización automática de salida, controles, llegada y resultado.
+   El organizador recibe e importa el ORI|RESULT sin escanearlo.
+   El QR final y el código manual permanecen como respaldo. */
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 import {
@@ -30,6 +29,7 @@ const ROOT_PATH = "militopoLive/v2";
 const QUEUE_KEY = "militopo_live_v2_pending_events";
 const PARTICIPANT_CONTEXT_KEY = "militopo_live_v2_participant_context";
 const ORGANIZER_RUN_KEY_PREFIX = "militopo_live_v2_organizer_run_";
+const AUTO_IMPORT_KEY_PREFIX = "militopo_live_v2_auto_import_";
 
 let app = null;
 let auth = null;
@@ -43,6 +43,8 @@ let organizerUnsubActive = null;
 let organizerUnsubParticipants = null;
 let organizerContextTimer = null;
 let organizerClockTimer = null;
+const organizerAutoImportBusy = new Set();
+let organizerAutoImportedCount = 0;
 
 let participantContext = null;
 let participantEventKey = "";
@@ -104,7 +106,7 @@ function injectStyles() {
     .militopo-live2-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.militopo-live2-actions button{min-height:50px;border-radius:17px;padding:11px 14px;font-weight:900;font-size:.78rem;cursor:pointer}.militopo-live2-actions button:disabled{opacity:.45;cursor:not-allowed}.militopo-live2-start{border:0;background:linear-gradient(180deg,#9dce6b,#6c9f45);color:#17220f}.militopo-live2-stop{border:1px solid rgba(225,104,80,.44);background:rgba(157,56,39,.18);color:#ffe0d8}
     .militopo-live2-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}.militopo-live2-metric{padding:11px 7px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.075);text-align:center}.militopo-live2-metric strong{display:block;font-size:1.1rem}.militopo-live2-metric span{display:block;margin-top:3px;font-size:.59rem;color:rgba(255,247,232,.62)}
     .militopo-live2-run{margin-top:11px;padding:10px 12px;border-radius:15px;background:rgba(0,0,0,.16);font-size:.69rem;line-height:1.45;word-break:break-word}.militopo-live2-message{margin-top:10px;padding:10px 12px;border-radius:14px;font-size:.7rem;line-height:1.4;background:rgba(255,255,255,.05)}.militopo-live2-message.is-ok{color:#dff6c4}.militopo-live2-message.is-error{color:#ffd0c5}.militopo-live2-message.is-warn{color:#ffe0a0}
-    .militopo-live2-table-wrap{margin-top:14px;overflow-x:auto;border-radius:18px;border:1px solid rgba(237,214,145,.16);scrollbar-width:thin}.militopo-live2-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:620px;background:rgba(0,0,0,.12)}.militopo-live2-table th,.militopo-live2-table td{padding:7px 5px;border-bottom:1px solid rgba(237,214,145,.12);text-align:left;font-size:.63rem;line-height:1.18;vertical-align:middle;overflow:hidden}.militopo-live2-table th{color:#ffe2a0;font-size:.57rem;letter-spacing:.035em;text-transform:uppercase;background:rgba(0,0,0,.18);position:sticky;top:0;white-space:normal;overflow-wrap:anywhere}.militopo-live2-table th:not(:first-child),.militopo-live2-table td:not(:first-child){text-align:center}.militopo-live2-name{min-width:0}.militopo-live2-name b{display:block;color:#fff7e8;font-size:.69rem;line-height:1.15;white-space:normal;overflow-wrap:anywhere}.militopo-live2-name small{display:flex;align-items:center;gap:4px;color:#cbb894;margin-top:3px;min-width:0;flex-wrap:wrap}.militopo-live2-route-tag{display:inline-flex;padding:1px 5px;border-radius:999px;background:rgba(230,188,122,.12);border:1px solid rgba(230,188,122,.20);color:#ffe2a0;font-weight:900}.militopo-live2-time{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:.60rem}.militopo-live2-time.is-running{color:#d5edff;font-weight:900}.militopo-live2-time.is-finished{color:#eaffd8;font-weight:900}.militopo-live2-state{display:inline-flex;align-items:center;justify-content:center;max-width:100%;padding:4px 6px;border-radius:999px;font-weight:900;font-size:.55rem;line-height:1.05;white-space:normal;overflow-wrap:anywhere;text-align:center;border:1px solid rgba(255,255,255,.12)}.militopo-live2-state.ready,.militopo-live2-state.not_started{color:#ffe2a0;background:rgba(230,188,122,.12)}.militopo-live2-state.racing{color:#d5edff;background:rgba(70,139,206,.15);border-color:rgba(93,168,255,.36)}.militopo-live2-state.finished{color:#eaffd8;background:rgba(107,140,62,.18);border-color:rgba(139,181,106,.42)}.militopo-live2-state.offline{color:#ffd7ce;background:rgba(151,49,34,.15)}.militopo-live2-progress{font-weight:900;color:#fff7e8}.militopo-live2-empty{padding:18px;text-align:center;color:rgba(255,247,232,.65);font-size:.75rem}
+    .militopo-live2-table-wrap{margin-top:14px;overflow-x:auto;border-radius:18px;border:1px solid rgba(237,214,145,.16);scrollbar-width:thin}.militopo-live2-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:620px;background:rgba(0,0,0,.12)}.militopo-live2-table th,.militopo-live2-table td{padding:7px 5px;border-bottom:1px solid rgba(237,214,145,.12);text-align:left;font-size:.63rem;line-height:1.18;vertical-align:middle;overflow:hidden}.militopo-live2-table th{color:#ffe2a0;font-size:.57rem;letter-spacing:.035em;text-transform:uppercase;background:rgba(0,0,0,.18);position:sticky;top:0;white-space:normal;overflow-wrap:anywhere}.militopo-live2-table th:not(:first-child),.militopo-live2-table td:not(:first-child){text-align:center}.militopo-live2-name{min-width:0}.militopo-live2-name b{display:block;color:#fff7e8;font-size:.69rem;line-height:1.15;white-space:normal;overflow-wrap:anywhere}.militopo-live2-name small{display:flex;align-items:center;gap:4px;color:#cbb894;margin-top:3px;min-width:0;flex-wrap:wrap}.militopo-live2-route-tag{display:inline-flex;padding:1px 5px;border-radius:999px;background:rgba(230,188,122,.12);border:1px solid rgba(230,188,122,.20);color:#ffe2a0;font-weight:900}.militopo-live2-time{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:.60rem}.militopo-live2-time.is-running{color:#d5edff;font-weight:900}.militopo-live2-time.is-finished{color:#eaffd8;font-weight:900}.militopo-live2-state{display:inline-flex;align-items:center;justify-content:center;max-width:100%;padding:4px 6px;border-radius:999px;font-weight:900;font-size:.55rem;line-height:1.05;white-space:normal;overflow-wrap:anywhere;text-align:center;border:1px solid rgba(255,255,255,.12)}.militopo-live2-state.ready,.militopo-live2-state.not_started{color:#ffe2a0;background:rgba(230,188,122,.12)}.militopo-live2-state.racing{color:#d5edff;background:rgba(70,139,206,.15);border-color:rgba(93,168,255,.36)}.militopo-live2-state.finished{color:#eaffd8;background:rgba(107,140,62,.18);border-color:rgba(139,181,106,.42)}.militopo-live2-state.offline{color:#ffd7ce;background:rgba(151,49,34,.15)}.militopo-live2-state.imported{color:#eaffd8;background:rgba(74,135,52,.24);border-color:rgba(157,220,108,.55)}.militopo-live2-progress{font-weight:900;color:#fff7e8}.militopo-live2-empty{padding:18px;text-align:center;color:rgba(255,247,232,.65);font-size:.75rem}
     @media(max-width:680px){.militopo-live2-panel{padding:15px;border-radius:24px}.militopo-live2-statuses{grid-template-columns:1fr}.militopo-live2-actions{grid-template-columns:1fr}.militopo-live2-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.militopo-live2-head{align-items:center}.militopo-live2-phase{font-size:.56rem}}
   `;
   document.head.appendChild(style);
@@ -120,8 +122,8 @@ function buildOrganizerPanel() {
   panel.className = "militopo-live2-panel";
   panel.innerHTML = `
     <div class="militopo-live2-head">
-      <div class="militopo-live2-title"><div class="militopo-live2-title-icon">📡</div><div><h3>SEGUIMIENTO EN VIVO</h3><p>Los participantes se conectan automáticamente al escanear su QR. No se comparte ubicación.</p></div></div>
-      <div class="militopo-live2-phase">FASE 2 · PROGRESO</div>
+      <div class="militopo-live2-title"><div class="militopo-live2-title-icon">📡</div><div><h3>SEGUIMIENTO EN VIVO</h3><p>Salida, controles, llegada y resultado se sincronizan automáticamente. No se comparte ubicación.</p></div></div>
+      <div class="militopo-live2-phase">FASE FINAL · AUTOMÁTICO</div>
     </div>
     <div class="militopo-live2-statuses">
       <div id="live2AuthBadge" class="militopo-live2-badge" data-state="warn">AUTENTICACIÓN · ESPERANDO</div>
@@ -194,7 +196,83 @@ function refreshOrganizerTimeCells() {
     cell.classList.toggle("is-finished", !!finish);
   });
 }
-function stateLabel(status, online) {
+
+function autoImportStorageKey(){
+  return `${AUTO_IMPORT_KEY_PREFIX}${organizerEventKey}_${organizerRunId}`;
+}
+function readAutoImportMap(){
+  try {
+    const data = JSON.parse(localStorage.getItem(autoImportStorageKey()) || "{}");
+    return data && typeof data === "object" ? data : {};
+  } catch (_) { return {}; }
+}
+function writeAutoImportMap(data){
+  try { localStorage.setItem(autoImportStorageKey(), JSON.stringify(data || {})); } catch (_) {}
+}
+function resultFingerprint(value){
+  const text=String(value||"");
+  let hash=2166136261;
+  for(let i=0;i<text.length;i++){
+    hash^=text.charCodeAt(i);
+    hash=Math.imul(hash,16777619);
+  }
+  return (hash>>>0).toString(36);
+}
+async function markLiveResultImported(participantId,resultCode,result){
+  if(!db||!organizerEventKey||!organizerRunId)return;
+  const pid=String(participantId||"");
+  await update(ref(db,participantPath(organizerEventKey,organizerRunId,pid)),{
+    resultImported:true,
+    resultImportedAt:serverTimestamp(),
+    resultImportedClient:nowIso(),
+    resultImportHash:resultFingerprint(resultCode),
+    resultImportStatus:result?.duplicate?"already_imported":"imported",
+    resultImportError:null
+  });
+}
+async function processFinishedResults(rows){
+  if(!organizerRunId||!organizerEventKey||!Array.isArray(rows))return;
+  if(typeof window.MILITOPO_LIVE_IMPORT_RESULT!=="function")return;
+  const importedMap=readAutoImportMap();
+  for(const participant of rows){
+    const pid=String(participant?.participantId||"");
+    const resultCode=String(participant?.resultCode||"").trim();
+    if(!pid||participant?.status!=="finished"||!resultCode)continue;
+    const fingerprint=resultFingerprint(resultCode);
+    const busyKey=`${pid}:${fingerprint}`;
+    if(organizerAutoImportBusy.has(busyKey))continue;
+    if(importedMap[pid]===fingerprint&&participant?.resultImported===true)continue;
+    organizerAutoImportBusy.add(busyKey);
+    try{
+      const result=window.MILITOPO_LIVE_IMPORT_RESULT(resultCode,{
+        runId:organizerRunId,
+        receivedAt:participant?.finishTime||nowIso()
+      });
+      if(result?.ok){
+        importedMap[pid]=fingerprint;
+        writeAutoImportMap(importedMap);
+        await markLiveResultImported(pid,resultCode,result);
+        organizerAutoImportedCount=Object.keys(importedMap).length;
+        setMessage(`Resultado de ${pid} importado automáticamente. Total recibidos en vivo: ${organizerAutoImportedCount}.`,"ok");
+      }else{
+        await update(ref(db,participantPath(organizerEventKey,organizerRunId,pid)),{
+          resultImportStatus:"error",
+          resultImportError:String(result?.error||"Resultado no válido"),
+          resultImportAttemptAt:serverTimestamp()
+        });
+        setMessage(`Llegada recibida de ${pid}, pero el resultado no pudo importarse: ${result?.error||"error desconocido"}. Usa su QR final como respaldo.`,"error");
+      }
+    }catch(error){
+      console.warn("MILITOPO LIVE · autoimport",error);
+      setMessage(`No se pudo importar automáticamente el resultado de ${pid}. El QR final sigue disponible.`,"warn");
+    }finally{
+      organizerAutoImportBusy.delete(busyKey);
+    }
+  }
+}
+
+function stateLabel(status, online, resultImported = false) {
+  if (resultImported) return { cls:"imported", label:"FINALIZADO ✓" };
   if (online === false && status !== "finished") return { cls:"offline", label:"SIN CONEXIÓN" };
   if (status === "racing") return { cls:"racing", label:"EN CARRERA" };
   if (status === "finished") return { cls:"finished", label:"FINALIZADO" };
@@ -222,7 +300,7 @@ function renderOrganizerParticipants(participantsValue) {
     return;
   }
   body.innerHTML = rows.map(p => {
-    const st = stateLabel(p.status, p.online);
+    const st = stateLabel(p.status, p.online, p.resultImported === true);
     const pid = String(p.participantId || "—");
     const name = String(p.participantName || "").trim();
     const completed = Math.max(0, Number(p.completedControls) || 0);
@@ -241,6 +319,7 @@ function renderOrganizerParticipants(participantsValue) {
     </tr>`;
   }).join("");
   refreshOrganizerTimeCells();
+  processFinishedResults(rows).catch(error=>console.warn("MILITOPO LIVE · procesar resultados",error));
 }
 
 function updateOrganizerButtons() {
@@ -262,6 +341,7 @@ async function attachOrganizerRun(eventKey, runId, meta = null) {
   organizerEventKey = eventKey;
   organizerRunId = runId || "";
   if (!runId) {
+    organizerAutoImportedCount = 0;
     setBadge("live2RunBadge", "CARRERA · NO INICIADA", "neutral");
     if ($("live2RunText")) $("live2RunText").textContent = "Sin carrera en vivo activa para este ejercicio.";
     renderOrganizerParticipants({});
@@ -269,6 +349,7 @@ async function attachOrganizerRun(eventKey, runId, meta = null) {
     return;
   }
   setBadge("live2RunBadge", "CARRERA · ACTIVA", "ok");
+  organizerAutoImportedCount = Object.keys(readAutoImportMap()).length;
   const ctx = organizerContext() || {};
   if ($("live2RunText")) $("live2RunText").innerHTML = `Ejercicio: <b>${safeText(ctx.eventName || meta?.eventName || "ORIENTACIÓN")}</b><br>Sesión: <b>${safeText(runId)}</b>`;
   try { localStorage.setItem(ORGANIZER_RUN_KEY_PREFIX + eventKey, runId); } catch (_) {}
@@ -276,7 +357,7 @@ async function attachOrganizerRun(eventKey, runId, meta = null) {
     renderOrganizerParticipants(snap.val() || {});
   }, error => setMessage(`No se pudo leer el progreso: ${error.message}`, "error"));
   updateOrganizerButtons();
-  setMessage("Carrera en vivo activa. Los participantes se conectarán automáticamente con su QR.", "ok");
+  setMessage("Carrera en vivo activa. La llegada y el resultado se importarán automáticamente; el QR final queda como respaldo.", "ok");
 }
 
 async function bindOrganizerEvent(ctx) {
@@ -319,13 +400,15 @@ async function startOrganizerRun() {
         completedControls: 0,
         pendingControls: Number(route.totalControls) || 0,
         status: "not_started",
+        resultImported: false,
+        resultImportStatus: "pending",
         online: false,
         preparedAt: serverTimestamp(),
         lastSeenClient: null
       };
     });
     await set(ref(db, `${runPath(eventKey, runId)}/meta`), {
-      version: 2,
+      version: 3,
       status: "active",
       eventId: String(ctx.eventId),
       eventName: String(ctx.eventName || "ENTRENAMIENTO ORIENTACIÓN"),
@@ -388,6 +471,7 @@ function enqueueParticipantEvent(kind, payload) {
     kind,
     eventKey: safeFirebaseKey(cleanPayload.eventId || participantContext?.eventId || ""),
     participantId: String(cleanPayload.participantId || participantContext?.participantId || ""),
+    runId: String(participantRunId || participantContext?.liveRunId || ""),
     payload: cleanPayload,
     queuedAt: nowIso()
   };
@@ -443,18 +527,23 @@ async function bindParticipantEvent(ctx) {
     const active = snap.val();
     if (active && active.status === "active" && active.runId) {
       participantRunId = String(active.runId);
+      persistParticipantContext({...participantContext,liveRunId:participantRunId});
       try { await markParticipantReady(); await flushParticipantQueue(); } catch (error) { console.warn("MILITOPO LIVE participante", error); }
     } else {
-      participantRunId = "";
+      const savedRunId=String(participantContext?.liveRunId||"");
+      const hasPending=readQueue().some(event=>event.eventKey===participantEventKey&&String(event.participantId||"")===String(participantContext?.participantId||""));
+      participantRunId=hasPending?savedRunId:"";
+      if(participantRunId)flushParticipantQueue();
     }
   }, error => console.warn("MILITOPO LIVE · sesión participante", error));
 }
 
 async function applyParticipantEvent(event) {
-  if (!participantContext || !participantEventKey || !participantRunId || !currentUser) throw new Error("Sesión en vivo no preparada");
+  const targetRunId=String(event?.runId||participantRunId||participantContext?.liveRunId||"");
+  if (!participantContext || !participantEventKey || !targetRunId || !currentUser) throw new Error("Sesión en vivo no preparada");
   const payload = { ...participantContext, ...(event.payload || {}) };
   const pid = String(payload.participantId || participantContext.participantId);
-  const pBase = participantPath(participantEventKey, participantRunId, pid);
+  const pBase = participantPath(participantEventKey, targetRunId, pid);
   const completed = Math.max(0, Number(payload.completedControls) || 0);
   const total = Math.max(0, Number(payload.totalControls) || 0);
   const common = {
@@ -475,11 +564,11 @@ async function applyParticipantEvent(event) {
   } else if (event.kind === "CONTROL") {
     Object.assign(common, { status:payload.finishTime ? "finished" : "racing", lastScanStatus:String(payload.scanStatus || ""), startTime:payload.startTime || null });
   } else if (event.kind === "FINISH") {
-    Object.assign(common, { status:"finished", finishTime:payload.finishTime || payload.clientTime || nowIso(), startTime:payload.startTime || null, completed:!!payload.completed, resultCode:String(payload.resultCode || ""), missingControlsCount:Array.isArray(payload.missingControls)?payload.missingControls.length:Number(payload.missingControlsCount)||0 });
+    Object.assign(common, { status:"finished", finishTime:payload.finishTime || payload.clientTime || nowIso(), startTime:payload.startTime || null, completed:!!payload.completed, resultCode:String(payload.resultCode || ""), resultImportStatus:"pending", resultImported:false, missingControlsCount:Array.isArray(payload.missingControls)?payload.missingControls.length:Number(payload.missingControlsCount)||0 });
   } else {
     Object.assign(common, { status:payload.finishTime ? "finished" : (payload.startTime ? "racing" : "ready") });
   }
-  await set(ref(db, `${runPath(participantEventKey, participantRunId)}/events/${safeFirebaseKey(pid)}/${event.id}`), {
+  await set(ref(db, `${runPath(participantEventKey, targetRunId)}/events/${safeFirebaseKey(pid)}/${event.id}`), {
     kind:event.kind,
     participantId:pid,
     progress:completed,
@@ -573,6 +662,7 @@ function initLivePhase2() {
 }
 
 window.MILITOPO_LIVE_PHASE2 = {
+  phase: "final",
   get connected() { return firebaseConnected; },
   get runId() { return organizerRunId || participantRunId; },
   startOrganizerRun,
