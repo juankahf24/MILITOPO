@@ -285,8 +285,17 @@ function renderOrganizerParticipants(participantsValue) {
   const rows = Object.values(participants).sort((a,b)=>String(a.participantId||"").localeCompare(String(b.participantId||""),"es",{numeric:true}));
   const counts = { total: rows.length, pending:0, racing:0, finished:0 };
   rows.forEach(p => {
+    const syncDetail={
+      participantId:String(p.participantId||""),
+      routeId:String(p.routeId||""),
+      status:String(p.status||""),
+      resultImported:p.resultImported===true
+    };
+    window.MILITOPO_LIVE_STATUS_CACHE=window.MILITOPO_LIVE_STATUS_CACHE||{};
+    window.MILITOPO_LIVE_STATUS_CACHE[syncDetail.participantId]=syncDetail;
+    window.dispatchEvent(new CustomEvent("militopo-live-participant-status",{detail:syncDetail}));
     if (typeof window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS === "function") {
-      window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS(p.participantId, p.status);
+      window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS(syncDetail.participantId, syncDetail.status, syncDetail.routeId);
     }
     if (p.status === "racing") counts.racing++;
     else if (p.status === "finished") counts.finished++;
