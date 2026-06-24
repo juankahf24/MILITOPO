@@ -1,5 +1,5 @@
-/* MILITOPO LIVE · Fase final · resultado automático */
-const MILITOPO_CACHE = "militopo-orientacion-live-final-v1-autoresultado";
+/* MILITOPO LIVE · sincronización total con Paso 5 */
+const MILITOPO_CACHE = "militopo-orientacion-live-final-v2-sync-paso5";
 const CORE_ASSETS = [
   "./",
   "./index.html",
