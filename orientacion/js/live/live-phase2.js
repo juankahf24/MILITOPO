@@ -122,8 +122,7 @@ function buildOrganizerPanel() {
   panel.className = "militopo-live2-panel";
   panel.innerHTML = `
     <div class="militopo-live2-head">
-      <div class="militopo-live2-title"><div class="militopo-live2-title-icon">📡</div><div><h3>SEGUIMIENTO EN VIVO</h3><p>Salida, controles, llegada y resultado se sincronizan automáticamente. No se comparte ubicación.</p></div></div>
-      <div class="militopo-live2-phase">FASE FINAL · AUTOMÁTICO</div>
+      <div class="militopo-live2-title"><div class="militopo-live2-title-icon">📡</div><div><h3>SEGUIMIENTO EN VIVO</h3></div></div>
     </div>
     <div class="militopo-live2-statuses">
       <div id="live2AuthBadge" class="militopo-live2-badge" data-state="warn">AUTENTICACIÓN · ESPERANDO</div>
