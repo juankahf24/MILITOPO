@@ -3828,6 +3828,52 @@ function importResultPayload(raw){
     renderStartFlowStatusPanel();
 }
 
+
+/* MILITOPO LIVE · importación automática y segura del resultado final */
+window.MILITOPO_LIVE_IMPORT_RESULT=function(raw,meta={}){
+    try{
+        ensureImportedResultsStore();
+        const parsed=parseResultPayload(raw);
+        if(!parsed.ok)return {ok:false,error:parsed.error||"Resultado no válido"};
+        if(isResultForSkippedRoute(parsed))return {ok:false,error:`${parsed.participantId} está descartado por el organizador`};
+
+        parsed.participantName=resultParticipantName(parsed.participantId);
+        parsed.liveImported=true;
+        parsed.liveRunId=String(meta.runId||"");
+        parsed.liveReceivedAt=String(meta.receivedAt||new Date().toISOString());
+
+        const normalizedRaw=normalizeResultImportValue(parsed.raw);
+        const idx=state.importedResults.findIndex(r=>r.participantId===parsed.participantId);
+        const duplicate=idx>=0&&normalizeResultImportValue(state.importedResults[idx]?.raw||"")===normalizedRaw;
+
+        if(!duplicate){
+            if(idx>=0)state.importedResults[idx]=parsed;
+            else state.importedResults.push(parsed);
+            saveState();
+            renderImportedResults();
+            renderResultsControl();
+            if(typeof updateOrganizerParticipantSelects==="function")updateOrganizerParticipantSelects({keepQr:true});
+            renderStartFlowStatusPanel();
+            if(typeof toast==="function")toast(`Resultado recibido en vivo: ${parsed.participantId}`);
+        }
+
+        return {ok:true,duplicate,participantId:parsed.participantId,completed:!!parsed.completed};
+    }catch(error){
+        console.error("MILITOPO LIVE · importación automática",error);
+        return {ok:false,error:error?.message||"No se pudo importar el resultado en vivo"};
+    }
+};
+
+window.MILITOPO_LIVE_HAS_RESULT=function(participantId,raw=""){
+    try{
+        ensureImportedResultsStore();
+        const found=state.importedResults.find(r=>String(r.participantId||"")===String(participantId||""));
+        if(!found)return false;
+        if(!raw)return true;
+        return normalizeResultImportValue(found.raw||"")===normalizeResultImportValue(raw);
+    }catch(_){return false;}
+};
+
 function renderImportedResults(){
     ensureImportedResultsStore();
 
