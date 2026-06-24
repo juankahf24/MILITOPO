@@ -1,5 +1,5 @@
-/* MILITOPO LIVE · sincronización total con desplegables Paso 5 */
-const MILITOPO_CACHE = "militopo-orientacion-live-final-v3-sync-desplegables";
+/* MILITOPO LIVE · orden dinámico de la tabla en vivo del Paso 5 */
+const MILITOPO_CACHE = "militopo-orientacion-live-final-v4-orden-progreso";
 const CORE_ASSETS = [
   "./",
   "./index.html",
