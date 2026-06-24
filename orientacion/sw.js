@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · limpieza textos bloque en vivo */
-const MILITOPO_CACHE = "militopo-orientacion-live-final-v6-limpieza-textos-vivo";
+/* MILITOPO Orientación · GPS proximidad + bloqueo interno */
+const MILITOPO_CACHE = "militopo-orientacion-live-final-v7-gps-proximidad-bloqueo";
 const CORE_ASSETS = [
   "./",
   "./index.html",
