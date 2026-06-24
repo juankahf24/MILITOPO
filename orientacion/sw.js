@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · GPS proximidad + bloqueo interno */
-const MILITOPO_CACHE = "militopo-orientacion-live-final-v7-gps-proximidad-bloqueo";
+/* MILITOPO Orientación · GPS proximidad · corrección salida y posición del bloque */
+const MILITOPO_CACHE = "militopo-orientacion-live-final-v8-gps-salida-bloque2";
 const CORE_ASSETS = [
   "./",
   "./index.html",
