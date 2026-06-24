@@ -42,6 +42,7 @@ let organizerRunId = "";
 let organizerUnsubActive = null;
 let organizerUnsubParticipants = null;
 let organizerContextTimer = null;
+let organizerClockTimer = null;
 
 let participantContext = null;
 let participantEventKey = "";
@@ -103,7 +104,7 @@ function injectStyles() {
     .militopo-live2-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.militopo-live2-actions button{min-height:50px;border-radius:17px;padding:11px 14px;font-weight:900;font-size:.78rem;cursor:pointer}.militopo-live2-actions button:disabled{opacity:.45;cursor:not-allowed}.militopo-live2-start{border:0;background:linear-gradient(180deg,#9dce6b,#6c9f45);color:#17220f}.militopo-live2-stop{border:1px solid rgba(225,104,80,.44);background:rgba(157,56,39,.18);color:#ffe0d8}
     .militopo-live2-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}.militopo-live2-metric{padding:11px 7px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.075);text-align:center}.militopo-live2-metric strong{display:block;font-size:1.1rem}.militopo-live2-metric span{display:block;margin-top:3px;font-size:.59rem;color:rgba(255,247,232,.62)}
     .militopo-live2-run{margin-top:11px;padding:10px 12px;border-radius:15px;background:rgba(0,0,0,.16);font-size:.69rem;line-height:1.45;word-break:break-word}.militopo-live2-message{margin-top:10px;padding:10px 12px;border-radius:14px;font-size:.7rem;line-height:1.4;background:rgba(255,255,255,.05)}.militopo-live2-message.is-ok{color:#dff6c4}.militopo-live2-message.is-error{color:#ffd0c5}.militopo-live2-message.is-warn{color:#ffe0a0}
-    .militopo-live2-table-wrap{margin-top:14px;overflow-x:auto;border-radius:18px;border:1px solid rgba(237,214,145,.16)}.militopo-live2-table{width:100%;border-collapse:collapse;min-width:680px;background:rgba(0,0,0,.12)}.militopo-live2-table th,.militopo-live2-table td{padding:10px 9px;border-bottom:1px solid rgba(237,214,145,.12);text-align:left;font-size:.69rem;vertical-align:middle}.militopo-live2-table th{color:#ffe2a0;font-size:.63rem;letter-spacing:.06em;text-transform:uppercase;background:rgba(0,0,0,.18);position:sticky;top:0}.militopo-live2-name b{display:block;color:#fff7e8;font-size:.75rem}.militopo-live2-name small{display:block;color:#cbb894;margin-top:2px}.militopo-live2-state{display:inline-flex;padding:5px 8px;border-radius:999px;font-weight:900;font-size:.62rem;border:1px solid rgba(255,255,255,.12)}.militopo-live2-state.ready,.militopo-live2-state.not_started{color:#ffe2a0;background:rgba(230,188,122,.12)}.militopo-live2-state.racing{color:#d5edff;background:rgba(70,139,206,.15);border-color:rgba(93,168,255,.36)}.militopo-live2-state.finished{color:#eaffd8;background:rgba(107,140,62,.18);border-color:rgba(139,181,106,.42)}.militopo-live2-state.offline{color:#ffd7ce;background:rgba(151,49,34,.15)}.militopo-live2-progress{font-weight:900;color:#fff7e8}.militopo-live2-empty{padding:18px;text-align:center;color:rgba(255,247,232,.65);font-size:.75rem}
+    .militopo-live2-table-wrap{margin-top:14px;overflow-x:auto;border-radius:18px;border:1px solid rgba(237,214,145,.16)}.militopo-live2-table{width:100%;border-collapse:collapse;min-width:980px;background:rgba(0,0,0,.12)}.militopo-live2-table th,.militopo-live2-table td{padding:10px 9px;border-bottom:1px solid rgba(237,214,145,.12);text-align:left;font-size:.69rem;vertical-align:middle}.militopo-live2-table th{color:#ffe2a0;font-size:.63rem;letter-spacing:.06em;text-transform:uppercase;background:rgba(0,0,0,.18);position:sticky;top:0}.militopo-live2-name{min-width:170px}.militopo-live2-name b{display:block;color:#fff7e8;font-size:.75rem}.militopo-live2-name small{display:flex;align-items:center;gap:6px;color:#cbb894;margin-top:3px}.militopo-live2-route-tag{display:inline-flex;padding:2px 6px;border-radius:999px;background:rgba(230,188,122,.12);border:1px solid rgba(230,188,122,.20);color:#ffe2a0;font-weight:900}.militopo-live2-time{white-space:nowrap;font-variant-numeric:tabular-nums}.militopo-live2-time.is-running{color:#d5edff;font-weight:900}.militopo-live2-time.is-finished{color:#eaffd8;font-weight:900}.militopo-live2-state{display:inline-flex;padding:5px 8px;border-radius:999px;font-weight:900;font-size:.62rem;border:1px solid rgba(255,255,255,.12)}.militopo-live2-state.ready,.militopo-live2-state.not_started{color:#ffe2a0;background:rgba(230,188,122,.12)}.militopo-live2-state.racing{color:#d5edff;background:rgba(70,139,206,.15);border-color:rgba(93,168,255,.36)}.militopo-live2-state.finished{color:#eaffd8;background:rgba(107,140,62,.18);border-color:rgba(139,181,106,.42)}.militopo-live2-state.offline{color:#ffd7ce;background:rgba(151,49,34,.15)}.militopo-live2-progress{font-weight:900;color:#fff7e8}.militopo-live2-empty{padding:18px;text-align:center;color:rgba(255,247,232,.65);font-size:.75rem}
     @media(max-width:680px){.militopo-live2-panel{padding:15px;border-radius:24px}.militopo-live2-statuses{grid-template-columns:1fr}.militopo-live2-actions{grid-template-columns:1fr}.militopo-live2-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.militopo-live2-head{align-items:center}.militopo-live2-phase{font-size:.56rem}}
   `;
   document.head.appendChild(style);
@@ -140,12 +141,13 @@ function buildOrganizerPanel() {
     <div id="live2RunText" class="militopo-live2-run">Sin carrera en vivo activa para este ejercicio.</div>
     <div id="live2Message" class="militopo-live2-message">Inicializando Firebase…</div>
     <div class="militopo-live2-table-wrap">
-      <table class="militopo-live2-table"><thead><tr><th>Participante</th><th>Estado</th><th>Progreso</th><th>Recorrido</th><th>Última sincronización</th></tr></thead><tbody id="live2ParticipantsBody"><tr><td colspan="5" class="militopo-live2-empty">Inicia la carrera en vivo para preparar los participantes.</td></tr></tbody></table>
+      <table class="militopo-live2-table"><thead><tr><th>Participante</th><th>Estado</th><th>Progreso</th><th>Última sincronización</th><th>Salida</th><th>Llegada</th><th>Tiempo total</th></tr></thead><tbody id="live2ParticipantsBody"><tr><td colspan="7" class="militopo-live2-empty">Inicia la carrera en vivo para preparar los participantes.</td></tr></tbody></table>
     </div>`;
   const header = step5.querySelector(":scope > .card-header");
   if (header) header.insertAdjacentElement("afterend", panel); else step5.prepend(panel);
   $("live2StartRunBtn")?.addEventListener("click", startOrganizerRun);
   $("live2StopRunBtn")?.addEventListener("click", stopOrganizerRun);
+  if (!organizerClockTimer) organizerClockTimer = window.setInterval(refreshOrganizerTimeCells, 1000);
 }
 
 function setBadge(id, text, state = "neutral") {
@@ -154,11 +156,43 @@ function setBadge(id, text, state = "neutral") {
 function setMessage(text, type = "info") {
   const el = $("live2Message"); if (!el) return; el.className = `militopo-live2-message is-${type}`; el.textContent = text;
 }
+function parseLiveDate(value) {
+  if (!value) return null;
+  const d = new Date(typeof value === "number" ? value : String(value));
+  return Number.isFinite(d.getTime()) ? d : null;
+}
 function formatLastSeen(value) {
-  if (!value) return "—";
-  const d = new Date(typeof value === "number" ? value : value);
-  if (!Number.isFinite(d.getTime())) return "—";
+  const d = parseLiveDate(value);
+  if (!d) return "—";
   return d.toLocaleTimeString("es-ES", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+}
+function formatLiveClock(value) {
+  const d = parseLiveDate(value);
+  if (!d) return "—";
+  return d.toLocaleTimeString("es-ES", { hour:"2-digit", minute:"2-digit", second:"2-digit" });
+}
+function formatLiveDuration(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(hours).padStart(2,"0")}:${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}`;
+}
+function refreshOrganizerTimeCells() {
+  document.querySelectorAll(".militopo-live2-total-time[data-start]").forEach(cell => {
+    const start = parseLiveDate(cell.dataset.start);
+    const finish = parseLiveDate(cell.dataset.finish);
+    if (!start) {
+      cell.textContent = "—";
+      cell.classList.remove("is-running","is-finished");
+      return;
+    }
+    const end = finish || new Date();
+    cell.textContent = formatLiveDuration(end.getTime() - start.getTime());
+    cell.classList.toggle("is-running", !finish);
+    cell.classList.toggle("is-finished", !!finish);
+  });
 }
 function stateLabel(status, online) {
   if (online === false && status !== "finished") return { cls:"offline", label:"SIN CONEXIÓN" };
@@ -184,7 +218,7 @@ function renderOrganizerParticipants(participantsValue) {
   const body = $("live2ParticipantsBody");
   if (!body) return;
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="5" class="militopo-live2-empty">Todavía no hay participantes preparados.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="militopo-live2-empty">Todavía no hay participantes preparados.</td></tr>`;
     return;
   }
   body.innerHTML = rows.map(p => {
@@ -193,14 +227,20 @@ function renderOrganizerParticipants(participantsValue) {
     const name = String(p.participantName || "").trim();
     const completed = Math.max(0, Number(p.completedControls) || 0);
     const total = Math.max(0, Number(p.totalControls) || 0);
+    const routeId = String(p.routeId || "—");
+    const startRaw = p.startTime || "";
+    const finishRaw = p.finishTime || "";
     return `<tr>
-      <td class="militopo-live2-name"><b>${safeText(name || pid)}</b><small>${safeText(name ? pid : "Sin nombre asignado")}</small></td>
+      <td class="militopo-live2-name"><b>${safeText(name || pid)}</b><small><span>${safeText(name ? pid : "Sin nombre asignado")}</span><span class="militopo-live2-route-tag">${safeText(routeId)}</span></small></td>
       <td><span class="militopo-live2-state ${st.cls}">${st.label}</span></td>
       <td class="militopo-live2-progress">${completed} / ${total}</td>
-      <td>${safeText(p.routeId || "—")}</td>
-      <td>${safeText(formatLastSeen(p.lastSeenClient || p.lastSeen))}</td>
+      <td class="militopo-live2-time">${safeText(formatLastSeen(p.lastSeenClient || p.lastSeen))}</td>
+      <td class="militopo-live2-time">${safeText(formatLiveClock(startRaw))}</td>
+      <td class="militopo-live2-time">${safeText(formatLiveClock(finishRaw))}</td>
+      <td class="militopo-live2-time militopo-live2-total-time" data-start="${safeText(startRaw)}" data-finish="${safeText(finishRaw)}">—</td>
     </tr>`;
   }).join("");
+  refreshOrganizerTimeCells();
 }
 
 function updateOrganizerButtons() {
