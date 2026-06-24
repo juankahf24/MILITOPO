@@ -1,5 +1,5 @@
-/* MILITOPO LIVE · orden dinámico de la tabla en vivo del Paso 5 */
-const MILITOPO_CACHE = "militopo-orientacion-live-final-v4-orden-progreso";
+/* MILITOPO Orientación · QR participante compacto v2 + orden dinámico en vivo */
+const MILITOPO_CACHE = "militopo-orientacion-live-final-v5-qr-participante-compacto";
 const CORE_ASSETS = [
   "./",
   "./index.html",
