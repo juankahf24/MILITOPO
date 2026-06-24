@@ -2975,6 +2975,32 @@ function startFlowStatusForRoute(route){
     return {stage:"pending",cls:"pending",icon:"⏳",label:"Pendientes",hint:"Aún sin salida entregada"};
 }
 
+window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS=function(participantId,status){
+    try{
+        const route=getRouteByParticipant(String(participantId||""));
+        if(!route)return false;
+        const store=ensureStartFlowStatusStore();
+        const key=startFlowStatusKey(route);
+        const current=store[key]||{participantId:route.participantId,routeId:route.routeId};
+        const now=new Date().toISOString();
+        if(status==="racing"){
+            current.startQrShownAt=current.startQrShownAt||now;
+            current.startQrDeliveredAt=current.startQrDeliveredAt||now;
+        }
+        if(status==="finished"){
+            current.startQrShownAt=current.startQrShownAt||now;
+            current.startQrDeliveredAt=current.startQrDeliveredAt||now;
+            current.finishQrShownAt=current.finishQrShownAt||now;
+            current.finishQrDeliveredAt=current.finishQrDeliveredAt||now;
+        }
+        current.updatedAt=now;
+        store[key]=current;
+        renderStartFlowStatusPanel();
+        if(typeof updateOrganizerParticipantSelects==="function")updateOrganizerParticipantSelects({keepQr:true});
+        return true;
+    }catch(_){return false;}
+};
+
 function ensureStep5FlowVisualStyles(){
     if(document.getElementById("step5FlowVisualStyles"))return;
     const style=document.createElement("style");
