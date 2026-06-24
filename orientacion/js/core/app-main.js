@@ -9449,6 +9449,8 @@ const __renderPointsTableBase=renderPointsTable;renderPointsTable=function(){__r
     let lastValidatedAt=0;
     let locked=false;
     let unlockTimer=null;
+    let lastPosition=null;
+    let stateRefreshTimer=null;
 
     function isParticipantMode(){
         try{
@@ -9459,8 +9461,19 @@ const __renderPointsTableBase=renderPointsTable;renderPointsTable=function(){__r
     function currentPid(){
         try{
             const q=new URLSearchParams(location.search||"");
-            return String(q.get("p")||document.getElementById("participantSelect")?.value||state.webParticipantId||"P01");
-        }catch(e){return String(document.getElementById("participantSelect")?.value||"P01")}
+            const candidates=[
+                String(state.webParticipantId||""),
+                String(document.getElementById("participantSelect")?.value||""),
+                String(q.get("p")||""),
+                String((state.routes||[])[0]?.participantId||"")
+            ].filter(Boolean);
+            const withStartedLog=candidates.find(pid=>state.participantLogs?.[pid]?.startTime);
+            if(withStartedLog)return withStartedLog;
+            const withLog=candidates.find(pid=>state.participantLogs?.[pid]);
+            if(withLog)return withLog;
+            const withRoute=candidates.find(pid=>(state.routes||[]).some(r=>String(r.participantId||"")===pid));
+            return withRoute||candidates[0]||"P01";
+        }catch(e){return String(state.webParticipantId||document.getElementById("participantSelect")?.value||(state.routes||[])[0]?.participantId||"P01")}
     }
     function currentRoute(){
         const pid=currentPid();
@@ -9531,6 +9544,7 @@ const __renderPointsTableBase=renderPointsTable;renderPointsTable=function(){__r
         updateGpsPanel();
     }
     function onPosition(pos){
+        lastPosition=pos;
         const target=nextControl();
         if(!target){
             insideHits=0;
@@ -9548,6 +9562,22 @@ const __renderPointsTableBase=renderPointsTable;renderPointsTable=function(){__r
         else{insideHits=0;setGpsStatus(`Siguiente ${target.id} · ${distText} m · precisión ±${Math.round(acc)} m`,"ok");}
         updateGpsPanel(dist,acc,target.id);
     }
+    function refreshFromCurrentState(){
+        if(watchId===null)return;
+        const log=currentLog();
+        if(log?.finishTime){
+            setGpsStatus("Recorrido finalizado. GPS detenido.","ok");
+            updateGpsPanel();
+            stopGps(false);
+            return;
+        }
+        if(lastPosition){
+            onPosition(lastPosition);
+        }else{
+            setGpsStatus(log?.startTime?"Salida registrada. Esperando la primera posición GPS...":"GPS activo. Escanea SALIDA para comenzar.","warn");
+            updateGpsPanel();
+        }
+    }
     function onGpsError(err){
         const msg=err?.code===1?"Permiso de ubicación denegado. Activa ubicación precisa en el navegador.":err?.code===2?"No se puede obtener la ubicación. Revisa el GPS.":"El GPS tarda demasiado. Mantén la app abierta.";
         setGpsStatus(msg,"err");
@@ -9562,12 +9592,15 @@ const __renderPointsTableBase=renderPointsTable;renderPointsTable=function(){__r
         setGpsStatus("Solicitando permiso de ubicación precisa...","warn");
         await requestWakeLock();
         watchId=navigator.geolocation.watchPosition(onPosition,onGpsError,{enableHighAccuracy:true,maximumAge:1000,timeout:15000});
+        clearInterval(stateRefreshTimer);
+        stateRefreshTimer=setInterval(refreshFromCurrentState,1000);
         el("militopoGpsStart")&&(el("militopoGpsStart").disabled=true);
         el("militopoGpsStop")&&(el("militopoGpsStop").disabled=false);
         updateGpsPanel();
     }
     function stopGps(show=true){
         if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+        clearInterval(stateRefreshTimer);stateRefreshTimer=null;
         insideHits=0;lastTargetId="";releaseWakeLock();
         el("militopoGpsStart")&&(el("militopoGpsStart").disabled=false);
         el("militopoGpsStop")&&(el("militopoGpsStop").disabled=true);
@@ -9609,7 +9642,8 @@ const __renderPointsTableBase=renderPointsTable;renderPointsTable=function(){__r
     }
     function ensureUi(){
         if(!isParticipantMode()||el("militopoGpsPanel"))return;
-        const anchor=el("runnerNextInfo")||el("scanList")||el("scanInput")?.closest(".block")||document.querySelector("main")||document.body;
+        const scanBlock=el("scanInput")?.closest(".block");
+        const anchor=scanBlock||el("runnerNextInfo")?.closest(".block")||el("scanList")?.closest(".block")||document.querySelector("main")||document.body;
         if(!anchor)return;
         injectStyles();
         const panel=document.createElement("div");panel.id="militopoGpsPanel";panel.className="militopo-gps-panel";panel.innerHTML=`
