@@ -4243,21 +4243,25 @@ function buildCompactParticipantWebData(pid){
         ];
     });
 
+    // v2 conserva dentro del propio QR todo lo necesario para abrir directamente
+    // al participante con su recorrido, pero elimina datos redundantes (UTM,
+    // descripción, altitud y nombres de propiedades repetidos). El QR final
+    // ORI|RESULT no depende de este formato y continúa intacto como respaldo.
     return {
-        v:1,
+        v:2,
         e:String(state.eventId||""),
         n:String(state.eventName||"ENTRENAMIENTO ORIENTACIÓN"),
         p:String(pid||route.participantId||""),
         pn:String((state.participantNames||{})[pid]||""),
-        r:{i:String(route.participantId||pid||""),d:String(route.routeId||""),q:ids},
-        m:{
-            km:Number.isFinite(Number(metric.distanceKm))?Number(Number(metric.distanceKm).toFixed(3)):undefined,
-            pp:Number.isFinite(Number(metric.climbUp))?Math.round(Number(metric.climbUp)):undefined,
-            pn:Number.isFinite(Number(metric.climbDown))?Math.round(Number(metric.climbDown)):undefined,
-            dg:Number.isFinite(Number(metric.netClimb))?Math.round(Number(metric.netClimb)):undefined,
-            df:metric.difficulty||undefined
-        },
-        pts:points,
+        r:[String(route.routeId||""),ids],
+        m:[
+            Number.isFinite(Number(metric.distanceKm))?Number(Number(metric.distanceKm).toFixed(3)):null,
+            Number.isFinite(Number(metric.climbUp))?Math.round(Number(metric.climbUp)):null,
+            Number.isFinite(Number(metric.climbDown))?Math.round(Number(metric.climbDown)):null,
+            Number.isFinite(Number(metric.netClimb))?Math.round(Number(metric.netClimb)):null,
+            metric.difficulty||null
+        ],
+        pts:points.map(row=>[row[0],row[2],row[3]]),
         t:Date.now()
     };
 }
