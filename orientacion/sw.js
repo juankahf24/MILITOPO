@@ -1,5 +1,5 @@
-/* MILITOPO LIVE · Fase 2 tabla compacta de siete columnas */
-const MILITOPO_CACHE = "militopo-orientacion-live-fase2-v3-tabla-compacta";
+/* MILITOPO LIVE · Fase final · resultado automático */
+const MILITOPO_CACHE = "militopo-orientacion-live-final-v1-autoresultado";
 const CORE_ASSETS = [
   "./",
   "./index.html",
