@@ -1,5 +1,5 @@
-/* MILITOPO LIVE · Fase 2 tabla ampliada con tiempos */
-const MILITOPO_CACHE = "militopo-orientacion-live-fase2-v2-tabla-tiempos";
+/* MILITOPO LIVE · Fase 2 tabla compacta de siete columnas */
+const MILITOPO_CACHE = "militopo-orientacion-live-fase2-v3-tabla-compacta";
 const CORE_ASSETS = [
   "./",
   "./index.html",
