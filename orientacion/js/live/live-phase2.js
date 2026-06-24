@@ -285,6 +285,9 @@ function renderOrganizerParticipants(participantsValue) {
   const rows = Object.values(participants).sort((a,b)=>String(a.participantId||"").localeCompare(String(b.participantId||""),"es",{numeric:true}));
   const counts = { total: rows.length, pending:0, racing:0, finished:0 };
   rows.forEach(p => {
+    if (typeof window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS === "function") {
+      window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS(p.participantId, p.status);
+    }
     if (p.status === "racing") counts.racing++;
     else if (p.status === "finished") counts.finished++;
     else counts.pending++;
