@@ -280,22 +280,65 @@ function stateLabel(status, online, resultImported = false) {
   return { cls:"not_started", label:"SIN SALIR" };
 }
 
+function liveParticipantIdCompare(a, b) {
+  return String(a?.participantId || "").localeCompare(
+    String(b?.participantId || ""),
+    "es",
+    { numeric:true }
+  );
+}
+
+function liveTimeMs(value) {
+  const ms = Date.parse(String(value || ""));
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function liveElapsedMs(participant, now = Date.now()) {
+  const start = liveTimeMs(participant?.startTime);
+  if (start === null) return Number.POSITIVE_INFINITY;
+  const finish = liveTimeMs(participant?.finishTime);
+  return Math.max(0, (finish === null ? now : finish) - start);
+}
+
+function sortOrganizerParticipants(participants) {
+  const rows = Object.values(participants);
+  const allStarted = rows.length > 0 && rows.every(p =>
+    p?.status === "racing" || p?.status === "finished" || liveTimeMs(p?.startTime) !== null
+  );
+
+  if (!allStarted) {
+    // Mientras se están dando las salidas: primero quienes ya salieron,
+    // respetando exactamente el orden cronológico de salida.
+    return rows.sort((a, b) => {
+      const aStart = liveTimeMs(a?.startTime);
+      const bStart = liveTimeMs(b?.startTime);
+      if (aStart !== null && bStart !== null && aStart !== bStart) return aStart - bStart;
+      if (aStart !== null && bStart === null) return -1;
+      if (aStart === null && bStart !== null) return 1;
+      return liveParticipantIdCompare(a, b);
+    });
+  }
+
+  const now = Date.now();
+  return rows.sort((a, b) => {
+    const progressDifference = (Math.max(0, Number(b?.completedControls) || 0)) -
+                               (Math.max(0, Number(a?.completedControls) || 0));
+    if (progressDifference) return progressDifference;
+
+    const elapsedDifference = liveElapsedMs(a, now) - liveElapsedMs(b, now);
+    if (elapsedDifference) return elapsedDifference;
+
+    return liveParticipantIdCompare(a, b);
+  });
+}
+
 function renderOrganizerParticipants(participantsValue) {
   const participants = participantsValue && typeof participantsValue === "object" ? participantsValue : {};
-  const rows = Object.values(participants).sort((a,b)=>String(a.participantId||"").localeCompare(String(b.participantId||""),"es",{numeric:true}));
+  const rows = sortOrganizerParticipants(participants);
   const counts = { total: rows.length, pending:0, racing:0, finished:0 };
   rows.forEach(p => {
-    const syncDetail={
-      participantId:String(p.participantId||""),
-      routeId:String(p.routeId||""),
-      status:String(p.status||""),
-      resultImported:p.resultImported===true
-    };
-    window.MILITOPO_LIVE_STATUS_CACHE=window.MILITOPO_LIVE_STATUS_CACHE||{};
-    window.MILITOPO_LIVE_STATUS_CACHE[syncDetail.participantId]=syncDetail;
-    window.dispatchEvent(new CustomEvent("militopo-live-participant-status",{detail:syncDetail}));
     if (typeof window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS === "function") {
-      window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS(syncDetail.participantId, syncDetail.status, syncDetail.routeId);
+      window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS(p.participantId, p.status);
     }
     if (p.status === "racing") counts.racing++;
     else if (p.status === "finished") counts.finished++;
