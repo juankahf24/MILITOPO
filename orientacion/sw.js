@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · GPS proximidad · corrección salida y posición del bloque */
-const MILITOPO_CACHE = "militopo-orientacion-live-final-v8-gps-salida-bloque2";
+const MILITOPO_CACHE = "militopo-orientacion-gps-iframe-fix-20260624-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
