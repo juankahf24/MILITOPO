@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · GPS persistente tras recarga, con y sin bloqueo */
-const MILITOPO_CACHE = "militopo-orientacion-gps-persistente-20260626-v1";
+/* MILITOPO Orientación · precisión GPS 15 m y estado de sincronización */
+const MILITOPO_CACHE = "militopo-orientacion-gps-sync-status-20260626-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
