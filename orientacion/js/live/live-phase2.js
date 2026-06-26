@@ -52,6 +52,8 @@ let participantRunId = "";
 let participantUnsubActive = null;
 let participantPresenceRef = null;
 let participantFlushBusy = false;
+let participantMessageSource = null;
+let participantActiveRunAvailable = false;
 
 const $ = id => document.getElementById(id);
 
@@ -518,6 +520,31 @@ function readQueue() {
 function writeQueue(queue) {
   try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue.slice(-300))); } catch (_) {}
 }
+function participantPendingQueueCount() {
+  if (!participantContext) return 0;
+  const eventKey = participantEventKey || safeFirebaseKey(participantContext.eventId || "");
+  const pid = String(participantContext.participantId || "");
+  return readQueue().filter(event => event.eventKey === eventKey && String(event.participantId || "") === pid).length;
+}
+function participantSyncSnapshot() {
+  const pending = participantPendingQueueCount();
+  if ((!participantActiveRunAvailable && pending === 0) || !participantRunId) {
+    return { state:"inactive", text:"⚪ CARRERA EN VIVO NO ACTIVA", pending };
+  }
+  if (!firebaseConnected || !db || !currentUser) {
+    return { state:"offline", text:"🟠 SIN COBERTURA · GUARDADO EN EL MÓVIL", pending };
+  }
+  if (pending > 0) {
+    return { state:"syncing", text:`🔄 SINCRONIZANDO ${pending} ${pending === 1 ? "CAMBIO" : "CAMBIOS"}`, pending };
+  }
+  return { state:"synced", text:"🟢 EN VIVO · SINCRONIZADO", pending:0 };
+}
+function publishParticipantSyncStatus(target = participantMessageSource) {
+  if (!target || typeof target.postMessage !== "function") return;
+  try {
+    target.postMessage({ source:"MILITOPO_LIVE_SYNC_STATUS", payload:participantSyncSnapshot() }, "*");
+  } catch (_) {}
+}
 function enqueueParticipantEvent(kind, payload) {
   const cleanPayload = payload || {};
   const event = {
@@ -532,6 +559,7 @@ function enqueueParticipantEvent(kind, payload) {
   const queue = readQueue();
   queue.push(event);
   writeQueue(queue);
+  publishParticipantSyncStatus();
   flushParticipantQueue();
 }
 
@@ -580,13 +608,18 @@ async function bindParticipantEvent(ctx) {
   participantUnsubActive = onValue(ref(db, activeRunPath(eventKey)), async snap => {
     const active = snap.val();
     if (active && active.status === "active" && active.runId) {
+      participantActiveRunAvailable = true;
       participantRunId = String(active.runId);
       persistParticipantContext({...participantContext,liveRunId:participantRunId});
+      publishParticipantSyncStatus();
       try { await markParticipantReady(); await flushParticipantQueue(); } catch (error) { console.warn("MILITOPO LIVE participante", error); }
+      publishParticipantSyncStatus();
     } else {
+      participantActiveRunAvailable = false;
       const savedRunId=String(participantContext?.liveRunId||"");
       const hasPending=readQueue().some(event=>event.eventKey===participantEventKey&&String(event.participantId||"")===String(participantContext?.participantId||""));
       participantRunId=hasPending?savedRunId:"";
+      publishParticipantSyncStatus();
       if(participantRunId)flushParticipantQueue();
     }
   }, error => console.warn("MILITOPO LIVE · sesión participante", error));
@@ -634,8 +667,12 @@ async function applyParticipantEvent(event) {
 }
 
 async function flushParticipantQueue() {
-  if (participantFlushBusy || !firebaseConnected || !db || !currentUser || !participantRunId || !participantContext) return;
+  if (participantFlushBusy || !firebaseConnected || !db || !currentUser || !participantRunId || !participantContext) {
+    publishParticipantSyncStatus();
+    return;
+  }
   participantFlushBusy = true;
+  publishParticipantSyncStatus();
   try {
     let queue = readQueue();
     while (queue.length) {
@@ -646,12 +683,17 @@ async function flushParticipantQueue() {
         await applyParticipantEvent(event);
         queue.splice(index,1);
         writeQueue(queue);
+        publishParticipantSyncStatus();
       } catch (error) {
         console.warn("MILITOPO LIVE · evento pendiente", error);
+        publishParticipantSyncStatus();
         break;
       }
     }
-  } finally { participantFlushBusy = false; }
+  } finally {
+    participantFlushBusy = false;
+    publishParticipantSyncStatus();
+  }
 }
 
 function handleParticipantMessage(event) {
@@ -659,10 +701,12 @@ function handleParticipantMessage(event) {
   if (!msg || msg.source !== "MILITOPO_LIVE_V2" || !msg.payload) return;
   const ctx = msg.payload;
   if (!ctx.eventId || !ctx.participantId) return;
+  participantMessageSource = event.source || participantMessageSource;
   persistParticipantContext(ctx);
+  publishParticipantSyncStatus();
   if (db && currentUser) bindParticipantEvent(ctx);
   if (msg.kind === "READY") {
-    if (participantRunId) markParticipantReady().catch(()=>{});
+    if (participantRunId) markParticipantReady().then(()=>publishParticipantSyncStatus()).catch(()=>publishParticipantSyncStatus());
     return;
   }
   enqueueParticipantEvent(msg.kind, ctx);
@@ -681,6 +725,7 @@ async function initFirebase() {
         if (!firebaseConnected) setMessage("Sin conexión. MILITOPO continúa funcionando de forma local.", "warn");
       }
       updateOrganizerButtons();
+      publishParticipantSyncStatus();
       if (firebaseConnected) flushParticipantQueue();
     });
 
@@ -691,6 +736,7 @@ async function initFirebase() {
         if (user) setMessage("Firebase preparado. Puedes iniciar la carrera en vivo.", "ok");
       }
       updateOrganizerButtons();
+      publishParticipantSyncStatus();
       if (user && participantContext) bindParticipantEvent(participantContext);
     });
 
@@ -702,6 +748,7 @@ async function initFirebase() {
       setBadge("live2DbBadge", "FIREBASE · ERROR", "error");
       setMessage(`No se pudo iniciar Firebase: ${error.message}. MILITOPO local sigue operativo.`, "error");
     }
+    publishParticipantSyncStatus();
   }
 }
 
