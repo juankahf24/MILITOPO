@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · aviso offline detallado y escáner participante a pantalla completa */
-const MILITOPO_CACHE = "militopo-orientacion-offline-finish-scanner-fullscreen-20260628-v1";
+/* MILITOPO Orientación · llegada organizada plegable en Paso 5 */
+const MILITOPO_CACHE = "militopo-orientacion-step5-finish-collapsible-20260628-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",

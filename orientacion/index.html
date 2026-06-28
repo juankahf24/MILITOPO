@@ -198,7 +198,7 @@
   </div>
   <div class="block" id="organizerQrSequenceBlock" style="margin-top:16px;">
     <h3>🚦 SALIDAS ORGANIZADAS</h3>
-        <div class="organizer-flow-grid">
+        <div id="organizerFlowGrid" class="organizer-flow-grid" style="grid-template-columns:1fr;">
         <div class="block">
             <label>Asignación de recorridos a participantes y salida organizada</label>
             <select id="startFlowParticipantSelect" onchange="setStartFlowParticipantFromSelect()"></select>
@@ -215,7 +215,7 @@
             <div id="organizerStartPayload" class="organizer-payload"></div>
         </div>
 
-        <div class="block">
+        <div id="finishOrganizedBlock" class="block" style="display:none;">
             <label>Llegada organizada</label>
             <select id="finishFlowParticipantSelect" onchange="renderFinishFlowQr()"></select>
             <div class="organizer-step-buttons" style="grid-template-columns:1fr;">
@@ -251,6 +251,10 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:14px;">
+        <button id="toggleFinishOrganizedBtn" class="btn secondary" type="button" style="width:100%;min-height:54px;" aria-expanded="false" onclick="toggleFinishOrganizedPanel()">🏁 ABRIR LLEGADA ORGANIZADA</button>
     </div>
 
     <div class="block" id="step5StatusBlock" style="margin-top:16px;">
