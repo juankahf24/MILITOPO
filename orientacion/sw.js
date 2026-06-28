@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · precisión GPS 15 m y estado de sincronización */
-const MILITOPO_CACHE = "militopo-orientacion-gps-sync-status-20260626-v1";
+/* MILITOPO Orientación · precisión visible antes de salida y llegada por GPS */
+const MILITOPO_CACHE = "militopo-orientacion-gps-finish-20260628-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
