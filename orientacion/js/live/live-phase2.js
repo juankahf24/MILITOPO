@@ -550,28 +550,39 @@ function readQueue() {
 function writeQueue(queue) {
   try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue.slice(-300))); } catch (_) {}
 }
-function participantPendingQueueCount() {
-  if (!participantContext) return 0;
+function participantPendingQueueSummary() {
+  if (!participantContext) return { total:0, controls:0, result:false, start:false };
   const eventKey = participantEventKey || safeFirebaseKey(participantContext.eventId || "");
   const pid = String(participantContext.participantId || "");
-  return readQueue().filter(event => event.eventKey === eventKey && String(event.participantId || "") === pid).length;
+  const own = readQueue().filter(event => event.eventKey === eventKey && String(event.participantId || "") === pid);
+  return {
+    total: own.length,
+    controls: own.filter(event => event.kind === "CONTROL").length,
+    result: own.some(event => event.kind === "FINISH"),
+    start: own.some(event => event.kind === "START")
+  };
+}
+function participantPendingQueueCount() {
+  return participantPendingQueueSummary().total;
 }
 function participantSyncSnapshot() {
-  const pending = participantPendingQueueCount();
+  const summary = participantPendingQueueSummary();
+  const pending = summary.total;
+  const extra = { pending, pendingControls:summary.controls, pendingResult:summary.result, pendingStart:summary.start };
   const lastSyncAt = loadParticipantLastSync() || "";
   if ((!participantActiveRunAvailable && pending === 0) || !participantRunId) {
-    return { state:"inactive", text:"⚪ CARRERA EN VIVO NO ACTIVA", pending, lastSyncAt };
+    return { state:"inactive", text:"⚪ CARRERA EN VIVO NO ACTIVA", lastSyncAt, ...extra };
   }
   if (!firebaseConnected || !db || !currentUser) {
-    return { state:"offline", text:"🟠 SIN COBERTURA · GUARDADO EN EL MÓVIL", pending, lastSyncAt };
+    return { state:"offline", text:"🟠 SIN COBERTURA · GUARDADO EN EL MÓVIL", lastSyncAt, ...extra };
   }
   if (pending > 0) {
-    return { state:"syncing", text:`🔄 SINCRONIZANDO ${pending} ${pending === 1 ? "CAMBIO" : "CAMBIOS"}`, pending, lastSyncAt };
+    return { state:"syncing", text:`🔄 SINCRONIZANDO ${pending} ${pending === 1 ? "CAMBIO" : "CAMBIOS"}`, lastSyncAt, ...extra };
   }
   if (participantFlushBusy || !participantPresenceConfirmed) {
-    return { state:"syncing", text:"🔄 SINCRONIZANDO CON EN VIVO", pending:0, lastSyncAt };
+    return { state:"syncing", text:"🔄 SINCRONIZANDO CON EN VIVO", lastSyncAt, ...extra };
   }
-  return { state:"synced", text:"🟢 EN VIVO · SINCRONIZADO", pending:0, lastSyncAt };
+  return { state:"synced", text:"🟢 EN VIVO · SINCRONIZADO", lastSyncAt, ...extra };
 }
 function publishParticipantSyncStatus(target = participantMessageSource) {
   if (!target || typeof target.postMessage !== "function") return;
