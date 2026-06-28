@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · reconexión en vivo y resultado GPS seguro */
-const MILITOPO_CACHE = "militopo-orientacion-live-reconnect-result-20260628-v2";
+/* MILITOPO Orientación · aviso resultado superior y hora de sincronización */
+const MILITOPO_CACHE = "militopo-orientacion-finish-top-last-sync-20260628-v3";
 const CORE_ASSETS = [
   "./",
   "./index.html",
