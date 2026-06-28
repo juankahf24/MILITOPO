@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · llegada automática al completar todos los controles */
-const MILITOPO_CACHE = "militopo-orientacion-finish-auto-complete-confirm-pending-20260628-v1";
+/* MILITOPO Orientación · aviso offline detallado y escáner participante a pantalla completa */
+const MILITOPO_CACHE = "militopo-orientacion-offline-finish-scanner-fullscreen-20260628-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
