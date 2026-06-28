@@ -56,6 +56,10 @@ let participantFlushBusy = false;
 let participantMessageSource = null;
 let participantActiveRunAvailable = false;
 let participantLastImportNoticeKey = "";
+let participantPresenceConfirmed = false;
+let participantHeartbeatTimer = null;
+let organizerAutoImportTimer = null;
+let organizerLatestRows = [];
 
 const $ = id => document.getElementById(id);
 
@@ -275,7 +279,7 @@ async function processFinishedResults(rows){
 }
 
 function stateLabel(status, online, resultImported = false) {
-  if (resultImported) return { cls:"imported", label:"FINALIZADO ✓" };
+  if (resultImported) return { cls:"imported", label:"FINALIZADO CON RESULTADO" };
   if (online === false && status !== "finished") return { cls:"offline", label:"SIN CONEXIÓN" };
   if (status === "racing") return { cls:"racing", label:"EN CARRERA" };
   if (status === "finished") return { cls:"finished", label:"FINALIZADO" };
@@ -338,6 +342,7 @@ function sortOrganizerParticipants(participants) {
 function renderOrganizerParticipants(participantsValue) {
   const participants = participantsValue && typeof participantsValue === "object" ? participantsValue : {};
   const rows = sortOrganizerParticipants(participants);
+  organizerLatestRows = rows;
   const counts = { total: rows.length, pending:0, racing:0, finished:0 };
   rows.forEach(p => {
     if (typeof window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS === "function") {
@@ -539,6 +544,9 @@ function participantSyncSnapshot() {
   if (pending > 0) {
     return { state:"syncing", text:`🔄 SINCRONIZANDO ${pending} ${pending === 1 ? "CAMBIO" : "CAMBIOS"}`, pending };
   }
+  if (participantFlushBusy || !participantPresenceConfirmed) {
+    return { state:"syncing", text:"🔄 SINCRONIZANDO CON EN VIVO", pending:0 };
+  }
   return { state:"synced", text:"🟢 EN VIVO · SINCRONIZADO", pending:0 };
 }
 function publishParticipantSyncStatus(target = participantMessageSource) {
@@ -568,12 +576,20 @@ function bindParticipantOwnRecord() {
   const ownRef = ref(db, participantPath(participantEventKey, participantRunId, participantContext.participantId));
   participantUnsubOwnRecord = onValue(ownRef, snap => {
     const data = snap.val();
+    if (data && data.online === true && (!data.connectedUid || data.connectedUid === currentUser?.uid)) {
+      participantPresenceConfirmed = true;
+      publishParticipantSyncStatus();
+    }
     if (!data || data.resultImported !== true) return;
     const noticeKey = `${participantRunId}:${data.resultImportHash || data.resultImportedClient || data.finishTime || "imported"}`;
     if (participantLastImportNoticeKey === noticeKey) return;
     participantLastImportNoticeKey = noticeKey;
     publishParticipantResultImported(data);
-  }, error => console.warn("MILITOPO LIVE · confirmación de importación", error));
+  }, error => {
+    participantPresenceConfirmed = false;
+    publishParticipantSyncStatus();
+    console.warn("MILITOPO LIVE · confirmación de importación", error);
+  });
 }
 function enqueueParticipantEvent(kind, payload) {
   const cleanPayload = payload || {};
@@ -623,8 +639,24 @@ async function markParticipantReady() {
   };
   const readyName = String(ctx.participantName || "").trim();
   if (readyName) readyData.participantName = readyName;
-  await update(pRef, readyData);
-  onDisconnect(pRef).update({online:false,lastSeen:serverTimestamp(),lastSeenClient:nowIso()}).catch(()=>{});
+  if (ctx.startTime) readyData.startTime = ctx.startTime;
+  if (ctx.finishTime) {
+    readyData.finishTime = ctx.finishTime;
+    readyData.completed = !!ctx.completed;
+    readyData.missingControlsCount = Array.isArray(ctx.missingControls) ? ctx.missingControls.length : Number(ctx.missingControlsCount) || 0;
+    const savedResultCode = String(ctx.resultCode || "").trim();
+    if (savedResultCode) readyData.resultCode = savedResultCode;
+  }
+  try {
+    await update(pRef, readyData);
+    participantPresenceConfirmed = true;
+    onDisconnect(pRef).update({online:false,lastSeen:serverTimestamp(),lastSeenClient:nowIso()}).catch(()=>{});
+    publishParticipantSyncStatus();
+  } catch (error) {
+    participantPresenceConfirmed = false;
+    publishParticipantSyncStatus();
+    throw error;
+  }
 }
 
 async function bindParticipantEvent(ctx) {
@@ -646,6 +678,7 @@ async function bindParticipantEvent(ctx) {
       publishParticipantSyncStatus();
     } else {
       participantActiveRunAvailable = false;
+      participantPresenceConfirmed = false;
       if (typeof participantUnsubOwnRecord === "function") participantUnsubOwnRecord();
       participantUnsubOwnRecord = null;
       const savedRunId=String(participantContext?.liveRunId||"");
@@ -683,7 +716,9 @@ async function applyParticipantEvent(event) {
   } else if (event.kind === "CONTROL") {
     Object.assign(common, { status:payload.finishTime ? "finished" : "racing", lastScanStatus:String(payload.scanStatus || ""), startTime:payload.startTime || null });
   } else if (event.kind === "FINISH") {
-    Object.assign(common, { status:"finished", finishTime:payload.finishTime || payload.clientTime || nowIso(), startTime:payload.startTime || null, completed:!!payload.completed, resultCode:String(payload.resultCode || ""), resultImportStatus:"pending", resultImported:false, missingControlsCount:Array.isArray(payload.missingControls)?payload.missingControls.length:Number(payload.missingControlsCount)||0 });
+    Object.assign(common, { status:"finished", finishTime:payload.finishTime || payload.clientTime || nowIso(), startTime:payload.startTime || null, completed:!!payload.completed, missingControlsCount:Array.isArray(payload.missingControls)?payload.missingControls.length:Number(payload.missingControlsCount)||0 });
+    const finishResultCode = String(payload.resultCode || "").trim();
+    if (finishResultCode) common.resultCode = finishResultCode;
   } else {
     Object.assign(common, { status:payload.finishTime ? "finished" : (payload.startTime ? "racing" : "ready") });
   }
@@ -696,6 +731,8 @@ async function applyParticipantEvent(event) {
     receivedAt:serverTimestamp()
   });
   await update(ref(db, pBase), common);
+  participantPresenceConfirmed = true;
+  publishParticipantSyncStatus();
 }
 
 async function flushParticipantQueue() {
@@ -728,6 +765,26 @@ async function flushParticipantQueue() {
   }
 }
 
+async function recoverParticipantConnection() {
+  if (!participantContext || !firebaseConnected || !db || !currentUser) {
+    participantPresenceConfirmed = false;
+    publishParticipantSyncStatus();
+    return;
+  }
+  try {
+    if (!participantEventKey) await bindParticipantEvent(participantContext);
+    if (participantRunId) {
+      await markParticipantReady();
+      bindParticipantOwnRecord();
+    }
+    await flushParticipantQueue();
+  } catch (error) {
+    participantPresenceConfirmed = false;
+    publishParticipantSyncStatus();
+    console.warn("MILITOPO LIVE · reconexión participante", error);
+  }
+}
+
 function handleParticipantMessage(event) {
   const msg = event.data;
   if (!msg || msg.source !== "MILITOPO_LIVE_V2" || !msg.payload) return;
@@ -739,6 +796,7 @@ function handleParticipantMessage(event) {
   publishParticipantSyncStatus();
   if (db && currentUser) bindParticipantEvent(ctx);
   if (msg.kind === "READY") {
+    participantPresenceConfirmed = false;
     if (participantRunId) {
       bindParticipantOwnRecord();
       markParticipantReady().then(()=>publishParticipantSyncStatus()).catch(()=>publishParticipantSyncStatus());
@@ -756,13 +814,14 @@ async function initFirebase() {
 
     onValue(ref(db, ".info/connected"), snap => {
       firebaseConnected = snap.val() === true;
+      if (!firebaseConnected) participantPresenceConfirmed = false;
       if (!isParticipantAccess()) {
         setBadge("live2DbBadge", firebaseConnected ? "FIREBASE · CONECTADO" : "FIREBASE · SIN CONEXIÓN", firebaseConnected ? "ok" : "error");
         if (!firebaseConnected) setMessage("Sin conexión. MILITOPO continúa funcionando de forma local.", "warn");
       }
       updateOrganizerButtons();
       publishParticipantSyncStatus();
-      if (firebaseConnected) flushParticipantQueue();
+      if (firebaseConnected) recoverParticipantConnection();
     });
 
     onAuthStateChanged(auth, user => {
@@ -772,8 +831,12 @@ async function initFirebase() {
         if (user) setMessage("Firebase preparado. Puedes iniciar la carrera en vivo.", "ok");
       }
       updateOrganizerButtons();
+      if (!user) participantPresenceConfirmed = false;
       publishParticipantSyncStatus();
-      if (user && participantContext) bindParticipantEvent(participantContext);
+      if (user && participantContext) {
+        bindParticipantEvent(participantContext);
+        recoverParticipantConnection();
+      }
     });
 
     await signInAnonymously(auth);
@@ -790,11 +853,26 @@ async function initFirebase() {
 
 function initLivePhase2() {
   const participant = isParticipantAccess();
-  if (!participant) startOrganizerContextWatcher();
-  else restoreParticipantContext();
+  if (!participant) {
+    startOrganizerContextWatcher();
+    organizerAutoImportTimer = window.setInterval(() => {
+      if (organizerLatestRows.length) processFinishedResults(organizerLatestRows).catch(error=>console.warn("MILITOPO LIVE · reintento resultados",error));
+    }, 2500);
+  } else {
+    restoreParticipantContext();
+    participantHeartbeatTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") recoverParticipantConnection();
+    }, 12000);
+  }
   window.addEventListener("message", handleParticipantMessage);
-  window.addEventListener("online", flushParticipantQueue);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") flushParticipantQueue(); });
+  window.addEventListener("online", recoverParticipantConnection);
+  window.addEventListener("offline", () => {
+    participantPresenceConfirmed = false;
+    publishParticipantSyncStatus();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") recoverParticipantConnection();
+  });
   initFirebase();
 }
 
