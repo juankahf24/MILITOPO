@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · confirmación llegada GPS y recordatorio de activación */
-const MILITOPO_CACHE = "militopo-orientacion-gps-finish-confirm-start-reminder-20260628-v1";
+/* MILITOPO Orientación · llegada automática al completar todos los controles */
+const MILITOPO_CACHE = "militopo-orientacion-finish-auto-complete-confirm-pending-20260628-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
