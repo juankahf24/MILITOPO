@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · aviso resultado superior y hora de sincronización */
-const MILITOPO_CACHE = "militopo-orientacion-finish-top-last-sync-20260628-v3";
+/* MILITOPO Orientación · confirmación llegada GPS y recordatorio de activación */
+const MILITOPO_CACHE = "militopo-orientacion-gps-finish-confirm-start-reminder-20260628-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
