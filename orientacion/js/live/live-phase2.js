@@ -30,6 +30,7 @@ const QUEUE_KEY = "militopo_live_v2_pending_events";
 const PARTICIPANT_CONTEXT_KEY = "militopo_live_v2_participant_context";
 const ORGANIZER_RUN_KEY_PREFIX = "militopo_live_v2_organizer_run_";
 const AUTO_IMPORT_KEY_PREFIX = "militopo_live_v2_auto_import_";
+const PARTICIPANT_LAST_SYNC_KEY_PREFIX = "militopo_live_v2_last_sync_";
 
 let app = null;
 let auth = null;
@@ -57,6 +58,8 @@ let participantMessageSource = null;
 let participantActiveRunAvailable = false;
 let participantLastImportNoticeKey = "";
 let participantPresenceConfirmed = false;
+let participantLastSyncAt = "";
+let participantLastSyncIdentity = "";
 let participantHeartbeatTimer = null;
 let organizerAutoImportTimer = null;
 let organizerLatestRows = [];
@@ -79,6 +82,26 @@ function safeFirebaseKey(value) {
 }
 
 function nowIso() { return new Date().toISOString(); }
+
+function participantLastSyncKey(ctx = participantContext) {
+  if (!ctx?.eventId || !ctx?.participantId) return "";
+  return PARTICIPANT_LAST_SYNC_KEY_PREFIX + safeFirebaseKey(ctx.eventId) + ":" + safeFirebaseKey(ctx.participantId);
+}
+function loadParticipantLastSync(ctx = participantContext) {
+  const key = participantLastSyncKey(ctx);
+  if (!key) return "";
+  if (participantLastSyncIdentity === key) return participantLastSyncAt;
+  participantLastSyncIdentity = key;
+  try { participantLastSyncAt = String(localStorage.getItem(key) || ""); } catch (_) { participantLastSyncAt = ""; }
+  return participantLastSyncAt;
+}
+function confirmParticipantSync(value = nowIso()) {
+  const key = participantLastSyncKey();
+  if (!key) return;
+  participantLastSyncIdentity = key;
+  participantLastSyncAt = String(value || nowIso());
+  try { localStorage.setItem(key, participantLastSyncAt); } catch (_) {}
+}
 
 function isParticipantAccess() {
   try {
@@ -535,19 +558,20 @@ function participantPendingQueueCount() {
 }
 function participantSyncSnapshot() {
   const pending = participantPendingQueueCount();
+  const lastSyncAt = loadParticipantLastSync() || "";
   if ((!participantActiveRunAvailable && pending === 0) || !participantRunId) {
-    return { state:"inactive", text:"⚪ CARRERA EN VIVO NO ACTIVA", pending };
+    return { state:"inactive", text:"⚪ CARRERA EN VIVO NO ACTIVA", pending, lastSyncAt };
   }
   if (!firebaseConnected || !db || !currentUser) {
-    return { state:"offline", text:"🟠 SIN COBERTURA · GUARDADO EN EL MÓVIL", pending };
+    return { state:"offline", text:"🟠 SIN COBERTURA · GUARDADO EN EL MÓVIL", pending, lastSyncAt };
   }
   if (pending > 0) {
-    return { state:"syncing", text:`🔄 SINCRONIZANDO ${pending} ${pending === 1 ? "CAMBIO" : "CAMBIOS"}`, pending };
+    return { state:"syncing", text:`🔄 SINCRONIZANDO ${pending} ${pending === 1 ? "CAMBIO" : "CAMBIOS"}`, pending, lastSyncAt };
   }
   if (participantFlushBusy || !participantPresenceConfirmed) {
-    return { state:"syncing", text:"🔄 SINCRONIZANDO CON EN VIVO", pending:0 };
+    return { state:"syncing", text:"🔄 SINCRONIZANDO CON EN VIVO", pending:0, lastSyncAt };
   }
-  return { state:"synced", text:"🟢 EN VIVO · SINCRONIZADO", pending:0 };
+  return { state:"synced", text:"🟢 EN VIVO · SINCRONIZADO", pending:0, lastSyncAt };
 }
 function publishParticipantSyncStatus(target = participantMessageSource) {
   if (!target || typeof target.postMessage !== "function") return;
@@ -611,6 +635,7 @@ function enqueueParticipantEvent(kind, payload) {
 
 function persistParticipantContext(ctx) {
   participantContext = ctx;
+  loadParticipantLastSync(ctx);
   try { localStorage.setItem(PARTICIPANT_CONTEXT_KEY, JSON.stringify(ctx)); } catch (_) {}
 }
 function restoreParticipantContext() {
@@ -650,6 +675,7 @@ async function markParticipantReady() {
   try {
     await update(pRef, readyData);
     participantPresenceConfirmed = true;
+    confirmParticipantSync();
     onDisconnect(pRef).update({online:false,lastSeen:serverTimestamp(),lastSeenClient:nowIso()}).catch(()=>{});
     publishParticipantSyncStatus();
   } catch (error) {
@@ -732,6 +758,7 @@ async function applyParticipantEvent(event) {
   });
   await update(ref(db, pBase), common);
   participantPresenceConfirmed = true;
+  confirmParticipantSync();
   publishParticipantSyncStatus();
 }
 
