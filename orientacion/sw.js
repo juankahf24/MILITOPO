@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · precisión visible antes de salida y llegada por GPS */
-const MILITOPO_CACHE = "militopo-orientacion-gps-finish-20260628-v1";
+/* MILITOPO Orientación · reconexión en vivo y resultado GPS seguro */
+const MILITOPO_CACHE = "militopo-orientacion-live-reconnect-result-20260628-v2";
 const CORE_ASSETS = [
   "./",
   "./index.html",
