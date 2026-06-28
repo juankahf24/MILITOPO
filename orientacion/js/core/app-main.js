@@ -88,6 +88,7 @@ function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={}
 function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){
     if(typeof hideZipProgress==='function')hideZipProgress();
 
+    const previousAppStep=currentAppStep;
     currentAppStep=normalizeAppStep(n);
     saveCurrentStepNow();
 
@@ -126,7 +127,11 @@ function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.
         setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers();cleanupStep2ImportAndTableUi()},200);
     }
     if(currentAppStep===4){runExerciseVerifier(false)}
-    if(currentAppStep===5){updateOrganizerParticipantSelects();prepareStartFlow()}
+    if(currentAppStep===5){
+        if(previousAppStep!==5)setFinishOrganizedPanelOpen(false);
+        updateOrganizerParticipantSelects();
+        prepareStartFlow();
+    }
     if(currentAppStep===6)renderResultsControl();
 
     if(!opts.noScroll)window.scrollTo({top:0,behavior:"smooth"});
@@ -3006,6 +3011,32 @@ window.MILITOPO_LIVE_SYNC_STARTFLOW_STATUS=function(participantId,status){
         return true;
     }catch(_){return false;}
 };
+
+function setFinishOrganizedPanelOpen(open){
+    const panel=document.getElementById("finishOrganizedBlock");
+    const button=document.getElementById("toggleFinishOrganizedBtn");
+    const grid=document.getElementById("organizerFlowGrid");
+    if(!panel||!button)return;
+
+    const isOpen=Boolean(open);
+    panel.style.display=isOpen?"block":"none";
+    button.textContent=isOpen?"OCULTAR LLEGADA ORGANIZADA":"🏁 ABRIR LLEGADA ORGANIZADA";
+    button.className=isOpen?"btn red":"btn secondary";
+    button.style.width="100%";
+    button.style.minHeight="54px";
+    button.setAttribute("aria-expanded",isOpen?"true":"false");
+    if(grid)grid.style.gridTemplateColumns=isOpen?"":"1fr";
+
+    if(!isOpen&&typeof stopStep5ResultQrCamera==="function"){
+        try{stopStep5ResultQrCamera()}catch(_){ }
+    }
+}
+
+function toggleFinishOrganizedPanel(){
+    const panel=document.getElementById("finishOrganizedBlock");
+    if(!panel)return;
+    setFinishOrganizedPanelOpen(panel.style.display==="none"||getComputedStyle(panel).display==="none");
+}
 
 function ensureStep5FlowVisualStyles(){
     if(document.getElementById("step5FlowVisualStyles"))return;
