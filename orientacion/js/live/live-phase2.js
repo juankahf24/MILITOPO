@@ -50,10 +50,12 @@ let participantContext = null;
 let participantEventKey = "";
 let participantRunId = "";
 let participantUnsubActive = null;
+let participantUnsubOwnRecord = null;
 let participantPresenceRef = null;
 let participantFlushBusy = false;
 let participantMessageSource = null;
 let participantActiveRunAvailable = false;
+let participantLastImportNoticeKey = "";
 
 const $ = id => document.getElementById(id);
 
@@ -545,6 +547,34 @@ function publishParticipantSyncStatus(target = participantMessageSource) {
     target.postMessage({ source:"MILITOPO_LIVE_SYNC_STATUS", payload:participantSyncSnapshot() }, "*");
   } catch (_) {}
 }
+function publishParticipantResultImported(data, target = participantMessageSource) {
+  if (!target || typeof target.postMessage !== "function" || !data) return;
+  try {
+    target.postMessage({
+      source:"MILITOPO_LIVE_RESULT_IMPORTED",
+      payload:{
+        participantId:String(data.participantId || participantContext?.participantId || ""),
+        routeId:String(data.routeId || participantContext?.routeId || ""),
+        resultImportStatus:String(data.resultImportStatus || "imported"),
+        resultImportedAt:data.resultImportedClient || data.finishTime || nowIso()
+      }
+    }, "*");
+  } catch (_) {}
+}
+function bindParticipantOwnRecord() {
+  if (typeof participantUnsubOwnRecord === "function") participantUnsubOwnRecord();
+  participantUnsubOwnRecord = null;
+  if (!db || !currentUser || !participantContext || !participantEventKey || !participantRunId) return;
+  const ownRef = ref(db, participantPath(participantEventKey, participantRunId, participantContext.participantId));
+  participantUnsubOwnRecord = onValue(ownRef, snap => {
+    const data = snap.val();
+    if (!data || data.resultImported !== true) return;
+    const noticeKey = `${participantRunId}:${data.resultImportHash || data.resultImportedClient || data.finishTime || "imported"}`;
+    if (participantLastImportNoticeKey === noticeKey) return;
+    participantLastImportNoticeKey = noticeKey;
+    publishParticipantResultImported(data);
+  }, error => console.warn("MILITOPO LIVE · confirmación de importación", error));
+}
 function enqueueParticipantEvent(kind, payload) {
   const cleanPayload = payload || {};
   const event = {
@@ -612,10 +642,12 @@ async function bindParticipantEvent(ctx) {
       participantRunId = String(active.runId);
       persistParticipantContext({...participantContext,liveRunId:participantRunId});
       publishParticipantSyncStatus();
-      try { await markParticipantReady(); await flushParticipantQueue(); } catch (error) { console.warn("MILITOPO LIVE participante", error); }
+      try { await markParticipantReady(); bindParticipantOwnRecord(); await flushParticipantQueue(); } catch (error) { console.warn("MILITOPO LIVE participante", error); }
       publishParticipantSyncStatus();
     } else {
       participantActiveRunAvailable = false;
+      if (typeof participantUnsubOwnRecord === "function") participantUnsubOwnRecord();
+      participantUnsubOwnRecord = null;
       const savedRunId=String(participantContext?.liveRunId||"");
       const hasPending=readQueue().some(event=>event.eventKey===participantEventKey&&String(event.participantId||"")===String(participantContext?.participantId||""));
       participantRunId=hasPending?savedRunId:"";
@@ -701,12 +733,16 @@ function handleParticipantMessage(event) {
   if (!msg || msg.source !== "MILITOPO_LIVE_V2" || !msg.payload) return;
   const ctx = msg.payload;
   if (!ctx.eventId || !ctx.participantId) return;
+  if (event.source && participantMessageSource !== event.source) participantLastImportNoticeKey = "";
   participantMessageSource = event.source || participantMessageSource;
   persistParticipantContext(ctx);
   publishParticipantSyncStatus();
   if (db && currentUser) bindParticipantEvent(ctx);
   if (msg.kind === "READY") {
-    if (participantRunId) markParticipantReady().then(()=>publishParticipantSyncStatus()).catch(()=>publishParticipantSyncStatus());
+    if (participantRunId) {
+      bindParticipantOwnRecord();
+      markParticipantReady().then(()=>publishParticipantSyncStatus()).catch(()=>publishParticipantSyncStatus());
+    }
     return;
   }
   enqueueParticipantEvent(msg.kind, ctx);
