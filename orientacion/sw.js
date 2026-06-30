@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · llegada organizada plegable en Paso 5 */
-const MILITOPO_CACHE = "militopo-orientacion-step5-finish-collapsible-20260628-v1";
+/* MILITOPO Orientación · GPS precisión 10 m, 3 lecturas y avisos reforzados */
+const MILITOPO_CACHE = "militopo-orientacion-gps-10m-3lecturas-avisos-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
