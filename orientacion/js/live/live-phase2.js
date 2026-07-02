@@ -105,9 +105,10 @@ function confirmParticipantSync(value = nowIso()) {
 
 function isParticipantAccess() {
   try {
+    const path = String(location.pathname || "").toLowerCase();
+    if (path.includes("/orientacion/participante/")) return true;
     const params = new URLSearchParams(location.search || "");
-    if ((params.get("modo") || "").toLowerCase() === "participante") return true;
-    return localStorage.getItem("militopo_orientacion_access_mode_v1") === "participante";
+    return (params.get("modo") || "").toLowerCase() === "participante";
   } catch (_) { return false; }
 }
 
