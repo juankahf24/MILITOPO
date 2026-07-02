@@ -4158,8 +4158,8 @@ function base64UrlDecodeUtf8(value){
 }
 
 function safeParticipantBaseUrl(){
-    try{return window.location.origin+window.location.pathname;}
-    catch(e){return "./";}
+    try{return new URL("./participante/",window.location.href).toString();}
+    catch(e){return "./participante/";}
 }
 
 function buildParticipantWebEventData(pid){
