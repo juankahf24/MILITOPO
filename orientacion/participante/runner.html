@@ -54,6 +54,25 @@ body.camera-open{overflow:hidden!important;overscroll-behavior:none;touch-action
   .scan{grid-template-columns:62px 1fr 34px;gap:6px}
 }
 
+body.route-loaded .simple-participant-app{padding-top:8px}
+body.route-loaded #race,body.route-loaded #gpsProximity{position:relative!important;inset:auto!important;width:100%;max-width:100%;margin-left:0;margin-right:0}
+@media(max-width:520px){
+ body.route-loaded .simple-card{padding:12px 11px 13px;margin-bottom:10px;border-radius:20px}
+ body.route-loaded .simple-step{width:32px;height:32px;border-radius:11px;margin-bottom:7px;font-size:.86rem}
+ body.route-loaded .simple-card h2{font-size:1.05rem;margin-bottom:8px}
+ body.route-loaded .next{font-size:1.12rem;padding:10px;margin-top:7px;border-radius:16px}
+ body.route-loaded .btn{min-height:46px;margin-top:7px;padding:8px 10px;font-size:.78rem}
+ body.route-loaded #scans{max-height:170px;overflow:auto;overscroll-behavior:contain;padding-right:2px}
+ body.route-loaded .scan{grid-template-columns:56px 1fr 30px;font-size:.72rem;padding:7px 6px;margin-top:6px}
+ body.route-loaded .gps-title{font-size:.92rem;margin-bottom:7px}
+ body.route-loaded .gps-metrics{gap:6px;margin:7px 0}
+ body.route-loaded .gps-metric{padding:8px 5px;border-radius:12px}
+ body.route-loaded .gps-metric small{font-size:.62rem}.gps-metric b{font-size:.88rem}
+ body.route-loaded .live-sync-status{margin-top:7px;padding:6px 7px;font-size:.64rem}
+ body.route-loaded .live-last-sync{padding:5px 7px;font-size:.58rem}
+ body.route-loaded .gps-actions{gap:5px}
+}
+
 .result-open{animation:resultReveal .45s ease both;box-shadow:0 0 0 3px rgba(240,193,106,.24),0 24px 54px rgba(0,0,0,.38)!important}.result-open .simple-step{transform:scale(1.08);box-shadow:0 0 0 6px rgba(240,193,106,.14),0 10px 22px rgba(0,0,0,.28)}@keyframes resultReveal{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
 
 /* MILITOPO · GPS DE PROXIMIDAD DENTRO DE LA APP PARTICIPANTE */
@@ -67,7 +86,7 @@ body.camera-open{overflow:hidden!important;overscroll-behavior:none;touch-action
 .live-sync-status{margin:10px 0 0;padding:8px 10px;border-radius:12px 12px 8px 8px;text-align:center;font-size:.72rem;line-height:1.25;font-weight:900;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.16)}.live-sync-status.is-synced{color:#eaffd8;border-color:rgba(139,181,106,.55);background:rgba(139,181,106,.14)}.live-sync-status.is-offline{color:#ffe0a0;border-color:rgba(230,188,122,.48);background:rgba(151,103,34,.14)}.live-sync-status.is-syncing{color:#d5edff;border-color:rgba(93,168,255,.42);background:rgba(70,139,206,.14)}.live-sync-status.is-inactive{color:#d6cfbf;border-color:rgba(203,184,148,.28);background:rgba(255,255,255,.045)}
 .live-last-sync{margin:0 0 4px;padding:6px 10px;border-radius:0 0 12px 12px;text-align:center;font-size:.66rem;line-height:1.3;font-weight:900;color:#cbb894;background:rgba(0,0,0,.13);border:1px solid rgba(255,255,255,.09);border-top:0;letter-spacing:.02em}
 .gps-finish-notice{display:none;margin:0 0 14px;padding:0;animation:finishNoticeReveal .38s ease both}.gps-finish-notice.open{display:block}.gps-finish-card{width:100%;padding:22px 18px;border-radius:28px;border:2px solid rgba(139,181,106,.72);background:radial-gradient(circle at 50% 0,rgba(139,181,106,.16),transparent 38%),linear-gradient(180deg,#27351d,#12190d);box-shadow:0 18px 46px rgba(0,0,0,.46);text-align:center}.gps-finish-icon{font-size:48px;line-height:1}.gps-finish-title{margin-top:9px;font-size:1.24rem;font-weight:1000;color:#eaffd8}.gps-finish-text{margin:9px 0 16px;color:#f5e6c8;font-size:.9rem;line-height:1.45;white-space:pre-line}.gps-finish-card .btn{width:100%}@keyframes finishNoticeReveal{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
-.gps-choice-overlay{position:fixed;inset:0;z-index:120000;display:none;place-items:center;padding:18px;background:rgba(5,10,4,.86);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}.gps-choice-overlay.open{display:grid}.gps-choice-card{width:min(92vw,520px);padding:24px 18px;border-radius:28px;border:2px solid rgba(240,193,106,.72);background:radial-gradient(circle at 50% 0,rgba(240,193,106,.16),transparent 38%),linear-gradient(180deg,#2d2a1d,#12150e);box-shadow:0 22px 60px rgba(0,0,0,.58);text-align:center}.gps-choice-icon{font-size:52px;line-height:1}.gps-choice-title{margin-top:9px;font-size:1.22rem;font-weight:1000;color:#fff0c8}.gps-choice-text{margin:10px 0 16px;color:#f5e6c8;font-size:.9rem;line-height:1.48}.gps-choice-actions{display:grid;grid-template-columns:1fr;gap:9px}.gps-choice-actions .btn{margin-top:0;width:100%}
+.gps-choice-overlay{position:fixed;inset:0;z-index:120000;display:none;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 12px;overflow:auto;overscroll-behavior:contain;background:rgba(5,10,4,.86);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}.gps-choice-overlay.open{display:grid}.gps-choice-card{width:min(94vw,520px);max-height:calc(100dvh - env(safe-area-inset-top,0px) - 22px);overflow:auto;padding:20px 16px;border-radius:28px;border:2px solid rgba(240,193,106,.72);background:radial-gradient(circle at 50% 0,rgba(240,193,106,.16),transparent 38%),linear-gradient(180deg,#2d2a1d,#12150e);box-shadow:0 22px 60px rgba(0,0,0,.58);text-align:center}.gps-choice-icon{font-size:52px;line-height:1}.gps-choice-title{margin-top:9px;font-size:1.22rem;font-weight:1000;color:#fff0c8}.gps-choice-text{margin:10px 0 16px;color:#f5e6c8;font-size:.9rem;line-height:1.48}.gps-choice-actions{display:grid;grid-template-columns:1fr;gap:9px}.gps-choice-actions .btn{margin-top:0;width:100%}
 #gpsLockOverlay{position:fixed;inset:0;z-index:100000;display:none;place-items:center;padding:18px;background:radial-gradient(circle at 50% 25%,#4b341f,#17120d 72%);color:#fff8e8;touch-action:none;user-select:none}
 #gpsLockOverlay.open{display:grid}.gps-lock-card{width:min(92vw,520px);text-align:center;padding:26px 18px;border:2px solid #d9ab58;border-radius:28px;background:rgba(24,18,12,.96);box-shadow:0 18px 55px rgba(0,0,0,.55)}
 .gps-lock-icon{font-size:54px}.gps-lock-target{font-size:46px;font-weight:900;margin:8px 0;color:#ffd982}.gps-unlock{margin-top:22px;width:100%;padding:18px;border-radius:18px;border:1px solid #e4bd78;background:#5b3b21;color:#fff;font-weight:900;position:relative;overflow:hidden}.gps-unlock:before{content:"";position:absolute;inset:0;transform:scaleX(0);transform-origin:left;background:rgba(255,217,130,.28)}.gps-unlock.holding:before{transform:scaleX(1);transition:transform 2.2s linear}
@@ -1906,6 +1925,7 @@ function gpsProgressData(){
     const completed=gpsCorrectCount();
     return{completed,total:expected.length,pending:Math.max(0,expected.length-completed)};
 }
+function notifyParentDialog(open){try{if(window.parent&&window.parent!==window)window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:open?"DIALOG_OPEN":"DIALOG_CLOSE"},"*")}catch(e){}}
 function showGpsArrivalConfirm(){
     if(!route||!log||!log.startTime||log.finishTime||gpsFinishConfirmOpen)return false;
     const p=gpsProgressData();
@@ -1915,6 +1935,7 @@ function showGpsArrivalConfirm(){
     text.textContent="Has llegado con "+p.completed+" de "+p.total+" controles completados. Si terminas ahora, se importará el resultado con "+p.pending+" control"+(p.pending===1?" pendiente.":"es pendientes.");
     gpsFinishConfirmOpen=true;
     box.classList.add("open");
+    notifyParentDialog(true);
     setGpsStatus("Llegada detectada. Confirma si quieres terminar la carrera.","ok");
     return true;
 }
@@ -1922,6 +1943,7 @@ function closeGpsArrivalConfirm(){
     const box=gpsEl("gpsArrivalConfirm");
     if(box)box.classList.remove("open");
     gpsFinishConfirmOpen=false;
+    notifyParentDialog(false);
 }
 function continueGpsRace(){
     closeGpsArrivalConfirm();
@@ -1946,11 +1968,13 @@ function showGpsStartReminder(){
     if(!box)return;
     gpsStartReminderOpen=true;
     box.classList.add("open");
+    notifyParentDialog(true);
 }
 function closeGpsStartReminder(){
     const box=gpsEl("gpsStartReminder");
     if(box)box.classList.remove("open");
     gpsStartReminderOpen=false;
+    notifyParentDialog(false);
 }
 async function activateGpsFromStartReminder(){
     closeGpsStartReminder();
@@ -2183,7 +2207,7 @@ function restoreBestSavedRun(silent){
     log=best;save();renderLoaded();notifyMilitopoLive("READY");if(!silent)toast("Recorrido restaurado correctamente");return true;
 }
 
-function renderLoaded(){document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences()}
+function renderLoaded(){document.body.classList.add("route-loaded");document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences()}
 function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=log.scans.filter(s=>s.status==="correct").length;const expected=exp[done]||"FINISH";const dup=log.scans.some(s=>s.controlId===id);let status=dup?"duplicate":id===expected?"correct":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});save();renderNext();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
 function scanStatusLabel(status){return {correct:"Correcto",out_of_order:"Fuera de orden",wrong:"Incorrecto",duplicate:"Duplicado"}[String(status||"")]||"Estado desconocido"}
 function scanStatusMessage(status,expected){return {correct:"Baliza correcta",out_of_order:"Fuera de orden. Tocaba "+expected,wrong:"Baliza incorrecta: no pertenece a tu recorrido",duplicate:"Baliza duplicada"}[String(status||"")]||"Baliza registrada"}

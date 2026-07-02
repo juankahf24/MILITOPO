@@ -140,6 +140,8 @@
     if(msg.action==="RESET_REQUEST")showResetDialog(msg.payload||{});
     if(msg.action==="CAMERA_OPEN")document.body.classList.add("camera-active");
     if(msg.action==="CAMERA_CLOSE")document.body.classList.remove("camera-active");
+    if(msg.action==="DIALOG_OPEN")document.body.classList.add("participant-dialog-active");
+    if(msg.action==="DIALOG_CLOSE")document.body.classList.remove("participant-dialog-active");
   });
   document.addEventListener("click",async event=>{
     if(event.target.closest("[data-close-dialog]")){closeDialog(event.target.closest(".shell-dialog"));return;}
