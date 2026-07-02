@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css" />
+<link rel="stylesheet" href="css/styles.css?v=participant-independent-v1" />
 
 
 
@@ -82,7 +82,7 @@
 <span class="orientation-branch-icon">🧭</span>
 <span>Orientación</span>
 </a>
-<button id="installMilitopoOrientationBtn" type="button" class="orientation-branch-btn orientation-install-btn" aria-label="Instalar MILITOPO como aplicación en Android">
+<button id="installMilitopoOrientationBtn" type="button" class="orientation-branch-btn orientation-install-btn" aria-label="Mostrar instalación de MILITOPO Participante">
 <span class="orientation-branch-icon">📲</span>
 <span class="orientation-branch-text">APP</span>
 </button>
@@ -371,8 +371,8 @@
     </div>
 </div>
 
-<script src="js/app.js?v=modular-fase2-20260605"></script>
-<script type="module" src="js/live/live-phase2.js?v=firebase-phase2-20260623"></script>
+<script src="js/app.js?v=participant-independent-v1"></script>
+<script type="module" src="js/live/live-phase2.js?v=participant-independent-v1"></script>
 <script>
 (function(){
   if (!("serviceWorker" in navigator) || !("caches" in window) || !/^https?:$/.test(location.protocol)) return;
@@ -396,90 +396,56 @@
 
 
 <script>
-/* MILITOPO · instalación APP con selector Android / iPhone desde Orientación */
+/* MILITOPO · QR de instalación de la PWA independiente del participante */
 (() => {
-    let deferredInstallPrompt = null;
-    const installButton = document.getElementById("installMilitopoOrientationBtn");
-    if (!installButton) return;
-    const textNode = installButton.querySelector(".orientation-branch-text");
-    const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-    const setInstalledState = () => {
-        installButton.classList.remove("is-ready");
-        installButton.setAttribute("aria-label", "MILITOPO ya está instalado");
-        if (textNode) textNode.textContent = "APP ✓";
+    const appButton=document.getElementById("installMilitopoOrientationBtn");
+    if(!appButton)return;
+    const participantInstallUrl=platform=>{
+        const url=new URL("./participante/",window.location.href);
+        url.searchParams.set("modo","participante");
+        url.searchParams.set("install",platform);
+        return url.toString();
     };
-    const buildPlatformModal = () => {
-        let modal = document.getElementById("militopoPlatformModal");
-        if (modal) return modal;
-        modal = document.createElement("div");
-        modal.id = "militopoPlatformModal";
-        modal.className = "militopo-platform-modal";
-        modal.innerHTML = `
-            <div class="militopo-platform-card" role="dialog" aria-modal="true" aria-labelledby="militopoPlatformTitle">
-                <div class="militopo-platform-head">
-                    <div><h3 id="militopoPlatformTitle">¿Qué sistema utilizas?</h3><p id="militopoPlatformSubtitle">Elige tu dispositivo para instalar MILITOPO.</p></div>
-                    <button type="button" class="militopo-platform-close" aria-label="Cerrar">✕</button>
-                </div>
-                <div class="militopo-platform-options">
-                    <button type="button" class="militopo-platform-choice" data-platform="android"><span class="platform-icon">🤖</span><strong>ANDROID</strong><small>Instalación automática</small></button>
-                    <button type="button" class="militopo-platform-choice" data-platform="iphone"><span class="platform-icon">📱</span><strong>iPHONE</strong><small>Añadir a inicio</small></button>
-                </div>
-                <div class="militopo-iphone-instructions">
-                    <ol>
-                        <li><span>1</span>Darle a los “TRES PUNTOS” de al lado del navegador.</li>
-                        <li><span>2</span>COMPARTIR</li>
-                        <li><span>3</span>VER MÁS</li>
-                        <li><span>4</span>AÑADIR A PANTALLA DE INICIO</li>
-                        <li><span>5</span>BOTÓN AZUL “AÑADIR”</li>
-                    </ol>
-                    <button type="button" class="militopo-platform-back">← VOLVER</button>
-                </div>
-            </div>`;
-        document.body.appendChild(modal);
-        return modal;
+    const buildModal=()=>{
+        let modal=document.getElementById("militopoPlatformModal");if(modal)return modal;
+        modal=document.createElement("div");modal.id="militopoPlatformModal";modal.className="militopo-platform-modal";
+        modal.innerHTML=`<div class="militopo-platform-card" role="dialog" aria-modal="true" aria-labelledby="militopoPlatformTitle">
+          <div class="militopo-platform-head"><div><h3 id="militopoPlatformTitle">MILITOPO PARTICIPANTE</h3><p id="militopoPlatformSubtitle">Elige el móvil del participante.</p></div><button type="button" class="militopo-platform-close" aria-label="Cerrar">✕</button></div>
+          <div class="militopo-platform-options">
+            <button type="button" class="militopo-platform-choice" data-platform="android"><span class="platform-icon">🤖</span><strong>ANDROID</strong><small>QR de instalación</small></button>
+            <button type="button" class="militopo-platform-choice" data-platform="ios"><span class="platform-icon">🍎</span><strong>iPHONE</strong><small>QR para Safari</small></button>
+          </div>
+          <div class="militopo-participant-install-view">
+            <div id="militopoInstallPlatformIcon" class="militopo-install-platform-icon">📱</div>
+            <h4 id="militopoInstallQrTitle">Instalar MILITOPO Participante</h4>
+            <p id="militopoInstallQrHelp"></p>
+            <div id="militopoParticipantInstallQr" class="militopo-participant-install-qr">Generando QR…</div>
+            <div class="militopo-install-actions"><button type="button" class="militopo-copy-install-link">🔗 COPIAR ENLACE</button><button type="button" class="militopo-platform-back">← VOLVER</button></div>
+          </div>
+        </div>`;
+        document.body.appendChild(modal);return modal;
     };
-    const openPlatformModal = () => {
-        const modal = buildPlatformModal();
-        modal.querySelector(".militopo-platform-options").style.display = "grid";
-        modal.querySelector(".militopo-iphone-instructions").classList.remove("is-visible");
-        modal.querySelector("#militopoPlatformTitle").textContent = "¿Qué sistema utilizas?";
-        modal.querySelector("#militopoPlatformSubtitle").textContent = "Elige tu dispositivo para instalar MILITOPO.";
-        modal.classList.add("is-open");
-    };
-    const closePlatformModal = () => buildPlatformModal().classList.remove("is-open");
-    if (isStandalone()) setInstalledState();
-    window.addEventListener("beforeinstallprompt", event => {
-        event.preventDefault();
-        deferredInstallPrompt = event;
-        installButton.classList.add("is-ready");
-        if (textNode && !isStandalone()) textNode.textContent = "APP";
-    });
-    installButton.addEventListener("click", openPlatformModal);
-    document.addEventListener("click", async event => {
-        const modal = document.getElementById("militopoPlatformModal");
-        if (!modal) return;
-        if (event.target === modal || event.target.closest(".militopo-platform-close")) { closePlatformModal(); return; }
-        if (event.target.closest(".militopo-platform-back")) { openPlatformModal(); return; }
-        const choice = event.target.closest(".militopo-platform-choice");
-        if (!choice) return;
-        if (choice.dataset.platform === "iphone") {
-            modal.querySelector(".militopo-platform-options").style.display = "none";
-            modal.querySelector(".militopo-iphone-instructions").classList.add("is-visible");
-            modal.querySelector("#militopoPlatformTitle").textContent = "Instalar en iPhone";
-            modal.querySelector("#militopoPlatformSubtitle").textContent = "Sigue estos pasos en el navegador:";
-            return;
+    const showChoices=()=>{const modal=buildModal();modal.querySelector(".militopo-platform-options").style.display="grid";modal.querySelector(".militopo-participant-install-view").classList.remove("is-visible");modal.querySelector("#militopoPlatformTitle").textContent="MILITOPO PARTICIPANTE";modal.querySelector("#militopoPlatformSubtitle").textContent="Elige el móvil del participante.";modal.classList.add("is-open")};
+    const close=()=>buildModal().classList.remove("is-open");
+    async function showInstallQr(platform){
+        const modal=buildModal(),url=participantInstallUrl(platform),box=modal.querySelector("#militopoParticipantInstallQr");modal.dataset.installUrl=url;
+        modal.querySelector(".militopo-platform-options").style.display="none";modal.querySelector(".militopo-participant-install-view").classList.add("is-visible");
+        const ios=platform==="ios";modal.querySelector("#militopoInstallPlatformIcon").textContent=ios?"🍎":"🤖";modal.querySelector("#militopoInstallQrTitle").textContent=ios?"Instalar en iPhone":"Instalar en Android";
+        modal.querySelector("#militopoInstallQrHelp").textContent=ios?"El participante escanea este QR con la cámara, abre Safari y sigue los pasos para añadir la app a inicio.":"El participante escanea este QR con su cámara, abre Chrome y pulsa INSTALAR APLICACIÓN.";
+        box.textContent="Generando QR…";
+        try{const data=await QRCode.toDataURL(url,{margin:4,width:390,errorCorrectionLevel:"M"});box.innerHTML=`<img src="${data}" alt="QR para instalar MILITOPO Participante"><small>Escanea con el móvil del participante</small>`}catch(error){box.innerHTML=`<div class="status err">No se pudo generar el QR. Usa COPIAR ENLACE.</div>`}
+    }
+    appButton.addEventListener("click",showChoices);
+    document.addEventListener("click",async event=>{
+        const modal=document.getElementById("militopoPlatformModal");if(!modal)return;
+        if(event.target===modal||event.target.closest(".militopo-platform-close")){close();return}
+        if(event.target.closest(".militopo-platform-back")){showChoices();return}
+        const choice=event.target.closest(".militopo-platform-choice");if(choice){showInstallQr(choice.dataset.platform);return}
+        if(event.target.closest(".militopo-copy-install-link")){
+            const url=modal.dataset.installUrl||participantInstallUrl("android");
+            try{await navigator.clipboard.writeText(url);if(typeof toast==="function")toast("Enlace de MILITOPO Participante copiado");else alert("Enlace copiado")}catch(_){prompt("Copia este enlace:",url)}
         }
-        closePlatformModal();
-        if (isStandalone()) { setInstalledState(); alert("MILITOPO ya está instalada en este dispositivo."); return; }
-        if (deferredInstallPrompt) {
-            deferredInstallPrompt.prompt();
-            try { await deferredInstallPrompt.userChoice; }
-            finally { deferredInstallPrompt = null; installButton.classList.remove("is-ready"); }
-            return;
-        }
-        alert("Chrome todavía no ha habilitado la instalación automática. Comprueba que estás usando Chrome, que la web está publicada por HTTPS y recarga la página una vez. Después pulsa APP de nuevo. Si Chrome sigue sin ofrecerla, usa el menú ⋮ → Instalar aplicación.");
     });
-    window.addEventListener("appinstalled", () => { deferredInstallPrompt = null; setInstalledState(); });
 })();
 </script>
 </body>

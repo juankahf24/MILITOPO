@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · GPS precisión 10 m, 3 lecturas y avisos reforzados */
-const MILITOPO_CACHE = "militopo-orientacion-gps-10m-3lecturas-avisos-v1";
+const MILITOPO_CACHE = "militopo-orientacion-participante-independiente-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -12,7 +12,10 @@ const CORE_ASSETS = [
   "./js/results/results-classification-fix.js",
   "./css/styles.css",
   "./js/vendor/qr.js",
-  "./js/qr.js"
+  "./js/qr.js",
+  "./participante/",
+  "./participante/index.html",
+  "./participante/manifest.webmanifest"
 ];
 
 self.addEventListener("install", event => {
