@@ -1,9 +1,8 @@
 /* MILITOPO Orientación · cargador modular seguro fase 2
    No contiene lógica de la app: carga los bloques en orden clásico para mantener compatibilidad. */
 (function(){
-  var VERSION = "modular-fase2-20260605-v82-symbols-f-config";
+  var VERSION = "participant-independent-v1";
   var files = [
-    "js/config/iof-symbols-f.js",
     "js/core/app-main.js",
     "js/pdf/pdf-professional.js",
     "js/results/results-v16.js",
