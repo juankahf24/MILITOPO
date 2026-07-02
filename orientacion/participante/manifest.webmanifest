@@ -1,0 +1,32 @@
+{
+  "name": "MILITOPO Participante",
+  "short_name": "MILITOPO P.",
+  "description": "Aplicación del participante para carreras de orientación MILITOPO.",
+  "id": "./participante-app",
+  "start_url": "./?modo=participante",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#10190b",
+  "theme_color": "#20351f",
+  "lang": "es",
+  "categories": [
+    "sports",
+    "navigation",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "icons/participante-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/participante-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,2474 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>MILITOPO Participante</title>
+<style>
+:root{--p:#344724;--g:#f0c16a;--c:#f5e6c8;--m:#cbb894;--r:#c85e45;--v:#8bb56a}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#10190b,#202916,#151b10);color:var(--c);font-family:"Courier New",monospace}.app{max-width:760px;margin:auto;padding:16px 12px 44px}.card{border-radius:28px;margin:0 0 16px;padding:18px;background:radial-gradient(circle at 88% 10%,rgba(240,193,106,.13),transparent 26%),linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.035)),var(--p);border:1px solid rgba(230,188,122,.28);box-shadow:0 18px 44px rgba(0,0,0,.26)}h1,h2{margin:0 0 12px;color:var(--g);letter-spacing:2px}.status{border-radius:18px;padding:12px;margin-top:10px;background:rgba(0,0,0,.16);border:1px solid rgba(230,188,122,.35);font-weight:900;line-height:1.35}.ok{border-color:rgba(139,181,106,.6);background:rgba(139,181,106,.16)}.err{border-color:rgba(200,94,69,.6);background:rgba(200,94,69,.14)}.btn{width:100%;min-height:54px;border:0;border-radius:999px;margin-top:10px;font-family:inherit;font-weight:900;letter-spacing:.8px;background:linear-gradient(180deg,var(--g),#d79735);color:#261708}.green{background:linear-gradient(180deg,#8bb56a,#5f8838);color:#f7ffe9}.red{background:linear-gradient(180deg,#c85e45,#963d2b);color:#fff4e9}.secondary{background:linear-gradient(180deg,#573a22,#332419);color:var(--c)}input,textarea{width:100%;min-height:48px;border-radius:16px;border:1px solid rgba(230,188,122,.45);background:linear-gradient(180deg,#4e3722,#33261b);color:var(--c);font-family:inherit;font-weight:900;padding:12px;margin-top:10px}.route{font-size:1rem;line-height:1.55;font-weight:900}.next{font-size:clamp(1.5rem,8vw,2.6rem);text-align:center;color:var(--g);padding:16px;border-radius:22px;background:rgba(0,0,0,.18);border:1px solid rgba(230,188,122,.35);margin-top:12px}.scan{display:grid;grid-template-columns:82px 1fr auto;gap:8px;border-radius:14px;padding:10px;margin-top:8px;background:rgba(0,0,0,.15);border:1px solid rgba(230,188,122,.2)}.scan.ok{border-color:rgba(139,181,106,.5)}.scan.bad{border-color:rgba(200,94,69,.6)}video{width:100%;max-height:380px;border-radius:18px;background:#111;object-fit:cover;margin-top:10px}.qr img{width:min(92vw,520px);max-width:100%;background:#fff;padding:18px;border-radius:18px;image-rendering:pixelated;border:4px solid #fff;box-shadow:0 12px 30px rgba(0,0,0,.35)}.qr{text-align:center;margin-top:12px}.small{color:var(--m);font-size:.82rem;line-height:1.35}.result-qr-instruction{margin:12px auto 10px;padding:14px 12px;border-radius:18px;background:linear-gradient(180deg,#f0c16a,#d79735);color:#24170a;font-weight:900;text-align:center;line-height:1.35;border:2px solid rgba(255,255,255,.55);box-shadow:0 10px 28px rgba(0,0,0,.35);font-size:1rem;max-width:310px}
+
+.camera-overlay{position:fixed;inset:0;width:100vw;height:100dvh;z-index:99999;background:rgba(4,10,4,.98);display:none;align-items:stretch;justify-content:flex-start;padding:0;overflow:hidden}
+.camera-overlay.active{display:flex}
+body.camera-open{overflow:hidden!important;overscroll-behavior:none;touch-action:none}
+.camera-shell{width:100%;height:100%;max-height:none;overflow:hidden;border-radius:0;background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.035)),#344724;border:0;box-shadow:none;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));display:flex;flex-direction:column}
+.camera-title{flex:0 0 auto;font-weight:900;color:#f0c16a;letter-spacing:1px;font-size:1.18rem;margin:0 0 8px;text-align:center}
+.camera-video{width:100%;height:auto;min-height:0;max-height:none;flex:1 1 auto;border-radius:16px;background:#050505;object-fit:cover;display:block;border:2px solid rgba(240,193,106,.35)}
+.camera-shell .status{flex:0 0 auto;margin-top:8px;padding:9px 10px}
+.camera-help{flex:0 0 auto;font-size:.78rem;color:#cbb894;line-height:1.25;margin-top:7px;text-align:center}
+.camera-shell>.btn{flex:0 0 auto;margin-top:8px;min-height:48px}
+
+
+.offline-safe{border:2px solid rgba(240,193,106,.65);background:rgba(240,193,106,.13);box-shadow:0 10px 28px rgba(0,0,0,.28)}
+.recovery-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+.save-pill{display:inline-block;margin-top:8px;padding:6px 10px;border-radius:999px;background:rgba(139,181,106,.18);border:1px solid rgba(139,181,106,.55);font-size:.78rem;font-weight:900;color:#eaffd8}
+.big-warn{font-size:1.05rem;border-width:2px!important;text-align:center}
+.offline-ready-title{font-size:1.12rem;letter-spacing:1px;margin-bottom:10px;text-align:center;color:#f0c16a}
+.offline-checklist{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0}
+.offline-check{display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:start;padding:10px;border-radius:14px;background:rgba(0,0,0,.18);border:1px solid rgba(230,188,122,.25);text-align:left}
+.offline-check.yes{border-color:rgba(139,181,106,.65);background:rgba(139,181,106,.14)}
+.offline-check.no{border-color:rgba(200,94,69,.7);background:rgba(200,94,69,.16)}
+.offline-check.wait{border-color:rgba(240,193,106,.65);background:rgba(240,193,106,.12)}
+.offline-check b{display:block;color:#f5e6c8;font-size:.93rem;line-height:1.25}
+.offline-check small{display:block;color:#cbb894;font-size:.78rem;line-height:1.28;margin-top:2px}
+.offline-instruction{border-radius:16px;padding:12px;margin-top:10px;background:rgba(0,0,0,.2);border:1px solid rgba(240,193,106,.38);line-height:1.35;text-align:center}
+.offline-instruction.ready{background:rgba(139,181,106,.17);border-color:rgba(139,181,106,.65);color:#eaffd8}
+.offline-instruction.blocked{background:rgba(200,94,69,.16);border-color:rgba(200,94,69,.7);color:#fff4e9}
+
+
+.result-code-title{margin:14px 0 6px;padding:12px;border-radius:16px;background:rgba(240,193,106,.16);border:1px solid rgba(240,193,106,.55);color:#f0c16a;font-weight:900;line-height:1.35;text-align:center}
+#resultText{display:block!important;min-height:118px!important;max-height:190px;resize:none;overflow:auto;font-size:.76rem!important;line-height:1.35!important;padding:12px!important;margin-top:8px!important;word-break:break-all;overflow-wrap:anywhere}
+#resultText{min-height:150px;background:#fff;color:#101010;border:4px solid #f0c16a;font-size:.88rem;line-height:1.35;letter-spacing:.3px;word-break:break-all}
+.qr img{width:min(96vw,620px);padding:24px;border:8px solid #fff}
+
+/* PARTICIPANTE SIMPLE · solo 3 bloques visibles */
+.simple-participant-app{max-width:620px;padding:14px 10px 34px}
+.simple-card{position:relative;padding:18px 16px 20px;margin-bottom:14px}
+.simple-step{width:38px;height:38px;border-radius:14px;background:linear-gradient(180deg,#f0c16a,#d79735);color:#24170a;font-weight:900;display:flex;align-items:center;justify-content:center;margin-bottom:10px;box-shadow:0 8px 18px rgba(0,0,0,.25)}
+.simple-card h2{font-size:1.35rem;margin-bottom:12px}
+.simple-route-box{font-size:.95rem}
+.simple-scans{margin-top:14px}
+#eventInfo,.offline-safe,.offline-ready-title,.offline-checklist,.offline-instruction,.recovery-actions,.save-pill,.small.big-warn{display:none!important}
+#loadParticipantQrBtn{margin-top:12px}
+#result button[onclick="downloadResult()"]{display:none!important}
+.scan{grid-template-columns:72px 1fr 42px;font-size:.86rem}
+@media(max-width:520px){
+  .simple-participant-app{padding:10px 8px 28px}
+  .simple-card{border-radius:22px;padding:16px 14px}
+  .simple-card h2{font-size:1.18rem}
+  .next{font-size:1.35rem}
+  .scan{grid-template-columns:62px 1fr 34px;gap:6px}
+}
+
+.result-open{animation:resultReveal .45s ease both;box-shadow:0 0 0 3px rgba(240,193,106,.24),0 24px 54px rgba(0,0,0,.38)!important}.result-open .simple-step{transform:scale(1.08);box-shadow:0 0 0 6px rgba(240,193,106,.14),0 10px 22px rgba(0,0,0,.28)}@keyframes resultReveal{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+
+/* MILITOPO · GPS DE PROXIMIDAD DENTRO DE LA APP PARTICIPANTE */
+.gps-card{display:none;border-color:rgba(139,181,106,.58);background:radial-gradient(circle at 88% 10%,rgba(139,181,106,.16),transparent 28%),linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.035)),var(--p)}
+.gps-title{font-weight:900;color:var(--g);font-size:1.08rem;line-height:1.25;margin-bottom:10px}
+.gps-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.gps-metric{padding:10px 8px;border-radius:14px;background:rgba(255,255,255,.07);text-align:center;border:1px solid rgba(230,188,122,.16)}
+.gps-metric small{display:block;color:var(--m);font-size:.7rem;font-weight:900}.gps-metric b{display:block;margin-top:4px;font-size:1rem}
+.gps-note{font-size:.76rem;line-height:1.35;color:var(--m);margin-top:10px}
+.gps-actions{display:grid;grid-template-columns:1fr;gap:8px}
+.live-sync-status{margin:10px 0 0;padding:8px 10px;border-radius:12px 12px 8px 8px;text-align:center;font-size:.72rem;line-height:1.25;font-weight:900;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.16)}.live-sync-status.is-synced{color:#eaffd8;border-color:rgba(139,181,106,.55);background:rgba(139,181,106,.14)}.live-sync-status.is-offline{color:#ffe0a0;border-color:rgba(230,188,122,.48);background:rgba(151,103,34,.14)}.live-sync-status.is-syncing{color:#d5edff;border-color:rgba(93,168,255,.42);background:rgba(70,139,206,.14)}.live-sync-status.is-inactive{color:#d6cfbf;border-color:rgba(203,184,148,.28);background:rgba(255,255,255,.045)}
+.live-last-sync{margin:0 0 4px;padding:6px 10px;border-radius:0 0 12px 12px;text-align:center;font-size:.66rem;line-height:1.3;font-weight:900;color:#cbb894;background:rgba(0,0,0,.13);border:1px solid rgba(255,255,255,.09);border-top:0;letter-spacing:.02em}
+.gps-finish-notice{display:none;margin:0 0 14px;padding:0;animation:finishNoticeReveal .38s ease both}.gps-finish-notice.open{display:block}.gps-finish-card{width:100%;padding:22px 18px;border-radius:28px;border:2px solid rgba(139,181,106,.72);background:radial-gradient(circle at 50% 0,rgba(139,181,106,.16),transparent 38%),linear-gradient(180deg,#27351d,#12190d);box-shadow:0 18px 46px rgba(0,0,0,.46);text-align:center}.gps-finish-icon{font-size:48px;line-height:1}.gps-finish-title{margin-top:9px;font-size:1.24rem;font-weight:1000;color:#eaffd8}.gps-finish-text{margin:9px 0 16px;color:#f5e6c8;font-size:.9rem;line-height:1.45;white-space:pre-line}.gps-finish-card .btn{width:100%}@keyframes finishNoticeReveal{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+.gps-choice-overlay{position:fixed;inset:0;z-index:120000;display:none;place-items:center;padding:18px;background:rgba(5,10,4,.86);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}.gps-choice-overlay.open{display:grid}.gps-choice-card{width:min(92vw,520px);padding:24px 18px;border-radius:28px;border:2px solid rgba(240,193,106,.72);background:radial-gradient(circle at 50% 0,rgba(240,193,106,.16),transparent 38%),linear-gradient(180deg,#2d2a1d,#12150e);box-shadow:0 22px 60px rgba(0,0,0,.58);text-align:center}.gps-choice-icon{font-size:52px;line-height:1}.gps-choice-title{margin-top:9px;font-size:1.22rem;font-weight:1000;color:#fff0c8}.gps-choice-text{margin:10px 0 16px;color:#f5e6c8;font-size:.9rem;line-height:1.48}.gps-choice-actions{display:grid;grid-template-columns:1fr;gap:9px}.gps-choice-actions .btn{margin-top:0;width:100%}
+#gpsLockOverlay{position:fixed;inset:0;z-index:100000;display:none;place-items:center;padding:18px;background:radial-gradient(circle at 50% 25%,#4b341f,#17120d 72%);color:#fff8e8;touch-action:none;user-select:none}
+#gpsLockOverlay.open{display:grid}.gps-lock-card{width:min(92vw,520px);text-align:center;padding:26px 18px;border:2px solid #d9ab58;border-radius:28px;background:rgba(24,18,12,.96);box-shadow:0 18px 55px rgba(0,0,0,.55)}
+.gps-lock-icon{font-size:54px}.gps-lock-target{font-size:46px;font-weight:900;margin:8px 0;color:#ffd982}.gps-unlock{margin-top:22px;width:100%;padding:18px;border-radius:18px;border:1px solid #e4bd78;background:#5b3b21;color:#fff;font-weight:900;position:relative;overflow:hidden}.gps-unlock:before{content:"";position:absolute;inset:0;transform:scaleX(0);transform-origin:left;background:rgba(255,217,130,.28)}.gps-unlock.holding:before{transform:scaleX(1);transition:transform 2.2s linear}
+.participant-reset-card{border-color:rgba(200,94,69,.36);background:linear-gradient(180deg,rgba(200,94,69,.08),rgba(255,255,255,.035)),var(--p)}
+.participant-reset-card h2{font-size:1.05rem;color:#ffd0c4}.participant-reset-card .small{margin-bottom:4px}
+html.gps-locked,html.gps-locked body{overflow:hidden}
+</style><script>
+/* QR offline embebido para MILITOPO. Basado en QRCode for JavaScript (Kazuhiko Arase, MIT) */
+(function(global){
+  const __modules = {
+"./QRMode": function(module, exports, require){
+module.exports = {
+    MODE_NUMBER :       1 << 0,
+    MODE_ALPHA_NUM :    1 << 1,
+    MODE_8BIT_BYTE :    1 << 2,
+    MODE_KANJI :        1 << 3
+};
+
+},
+"./QRErrorCorrectLevel": function(module, exports, require){
+module.exports = {
+	L : 1,
+	M : 0,
+	Q : 3,
+	H : 2
+};
+
+
+},
+"./QRMaskPattern": function(module, exports, require){
+module.exports = {
+	PATTERN000 : 0,
+	PATTERN001 : 1,
+	PATTERN010 : 2,
+	PATTERN011 : 3,
+	PATTERN100 : 4,
+	PATTERN101 : 5,
+	PATTERN110 : 6,
+	PATTERN111 : 7
+};
+
+},
+"./QRMath": function(module, exports, require){
+var QRMath = {
+
+	glog : function(n) {
+	
+		if (n < 1) {
+			throw new Error("glog(" + n + ")");
+		}
+		
+		return QRMath.LOG_TABLE[n];
+	},
+	
+	gexp : function(n) {
+	
+		while (n < 0) {
+			n += 255;
+		}
+	
+		while (n >= 256) {
+			n -= 255;
+		}
+	
+		return QRMath.EXP_TABLE[n];
+	},
+	
+	EXP_TABLE : new Array(256),
+	
+	LOG_TABLE : new Array(256)
+
+};
+	
+for (var i = 0; i < 8; i++) {
+	QRMath.EXP_TABLE[i] = 1 << i;
+}
+for (var i = 8; i < 256; i++) {
+	QRMath.EXP_TABLE[i] = QRMath.EXP_TABLE[i - 4]
+		^ QRMath.EXP_TABLE[i - 5]
+		^ QRMath.EXP_TABLE[i - 6]
+		^ QRMath.EXP_TABLE[i - 8];
+}
+for (var i = 0; i < 255; i++) {
+	QRMath.LOG_TABLE[QRMath.EXP_TABLE[i] ] = i;
+}
+
+module.exports = QRMath;
+
+},
+"./QRPolynomial": function(module, exports, require){
+var QRMath = require('./QRMath');
+
+function QRPolynomial(num, shift) {
+	if (num.length === undefined) {
+		throw new Error(num.length + "/" + shift);
+	}
+
+	var offset = 0;
+
+	while (offset < num.length && num[offset] === 0) {
+		offset++;
+	}
+
+	this.num = new Array(num.length - offset + shift);
+	for (var i = 0; i < num.length - offset; i++) {
+		this.num[i] = num[i + offset];
+	}
+}
+
+QRPolynomial.prototype = {
+
+	get : function(index) {
+		return this.num[index];
+	},
+	
+	getLength : function() {
+		return this.num.length;
+	},
+	
+	multiply : function(e) {
+	
+		var num = new Array(this.getLength() + e.getLength() - 1);
+	
+		for (var i = 0; i < this.getLength(); i++) {
+			for (var j = 0; j < e.getLength(); j++) {
+				num[i + j] ^= QRMath.gexp(QRMath.glog(this.get(i) ) + QRMath.glog(e.get(j) ) );
+			}
+		}
+	
+		return new QRPolynomial(num, 0);
+	},
+	
+	mod : function(e) {
+	
+		if (this.getLength() - e.getLength() < 0) {
+			return this;
+		}
+	
+		var ratio = QRMath.glog(this.get(0) ) - QRMath.glog(e.get(0) );
+	
+		var num = new Array(this.getLength() );
+		
+		for (var i = 0; i < this.getLength(); i++) {
+			num[i] = this.get(i);
+		}
+		
+		for (var x = 0; x < e.getLength(); x++) {
+			num[x] ^= QRMath.gexp(QRMath.glog(e.get(x) ) + ratio);
+		}
+	
+		// recursive call
+		return new QRPolynomial(num, 0).mod(e);
+	}
+};
+
+module.exports = QRPolynomial;
+
+},
+"./QRBitBuffer": function(module, exports, require){
+function QRBitBuffer() {
+	this.buffer = [];
+	this.length = 0;
+}
+
+QRBitBuffer.prototype = {
+
+	get : function(index) {
+		var bufIndex = Math.floor(index / 8);
+		return ( (this.buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+	},
+	
+	put : function(num, length) {
+		for (var i = 0; i < length; i++) {
+			this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+		}
+	},
+	
+	getLengthInBits : function() {
+		return this.length;
+	},
+	
+	putBit : function(bit) {
+	
+		var bufIndex = Math.floor(this.length / 8);
+		if (this.buffer.length <= bufIndex) {
+			this.buffer.push(0);
+		}
+	
+		if (bit) {
+			this.buffer[bufIndex] |= (0x80 >>> (this.length % 8) );
+		}
+	
+		this.length++;
+	}
+};
+
+module.exports = QRBitBuffer;
+
+},
+"./QR8bitByte": function(module, exports, require){
+var QRMode = require('./QRMode');
+
+function QR8bitByte(data) {
+	this.mode = QRMode.MODE_8BIT_BYTE;
+	this.data = data;
+}
+
+QR8bitByte.prototype = {
+
+	getLength : function() {
+		return this.data.length;
+	},
+	
+	write : function(buffer) {
+		for (var i = 0; i < this.data.length; i++) {
+			// not JIS ...
+			buffer.put(this.data.charCodeAt(i), 8);
+		}
+	}
+};
+
+module.exports = QR8bitByte;
+
+},
+"./QRRSBlock": function(module, exports, require){
+var QRErrorCorrectLevel = require('./QRErrorCorrectLevel');
+
+function QRRSBlock(totalCount, dataCount) {
+	this.totalCount = totalCount;
+	this.dataCount  = dataCount;
+}
+
+QRRSBlock.RS_BLOCK_TABLE = [
+
+	// L
+	// M
+	// Q
+	// H
+
+	// 1
+	[1, 26, 19],
+	[1, 26, 16],
+	[1, 26, 13],
+	[1, 26, 9],
+	
+	// 2
+	[1, 44, 34],
+	[1, 44, 28],
+	[1, 44, 22],
+	[1, 44, 16],
+
+	// 3
+	[1, 70, 55],
+	[1, 70, 44],
+	[2, 35, 17],
+	[2, 35, 13],
+
+	// 4		
+	[1, 100, 80],
+	[2, 50, 32],
+	[2, 50, 24],
+	[4, 25, 9],
+	
+	// 5
+	[1, 134, 108],
+	[2, 67, 43],
+	[2, 33, 15, 2, 34, 16],
+	[2, 33, 11, 2, 34, 12],
+	
+	// 6
+	[2, 86, 68],
+	[4, 43, 27],
+	[4, 43, 19],
+	[4, 43, 15],
+	
+	// 7		
+	[2, 98, 78],
+	[4, 49, 31],
+	[2, 32, 14, 4, 33, 15],
+	[4, 39, 13, 1, 40, 14],
+	
+	// 8
+	[2, 121, 97],
+	[2, 60, 38, 2, 61, 39],
+	[4, 40, 18, 2, 41, 19],
+	[4, 40, 14, 2, 41, 15],
+	
+	// 9
+	[2, 146, 116],
+	[3, 58, 36, 2, 59, 37],
+	[4, 36, 16, 4, 37, 17],
+	[4, 36, 12, 4, 37, 13],
+	
+	// 10		
+	[2, 86, 68, 2, 87, 69],
+	[4, 69, 43, 1, 70, 44],
+	[6, 43, 19, 2, 44, 20],
+	[6, 43, 15, 2, 44, 16],
+
+	// 11
+	[4, 101, 81],
+	[1, 80, 50, 4, 81, 51],
+	[4, 50, 22, 4, 51, 23],
+	[3, 36, 12, 8, 37, 13],
+
+	// 12
+	[2, 116, 92, 2, 117, 93],
+	[6, 58, 36, 2, 59, 37],
+	[4, 46, 20, 6, 47, 21],
+	[7, 42, 14, 4, 43, 15],
+
+	// 13
+	[4, 133, 107],
+	[8, 59, 37, 1, 60, 38],
+	[8, 44, 20, 4, 45, 21],
+	[12, 33, 11, 4, 34, 12],
+
+	// 14
+	[3, 145, 115, 1, 146, 116],
+	[4, 64, 40, 5, 65, 41],
+	[11, 36, 16, 5, 37, 17],
+	[11, 36, 12, 5, 37, 13],
+
+	// 15
+	[5, 109, 87, 1, 110, 88],
+	[5, 65, 41, 5, 66, 42],
+	[5, 54, 24, 7, 55, 25],
+	[11, 36, 12],
+
+	// 16
+	[5, 122, 98, 1, 123, 99],
+	[7, 73, 45, 3, 74, 46],
+	[15, 43, 19, 2, 44, 20],
+	[3, 45, 15, 13, 46, 16],
+
+	// 17
+	[1, 135, 107, 5, 136, 108],
+	[10, 74, 46, 1, 75, 47],
+	[1, 50, 22, 15, 51, 23],
+	[2, 42, 14, 17, 43, 15],
+
+	// 18
+	[5, 150, 120, 1, 151, 121],
+	[9, 69, 43, 4, 70, 44],
+	[17, 50, 22, 1, 51, 23],
+	[2, 42, 14, 19, 43, 15],
+
+	// 19
+	[3, 141, 113, 4, 142, 114],
+	[3, 70, 44, 11, 71, 45],
+	[17, 47, 21, 4, 48, 22],
+	[9, 39, 13, 16, 40, 14],
+
+	// 20
+	[3, 135, 107, 5, 136, 108],
+	[3, 67, 41, 13, 68, 42],
+	[15, 54, 24, 5, 55, 25],
+	[15, 43, 15, 10, 44, 16],
+
+	// 21
+	[4, 144, 116, 4, 145, 117],
+	[17, 68, 42],
+	[17, 50, 22, 6, 51, 23],
+	[19, 46, 16, 6, 47, 17],
+
+	// 22
+	[2, 139, 111, 7, 140, 112],
+	[17, 74, 46],
+	[7, 54, 24, 16, 55, 25],
+	[34, 37, 13],
+
+	// 23
+	[4, 151, 121, 5, 152, 122],
+	[4, 75, 47, 14, 76, 48],
+	[11, 54, 24, 14, 55, 25],
+	[16, 45, 15, 14, 46, 16],
+
+	// 24
+	[6, 147, 117, 4, 148, 118],
+	[6, 73, 45, 14, 74, 46],
+	[11, 54, 24, 16, 55, 25],
+	[30, 46, 16, 2, 47, 17],
+
+	// 25
+	[8, 132, 106, 4, 133, 107],
+	[8, 75, 47, 13, 76, 48],
+	[7, 54, 24, 22, 55, 25],
+	[22, 45, 15, 13, 46, 16],
+
+	// 26
+	[10, 142, 114, 2, 143, 115],
+	[19, 74, 46, 4, 75, 47],
+	[28, 50, 22, 6, 51, 23],
+	[33, 46, 16, 4, 47, 17],
+
+	// 27
+	[8, 152, 122, 4, 153, 123],
+	[22, 73, 45, 3, 74, 46],
+	[8, 53, 23, 26, 54, 24],
+	[12, 45, 15, 28, 46, 16],
+
+	// 28
+	[3, 147, 117, 10, 148, 118],
+	[3, 73, 45, 23, 74, 46],
+	[4, 54, 24, 31, 55, 25],
+	[11, 45, 15, 31, 46, 16],
+
+	// 29
+	[7, 146, 116, 7, 147, 117],
+	[21, 73, 45, 7, 74, 46],
+	[1, 53, 23, 37, 54, 24],
+	[19, 45, 15, 26, 46, 16],
+
+	// 30
+	[5, 145, 115, 10, 146, 116],
+	[19, 75, 47, 10, 76, 48],
+	[15, 54, 24, 25, 55, 25],
+	[23, 45, 15, 25, 46, 16],
+
+	// 31
+	[13, 145, 115, 3, 146, 116],
+	[2, 74, 46, 29, 75, 47],
+	[42, 54, 24, 1, 55, 25],
+	[23, 45, 15, 28, 46, 16],
+
+	// 32
+	[17, 145, 115],
+	[10, 74, 46, 23, 75, 47],
+	[10, 54, 24, 35, 55, 25],
+	[19, 45, 15, 35, 46, 16],
+
+	// 33
+	[17, 145, 115, 1, 146, 116],
+	[14, 74, 46, 21, 75, 47],
+	[29, 54, 24, 19, 55, 25],
+	[11, 45, 15, 46, 46, 16],
+
+	// 34
+	[13, 145, 115, 6, 146, 116],
+	[14, 74, 46, 23, 75, 47],
+	[44, 54, 24, 7, 55, 25],
+	[59, 46, 16, 1, 47, 17],
+
+	// 35
+	[12, 151, 121, 7, 152, 122],
+	[12, 75, 47, 26, 76, 48],
+	[39, 54, 24, 14, 55, 25],
+	[22, 45, 15, 41, 46, 16],
+
+	// 36
+	[6, 151, 121, 14, 152, 122],
+	[6, 75, 47, 34, 76, 48],
+	[46, 54, 24, 10, 55, 25],
+	[2, 45, 15, 64, 46, 16],
+
+	// 37
+	[17, 152, 122, 4, 153, 123],
+	[29, 74, 46, 14, 75, 47],
+	[49, 54, 24, 10, 55, 25],
+	[24, 45, 15, 46, 46, 16],
+
+	// 38
+	[4, 152, 122, 18, 153, 123],
+	[13, 74, 46, 32, 75, 47],
+	[48, 54, 24, 14, 55, 25],
+	[42, 45, 15, 32, 46, 16],
+
+	// 39
+	[20, 147, 117, 4, 148, 118],
+	[40, 75, 47, 7, 76, 48],
+	[43, 54, 24, 22, 55, 25],
+	[10, 45, 15, 67, 46, 16],
+
+	// 40
+	[19, 148, 118, 6, 149, 119],
+	[18, 75, 47, 31, 76, 48],
+	[34, 54, 24, 34, 55, 25],
+	[20, 45, 15, 61, 46, 16]
+];
+
+QRRSBlock.getRSBlocks = function(typeNumber, errorCorrectLevel) {
+	
+	var rsBlock = QRRSBlock.getRsBlockTable(typeNumber, errorCorrectLevel);
+	
+	if (rsBlock === undefined) {
+		throw new Error("bad rs block @ typeNumber:" + typeNumber + "/errorCorrectLevel:" + errorCorrectLevel);
+	}
+
+	var length = rsBlock.length / 3;
+	
+	var list = [];
+	
+	for (var i = 0; i < length; i++) {
+
+		var count = rsBlock[i * 3 + 0];
+		var totalCount = rsBlock[i * 3 + 1];
+		var dataCount  = rsBlock[i * 3 + 2];
+
+		for (var j = 0; j < count; j++) {
+			list.push(new QRRSBlock(totalCount, dataCount) );	
+		}
+	}
+	
+	return list;
+};
+
+QRRSBlock.getRsBlockTable = function(typeNumber, errorCorrectLevel) {
+
+	switch(errorCorrectLevel) {
+	case QRErrorCorrectLevel.L :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+	case QRErrorCorrectLevel.M :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+	case QRErrorCorrectLevel.Q :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+	case QRErrorCorrectLevel.H :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+	default :
+		return undefined;
+	}
+};
+
+module.exports = QRRSBlock;
+
+},
+"./QRUtil": function(module, exports, require){
+var QRMode = require('./QRMode');
+var QRPolynomial = require('./QRPolynomial');
+var QRMath = require('./QRMath');
+var QRMaskPattern = require('./QRMaskPattern');
+
+var QRUtil = {
+
+    PATTERN_POSITION_TABLE : [
+        [],
+        [6, 18],
+        [6, 22],
+        [6, 26],
+        [6, 30],
+        [6, 34],
+        [6, 22, 38],
+        [6, 24, 42],
+        [6, 26, 46],
+        [6, 28, 50],
+        [6, 30, 54],        
+        [6, 32, 58],
+        [6, 34, 62],
+        [6, 26, 46, 66],
+        [6, 26, 48, 70],
+        [6, 26, 50, 74],
+        [6, 30, 54, 78],
+        [6, 30, 56, 82],
+        [6, 30, 58, 86],
+        [6, 34, 62, 90],
+        [6, 28, 50, 72, 94],
+        [6, 26, 50, 74, 98],
+        [6, 30, 54, 78, 102],
+        [6, 28, 54, 80, 106],
+        [6, 32, 58, 84, 110],
+        [6, 30, 58, 86, 114],
+        [6, 34, 62, 90, 118],
+        [6, 26, 50, 74, 98, 122],
+        [6, 30, 54, 78, 102, 126],
+        [6, 26, 52, 78, 104, 130],
+        [6, 30, 56, 82, 108, 134],
+        [6, 34, 60, 86, 112, 138],
+        [6, 30, 58, 86, 114, 142],
+        [6, 34, 62, 90, 118, 146],
+        [6, 30, 54, 78, 102, 126, 150],
+        [6, 24, 50, 76, 102, 128, 154],
+        [6, 28, 54, 80, 106, 132, 158],
+        [6, 32, 58, 84, 110, 136, 162],
+        [6, 26, 54, 82, 110, 138, 166],
+        [6, 30, 58, 86, 114, 142, 170]
+    ],
+
+    G15 : (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0),
+    G18 : (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0),
+    G15_MASK : (1 << 14) | (1 << 12) | (1 << 10)    | (1 << 4) | (1 << 1),
+
+    getBCHTypeInfo : function(data) {
+        var d = data << 10;
+        while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) >= 0) {
+            d ^= (QRUtil.G15 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) ) );    
+        }
+        return ( (data << 10) | d) ^ QRUtil.G15_MASK;
+    },
+
+    getBCHTypeNumber : function(data) {
+        var d = data << 12;
+        while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) >= 0) {
+            d ^= (QRUtil.G18 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) ) );    
+        }
+        return (data << 12) | d;
+    },
+
+    getBCHDigit : function(data) {
+
+        var digit = 0;
+
+        while (data !== 0) {
+            digit++;
+            data >>>= 1;
+        }
+
+        return digit;
+    },
+
+    getPatternPosition : function(typeNumber) {
+        return QRUtil.PATTERN_POSITION_TABLE[typeNumber - 1];
+    },
+
+    getMask : function(maskPattern, i, j) {
+        
+        switch (maskPattern) {
+            
+        case QRMaskPattern.PATTERN000 : return (i + j) % 2 === 0;
+        case QRMaskPattern.PATTERN001 : return i % 2 === 0;
+        case QRMaskPattern.PATTERN010 : return j % 3 === 0;
+        case QRMaskPattern.PATTERN011 : return (i + j) % 3 === 0;
+        case QRMaskPattern.PATTERN100 : return (Math.floor(i / 2) + Math.floor(j / 3) ) % 2 === 0;
+        case QRMaskPattern.PATTERN101 : return (i * j) % 2 + (i * j) % 3 === 0;
+        case QRMaskPattern.PATTERN110 : return ( (i * j) % 2 + (i * j) % 3) % 2 === 0;
+        case QRMaskPattern.PATTERN111 : return ( (i * j) % 3 + (i + j) % 2) % 2 === 0;
+
+        default :
+            throw new Error("bad maskPattern:" + maskPattern);
+        }
+    },
+
+    getErrorCorrectPolynomial : function(errorCorrectLength) {
+
+        var a = new QRPolynomial([1], 0);
+
+        for (var i = 0; i < errorCorrectLength; i++) {
+            a = a.multiply(new QRPolynomial([1, QRMath.gexp(i)], 0) );
+        }
+
+        return a;
+    },
+
+    getLengthInBits : function(mode, type) {
+
+        if (1 <= type && type < 10) {
+
+            // 1 - 9
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 10;
+            case QRMode.MODE_ALPHA_NUM  : return 9;
+            case QRMode.MODE_8BIT_BYTE  : return 8;
+            case QRMode.MODE_KANJI      : return 8;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else if (type < 27) {
+
+            // 10 - 26
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 12;
+            case QRMode.MODE_ALPHA_NUM  : return 11;
+            case QRMode.MODE_8BIT_BYTE  : return 16;
+            case QRMode.MODE_KANJI      : return 10;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else if (type < 41) {
+
+            // 27 - 40
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 14;
+            case QRMode.MODE_ALPHA_NUM  : return 13;
+            case QRMode.MODE_8BIT_BYTE  : return 16;
+            case QRMode.MODE_KANJI      : return 12;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else {
+            throw new Error("type:" + type);
+        }
+    },
+
+    getLostPoint : function(qrCode) {
+        
+        var moduleCount = qrCode.getModuleCount();
+        var lostPoint = 0;
+        var row = 0; 
+        var col = 0;
+
+        
+        // LEVEL1
+        
+        for (row = 0; row < moduleCount; row++) {
+
+            for (col = 0; col < moduleCount; col++) {
+
+                var sameCount = 0;
+                var dark = qrCode.isDark(row, col);
+
+                for (var r = -1; r <= 1; r++) {
+
+                    if (row + r < 0 || moduleCount <= row + r) {
+                        continue;
+                    }
+
+                    for (var c = -1; c <= 1; c++) {
+
+                        if (col + c < 0 || moduleCount <= col + c) {
+                            continue;
+                        }
+
+                        if (r === 0 && c === 0) {
+                            continue;
+                        }
+
+                        if (dark === qrCode.isDark(row + r, col + c) ) {
+                            sameCount++;
+                        }
+                    }
+                }
+
+                if (sameCount > 5) {
+                    lostPoint += (3 + sameCount - 5);
+                }
+            }
+        }
+
+        // LEVEL2
+
+        for (row = 0; row < moduleCount - 1; row++) {
+            for (col = 0; col < moduleCount - 1; col++) {
+                var count = 0;
+                if (qrCode.isDark(row,     col    ) ) count++;
+                if (qrCode.isDark(row + 1, col    ) ) count++;
+                if (qrCode.isDark(row,     col + 1) ) count++;
+                if (qrCode.isDark(row + 1, col + 1) ) count++;
+                if (count === 0 || count === 4) {
+                    lostPoint += 3;
+                }
+            }
+        }
+
+        // LEVEL3
+
+        for (row = 0; row < moduleCount; row++) {
+            for (col = 0; col < moduleCount - 6; col++) {
+                if (qrCode.isDark(row, col) && 
+                        !qrCode.isDark(row, col + 1) && 
+                         qrCode.isDark(row, col + 2) && 
+                         qrCode.isDark(row, col + 3) && 
+                         qrCode.isDark(row, col + 4) && 
+                        !qrCode.isDark(row, col + 5) && 
+                         qrCode.isDark(row, col + 6) ) {
+                    lostPoint += 40;
+                }
+            }
+        }
+
+        for (col = 0; col < moduleCount; col++) {
+            for (row = 0; row < moduleCount - 6; row++) {
+                if (qrCode.isDark(row, col) &&
+                        !qrCode.isDark(row + 1, col) &&
+                         qrCode.isDark(row + 2, col) &&
+                         qrCode.isDark(row + 3, col) &&
+                         qrCode.isDark(row + 4, col) &&
+                        !qrCode.isDark(row + 5, col) &&
+                         qrCode.isDark(row + 6, col) ) {
+                    lostPoint += 40;
+                }
+            }
+        }
+
+        // LEVEL4
+        
+        var darkCount = 0;
+
+        for (col = 0; col < moduleCount; col++) {
+            for (row = 0; row < moduleCount; row++) {
+                if (qrCode.isDark(row, col) ) {
+                    darkCount++;
+                }
+            }
+        }
+        
+        var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+        lostPoint += ratio * 10;
+
+        return lostPoint;       
+    }
+
+};
+
+module.exports = QRUtil;
+
+},
+"./index": function(module, exports, require){
+//---------------------------------------------------------------------
+// QRCode for JavaScript
+//
+// Copyright (c) 2009 Kazuhiko Arase
+//
+// URL: http://www.d-project.com/
+//
+// Licensed under the MIT license:
+//   http://www.opensource.org/licenses/mit-license.php
+//
+// The word "QR Code" is registered trademark of 
+// DENSO WAVE INCORPORATED
+//   http://www.denso-wave.com/qrcode/faqpatent-e.html
+//
+//---------------------------------------------------------------------
+// Modified to work in node for this project (and some refactoring)
+//---------------------------------------------------------------------
+
+var QR8bitByte = require('./QR8bitByte');
+var QRUtil = require('./QRUtil');
+var QRPolynomial = require('./QRPolynomial');
+var QRRSBlock = require('./QRRSBlock');
+var QRBitBuffer = require('./QRBitBuffer');
+
+function QRCode(typeNumber, errorCorrectLevel) {
+	this.typeNumber = typeNumber;
+	this.errorCorrectLevel = errorCorrectLevel;
+	this.modules = null;
+	this.moduleCount = 0;
+	this.dataCache = null;
+	this.dataList = [];
+}
+
+QRCode.prototype = {
+	
+	addData : function(data) {
+		var newData = new QR8bitByte(data);
+		this.dataList.push(newData);
+		this.dataCache = null;
+	},
+	
+	isDark : function(row, col) {
+		if (row < 0 || this.moduleCount <= row || col < 0 || this.moduleCount <= col) {
+			throw new Error(row + "," + col);
+		}
+		return this.modules[row][col];
+	},
+
+	getModuleCount : function() {
+		return this.moduleCount;
+	},
+	
+	make : function() {
+		// Calculate automatically typeNumber if provided is < 1
+		if (this.typeNumber < 1 ){
+			var typeNumber = 1;
+			for (typeNumber = 1; typeNumber < 40; typeNumber++) {
+				var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, this.errorCorrectLevel);
+
+				var buffer = new QRBitBuffer();
+				var totalDataCount = 0;
+				for (var i = 0; i < rsBlocks.length; i++) {
+					totalDataCount += rsBlocks[i].dataCount;
+				}
+
+				for (var x = 0; x < this.dataList.length; x++) {
+					var data = this.dataList[x];
+					buffer.put(data.mode, 4);
+					buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber) );
+					data.write(buffer);
+				}
+				if (buffer.getLengthInBits() <= totalDataCount * 8)
+					break;
+			}
+			this.typeNumber = typeNumber;
+		}
+		this.makeImpl(false, this.getBestMaskPattern() );
+	},
+	
+	makeImpl : function(test, maskPattern) {
+		
+		this.moduleCount = this.typeNumber * 4 + 17;
+		this.modules = new Array(this.moduleCount);
+		
+		for (var row = 0; row < this.moduleCount; row++) {
+			
+			this.modules[row] = new Array(this.moduleCount);
+			
+			for (var col = 0; col < this.moduleCount; col++) {
+				this.modules[row][col] = null;//(col + row) % 3;
+			}
+		}
+	
+		this.setupPositionProbePattern(0, 0);
+		this.setupPositionProbePattern(this.moduleCount - 7, 0);
+		this.setupPositionProbePattern(0, this.moduleCount - 7);
+		this.setupPositionAdjustPattern();
+		this.setupTimingPattern();
+		this.setupTypeInfo(test, maskPattern);
+		
+		if (this.typeNumber >= 7) {
+			this.setupTypeNumber(test);
+		}
+	
+		if (this.dataCache === null) {
+			this.dataCache = QRCode.createData(this.typeNumber, this.errorCorrectLevel, this.dataList);
+		}
+	
+		this.mapData(this.dataCache, maskPattern);
+	},
+
+	setupPositionProbePattern : function(row, col)  {
+		
+		for (var r = -1; r <= 7; r++) {
+			
+			if (row + r <= -1 || this.moduleCount <= row + r) continue;
+			
+			for (var c = -1; c <= 7; c++) {
+				
+				if (col + c <= -1 || this.moduleCount <= col + c) continue;
+				
+				if ( (0 <= r && r <= 6 && (c === 0 || c === 6) ) || 
+                     (0 <= c && c <= 6 && (r === 0 || r === 6) ) || 
+                     (2 <= r && r <= 4 && 2 <= c && c <= 4) ) {
+					this.modules[row + r][col + c] = true;
+				} else {
+					this.modules[row + r][col + c] = false;
+				}
+			}		
+		}		
+	},
+	
+	getBestMaskPattern : function() {
+	
+		var minLostPoint = 0;
+		var pattern = 0;
+	
+		for (var i = 0; i < 8; i++) {
+			
+			this.makeImpl(true, i);
+	
+			var lostPoint = QRUtil.getLostPoint(this);
+	
+			if (i === 0 || minLostPoint >  lostPoint) {
+				minLostPoint = lostPoint;
+				pattern = i;
+			}
+		}
+	
+		return pattern;
+	},
+	
+	createMovieClip : function(target_mc, instance_name, depth) {
+	
+		var qr_mc = target_mc.createEmptyMovieClip(instance_name, depth);
+		var cs = 1;
+	
+		this.make();
+
+		for (var row = 0; row < this.modules.length; row++) {
+			
+			var y = row * cs;
+			
+			for (var col = 0; col < this.modules[row].length; col++) {
+	
+				var x = col * cs;
+				var dark = this.modules[row][col];
+			
+				if (dark) {
+					qr_mc.beginFill(0, 100);
+					qr_mc.moveTo(x, y);
+					qr_mc.lineTo(x + cs, y);
+					qr_mc.lineTo(x + cs, y + cs);
+					qr_mc.lineTo(x, y + cs);
+					qr_mc.endFill();
+				}
+			}
+		}
+		
+		return qr_mc;
+	},
+
+	setupTimingPattern : function() {
+		
+		for (var r = 8; r < this.moduleCount - 8; r++) {
+			if (this.modules[r][6] !== null) {
+				continue;
+			}
+			this.modules[r][6] = (r % 2 === 0);
+		}
+	
+		for (var c = 8; c < this.moduleCount - 8; c++) {
+			if (this.modules[6][c] !== null) {
+				continue;
+			}
+			this.modules[6][c] = (c % 2 === 0);
+		}
+	},
+	
+	setupPositionAdjustPattern : function() {
+	
+		var pos = QRUtil.getPatternPosition(this.typeNumber);
+		
+		for (var i = 0; i < pos.length; i++) {
+		
+			for (var j = 0; j < pos.length; j++) {
+			
+				var row = pos[i];
+				var col = pos[j];
+				
+				if (this.modules[row][col] !== null) {
+					continue;
+				}
+				
+				for (var r = -2; r <= 2; r++) {
+				
+					for (var c = -2; c <= 2; c++) {
+					
+						if (Math.abs(r) === 2 || 
+                            Math.abs(c) === 2 ||
+                            (r === 0 && c === 0) ) {
+							this.modules[row + r][col + c] = true;
+						} else {
+							this.modules[row + r][col + c] = false;
+						}
+					}
+				}
+			}
+		}
+	},
+	
+	setupTypeNumber : function(test) {
+	
+		var bits = QRUtil.getBCHTypeNumber(this.typeNumber);
+        var mod;
+	
+		for (var i = 0; i < 18; i++) {
+			mod = (!test && ( (bits >> i) & 1) === 1);
+			this.modules[Math.floor(i / 3)][i % 3 + this.moduleCount - 8 - 3] = mod;
+		}
+	
+		for (var x = 0; x < 18; x++) {
+			mod = (!test && ( (bits >> x) & 1) === 1);
+			this.modules[x % 3 + this.moduleCount - 8 - 3][Math.floor(x / 3)] = mod;
+		}
+	},
+	
+	setupTypeInfo : function(test, maskPattern) {
+	
+		var data = (this.errorCorrectLevel << 3) | maskPattern;
+		var bits = QRUtil.getBCHTypeInfo(data);
+        var mod;
+	
+		// vertical		
+		for (var v = 0; v < 15; v++) {
+	
+			mod = (!test && ( (bits >> v) & 1) === 1);
+	
+			if (v < 6) {
+				this.modules[v][8] = mod;
+			} else if (v < 8) {
+				this.modules[v + 1][8] = mod;
+			} else {
+				this.modules[this.moduleCount - 15 + v][8] = mod;
+			}
+		}
+	
+		// horizontal
+		for (var h = 0; h < 15; h++) {
+	
+			mod = (!test && ( (bits >> h) & 1) === 1);
+			
+			if (h < 8) {
+				this.modules[8][this.moduleCount - h - 1] = mod;
+			} else if (h < 9) {
+				this.modules[8][15 - h - 1 + 1] = mod;
+			} else {
+				this.modules[8][15 - h - 1] = mod;
+			}
+		}
+	
+		// fixed module
+		this.modules[this.moduleCount - 8][8] = (!test);
+	
+	},
+	
+	mapData : function(data, maskPattern) {
+		
+		var inc = -1;
+		var row = this.moduleCount - 1;
+		var bitIndex = 7;
+		var byteIndex = 0;
+		
+		for (var col = this.moduleCount - 1; col > 0; col -= 2) {
+	
+			if (col === 6) col--;
+	
+			while (true) {
+	
+				for (var c = 0; c < 2; c++) {
+					
+					if (this.modules[row][col - c] === null) {
+						
+						var dark = false;
+	
+						if (byteIndex < data.length) {
+							dark = ( ( (data[byteIndex] >>> bitIndex) & 1) === 1);
+						}
+	
+						var mask = QRUtil.getMask(maskPattern, row, col - c);
+	
+						if (mask) {
+							dark = !dark;
+						}
+						
+						this.modules[row][col - c] = dark;
+						bitIndex--;
+	
+						if (bitIndex === -1) {
+							byteIndex++;
+							bitIndex = 7;
+						}
+					}
+				}
+								
+				row += inc;
+	
+				if (row < 0 || this.moduleCount <= row) {
+					row -= inc;
+					inc = -inc;
+					break;
+				}
+			}
+		}
+		
+	}
+
+};
+
+QRCode.PAD0 = 0xEC;
+QRCode.PAD1 = 0x11;
+
+QRCode.createData = function(typeNumber, errorCorrectLevel, dataList) {
+	
+	var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectLevel);
+	
+	var buffer = new QRBitBuffer();
+	
+	for (var i = 0; i < dataList.length; i++) {
+		var data = dataList[i];
+		buffer.put(data.mode, 4);
+		buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber) );
+		data.write(buffer);
+	}
+
+	// calc num max data.
+	var totalDataCount = 0;
+	for (var x = 0; x < rsBlocks.length; x++) {
+		totalDataCount += rsBlocks[x].dataCount;
+	}
+
+	if (buffer.getLengthInBits() > totalDataCount * 8) {
+		throw new Error("code length overflow. (" + 
+            buffer.getLengthInBits() + 
+            ">" +  
+            totalDataCount * 8 + 
+            ")");
+	}
+
+	// end code
+	if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+		buffer.put(0, 4);
+	}
+
+	// padding
+	while (buffer.getLengthInBits() % 8 !== 0) {
+		buffer.putBit(false);
+	}
+
+	// padding
+	while (true) {
+		
+		if (buffer.getLengthInBits() >= totalDataCount * 8) {
+			break;
+		}
+		buffer.put(QRCode.PAD0, 8);
+		
+		if (buffer.getLengthInBits() >= totalDataCount * 8) {
+			break;
+		}
+		buffer.put(QRCode.PAD1, 8);
+	}
+
+	return QRCode.createBytes(buffer, rsBlocks);
+};
+
+QRCode.createBytes = function(buffer, rsBlocks) {
+
+	var offset = 0;
+	
+	var maxDcCount = 0;
+	var maxEcCount = 0;
+	
+	var dcdata = new Array(rsBlocks.length);
+	var ecdata = new Array(rsBlocks.length);
+	
+	for (var r = 0; r < rsBlocks.length; r++) {
+
+		var dcCount = rsBlocks[r].dataCount;
+		var ecCount = rsBlocks[r].totalCount - dcCount;
+
+		maxDcCount = Math.max(maxDcCount, dcCount);
+		maxEcCount = Math.max(maxEcCount, ecCount);
+		
+		dcdata[r] = new Array(dcCount);
+		
+		for (var i = 0; i < dcdata[r].length; i++) {
+			dcdata[r][i] = 0xff & buffer.buffer[i + offset];
+		}
+		offset += dcCount;
+		
+		var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+		var rawPoly = new QRPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+		var modPoly = rawPoly.mod(rsPoly);
+		ecdata[r] = new Array(rsPoly.getLength() - 1);
+		for (var x = 0; x < ecdata[r].length; x++) {
+            var modIndex = x + modPoly.getLength() - ecdata[r].length;
+			ecdata[r][x] = (modIndex >= 0)? modPoly.get(modIndex) : 0;
+		}
+
+	}
+	
+	var totalCodeCount = 0;
+	for (var y = 0; y < rsBlocks.length; y++) {
+		totalCodeCount += rsBlocks[y].totalCount;
+	}
+
+	var data = new Array(totalCodeCount);
+	var index = 0;
+
+	for (var z = 0; z < maxDcCount; z++) {
+		for (var s = 0; s < rsBlocks.length; s++) {
+			if (z < dcdata[s].length) {
+				data[index++] = dcdata[s][z];
+			}
+		}
+	}
+
+	for (var xx = 0; xx < maxEcCount; xx++) {
+		for (var t = 0; t < rsBlocks.length; t++) {
+			if (xx < ecdata[t].length) {
+				data[index++] = ecdata[t][xx];
+			}
+		}
+	}
+
+	return data;
+
+};
+
+module.exports = QRCode;
+
+}
+  };
+  const __cache = {};
+  function __require(id){
+    if(__cache[id]) return __cache[id].exports;
+    if(!__modules[id]) throw new Error('Módulo QR no encontrado: '+id);
+    const module = {exports:{}};
+    __cache[id] = module;
+    __modules[id](module, module.exports, __require);
+    return module.exports;
+  }
+
+  const QRCodeModel = __require('./index');
+  const QRErrorCorrectLevel = __require('./QRErrorCorrectLevel');
+
+  function normalizeLevel(level){
+    const x=String(level||'M').toUpperCase();
+    return QRErrorCorrectLevel[x] ?? QRErrorCorrectLevel.M;
+  }
+
+  function makeModel(text, options={}){
+    const qr = new QRCodeModel(0, normalizeLevel(options.errorCorrectionLevel));
+    qr.addData(String(text ?? ''));
+    qr.make();
+    return qr;
+  }
+
+  function matrixFromModel(qr){
+    const n = qr.getModuleCount();
+    const m = [];
+    for(let r=0;r<n;r++){
+      const row=[];
+      for(let c=0;c<n;c++) row.push(!!qr.isDark(r,c));
+      m.push(row);
+    }
+    return m;
+  }
+
+  function drawToCanvas(qr, options={}){
+    const margin = Number.isFinite(options.margin) ? options.margin : 4;
+    const count = qr.getModuleCount();
+    const targetWidth = Math.max(200, Number(options.width)||320);
+    const cell = Math.max(4, Math.floor(targetWidth / (count + margin*2)));
+    const size = (count + margin*2) * cell;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d', {alpha:false});
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0,0,size,size);
+    ctx.fillStyle = '#000000';
+    for(let r=0;r<count;r++){
+      for(let c=0;c<count;c++){
+        if(qr.isDark(r,c)) ctx.fillRect((c+margin)*cell, (r+margin)*cell, cell, cell);
+      }
+    }
+    return canvas;
+  }
+
+  function svgEsc(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function buildSvg(text, label, options={}){
+    const qr = makeModel(text, options);
+    const margin = Number.isFinite(options.margin) ? options.margin : 4;
+    const count = qr.getModuleCount();
+    const cell = Math.max(6, Number(options.cellSize)||10);
+    const size = (count + margin*2) * cell;
+    const title = label || 'QR';
+    const rects = [];
+    for(let r=0;r<count;r++){
+      for(let c=0;c<count;c++){
+        if(qr.isDark(r,c)) rects.push(`<rect x="${(c+margin)*cell}" y="${(r+margin)*cell}" width="${cell}" height="${cell}"/>`);
+      }
+    }
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size+74}" viewBox="0 0 ${size} ${size+74}" shape-rendering="crispEdges">
+<rect width="100%" height="100%" fill="#fff"/>
+<g fill="#000">${rects.join('')}</g>
+<text x="${size/2}" y="${size+28}" text-anchor="middle" font-family="monospace" font-size="20" font-weight="700">${svgEsc(title)}</text>
+<text x="${size/2}" y="${size+54}" text-anchor="middle" font-family="monospace" font-size="9">${svgEsc(String(text))}</text>
+</svg>`;
+  }
+
+  global.QRCode = {
+    toDataURL: function(text, options={}){
+      return new Promise((resolve,reject)=>{
+        try{
+          const canvas = drawToCanvas(makeModel(text, options), options);
+          resolve(canvas.toDataURL('image/png'));
+        }catch(err){ reject(err); }
+      });
+    },
+    toCanvas: function(canvasOrText, textOrOptions, maybeOptions){
+      return new Promise((resolve,reject)=>{
+        try{
+          let canvas, text, options;
+          if(typeof canvasOrText === 'string'){
+            text = canvasOrText; options = textOrOptions || {}; canvas = document.createElement('canvas');
+          } else {
+            canvas = canvasOrText; text = textOrOptions; options = maybeOptions || {};
+          }
+          const qr = makeModel(text, options);
+          const temp = drawToCanvas(qr, options);
+          canvas.width = temp.width; canvas.height = temp.height;
+          const ctx = canvas.getContext('2d', {alpha:false});
+          ctx.drawImage(temp,0,0);
+          resolve(canvas);
+        }catch(err){ reject(err); }
+      });
+    },
+    toString: function(text, options={}){
+      return new Promise((resolve,reject)=>{
+        try{ resolve(buildSvg(text, options.label || 'QR', options)); }catch(err){ reject(err); }
+      });
+    },
+    __offline: true
+  };
+
+  global.makeOfflineQrSvg = function(payload, title='QR'){
+    return buildSvg(String(payload||''), title, {errorCorrectionLevel:'M', margin:4, cellSize:10});
+  };
+  global.__MILITOPO_QR_READY = true;
+})(window);
+</script></head><body><div class="app simple-participant-app">
+<div id="gpsFinishNotice" class="gps-finish-notice" role="dialog" aria-labelledby="gpsFinishTitle" aria-live="assertive">
+  <div class="gps-finish-card">
+    <div class="gps-finish-icon">🏁</div>
+    <div id="gpsFinishTitle" class="gps-finish-title">CARRERA FINALIZADA</div>
+    <div id="gpsFinishText" class="gps-finish-text">Llegada registrada. Preparando el resultado...</div>
+    <button class="btn green" type="button" onclick="closeGpsFinishNotice()">ENTENDIDO</button>
+  </div>
+</div>
+<div id="gpsArrivalConfirm" class="gps-choice-overlay" role="dialog" aria-modal="true" aria-labelledby="gpsArrivalConfirmTitle">
+  <div class="gps-choice-card">
+    <div class="gps-choice-icon">🏁</div>
+    <div id="gpsArrivalConfirmTitle" class="gps-choice-title">¿TERMINAR LA CARRERA?</div>
+    <div id="gpsArrivalConfirmText" class="gps-choice-text">Has llegado a la meta. Confirma si quieres finalizar e importar el resultado.</div>
+    <div class="gps-choice-actions">
+      <button class="btn green" type="button" onclick="confirmGpsArrivalFinish()">🏁 TERMINAR E IMPORTAR RESULTADOS</button>
+      <button class="btn secondary" type="button" onclick="continueGpsRace()">CONTINUAR CARRERA</button>
+    </div>
+  </div>
+</div>
+<div id="gpsStartReminder" class="gps-choice-overlay" role="dialog" aria-modal="true" aria-labelledby="gpsStartReminderTitle">
+  <div class="gps-choice-card">
+    <div class="gps-choice-icon">📍</div>
+    <div id="gpsStartReminderTitle" class="gps-choice-title">GPS DESACTIVADO</div>
+    <div class="gps-choice-text">La SALIDA ya está registrada. Activa el GPS para validar balizas y LLEGADA por proximidad durante la carrera en vivo.</div>
+    <div class="gps-choice-actions">
+      <button class="btn green" type="button" onclick="activateGpsFromStartReminder()">📡 ACTIVAR GPS AHORA</button>
+      <button class="btn secondary" type="button" onclick="closeGpsStartReminder()">CONTINUAR SIN GPS</button>
+    </div>
+  </div>
+</div>
+<section id="participantRouteCard" class="card simple-card">
+  <div class="simple-step">1</div>
+  <h2>Su recorrido</h2>
+  <div id="identity" class="status">Escanea tu QR de participante para cargar el recorrido.</div>
+  <div id="route" class="status simple-route-box">Recorrido pendiente de cargar.</div>
+  <button id="loadParticipantQrBtn" class="btn green" onclick="startQrCamera()">📷 ESCANEAR QR PARTICIPANTE</button>
+  <input id="manualInput" placeholder="Pega aquí el código QR si falla cámara" style="display:none">
+  <button id="manualBtn" class="btn" onclick="loadManual()" style="display:none">CARGAR MANUAL</button>
+</section>
+
+<section id="race" class="card simple-card" style="display:none">
+  <div class="simple-step">2</div>
+  <h2>Escanear controles</h2>
+  <div id="next" class="next">--</div>
+  <button class="btn green" onclick="startQrCamera()">📷 ESCANEAR CONTROL</button>
+  <div id="scans" class="simple-scans"></div>
+</section>
+
+<section id="gpsProximity" class="card simple-card gps-card">
+  <div class="gps-title">📍 VALIDACIÓN AUTOMÁTICA POR PROXIMIDAD</div>
+  <div class="gps-metrics">
+    <div class="gps-metric"><small>Siguiente punto</small><b id="gpsTarget">—</b></div>
+    <div class="gps-metric"><small>Precisión GPS</small><b id="gpsAccuracy">—</b></div>
+  </div>
+  <div id="liveSyncStatus" class="live-sync-status is-inactive" aria-live="polite">⚪ CARRERA EN VIVO NO ACTIVA</div>
+  <div id="liveLastSync" class="live-last-sync">ÚLTIMA SINCRONIZACIÓN EN VIVO · TODAVÍA NO REALIZADA</div>
+  <div class="gps-actions">
+    <button id="gpsStartBtn" class="btn green" onclick="startProximityGps()">📡 ACTIVAR GPS</button>
+    <button id="gpsStopBtn" class="btn secondary" onclick="stopProximityGps(true)" disabled>DETENER GPS</button>
+    <button id="gpsLockBtn" class="btn" onclick="lockRaceScreen()">🔒 BLOQUEAR PANTALLA</button>
+  </div>
+</section>
+
+<section id="result" class="card simple-card" style="display:none">
+  <div class="simple-step">3</div>
+  <h2>Resultado final</h2>
+  <div id="summary" class="status ok"></div>
+  <div id="resultQr" class="qr"></div>
+  <div class="result-code-title">CÓDIGO MANUAL DEL RESULTADO · ORI|RESULT</div>
+  <textarea id="resultText" readonly onclick="this.select()" aria-label="Código manual ORI RESULT para entregar al organizador"></textarea>
+  <button class="btn secondary" onclick="copyResult()">📋 COPIAR CÓDIGO</button>
+</section>
+<section id="participantResetCard" class="card simple-card participant-reset-card" style="display:none">
+  <h2>Preparar otra prueba</h2>
+  <div class="small">Borra el recorrido, el progreso, el resultado, el GPS recordado y la caché exclusiva de MILITOPO Participante.</div>
+  <button class="btn red" type="button" onclick="requestParticipantAppReset()">🗑 BORRAR RECORRIDO Y PREPARAR NUEVA PRUEBA</button>
+</section>
+</div>
+<div id="gpsLockOverlay"><div class="gps-lock-card"><div class="gps-lock-icon">🔒📍</div><div>MODO CARRERA BLOQUEADO</div><div id="gpsLockTarget" class="gps-lock-target">—</div><div id="gpsLockStatus">Activa el GPS para detectar la siguiente baliza.</div><button id="gpsUnlockBtn" class="gps-unlock" type="button">MANTÉN PULSADO 2 SEGUNDOS PARA DESBLOQUEAR</button></div></div>
+<div id="cameraOverlay" class="camera-overlay">
+  <div class="camera-shell">
+    <div id="cameraTitle" class="camera-title">LECTOR QR</div>
+    <video id="video" class="camera-video" playsinline webkit-playsinline muted autoplay></video>
+    <canvas id="canvas" style="display:none"></canvas>
+    <div id="camStatus" class="status">Preparando cámara...</div>
+    <div class="camera-help">Si no ves imagen, cierra y vuelve a pulsar ESCANEAR QR. En iPhone usa Safari con HTTPS.</div>
+    <button class="btn red" onclick="stopQrCamera()">DETENER CÁMARA</button>
+  </div>
+</div>
+
+<div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
+<script>
+const EVENT_DATA=__EVENT_DATA__;let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
+const APP_VERSION="militopo-participante-independiente-v1";
+function notifyMilitopoLive(kind,extra={}){
+    try{
+        if(!route||!pid)return;
+        const expected=(route.points||[]).filter(x=>x!=="START"&&x!=="FINISH");
+        const completed=log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="correct").length:0;
+        const participantName=String((EVENT_DATA.participantNames&&EVENT_DATA.participantNames[pid])||"").trim();
+        let finishPayload="";
+        if(kind==="FINISH"&&log){
+            try{finishPayload=typeof resultPayload==="function"?String(resultPayload()||""):String(log.resultPayload||"")}catch(e){finishPayload=String(log.resultPayload||"")}
+            if(finishPayload)log.resultPayload=finishPayload;
+        }
+        const resultCode=finishPayload?("ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+finishPayload):"";
+        window.parent.postMessage({
+            source:"MILITOPO_LIVE_V2",
+            kind,
+            payload:{
+                eventId:String(EVENT_DATA.eventId||""),
+                eventName:String(EVENT_DATA.eventName||"ENTRENAMIENTO ORIENTACIÓN"),
+                participantId:String(pid||""),
+                participantName,
+                routeId:String(route.routeId||""),
+                totalControls:expected.length,
+                completedControls:completed,
+                pendingControls:Math.max(0,expected.length-completed),
+                startTime:log&&log.startTime?log.startTime:null,
+                finishTime:log&&log.finishTime?log.finishTime:null,
+                completed:!!(log&&log.completed),
+                missingControls:log&&Array.isArray(log.missingControls)?log.missingControls:[],
+                resultCode,
+                clientTime:new Date().toISOString(),
+                ...extra
+            }
+        },"*");
+    }catch(e){}
+}
+
+const JSQR_CACHE_KEY="militopo_jsqr_cache_v1";
+const RUN_WINDOW_PREFIX="MILITOPO_RUN_BACKUP:";
+const RUN_MEMORY={raw:""};
+let offlinePageReady=false,offlinePageChecked=false,qrReaderReady=false;
+function safeNow(){return new Date().toISOString()}
+function baseKey(){return "militopo_runner_"+EVENT_DATA.eventId}
+function allRecoveryKeys(p){return [baseKey()+"_"+p,baseKey(),baseKey()+"_active",baseKey()+"_backup_"+p,baseKey()+"_backup_last",baseKey()+"_emergency_"+p,baseKey()+"_emergency_last",baseKey()+"_checkpoint_"+p]}
+function normalizeLog(x){
+    if(!x||typeof x!=="object")return null;
+    if(!x.eventId)x.eventId=EVENT_DATA.eventId;
+    if(x.eventId!==EVENT_DATA.eventId)return null;
+    if(!Array.isArray(x.scans))x.scans=[];
+    if(!Array.isArray(x.missingControls))x.missingControls=[];
+    return x;
+}
+function chooseBestLog(candidates){
+    const valid=candidates.map(x=>normalizeLog(x)).filter(Boolean);
+    if(!valid.length)return null;
+    valid.sort((a,b)=>{
+        const as=(a.scans||[]).length+(a.startTime?1:0)+(a.finishTime?3:0)+(a.resultPayload?2:0);
+        const bs=(b.scans||[]).length+(b.startTime?1:0)+(b.finishTime?3:0)+(b.resultPayload?2:0);
+        if(as!==bs)return bs-as;
+        return String(b.lastSavedAt||"").localeCompare(String(a.lastSavedAt||""));
+    });
+    return valid[0];
+}
+function safeGet(storage,k){try{return storage&&storage.getItem?storage.getItem(k):null}catch(e){return null}}
+function readJsonRaw(raw){try{return raw?JSON.parse(raw):null}catch(e){return null}}
+function readJsonKey(k){return readJsonRaw(safeGet(localStorage,k)||safeGet(sessionStorage,k))}
+function readWindowNameBackup(){try{const raw=String(window.name||"");return raw.startsWith(RUN_WINDOW_PREFIX)?readJsonRaw(raw.slice(RUN_WINDOW_PREFIX.length)):null}catch(e){return null}}
+function readMemoryBackup(){return readJsonRaw(RUN_MEMORY.raw)}
+function writeKeyEverywhere(k,raw){
+    try{localStorage.setItem(k,raw)}catch(e){}
+    try{sessionStorage.setItem(k,raw)}catch(e){}
+    try{RUN_MEMORY.raw=raw}catch(e){}
+    try{window.name=RUN_WINDOW_PREFIX+raw}catch(e){}
+}
+function storageHealth(){
+    let localOk=false,sessionOk=false;
+    try{const k="militopo_storage_test";localStorage.setItem(k,"1");localStorage.removeItem(k);localOk=true}catch(e){}
+    try{const k="militopo_session_test";sessionStorage.setItem(k,"1");sessionStorage.removeItem(k);sessionOk=true}catch(e){}
+    return {ok:localOk||sessionOk,localOk,sessionOk};
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]||c))}
+function routeIsLoaded(){return !!(route&&pid&&log&&log.participantId&&log.routeId)}
+function offlineLine(state,title,detail){
+    const cls=state===true?"yes":state==="wait"?"wait":"no";
+    const ico=state===true?"✅":state==="wait"?"⏳":"⛔";
+    return "<div class='offline-check "+cls+"'><span>"+ico+"</span><span><b>"+title+"</b><small>"+detail+"</small></span></div>";
+}
+function updateOfflineSafetyPanel(msg){
+    // Bloque de comprobación sin cobertura eliminado por petición del usuario.
+    return;
+}
+async function requestPersistentStorage(){try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist()}catch(e){}}
+async function precacheQrReader(){
+    if(window.jsQR)return true;
+    try{
+        const cached=safeGet(localStorage,JSQR_CACHE_KEY)||safeGet(sessionStorage,JSQR_CACHE_KEY);
+        if(cached){(new Function(cached))(); if(window.jsQR)return true;}
+    }catch(e){}
+    try{
+        if(!navigator.onLine)return false;
+        const r=await fetch("https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js",{cache:"force-cache"});
+        if(r.ok){
+            const code=await r.text();
+            try{localStorage.setItem(JSQR_CACHE_KEY,code)}catch(e){}
+            try{sessionStorage.setItem(JSQR_CACHE_KEY,code)}catch(e){}
+            (new Function(code))();
+            return !!window.jsQR;
+        }
+    }catch(e){}
+    return false;
+}
+
+async function ensureOfflinePageAvailable(){
+    offlinePageChecked=false;offlinePageReady=false;updateOfflineSafetyPanel();
+    if(!(/^https?:$/.test(location.protocol))){offlinePageChecked=true;offlinePageReady=true;updateOfflineSafetyPanel();return true;}
+    if(!("serviceWorker" in navigator)||!("caches" in window)){
+        offlinePageChecked=true;offlinePageReady=false;
+        updateOfflineSafetyPanel("AVISO: este navegador no permite guardar la página completa para recargar sin cobertura");
+        return false;
+    }
+    let registered=false;
+    const candidates=["./sw.js","../sw.js"];
+    for(const src of candidates){
+        try{
+            await navigator.serviceWorker.register(src,{updateViaCache:"none"});
+            registered=true;
+            break;
+        }catch(e){}
+    }
+    try{
+        const cache=await caches.open("militopo-participante-page-v53");
+        const pageUrl=location.href.split("#")[0];
+        const html="<!DOCTYPE html>\n"+document.documentElement.outerHTML;
+        await cache.put(new Request(pageUrl),new Response(html,{headers:{"Content-Type":"text/html;charset=utf-8"}}));
+        try{await cache.add(new Request(pageUrl,{cache:"reload"}))}catch(e){}
+    }catch(e){
+        offlinePageChecked=true;offlinePageReady=false;
+        updateOfflineSafetyPanel("AVISO: no se pudo guardar la página completa para recargar sin cobertura");
+        return false;
+    }
+    try{await navigator.serviceWorker.ready}catch(e){}
+    const controlled=registered||!!navigator.serviceWorker.controller;
+    offlinePageChecked=true;offlinePageReady=!!controlled;
+    updateOfflineSafetyPanel(controlled?"PÁGINA GUARDADA PARA RECARGAR SIN COBERTURA":"AVISO: página guardada, pero el modo recarga sin cobertura todavía no está activo");
+    return !!controlled;
+}
+
+
+function autoLoadEmbeddedParticipantRoute(){
+    try{
+        if(routeIsLoaded())return true;
+        const routes=Array.isArray(EVENT_DATA.routes)?EVENT_DATA.routes:[];
+        if(!EVENT_DATA.participantMode && routes.length!==1)return false;
+        const r=routes[0];
+        if(!r || !r.participantId)return false;
+
+        pid=String(EVENT_DATA.webParticipantId||r.participantId);
+        route=r;
+
+        const candidates=allRecoveryKeys(pid).map(readJsonKey);
+        log=chooseBestLog(candidates);
+        if(!log){
+            log={
+                eventId:EVENT_DATA.eventId,
+                participantId:pid,
+                routeId:route.routeId,
+                startTime:null,
+                finishTime:null,
+                scans:[],
+                completed:false,
+                missingControls:[]
+            };
+        }
+
+        log.eventId=EVENT_DATA.eventId;
+        log.participantId=pid;
+        log.routeId=route.routeId;
+
+        save();
+        renderLoaded();
+        ensureOfflinePageAvailable();
+
+        const ident=document.getElementById("identity");
+        if(ident){
+            ident.className="status ok";
+            ident.innerHTML="✅ Recorrido cargado automáticamente desde el QR de participante.<br><b>"+esc(pid)+"</b> · "+esc(route.routeId||"");
+        }
+        toast("Recorrido cargado automáticamente");
+        return true;
+    }catch(e){
+        console.warn("No se pudo autocargar recorrido embebido",e);
+        return false;
+    }
+}
+
+function init(){
+    document.getElementById("eventInfo").innerHTML="Evento: <b>"+EVENT_DATA.eventId+"</b><br>"+(EVENT_DATA.eventName||"Orientación");
+    requestPersistentStorage();
+    bindParticipantAutosave();
+    const restored=restoreBestSavedRun(true);
+    const embedded=autoLoadEmbeddedParticipantRoute();
+    updateOfflineSafetyPanel((restored||embedded)?"RECORRIDO CARGADO Y GUARDADO AUTOMÁTICAMENTE":"CARGA TU QR DE PARTICIPANTE ANTES DE SALIR");
+    ensureOfflinePageAvailable().then(()=>updateOfflineSafetyPanel());
+    precacheQrReader().then(ok=>{qrReaderReady=!!ok;updateOfflineSafetyPanel();});
+}
+function key(){return baseKey()}function toast(m){const t=document.getElementById("toast");t.textContent=m;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(()=>t.style.display="none",2500)}
+function manual(){document.getElementById("manualInput").style.display="block";document.getElementById("manualBtn").style.display="block"}function loadManual(){handleQr(document.getElementById("manualInput").value)}
+function decodeB64UrlJson(value){
+    try{
+        const b64=String(value||"").replace(/-/g,"+").replace(/_/g,"/");
+        const pad=b64.length%4 ? "=".repeat(4-(b64.length%4)) : "";
+        const bin=atob(b64+pad);
+        const bytes=new Uint8Array(bin.length);
+        for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+        return JSON.parse(new TextDecoder("utf-8").decode(bytes));
+    }catch(e){
+        try{
+            const b64=String(value||"").replace(/-/g,"+").replace(/_/g,"/");
+            const pad=b64.length%4 ? "=".repeat(4-(b64.length%4)) : "";
+            return JSON.parse(decodeURIComponent(escape(atob(b64+pad))));
+        }catch(err){return null}
+    }
+}
+function expandParticipantCompactPack(compact){
+    if(!compact||typeof compact!=="object")return null;
+    if(compact.v===1){
+        const points={};
+        (compact.pts||[]).forEach(row=>{
+            const id=String(row[0]||"");
+            if(!id)return;
+            points[id]={id,type:String(row[1]||"BALIZA"),lat:Number.isFinite(Number(row[2]))?Number(row[2]):null,lon:Number.isFinite(Number(row[3]))?Number(row[3]):null,elevation:Number.isFinite(Number(row[4]))?Number(row[4]):null,utm:String(row[5]||""),desc:String(row[6]||"")};
+        });
+        const pid=String(compact.p||"P01");
+        const routeId=String((compact.r&&compact.r.d)||"R01");
+        const routePoints=((compact.r&&compact.r.q)||[]).filter(Boolean);
+        return{version:"participant_compact_v1_loaded_inside_runner",participantMode:true,webParticipantId:pid,eventId:String(compact.e||EVENT_DATA.eventId||""),eventName:String(compact.n||"ENTRENAMIENTO ORIENTACIÓN"),points,routes:[{participantId:pid,routeId,points:routePoints}],metrics:[{participantId:pid,routeId,distanceKm:compact.m&&compact.m.km,climbUp:compact.m&&compact.m.pp,climbDown:compact.m&&compact.m.pn,netClimb:compact.m&&compact.m.dg,difficulty:compact.m&&compact.m.df}],participantNames:{[pid]:String(compact.pn||"")},participantLogs:{},skippedRoutes:{},importedResults:[],iofDescriptions:{}};
+    }
+    if(compact.v===2){
+        const points={};
+        (compact.pts||[]).forEach(row=>{
+            const id=String(row[0]||"");
+            if(!id)return;
+            const up=id.toUpperCase();
+            points[id]={id,type:up==="START"?"SALIDA":up==="FINISH"?"LLEGADA":"BALIZA",lat:Number.isFinite(Number(row[1]))?Number(row[1]):null,lon:Number.isFinite(Number(row[2]))?Number(row[2]):null,elevation:null,utm:"",desc:""};
+        });
+        const pid=String(compact.p||"P01");
+        const routeId=String((compact.r&&compact.r[0])||"R01");
+        const routePoints=((compact.r&&compact.r[1])||[]).filter(Boolean);
+        return{version:"participant_compact_v2_loaded_inside_runner",participantMode:true,webParticipantId:pid,eventId:String(compact.e||EVENT_DATA.eventId||""),eventName:String(compact.n||"ENTRENAMIENTO ORIENTACIÓN"),points,routes:[{participantId:pid,routeId,points:routePoints}],metrics:[{participantId:pid,routeId,distanceKm:compact.m&&compact.m[0],climbUp:compact.m&&compact.m[1],climbDown:compact.m&&compact.m[2],netClimb:compact.m&&compact.m[3],difficulty:compact.m&&compact.m[4]}],participantNames:{[pid]:String(compact.pn||"")},participantLogs:{},skippedRoutes:{},importedResults:[],iofDescriptions:{}};
+    }
+    if(compact.routes&&compact.points)return compact;
+    return null;
+}
+function importParticipantEventData(pack){
+    if(!pack||!pack.routes||!pack.points)return false;
+    try{
+        Object.keys(EVENT_DATA).forEach(k=>delete EVENT_DATA[k]);
+        Object.assign(EVENT_DATA,pack);
+        try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"EVENT_LOADED",payload:{eventData:pack}},"*")}catch(e){}
+        return true;
+    }catch(e){console.warn("No se pudo importar pack participante",e);return false;}
+}
+function parse(raw){
+    const value=String(raw||"").trim();
+    try{
+        const url=new URL(value, window.location.href);
+        const params=new URLSearchParams(url.search||"");
+        const packed=params.get("c")||params.get("pdata")||params.get("data")||"";
+        const urlPid=params.get("p")||"";
+        if(packed||urlPid){
+            const decoded=packed?decodeB64UrlJson(packed):null;
+            const pack=expandParticipantCompactPack(decoded);
+            const pid=urlPid||(pack&&pack.webParticipantId)||"";
+            const routeId=(pack&&pack.routes&&pack.routes[0]&&pack.routes[0].routeId)||"";
+            return{ok:true,type:"PARTICIPANT",eventId:String((pack&&pack.eventId)||EVENT_DATA.eventId||""),id:String(pid),routeId:String(routeId||""),eventData:pack};
+        }
+    }catch(e){}
+    const p=value.split("|");
+    if(p.length>=4&&p[0].toUpperCase()==="ORI"){
+        const type=String(p[1]||"").toUpperCase();
+        return{ok:true,type:type==="PART"?"PARTICIPANT":type,eventId:p[2],id:p[3],routeId:p[4]||""};
+    }
+    return{ok:false};
+}
+
+/* GPS de proximidad ejecutado dentro del iframe participante */
+const GPS_RADIUS_M=7,GPS_MAX_ACCURACY_M=10,GPS_REQUIRED_HITS=3;
+const GPS_PREF_PREFIX="militopo_participant_gps_enabled_v1:";
+const GPS_LOCK_PREF_PREFIX="militopo_participant_gps_lock_v1:";
+let gpsWatchId=null,gpsWakeLock=null,gpsInsideHits=0,gpsLastTarget="",gpsLastPosition=null,gpsLastValidatedAt=0,gpsUnlockTimer=null,gpsPrefsRestoredFor="",participantLiveSyncState="inactive",participantPendingSyncCount=0,participantPendingControlSyncCount=0,participantPendingResultSync=false,gpsFinishedByProximity=false,gpsFinishNoticeMode="",gpsFinishNoticeDismissedMode="",gpsFinishInsideHits=0,gpsFinishConfirmOpen=false,gpsFinishDeclinedUntilLeave=false,gpsStartReminderOpen=false,cameraLayoutRestore=null;
+function gpsPrefSuffix(){return String(EVENT_DATA.eventId||"")+":"+String(pid||"pending")}
+function gpsReadPref(prefix){const k=prefix+gpsPrefSuffix();return safeGet(localStorage,k)==="1"||safeGet(sessionStorage,k)==="1"}
+function gpsWritePref(prefix,on){const k=prefix+gpsPrefSuffix(),v=on?"1":"0";try{localStorage.setItem(k,v)}catch(e){}try{sessionStorage.setItem(k,v)}catch(e){}}
+function gpsSetButton(active){const start=gpsEl("gpsStartBtn"),stop=gpsEl("gpsStopBtn");if(start){start.disabled=!!active;start.textContent=active?"📡 GPS ACTIVADO":"📡 ACTIVAR GPS"}if(stop)stop.disabled=!active}
+function restoreGpsPreferences(){if(!route||!pid)return;const token=gpsPrefSuffix();if(gpsPrefsRestoredFor===token)return;gpsPrefsRestoredFor=token;const wanted=gpsReadPref(GPS_PREF_PREFIX),locked=gpsReadPref(GPS_LOCK_PREF_PREFIX);if(wanted)setTimeout(()=>startProximityGps(false),120);if(locked)setTimeout(()=>lockRaceScreen(false),220)}
+function gpsEl(id){return document.getElementById(id)}
+function formatParticipantLastSync(value){
+    const el=gpsEl("liveLastSync");if(!el)return;
+    const d=value?new Date(value):null;
+    if(!d||!Number.isFinite(d.getTime())){el.textContent="ÚLTIMA SINCRONIZACIÓN EN VIVO · TODAVÍA NO REALIZADA";return}
+    const now=new Date(),sameDay=d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()&&d.getDate()===now.getDate();
+    const time=d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    const date=d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"});
+    el.textContent="ÚLTIMA SINCRONIZACIÓN EN VIVO · "+(sameDay?"HOY · ":date+" · ")+time;
+}
+function setParticipantLiveSyncStatus(state,text,lastSyncAt){const el=gpsEl("liveSyncStatus");const allowed={synced:1,offline:1,syncing:1,inactive:1};const safe=allowed[state]?state:"inactive";participantLiveSyncState=safe;if(el){el.className="live-sync-status is-"+safe;el.textContent=String(text||"⚪ CARRERA EN VIVO NO ACTIVA")}formatParticipantLastSync(lastSyncAt)}
+function resizeParticipantFrameFromInside(){try{const frame=window.frameElement;if(!frame)return;const h=Math.max(document.body?.scrollHeight||0,document.documentElement?.scrollHeight||0,900);frame.style.height=(h+24)+"px";frame.style.minHeight=(h+24)+"px"}catch(e){}}
+function focusFinishNoticeAtTop(){setTimeout(()=>{try{resizeParticipantFrameFromInside();if(window.parent&&window.parent!==window){const topbar=window.parent.document.querySelector("#militopoParticipantOnlyShell .participant-only-topbar");if(topbar){topbar.scrollIntoView({behavior:"smooth",block:"start"});return}const frame=window.frameElement;if(frame)frame.scrollIntoView({behavior:"smooth",block:"start"})}else{gpsEl("gpsFinishNotice")?.scrollIntoView({behavior:"smooth",block:"start"})}}catch(e){try{gpsEl("gpsFinishNotice")?.scrollIntoView({behavior:"smooth",block:"start"})}catch(_){}}},80)}
+function closeGpsFinishNotice(){const el=gpsEl("gpsFinishNotice");gpsFinishNoticeDismissedMode=gpsFinishNoticeMode;if(el)el.classList.remove("open");resizeParticipantFrameFromInside()}
+function showGpsFinishNotice(mode="pending"){
+    const box=gpsEl("gpsFinishNotice"),title=gpsEl("gpsFinishTitle"),text=gpsEl("gpsFinishText");
+    if(!box||!title||!text)return;
+    const modeChanged=gpsFinishNoticeMode!==mode;
+    if(modeChanged)gpsFinishNoticeDismissedMode="";
+    gpsFinishNoticeMode=mode;
+    if(gpsFinishNoticeDismissedMode===mode)return;
+    const shouldFocus=modeChanged||!box.classList.contains("open");
+    box.classList.add("open");
+    if(mode==="imported"){
+        title.textContent="✅ RESULTADO IMPORTADO";
+        text.textContent="Has terminado la carrera y tu resultado ya se ha importado automáticamente.";
+    }else if(mode==="offline"){
+        title.textContent="🏁 CARRERA FINALIZADA SIN CONEXIÓN";
+        const missing=log&&Array.isArray(log.missingControls)?log.missingControls:[];
+        const routeLine=missing.length
+            ?("Controles pendientes del recorrido: "+missing.join(", ")+".")
+            :"Recorrido completo: no quedan controles pendientes.";
+        const syncControls=Math.max(0,Number(participantPendingControlSyncCount)||0);
+        const syncLine=syncControls>0
+            ?("Quedan "+syncControls+" control"+(syncControls===1?"":"es")+" pendiente"+(syncControls===1?"":"s")+" de enviar al modo en vivo.")
+            :"Los controles registrados están guardados en el móvil.";
+        const resultLine="También falta enviar y recibir la confirmación del resultado final.";
+        text.textContent=routeLine+"\n\n"+syncLine+" "+resultLine+"\n\nTodo se reintentará automáticamente al recuperar cobertura. El QR final sigue disponible como respaldo.";
+    }else if(mode==="inactive"){
+        title.textContent="🏁 CARRERA FINALIZADA";
+        text.textContent="La llegada se ha registrado, pero la carrera en vivo no está activa. Enseña el QR final al organizador para importar el resultado.";
+    }else{
+        title.textContent="🏁 CARRERA FINALIZADA";
+        text.textContent="La llegada se ha registrado. Esperando confirmación de importación en vivo...";
+    }
+    if(shouldFocus)focusFinishNoticeAtTop();
+}
+
+function gpsFinishPoint(){
+    if(!route||!log||!log.startTime||log.finishTime)return null;
+    const point=EVENT_DATA.points&&EVENT_DATA.points.FINISH;
+    const lat=Number(point&&point.lat),lon=Number(point&&point.lon);
+    return Number.isFinite(lat)&&Number.isFinite(lon)?{id:"FINISH",label:"LLEGADA",lat,lon,isFinish:true}:null;
+}
+function gpsProgressData(){
+    const expected=(route&&route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");
+    const completed=gpsCorrectCount();
+    return{completed,total:expected.length,pending:Math.max(0,expected.length-completed)};
+}
+function showGpsArrivalConfirm(){
+    if(!route||!log||!log.startTime||log.finishTime||gpsFinishConfirmOpen)return false;
+    const p=gpsProgressData();
+    if(!p.pending)return false;
+    const box=gpsEl("gpsArrivalConfirm"),text=gpsEl("gpsArrivalConfirmText");
+    if(!box||!text)return false;
+    text.textContent="Has llegado con "+p.completed+" de "+p.total+" controles completados. Si terminas ahora, se importará el resultado con "+p.pending+" control"+(p.pending===1?" pendiente.":"es pendientes.");
+    gpsFinishConfirmOpen=true;
+    box.classList.add("open");
+    setGpsStatus("Llegada detectada. Confirma si quieres terminar la carrera.","ok");
+    return true;
+}
+function closeGpsArrivalConfirm(){
+    const box=gpsEl("gpsArrivalConfirm");
+    if(box)box.classList.remove("open");
+    gpsFinishConfirmOpen=false;
+}
+function continueGpsRace(){
+    closeGpsArrivalConfirm();
+    gpsFinishDeclinedUntilLeave=true;
+    gpsFinishInsideHits=0;
+    gpsLastValidatedAt=Date.now();
+    gpsRefreshState();
+    toast("Continúas la carrera. Podrás terminar al salir y volver a entrar en LLEGADA.");
+}
+async function confirmGpsArrivalFinish(){
+    if(!route||!log||!log.startTime||log.finishTime)return;
+    closeGpsArrivalConfirm();
+    gpsFinishDeclinedUntilLeave=false;
+    gpsFinishInsideHits=0;
+    gpsFinishedByProximity=true;
+    unlockRaceScreen(true);
+    await finishRace("gps");
+}
+function showGpsStartReminder(){
+    if(!route||!log||!log.startTime||log.finishTime||gpsWatchId!==null||gpsStartReminderOpen)return;
+    const box=gpsEl("gpsStartReminder");
+    if(!box)return;
+    gpsStartReminderOpen=true;
+    box.classList.add("open");
+}
+function closeGpsStartReminder(){
+    const box=gpsEl("gpsStartReminder");
+    if(box)box.classList.remove("open");
+    gpsStartReminderOpen=false;
+}
+async function activateGpsFromStartReminder(){
+    closeGpsStartReminder();
+    await startProximityGps(true);
+}
+window.addEventListener("message",event=>{
+    if(event.source!==window.parent)return;
+    const msg=event.data;
+    if(!msg)return;
+    if(msg.source==="MILITOPO_LIVE_SYNC_STATUS"&&msg.payload){
+        participantPendingSyncCount=Math.max(0,Number(msg.payload.pending)||0);
+        participantPendingControlSyncCount=Math.max(0,Number(msg.payload.pendingControls)||0);
+        participantPendingResultSync=!!msg.payload.pendingResult;
+        setParticipantLiveSyncStatus(msg.payload.state,msg.payload.text,msg.payload.lastSyncAt);
+        if(log&&log.finishTime&&msg.payload.state==="offline")showGpsFinishNotice("offline");
+        if(log&&log.finishTime&&msg.payload.state==="inactive")showGpsFinishNotice("inactive");
+        return;
+    }
+    if(msg.source==="MILITOPO_LIVE_RESULT_IMPORTED"&&msg.payload&&String(msg.payload.participantId||"")===String(pid||"")){
+        if(log&&log.finishTime){showGpsFinishNotice("imported");toast("Resultado importado. Carrera finalizada.")}
+    }
+});
+function gpsCorrectCount(){return log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="correct").length:0}
+function gpsNextControl(){
+    if(!route||!log||!log.startTime||log.finishTime)return null;
+    const ids=(route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");
+    const done=gpsCorrectCount();
+    let id=ids[done],isFinish=false;
+    if(!id&&done>=ids.length){id="FINISH";isFinish=true}
+    const point=id&&EVENT_DATA.points?EVENT_DATA.points[id]:null,lat=Number(point&&point.lat),lon=Number(point&&point.lon);
+    return id&&Number.isFinite(lat)&&Number.isFinite(lon)?{id,label:isFinish?"LLEGADA":id,lat,lon,isFinish}:null
+}
+function gpsDistanceM(lat1,lon1,lat2,lon2){const r=6371000,rad=x=>x*Math.PI/180,p1=rad(lat1),p2=rad(lat2),dp=rad(lat2-lat1),dl=rad(lon2-lon1),a=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*r*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))}
+function setGpsStatus(text,kind=""){const box=gpsEl("gpsStatus");if(box){box.textContent=text;box.className="status"+(kind?" "+kind:"")}const lock=gpsEl("gpsLockStatus");if(lock)lock.textContent=text}
+function updateGpsMetrics(dist=null,acc=null,targetId=null){const next=gpsNextControl(),target=targetId||(next&&(next.label||next.id))||"—";if(gpsEl("gpsTarget"))gpsEl("gpsTarget").textContent=target;if(gpsEl("gpsAccuracy"))gpsEl("gpsAccuracy").textContent=acc==null?"—":"±"+Math.round(acc)+" m";if(gpsEl("gpsLockTarget"))gpsEl("gpsLockTarget").textContent=target}
+async function gpsBeep(kind="control"){
+    try{
+        const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+        const c=new C();
+        if(c.state==="suspended")await c.resume().catch(()=>{});
+        const master=c.createGain();master.gain.setValueAtTime(.92,c.currentTime);master.connect(c.destination);
+        const tones=kind==="finish"?[880,1180,1520,1880]:[980,1320,1680];
+        tones.forEach((freq,index)=>{
+            const o=c.createOscillator(),g=c.createGain(),start=c.currentTime+(index*.16),duration=kind==="finish"?.24:.20;
+            o.type=index%2?"square":"sine";o.frequency.setValueAtTime(freq,start);
+            g.gain.setValueAtTime(.0001,start);g.gain.exponentialRampToValueAtTime(.78,start+.018);g.gain.exponentialRampToValueAtTime(.0001,start+duration);
+            o.connect(g);g.connect(master);o.start(start);o.stop(start+duration+.02);
+        });
+        setTimeout(()=>c.close().catch(()=>{}),kind==="finish"?1200:900);
+    }catch(e){}
+}
+function gpsValidated(id){gpsBeep("control");try{navigator.vibrate&&navigator.vibrate([520,120,520,120,760])}catch(e){}toast("Baliza "+id+" validada por proximidad")}
+function gpsArrivalDetected(needsConfirmation=true){gpsBeep("finish");try{navigator.vibrate&&navigator.vibrate([750,140,750,140,1050])}catch(e){}toast(needsConfirmation?"Llegada detectada. Confirma si quieres terminar":"Llegada detectada. Recorrido completo; finalizando e importando resultado")}
+function handleGpsArrivalDetected(){
+    const p=gpsProgressData();
+    if(p.pending>0){
+        gpsArrivalDetected(true);
+        showGpsArrivalConfirm();
+        return;
+    }
+    gpsArrivalDetected(false);
+    gpsFinishConfirmOpen=true;
+    setGpsStatus("Llegada detectada. Recorrido completo. Finalizando e importando resultado...","ok");
+    Promise.resolve(confirmGpsArrivalFinish()).catch(()=>{
+        gpsFinishConfirmOpen=false;
+        setGpsStatus("No se pudo finalizar automáticamente. Escanea LLEGADA como respaldo.","err");
+    });
+}
+async function requestGpsWakeLock(){try{if("wakeLock" in navigator&&document.visibilityState==="visible"&&!gpsWakeLock)gpsWakeLock=await navigator.wakeLock.request("screen")}catch(e){}}
+async function releaseGpsWakeLock(){try{if(gpsWakeLock)await gpsWakeLock.release()}catch(e){}gpsWakeLock=null}
+function gpsCurrentAccuracy(){const acc=Number(gpsLastPosition&&gpsLastPosition.coords&&gpsLastPosition.coords.accuracy);return Number.isFinite(acc)?acc:null}
+function gpsRefreshState(){
+    if(gpsWatchId===null){updateGpsMetrics();return}
+    if(log&&log.finishTime){setGpsStatus("Recorrido finalizado. GPS detenido.","ok");stopProximityGps(false);return}
+    if(!log||!log.startTime){setGpsStatus("GPS activo. Escanea SALIDA para comenzar.","");updateGpsMetrics(null,gpsCurrentAccuracy(),"SALIDA · QR");return}
+    const next=gpsNextControl();
+    if(!next){setGpsStatus("No se encuentran coordenadas válidas para LLEGADA. Escanea su QR.","err");updateGpsMetrics(null,gpsCurrentAccuracy(),"LLEGADA · QR");return}
+    if(gpsLastPosition)processGpsPosition(gpsLastPosition);
+    else{setGpsStatus("Salida registrada. Esperando posición GPS...","");updateGpsMetrics(null,null,next.label||next.id)}
+}
+function processGpsPosition(pos){
+    gpsLastPosition=pos;
+    const acc=Number(pos&&pos.coords&&pos.coords.accuracy)||9999;
+    if(!log||!log.startTime){
+        gpsInsideHits=0;gpsFinishInsideHits=0;
+        setGpsStatus("GPS activo. Escanea SALIDA para comenzar.","");
+        updateGpsMetrics(null,acc,"SALIDA · QR");
+        return;
+    }
+    if(log.finishTime){
+        gpsInsideHits=0;gpsFinishInsideHits=0;
+        setGpsStatus("Recorrido finalizado.","ok");
+        updateGpsMetrics(null,acc,"—");
+        return;
+    }
+
+    const finishTarget=gpsFinishPoint();
+    let finishDist=null;
+    if(finishTarget){
+        finishDist=gpsDistanceM(pos.coords.latitude,pos.coords.longitude,finishTarget.lat,finishTarget.lon);
+        if(finishDist>GPS_RADIUS_M+3){
+            gpsFinishInsideHits=0;
+            gpsFinishDeclinedUntilLeave=false;
+        }else if(acc<=GPS_MAX_ACCURACY_M&&finishDist<=GPS_RADIUS_M&&!gpsFinishDeclinedUntilLeave&&!gpsFinishConfirmOpen){
+            gpsFinishInsideHits++;
+            if(gpsFinishInsideHits>=GPS_REQUIRED_HITS&&Date.now()-gpsLastValidatedAt>3500){
+                gpsLastValidatedAt=Date.now();
+                gpsFinishInsideHits=0;
+                handleGpsArrivalDetected();
+            }
+        }else if(finishDist>GPS_RADIUS_M){
+            gpsFinishInsideHits=0;
+        }
+        if(gpsFinishConfirmOpen){
+            updateGpsMetrics(finishDist,acc,"LLEGADA");
+            return;
+        }
+    }
+
+    const target=gpsNextControl();
+    if(!target){
+        gpsInsideHits=0;
+        if(finishTarget){
+            setGpsStatus(acc>GPS_MAX_ACCURACY_M
+                ?"Siguiente LLEGADA · esperando mejor precisión (±"+Math.round(acc)+" m)"
+                :(gpsFinishDeclinedUntilLeave?"LLEGADA detectada · has elegido continuar la carrera.":"Siguiente LLEGADA · precisión ±"+Math.round(acc)+" m"),
+                acc>GPS_MAX_ACCURACY_M?"":"ok");
+            updateGpsMetrics(finishDist,acc,"LLEGADA");
+        }else{
+            setGpsStatus("No se encuentran coordenadas válidas para LLEGADA. Escanea su QR.","err");
+            updateGpsMetrics(null,acc,"LLEGADA · QR");
+        }
+        return;
+    }
+
+    const label=target.label||target.id;
+    const dist=target.isFinish&&finishDist!=null?finishDist:gpsDistanceM(pos.coords.latitude,pos.coords.longitude,target.lat,target.lon);
+    if(target.isFinish){
+        gpsInsideHits=0;
+        setGpsStatus(acc>GPS_MAX_ACCURACY_M
+            ?"Siguiente LLEGADA · esperando mejor precisión (±"+Math.round(acc)+" m)"
+            :(gpsFinishDeclinedUntilLeave?"LLEGADA detectada · has elegido continuar la carrera.":"Siguiente LLEGADA · precisión ±"+Math.round(acc)+" m"),
+            acc>GPS_MAX_ACCURACY_M?"":"ok");
+        updateGpsMetrics(dist,acc,"LLEGADA");
+        return;
+    }
+
+    if(gpsLastTarget!==target.id){gpsInsideHits=0;gpsLastTarget=target.id}
+    if(acc>GPS_MAX_ACCURACY_M){
+        gpsInsideHits=0;
+        setGpsStatus("Siguiente "+label+" · esperando mejor precisión (±"+Math.round(acc)+" m)","");
+    }else if(dist<=GPS_RADIUS_M){
+        gpsInsideHits++;
+        setGpsStatus("Dentro de 7 m de "+label+" · confirmando "+gpsInsideHits+"/"+GPS_REQUIRED_HITS,"ok");
+        if(gpsInsideHits>=GPS_REQUIRED_HITS&&Date.now()-gpsLastValidatedAt>3500){
+            gpsLastValidatedAt=Date.now();
+            const before=gpsCorrectCount();
+            scanControl(target.id);
+            if(gpsCorrectCount()>before)gpsValidated(target.id);
+            gpsInsideHits=0;gpsLastTarget="";
+        }
+    }else{
+        gpsInsideHits=0;
+        setGpsStatus("Siguiente "+label+" · precisión ±"+Math.round(acc)+" m","ok");
+    }
+    updateGpsMetrics(dist,acc,label);
+}
+function gpsError(err){const denied=err&&err.code===1,msg=denied?"Permiso de ubicación denegado. Activa ubicación precisa.":err&&err.code===2?"No se puede obtener la ubicación. Revisa el GPS.":"El GPS tarda demasiado. Mantén MILITOPO abierta.";if(denied){if(gpsWatchId!==null){try{navigator.geolocation.clearWatch(gpsWatchId)}catch(e){}gpsWatchId=null}gpsWritePref(GPS_PREF_PREFIX,false);gpsSetButton(false)}setGpsStatus(msg,"err")}
+async function startProximityGps(remember=true){if(!route)return toast("Carga primero tu recorrido");if(!navigator.geolocation){gpsWritePref(GPS_PREF_PREFIX,false);gpsSetButton(false);setGpsStatus("Este dispositivo no permite geolocalización.","err");return}if(remember)gpsWritePref(GPS_PREF_PREFIX,true);if(gpsWatchId!==null){gpsSetButton(true);gpsRefreshState();return}setGpsStatus("Solicitando permiso de ubicación precisa...","");await requestGpsWakeLock();try{gpsWatchId=navigator.geolocation.watchPosition(processGpsPosition,gpsError,{enableHighAccuracy:true,maximumAge:1000,timeout:15000});gpsSetButton(true);updateGpsMetrics();gpsRefreshState()}catch(e){gpsWatchId=null;gpsWritePref(GPS_PREF_PREFIX,false);gpsSetButton(false);setGpsStatus("No se pudo reactivar el GPS. Pulsa ACTIVAR GPS.","err")}}
+function stopProximityGps(show,remember=true){if(gpsWatchId!==null){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null}if(remember)gpsWritePref(GPS_PREF_PREFIX,false);gpsInsideHits=0;gpsLastTarget="";releaseGpsWakeLock();gpsSetButton(false);if(show)setGpsStatus("GPS detenido. El escaneo QR sigue disponible.","");updateGpsMetrics()}
+function lockRaceScreen(remember=true){if(remember)gpsWritePref(GPS_LOCK_PREF_PREFIX,true);requestGpsWakeLock();if(gpsEl("gpsLockOverlay"))gpsEl("gpsLockOverlay").classList.add("open");document.documentElement.classList.add("gps-locked");gpsRefreshState()}
+function unlockRaceScreen(remember=true){clearTimeout(gpsUnlockTimer);gpsUnlockTimer=null;if(remember)gpsWritePref(GPS_LOCK_PREF_PREFIX,false);if(gpsEl("gpsLockOverlay"))gpsEl("gpsLockOverlay").classList.remove("open");document.documentElement.classList.remove("gps-locked")}
+function bindGpsUnlock(){const b=gpsEl("gpsUnlockBtn");if(!b)return;const start=()=>{clearTimeout(gpsUnlockTimer);b.classList.add("holding");gpsUnlockTimer=setTimeout(()=>{b.classList.remove("holding");unlockRaceScreen()},2200)},cancel=()=>{clearTimeout(gpsUnlockTimer);gpsUnlockTimer=null;b.classList.remove("holding")};["pointerdown","touchstart"].forEach(e=>b.addEventListener(e,start,{passive:true}));["pointerup","pointercancel","pointerleave","touchend","touchcancel"].forEach(e=>b.addEventListener(e,cancel,{passive:true}))}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){if(gpsWatchId!==null||gpsReadPref(GPS_LOCK_PREF_PREFIX))requestGpsWakeLock();if(gpsWatchId===null&&gpsReadPref(GPS_PREF_PREFIX)&&route)setTimeout(()=>startProximityGps(false),80)}});window.addEventListener("pagehide",()=>stopProximityGps(false,false));setTimeout(bindGpsUnlock,0);
+
+function handleQr(raw){
+    const q=parse(raw);
+    if(!q.ok)return toast("QR no válido");
+    if(q.type==="PARTICIPANT"||q.type==="PART"){
+        if(q.eventData)importParticipantEventData(q.eventData);
+        if(q.eventId&&EVENT_DATA.eventId&&q.eventId!==EVENT_DATA.eventId)return toast("QR de otro evento");
+        return loadParticipant(q);
+    }
+    if(q.eventId!==EVENT_DATA.eventId)return toast("QR de otro evento");
+    if(q.type==="CONTROL")return scanControl(q.id);
+    toast("QR no reconocido")
+}
+function loadParticipant(q){
+    if(q.eventData)importParticipantEventData(q.eventData);
+    route=EVENT_DATA.routes.find(r=>r.participantId===q.id&&(!q.routeId||r.routeId===q.routeId))||EVENT_DATA.routes.find(r=>r.participantId===q.id)||(EVENT_DATA.routes.length===1?EVENT_DATA.routes[0]:null);
+    if(!route)return toast("Participante no encontrado");
+    pid=route.participantId||q.id;
+    const candidates=allRecoveryKeys(pid).map(readJsonKey);
+    log=chooseBestLog(candidates);
+    if(!log)log={eventId:EVENT_DATA.eventId,participantId:pid,routeId:route.routeId,startTime:null,finishTime:null,scans:[],completed:false,missingControls:[]};
+    log.eventId=EVENT_DATA.eventId;
+    log.participantId=pid;
+    log.routeId=route.routeId;
+    save();
+    renderLoaded();
+    ensureOfflinePageAvailable();
+    try{stopQrCamera()}catch(e){};
+    setTimeout(()=>{try{document.getElementById("race")?.scrollIntoView({behavior:"smooth",block:"start"})}catch(e){}},150);
+    notifyMilitopoLive("READY");
+    toast("Recorrido cargado y guardado offline")
+}
+
+function requestParticipantAppReset(){
+    const expected=(route&&route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");
+    const completed=log&&Array.isArray(log.scans)?log.scans.filter(scan=>scan.status==="correct").length:0;
+    const payload={
+        eventId:String(EVENT_DATA.eventId||""),participantId:String(pid||""),routeId:String(route&&route.routeId||""),
+        inProgress:!!(log&&log.startTime&&!log.finishTime),finished:!!(log&&log.finishTime),
+        completedControls:completed,totalControls:expected.length,pendingControls:Math.max(0,expected.length-completed),
+        pendingSync:Number(participantPendingSyncCount||0),pendingControlSync:Number(participantPendingControlSyncCount||0),pendingResultSync:!!participantPendingResultSync,
+        resultCode:log&&log.resultPayload?("ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+log.resultPayload):""
+    };
+    try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"RESET_REQUEST",payload},"*")}catch(e){toast("No se pudo abrir el reinicio de la aplicación")}
+}
+
+function restoreBestSavedRun(silent){
+    const guesses=[readWindowNameBackup(),readMemoryBackup()];
+    try{guesses.push(readJsonKey(key()),readJsonKey(key()+"_active"),readJsonKey(key()+"_backup_last"),readJsonKey(key()+"_emergency_last"))}catch(e){}
+    (EVENT_DATA.routes||[]).forEach(r=>allRecoveryKeys(r.participantId).forEach(k=>guesses.push(readJsonKey(k))));
+    const best=chooseBestLog(guesses);
+    if(!best){if(!silent)toast("No hay recorrido guardado en este móvil");return false}
+    pid=best.participantId;
+    route=EVENT_DATA.routes.find(r=>r.participantId===pid&&(!best.routeId||r.routeId===best.routeId))||EVENT_DATA.routes.find(r=>r.participantId===pid);
+    if(!route){if(!silent)toast("No se encuentra el recorrido guardado");return false}
+    log=best;save();renderLoaded();notifyMilitopoLive("READY");if(!silent)toast("Recorrido restaurado correctamente");return true;
+}
+
+function renderLoaded(){document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences()}
+function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=log.scans.filter(s=>s.status==="correct").length;const expected=exp[done]||"FINISH";const dup=log.scans.some(s=>s.controlId===id);let status=dup?"duplicate":id===expected?"correct":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});save();renderNext();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
+function scanStatusLabel(status){return {correct:"Correcto",out_of_order:"Fuera de orden",wrong:"Incorrecto",duplicate:"Duplicado"}[String(status||"")]||"Estado desconocido"}
+function scanStatusMessage(status,expected){return {correct:"Baliza correcta",out_of_order:"Fuera de orden. Tocaba "+expected,wrong:"Baliza incorrecta: no pertenece a tu recorrido",duplicate:"Baliza duplicada"}[String(status||"")]||"Baliza registrada"}
+function startRace(){
+    if(!route)return toast("Primero QR participante");
+    if(log.startTime)return toast("Salida ya registrada");
+    log.startTime=new Date().toISOString();
+    save();renderNext();renderScans();notifyMilitopoLive("START");gpsRefreshState();toast("Salida registrada");
+    if(gpsWatchId===null)setTimeout(showGpsStartReminder,180);
+}
+async function finishRace(source="qr"){
+    if(!route)return toast("Primero QR participante");
+    if(!log.startTime)return toast("Primero SALIDA");
+    if(log.finishTime)return toast("Llegada ya registrada");
+    const byGps=source==="gps";
+    if(byGps){closeGpsArrivalConfirm();closeGpsStartReminder();gpsFinishDeclinedUntilLeave=false;gpsFinishInsideHits=0;unlockRaceScreen(true);}
+    const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");
+    const done=log.scans.filter(s=>s.status==="correct").map(s=>s.controlId);
+    log.missingControls=exp.filter(x=>!done.includes(x));
+    log.finishTime=new Date().toISOString();
+    log.completed=log.missingControls.length===0;
+    log.resultPayload=resultPayload();
+    if(byGps)log.finishSource="gps";
+    save();renderNext();renderScans();await renderResult();
+    log.resultPayload=resultPayload();
+    save();
+    notifyMilitopoLive("FINISH",{resultCode:"ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+log.resultPayload});
+    setGpsStatus("Recorrido finalizado. GPS detenido.","ok");stopProximityGps(false);
+    const resultSec=document.getElementById("result");
+    if(resultSec){resultSec.style.display="block";resultSec.classList.add("result-open");if(!byGps)requestAnimationFrame(()=>setTimeout(()=>{try{resultSec.scrollIntoView({behavior:"smooth",block:"start"})}catch(e){window.scrollTo({top:resultSec.offsetTop,behavior:"smooth"})}},120))}
+    if(participantLiveSyncState==="offline")showGpsFinishNotice("offline");
+    else if(participantLiveSyncState==="inactive")showGpsFinishNotice("inactive");
+    else if(byGps)showGpsFinishNotice("pending");
+    if(byGps){
+        toast("Llegada registrada por GPS. Has terminado la carrera.");
+    }else{
+        toast(log.completed?"Llegada registrada. Enseña el QR final al organizador":"Llegada registrada con avisos. Enseña el QR final al organizador");
+    }
+}
+function save(){
+    if(!log||!pid)return;
+    try{
+        log.eventId=EVENT_DATA.eventId;
+        log.participantId=pid;
+        if(route)log.routeId=route.routeId;
+        if(!Array.isArray(log.scans))log.scans=[];
+        if(!Array.isArray(log.missingControls))log.missingControls=[];
+        if(log.finishTime&&!log.resultPayload&&route)log.resultPayload=resultPayload();
+        log.lastSavedAt=safeNow();
+        log.appVersion=APP_VERSION;
+        const raw=JSON.stringify(log);
+        writeKeyEverywhere(key()+"_"+pid,raw);
+        writeKeyEverywhere(key(),raw);
+        writeKeyEverywhere(key()+"_active",raw);
+        writeKeyEverywhere(key()+"_backup_"+pid,raw);
+        writeKeyEverywhere(key()+"_backup_last",raw);
+        writeKeyEverywhere(key()+"_emergency_"+pid,raw);
+        writeKeyEverywhere(key()+"_emergency_last",raw);
+        writeKeyEverywhere(key()+"_checkpoint_"+pid,raw);
+    }catch(e){
+        console.warn("No se pudo guardar registro offline",e);
+    }
+    updateOfflineSafetyPanel();
+}
+function renderNext(){const n=document.getElementById("next");if(!log.startTime){n.textContent="TE TOCA: SALIDA";return}if(log.finishTime){n.textContent=log.completed?"FINALIZADO OK":"FINALIZADO CON AVISOS";return}const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=log.scans.filter(s=>s.status==="correct").length;n.textContent="TE TOCA: "+(exp[done]||"FINISH")}
+function renderScans(){let h="<div class='scan "+(log.startTime?"ok":"")+"'><b>SALIDA</b><span>"+(log.startTime?tm(log.startTime):"Pendiente")+"</span><span>"+(log.startTime?"✅":"⏳")+"</span></div>";log.scans.forEach(s=>{const cls=s.status==="correct"?"ok":"bad";h+="<div class='scan "+cls+"'><b>"+s.controlId+"</b><span>"+tm(s.timestamp)+" · tocaba "+s.expectedControlId+" · "+scanStatusLabel(s.status)+"</span><span>"+(s.status==="correct"?"✅":"⚠️")+"</span></div>"});h+="<div class='scan "+(log.finishTime?(log.completed?"ok":"bad"):"")+"'><b>LLEGADA</b><span>"+(log.finishTime?tm(log.finishTime):"Pendiente")+"</span><span>"+(log.finishTime?"🏁":"⏳")+"</span></div>";document.getElementById("scans").innerHTML=h}
+
+function encResultTime(v){const ms=Date.parse(v);return Number.isFinite(ms)?ms.toString(36):(v||null)}
+function encResultStatus(s){return {correct:"c",out_of_order:"o",wrong:"w",duplicate:"d"}[String(s||"")]||String(s||"")}
+function compactResultObject(partial=false){
+    return {
+        v:3,
+        r:route.routeId,
+        st:encResultTime(log.startTime),
+        ft:encResultTime(log.finishTime),
+        c:!!log.completed,
+        ptl:!!partial,
+        x:(log.scans||[]).map(s=>[s.controlId,encResultTime(s.timestamp),encResultStatus(s.status)]),
+        m:log.missingControls||[],
+        ls:encResultTime(log.lastSavedAt||safeNow())
+    };
+}
+function encodeResultObject(obj){
+    return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+}
+function partialResultPayload(){
+    if(!log||!pid||!route)return "";
+    return encodeResultObject(compactResultObject(true));
+}
+async function showPartialResultQr(){
+    if(!log||!pid||!route)return toast("Primero carga tu QR de participante");
+    const payload=partialResultPayload();
+    const result="ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+payload;
+    document.getElementById("result").style.display="block";
+    document.getElementById("summary").innerHTML="<b>QR DE RESCATE PARCIAL</b><br>"+pid+" · "+route.routeId+"<br>Enseña este QR al organizador si hay problema.";
+    document.getElementById("resultText").value=result;
+    try{const url=await QRCode.toDataURL(result,{margin:8,width:1200,errorCorrectionLevel:"H"});document.getElementById("resultQr").innerHTML="<img src='"+url+"'><div class='result-qr-instruction'>🆘 QR DE RESCATE PARCIAL<br>ENSEÑA ESTE QR AL ORGANIZADOR. SI NO LEE, USA EL CÓDIGO MANUAL.</div>"}catch(e){toast("No se pudo generar QR parcial")}
+    save();
+}
+
+function resultPayload(){return encodeResultObject(compactResultObject(false))}
+async function renderResult(){const sec=document.getElementById("result");if(!sec)return;if(!log||!log.finishTime){sec.style.display="none";sec.classList.remove("result-open");return}sec.style.display="block";sec.classList.add("result-open");const payload=resultPayload();log.resultPayload=payload;const result="ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+payload;document.getElementById("summary").innerHTML="<b>"+pid+"</b> · "+route.routeId+"<br>"+(log.completed?"✅ Recorrido completo":"⚠️ Pendientes: "+(log.missingControls||[]).join(", "))+"<br><strong>ENSEÑA ESTE CÓDIGO AL ORGANIZADOR</strong>";document.getElementById("resultText").value=result;try{const url=await QRCode.toDataURL(result,{margin:8,width:1200,errorCorrectionLevel:"H"});document.getElementById("resultQr").innerHTML="<img src='"+url+"' alt='QR resultado'><div class='result-qr-instruction'>📲 QR FINAL DE RESULTADO<br>ENSÉÑASELO AL ORGANIZADOR PARA GUARDAR TU RESULTADO.</div>"}catch(e){document.getElementById("resultQr").innerHTML="<div class='status err'>No se pudo generar el QR final. Usa COPIAR CÓDIGO y enséñaselo al organizador.</div>"}save()}
+function copyResult(){const t=document.getElementById("resultText");t.select();document.execCommand("copy");toast("Código de resultado copiado")}function downloadResult(){const b=new Blob([document.getElementById("resultText").value],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="codigo_resultado_"+(pid||"participante")+".txt";a.click();URL.revokeObjectURL(a.href)}function tm(i){return new Date(i).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+function bindParticipantAutosave(){
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")save()});
+    document.addEventListener("freeze",save);
+    document.addEventListener("resume",()=>{save();restoreBestSavedRun(true)});
+    document.addEventListener("input",save,true);
+    document.addEventListener("change",save,true);
+    window.addEventListener("pagehide",save);
+    window.addEventListener("pageshow",()=>{requestPersistentStorage();save();restoreBestSavedRun(true)});
+    window.addEventListener("beforeunload",save);
+    window.addEventListener("offline",()=>{save();updateOfflineSafetyPanel("SIN COBERTURA: EL RECORRIDO SIGUE GUARDADO")});
+    window.addEventListener("online",()=>{
+        save();
+        updateOfflineSafetyPanel("COBERTURA RECUPERADA");
+        precacheQrReader();
+        notifyMilitopoLive("READY");
+        if(log&&log.finishTime){
+            if(!log.resultPayload&&route)log.resultPayload=resultPayload();
+            save();
+            notifyMilitopoLive("FINISH",{resultCode:log.resultPayload?("ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+log.resultPayload):""});
+        }
+    });
+    setInterval(save,1500);
+}
+
+function loadJsQr(){return new Promise(async(res,rej)=>{
+    if(window.jsQR)return res(true);
+    try{const ok=await precacheQrReader();if(ok)return res(true)}catch(e){}
+    try{
+        if(!navigator.onLine)return rej(new Error("Sin lector QR offline"));
+        const s=document.createElement("script");
+        s.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js";
+        s.onload=()=>{try{res(true)}catch(e){res(true)}};
+        s.onerror=()=>rej(new Error("No se pudo cargar jsQR"));
+        document.head.appendChild(s);
+    }catch(e){rej(e)}
+})}
+
+function enterCameraFullscreen(){
+  document.body.classList.add("camera-open");
+  try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"CAMERA_OPEN"},"*")}catch(e){}
+  try{window.scrollTo(0,0);document.documentElement.scrollTop=0;document.body.scrollTop=0}catch(e){}
+  try{
+    if(window.parent&&window.parent!==window){
+      const frame=window.frameElement,pdoc=window.parent.document;
+      if(frame&&pdoc){
+        cameraLayoutRestore={
+          height:frame.style.height||"",minHeight:frame.style.minHeight||"",
+          htmlOverflow:pdoc.documentElement.style.overflow||"",bodyOverflow:pdoc.body.style.overflow||""
+        };
+        const vh=Math.max(420,Number(window.parent.innerHeight)||Number(screen&&screen.height)||720);
+        frame.style.height=vh+"px";
+        frame.style.minHeight=vh+"px";
+        pdoc.documentElement.style.overflow="hidden";
+        pdoc.body.style.overflow="hidden";
+        frame.scrollIntoView({behavior:"auto",block:"start"});
+      }
+    }
+  }catch(e){}
+}
+function exitCameraFullscreen(){
+  document.body.classList.remove("camera-open");
+  try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"CAMERA_CLOSE"},"*")}catch(e){}
+  try{
+    if(window.parent&&window.parent!==window&&cameraLayoutRestore){
+      const frame=window.frameElement,pdoc=window.parent.document;
+      if(frame){frame.style.height=cameraLayoutRestore.height;frame.style.minHeight=cameraLayoutRestore.minHeight}
+      if(pdoc){pdoc.documentElement.style.overflow=cameraLayoutRestore.htmlOverflow;pdoc.body.style.overflow=cameraLayoutRestore.bodyOverflow}
+    }
+  }catch(e){}
+  cameraLayoutRestore=null;
+  setTimeout(resizeParticipantFrameFromInside,50);
+}
+
+async function startQrCamera(){
+  const overlay=document.getElementById("cameraOverlay");
+  const video=document.getElementById("video");
+  const st=document.getElementById("camStatus");
+  const title=document.getElementById("cameraTitle");
+
+  if(title) title.textContent=route ? "ESCANEAR BALIZA / SALIDA / LLEGADA" : "ESCANEAR QR PARTICIPANTE";
+  enterCameraFullscreen();
+  if(overlay) overlay.classList.add("active");
+  if(st){st.className="status";st.textContent="Solicitando cámara...";}
+
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    if(st){st.className="status err";st.textContent="Este navegador no permite cámara. Usa MANUAL.";}
+    return;
+  }
+
+  detector=null;useJsQr=false;
+
+  if("BarcodeDetector" in window){
+    try{detector=new BarcodeDetector({formats:["qr_code"]})}catch(e){detector=null}
+  }
+
+  try{
+    if(st)st.textContent="Preparando lector QR compatible...";
+    await loadJsQr();
+    useJsQr=!!window.jsQR;
+  }catch(e){
+    useJsQr=false;
+    if(!detector){
+      if(st){st.className="status err";st.textContent="Sin lector QR disponible offline en este navegador. Usa MANUAL o muestra el QR de rescate parcial.";}
+      return;
+    }
+  }
+
+  try{
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},
+      audio:false
+    });
+
+    video.srcObject=stream;
+    video.setAttribute("playsinline","");
+    video.setAttribute("webkit-playsinline","");
+    video.muted=true;
+    video.autoplay=true;
+
+    await video.play();
+
+    running=true;last="";lastT=0;
+
+    if(st){st.className="status ok";st.textContent="Cámara activa. Apunta al QR.";}
+
+    setTimeout(()=>{try{video.play()}catch(e){}},250);
+    loop();
+  }catch(e){
+    console.warn("Error cámara:",e);
+    if(st){st.className="status err";st.textContent="No se pudo abrir o mostrar la cámara. Revisa permisos o usa MANUAL.";}
+  }
+}
+
+function stopQrCamera(){
+  running=false;
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  const video=document.getElementById("video");
+  if(video) video.srcObject=null;
+  const overlay=document.getElementById("cameraOverlay");
+  if(overlay) overlay.classList.remove("active");
+  exitCameraFullscreen();
+}
+
+async function loop(){
+  if(!running)return;
+  const video=document.getElementById("video"),canvas=document.getElementById("canvas"),st=document.getElementById("camStatus");
+  try{
+    let raw="";
+    if(video&&video.readyState>=2){
+      if(detector){
+        try{const c=await detector.detect(video); if(c&&c.length)raw=(c[0].rawValue||"").trim();}catch(e){}
+      }
+      if(!raw&&useJsQr&&window.jsQR&&canvas){
+        const w=video.videoWidth||1280,h=video.videoHeight||720;
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext("2d",{willReadFrequently:true});
+        ctx.drawImage(video,0,0,w,h);
+        const img=ctx.getImageData(0,0,w,h);
+        const code=window.jsQR(img.data,w,h,{inversionAttempts:"attemptBoth"});
+        if(code&&code.data)raw=String(code.data).trim();
+      }
+    }
+
+    if(raw){
+      const now=Date.now();
+      if(raw!==last||now-lastT>2500){
+        last=raw;lastT=now;
+        if(st){st.className="status ok";st.textContent="QR leído";}
+        handleQr(raw);
+        if(navigator.vibrate)navigator.vibrate(120);
+        stopQrCamera();
+      }
+    }else if(st){
+      st.className="status";
+      st.textContent=(video&&video.videoWidth)? "Buscando QR..." : "Cámara abierta. Esperando imagen...";
+    }
+  }catch(e){
+    if(st){st.className="status";st.textContent="Buscando QR...";}
+  }
+  if(running)requestAnimationFrame(loop)
+}
+
+init();
+</script></body></html>

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#20351f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MILITOPO Participante">
+  <title>MILITOPO Participante</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/participante-192.png">
+  <link rel="icon" href="icons/participante-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="participant-shell-header">
+    <img src="icons/participante-192.png" alt="MILITOPO Participante">
+    <div><strong>MILITOPO</strong><span>PARTICIPANTE</span></div>
+    <button id="shellMenuBtn" class="shell-menu-btn" type="button" aria-label="Opciones">⋮</button>
+  </header>
+
+  <main id="shellMain" class="participant-shell-main">
+    <div id="shellLoading" class="shell-loading"><div class="shell-spinner"></div><b>Preparando MILITOPO Participante…</b></div>
+    <iframe id="participantFrame" title="MILITOPO Participante" allow="camera; geolocation; autoplay; fullscreen; clipboard-write" referrerpolicy="same-origin"></iframe>
+  </main>
+
+  <section id="installGuide" class="install-guide" aria-live="polite">
+    <div class="install-card">
+      <button id="closeInstallGuide" class="install-close" type="button" aria-label="Cerrar">✕</button>
+      <div class="install-icon" id="installIcon">📱</div>
+      <h1 id="installTitle">Instalar MILITOPO Participante</h1>
+      <p id="installText"></p>
+      <div id="iosSteps" class="install-steps"></div>
+      <button id="installNowBtn" class="primary-action" type="button">INSTALAR APLICACIÓN</button>
+      <button id="continueBtn" class="secondary-action" type="button">CONTINUAR A MILITOPO PARTICIPANTE</button>
+    </div>
+  </section>
+
+  <section id="shellMenu" class="shell-dialog" aria-hidden="true">
+    <div class="shell-dialog-card">
+      <button class="dialog-close" type="button" data-close-dialog>✕</button>
+      <h2>Opciones de la aplicación</h2>
+      <p>El recorrido se gestiona desde la pantalla del participante. Usa el restablecimiento completo solo para resolver problemas de actualización.</p>
+      <button id="hardResetBtn" class="danger-action" type="button">RESTABLECER APP Y CACHÉ</button>
+      <div class="version-line">MILITOPO Participante · v1.0</div>
+    </div>
+  </section>
+
+  <section id="resetDialog" class="shell-dialog" aria-hidden="true">
+    <div class="shell-dialog-card reset-dialog-card">
+      <button class="dialog-close" type="button" data-close-dialog>✕</button>
+      <div class="dialog-icon">🗑</div>
+      <h2>Borrar recorrido y preparar nueva prueba</h2>
+      <div id="resetSummary" class="reset-summary"></div>
+      <div id="resetWarning" class="reset-warning"></div>
+      <button id="retrySyncBtn" class="primary-action" type="button" hidden>🔄 REINTENTAR SINCRONIZACIÓN</button>
+      <button id="showResultBtn" class="secondary-action" type="button" hidden>MOSTRAR QR FINAL ANTES DE BORRAR</button>
+      <button id="confirmResetBtn" class="danger-action" type="button">🗑 BORRAR RECORRIDO Y CACHÉ</button>
+      <button class="secondary-action" type="button" data-close-dialog>CANCELAR</button>
+    </div>
+  </section>
+
+  <section id="resultBackupDialog" class="shell-dialog" aria-hidden="true">
+    <div class="shell-dialog-card">
+      <button class="dialog-close" type="button" data-close-dialog>✕</button>
+      <h2>Resultado de respaldo</h2>
+      <p>Guarda o enseña este código al organizador antes de borrar.</p>
+      <textarea id="backupResultText" readonly></textarea>
+      <button id="copyBackupResultBtn" class="primary-action" type="button">📋 COPIAR CÓDIGO</button>
+    </div>
+  </section>
+
+  <div id="shellToast" class="shell-toast" role="status"></div>
+  <script src="app.js"></script>
+  <script type="module" src="../js/live/live-phase2.js?v=participant-independent-v1"></script>
+</body>
+</html>
