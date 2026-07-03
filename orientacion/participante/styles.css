@@ -8,3 +8,9 @@
 @media(max-width:480px){.participant-shell-header{height:calc(182px + var(--safe-top));padding:calc(12px + var(--safe-top)) 12px 12px;gap:7px}.participant-shell-main{height:calc(100dvh - 182px - var(--safe-top))}.participant-shell-header img{width:100px;height:100px;border-radius:25px}.participant-brand-title strong{font-size:1.42rem}.participant-brand-title span{font-size:.82rem;letter-spacing:.18em}.install-card,.shell-dialog-card{padding:22px 15px;border-radius:25px}.install-card h1,.shell-dialog-card h2{font-size:1.08rem}}
 
 body.camera-active .participant-shell-header,body.participant-dialog-active .participant-shell-header{display:none}body.camera-active .participant-shell-main,body.participant-dialog-active .participant-shell-main{height:100dvh}
+
+/* CORRECCIÓN FINAL: el encabezado principal vive dentro del contenido desplazable */
+.participant-shell-header{display:none!important}
+.participant-shell-main{height:100dvh!important;min-height:100dvh!important}
+.shell-menu-floating{position:fixed!important;top:calc(10px + var(--safe-top))!important;right:10px!important;z-index:90000!important;width:44px!important;height:44px!important;background:rgba(18,31,16,.88)!important;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+body.camera-active .participant-shell-main,body.participant-dialog-active .participant-shell-main{height:100dvh!important}

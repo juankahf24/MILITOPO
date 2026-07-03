@@ -93,6 +93,17 @@ body.route-loaded #race,body.route-loaded #gpsProximity{position:relative!import
 .participant-reset-card{border-color:rgba(200,94,69,.36);background:linear-gradient(180deg,rgba(200,94,69,.08),rgba(255,255,255,.035)),var(--p)}
 .participant-reset-card h2{font-size:1.05rem;color:#ffd0c4}.participant-reset-card .small{margin-bottom:4px}
 html.gps-locked,html.gps-locked body{overflow:hidden}
+
+/* ENCABEZADO PRINCIPAL Y AVISOS FIJOS · CORRECCIÓN */
+.participant-main-hero{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;margin:0 0 16px;padding:24px 16px 22px;border-radius:30px;background:radial-gradient(circle at 50% 8%,rgba(240,193,106,.2),transparent 38%),linear-gradient(180deg,#304526,#182515);border:2px solid rgba(240,193,106,.42);box-shadow:0 18px 46px rgba(0,0,0,.35);text-align:center}
+.participant-main-hero img{width:min(42vw,180px);height:min(42vw,180px);max-width:180px;max-height:180px;object-fit:cover;border-radius:36px;border:5px solid rgba(240,193,106,.8);background:#fff;box-shadow:0 14px 34px rgba(0,0,0,.42)}
+.participant-main-hero-text{display:flex;flex-direction:column;align-items:center;line-height:1}
+.participant-main-hero-text strong{font-size:clamp(2rem,9vw,3.6rem);letter-spacing:.14em;color:#f0c16a;text-shadow:0 6px 0 rgba(0,0,0,.28)}
+.participant-main-hero-text span{margin-top:10px;font-size:clamp(1.15rem,5.5vw,2rem);font-weight:1000;letter-spacing:.16em;color:#f5e6c8;text-shadow:0 5px 0 rgba(0,0,0,.24)}
+.gps-choice-overlay{position:fixed!important;top:0!important;right:0!important;bottom:0!important;left:0!important;width:100vw!important;height:100dvh!important;display:none!important;align-items:start!important;justify-items:center!important;padding:max(8px,env(safe-area-inset-top)) 10px max(8px,env(safe-area-inset-bottom))!important;overflow:hidden!important;background:rgba(5,10,4,.94)!important}
+.gps-choice-overlay.open{display:grid!important}
+.gps-choice-card{position:relative!important;top:0!important;width:min(96vw,540px)!important;max-height:calc(100dvh - max(16px,env(safe-area-inset-top)) - max(16px,env(safe-area-inset-bottom)))!important;overflow:auto!important;margin:0!important;padding:16px 14px!important;border-radius:0 0 26px 26px!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important}
+@media(max-width:520px){.participant-main-hero{padding:20px 12px 18px;border-radius:24px}.participant-main-hero img{width:132px;height:132px;border-radius:29px}.participant-main-hero-text strong{font-size:2.15rem}.participant-main-hero-text span{font-size:1.15rem}.gps-choice-icon{font-size:42px}.gps-choice-title{font-size:1.05rem}.gps-choice-text{font-size:.8rem;margin:7px 0 10px}.gps-choice-actions .btn{min-height:46px;font-size:.76rem}}
 </style><script>
 /* QR offline embebido para MILITOPO. Basado en QRCode for JavaScript (Kazuhiko Arase, MIT) */
 (function(global){
@@ -1478,6 +1489,10 @@ module.exports = QRCode;
   global.__MILITOPO_QR_READY = true;
 })(window);
 </script></head><body><div class="app simple-participant-app">
+<section class="participant-main-hero" aria-label="MILITOPO Participante">
+  <img src="icons/participante-512.png" alt="Icono MILITOPO Participante">
+  <div class="participant-main-hero-text"><strong>MILITOPO</strong><span>PARTICIPANTE</span></div>
+</section>
 <div id="gpsFinishNotice" class="gps-finish-notice" role="dialog" aria-labelledby="gpsFinishTitle" aria-live="assertive">
   <div class="gps-finish-card">
     <div class="gps-finish-icon">🏁</div>
@@ -1570,7 +1585,7 @@ module.exports = QRCode;
 
 <div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
 <script>
-const EVENT_DATA=__EVENT_DATA__;let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
+const EVENT_DATA=__EVENT_DATA__;const PARENT_SAVED_LOG=__SAVED_LOG__;let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
 const APP_VERSION="militopo-participante-independiente-v1";
 function notifyMilitopoLive(kind,extra={}){
     try{
@@ -1730,7 +1745,7 @@ function autoLoadEmbeddedParticipantRoute(){
         pid=String(EVENT_DATA.webParticipantId||r.participantId);
         route=r;
 
-        const candidates=allRecoveryKeys(pid).map(readJsonKey);
+        const candidates=[PARENT_SAVED_LOG,...allRecoveryKeys(pid).map(readJsonKey)];
         log=chooseBestLog(candidates);
         if(!log){
             log={
@@ -2167,7 +2182,7 @@ function loadParticipant(q){
     route=EVENT_DATA.routes.find(r=>r.participantId===q.id&&(!q.routeId||r.routeId===q.routeId))||EVENT_DATA.routes.find(r=>r.participantId===q.id)||(EVENT_DATA.routes.length===1?EVENT_DATA.routes[0]:null);
     if(!route)return toast("Participante no encontrado");
     pid=route.participantId||q.id;
-    const candidates=allRecoveryKeys(pid).map(readJsonKey);
+    const candidates=[PARENT_SAVED_LOG,...allRecoveryKeys(pid).map(readJsonKey)];
     log=chooseBestLog(candidates);
     if(!log)log={eventId:EVENT_DATA.eventId,participantId:pid,routeId:route.routeId,startTime:null,finishTime:null,scans:[],completed:false,missingControls:[]};
     log.eventId=EVENT_DATA.eventId;
@@ -2267,6 +2282,7 @@ function save(){
         writeKeyEverywhere(key()+"_emergency_"+pid,raw);
         writeKeyEverywhere(key()+"_emergency_last",raw);
         writeKeyEverywhere(key()+"_checkpoint_"+pid,raw);
+        try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"RUN_STATE",payload:{log,eventData:EVENT_DATA}},"*")}catch(e){}
     }catch(e){
         console.warn("No se pudo guardar registro offline",e);
     }
