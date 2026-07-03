@@ -1892,7 +1892,7 @@ function formatParticipantLastSync(value){
     el.textContent="ÚLTIMA SINCRONIZACIÓN EN VIVO · "+(sameDay?"HOY · ":date+" · ")+time;
 }
 function setParticipantLiveSyncStatus(state,text,lastSyncAt){const el=gpsEl("liveSyncStatus");const allowed={synced:1,offline:1,syncing:1,inactive:1};const safe=allowed[state]?state:"inactive";participantLiveSyncState=safe;if(el){el.className="live-sync-status is-"+safe;el.textContent=String(text||"⚪ CARRERA EN VIVO NO ACTIVA")}formatParticipantLastSync(lastSyncAt)}
-function resizeParticipantFrameFromInside(){try{const frame=window.frameElement;if(!frame)return;const h=Math.max(document.body?.scrollHeight||0,document.documentElement?.scrollHeight||0,900);frame.style.height=(h+24)+"px";frame.style.minHeight=(h+24)+"px"}catch(e){}}
+function resizeParticipantFrameFromInside(){try{const frame=window.frameElement;if(!frame)return;requestAnimationFrame(()=>{const h=Math.max(document.body?.scrollHeight||0,document.documentElement?.scrollHeight||0,window.innerHeight||0,900);frame.style.height=(h+24)+"px";frame.style.minHeight=(h+24)+"px";try{const pdoc=window.parent.document;pdoc.documentElement.style.overflowY="auto";pdoc.body.style.overflowY="auto";pdoc.body.style.overflowX="hidden"}catch(_){}})}catch(e){}}
 function focusFinishNoticeAtTop(){setTimeout(()=>{try{resizeParticipantFrameFromInside();if(window.parent&&window.parent!==window){const topbar=window.parent.document.querySelector("#militopoParticipantOnlyShell .participant-only-topbar");if(topbar){topbar.scrollIntoView({behavior:"smooth",block:"start"});return}const frame=window.frameElement;if(frame)frame.scrollIntoView({behavior:"smooth",block:"start"})}else{gpsEl("gpsFinishNotice")?.scrollIntoView({behavior:"smooth",block:"start"})}}catch(e){try{gpsEl("gpsFinishNotice")?.scrollIntoView({behavior:"smooth",block:"start"})}catch(_){}}},80)}
 function closeGpsFinishNotice(){const el=gpsEl("gpsFinishNotice");gpsFinishNoticeDismissedMode=gpsFinishNoticeMode;if(el)el.classList.remove("open");resizeParticipantFrameFromInside()}
 function showGpsFinishNotice(mode="pending"){
@@ -2222,7 +2222,7 @@ function restoreBestSavedRun(silent){
     log=best;save();renderLoaded();notifyMilitopoLive("READY");if(!silent)toast("Recorrido restaurado correctamente");return true;
 }
 
-function renderLoaded(){document.body.classList.add("route-loaded");document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences()}
+function renderLoaded(){document.body.classList.add("route-loaded");document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences();setTimeout(resizeParticipantFrameFromInside,80)}
 function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=log.scans.filter(s=>s.status==="correct").length;const expected=exp[done]||"FINISH";const dup=log.scans.some(s=>s.controlId===id);let status=dup?"duplicate":id===expected?"correct":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});save();renderNext();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
 function scanStatusLabel(status){return {correct:"Correcto",out_of_order:"Fuera de orden",wrong:"Incorrecto",duplicate:"Duplicado"}[String(status||"")]||"Estado desconocido"}
 function scanStatusMessage(status,expected){return {correct:"Baliza correcta",out_of_order:"Fuera de orden. Tocaba "+expected,wrong:"Baliza incorrecta: no pertenece a tu recorrido",duplicate:"Baliza duplicada"}[String(status||"")]||"Baliza registrada"}
@@ -2290,7 +2290,7 @@ function save(){
     updateOfflineSafetyPanel();
 }
 function renderNext(){const n=document.getElementById("next");if(!log.startTime){n.textContent="TE TOCA: SALIDA";return}if(log.finishTime){n.textContent=log.completed?"FINALIZADO OK":"FINALIZADO CON AVISOS";return}const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=log.scans.filter(s=>s.status==="correct").length;n.textContent="TE TOCA: "+(exp[done]||"FINISH")}
-function renderScans(){let h="<div class='scan "+(log.startTime?"ok":"")+"'><b>SALIDA</b><span>"+(log.startTime?tm(log.startTime):"Pendiente")+"</span><span>"+(log.startTime?"✅":"⏳")+"</span></div>";log.scans.forEach(s=>{const cls=s.status==="correct"?"ok":"bad";h+="<div class='scan "+cls+"'><b>"+s.controlId+"</b><span>"+tm(s.timestamp)+" · tocaba "+s.expectedControlId+" · "+scanStatusLabel(s.status)+"</span><span>"+(s.status==="correct"?"✅":"⚠️")+"</span></div>"});h+="<div class='scan "+(log.finishTime?(log.completed?"ok":"bad"):"")+"'><b>LLEGADA</b><span>"+(log.finishTime?tm(log.finishTime):"Pendiente")+"</span><span>"+(log.finishTime?"🏁":"⏳")+"</span></div>";document.getElementById("scans").innerHTML=h}
+function renderScans(){let h="<div class='scan "+(log.startTime?"ok":"")+"'><b>SALIDA</b><span>"+(log.startTime?tm(log.startTime):"Pendiente")+"</span><span>"+(log.startTime?"✅":"⏳")+"</span></div>";log.scans.forEach(s=>{const cls=s.status==="correct"?"ok":"bad";h+="<div class='scan "+cls+"'><b>"+s.controlId+"</b><span>"+tm(s.timestamp)+" · tocaba "+s.expectedControlId+" · "+scanStatusLabel(s.status)+"</span><span>"+(s.status==="correct"?"✅":"⚠️")+"</span></div>"});h+="<div class='scan "+(log.finishTime?(log.completed?"ok":"bad"):"")+"'><b>LLEGADA</b><span>"+(log.finishTime?tm(log.finishTime):"Pendiente")+"</span><span>"+(log.finishTime?"🏁":"⏳")+"</span></div>";document.getElementById("scans").innerHTML=h;setTimeout(resizeParticipantFrameFromInside,30)}
 
 function encResultTime(v){const ms=Date.parse(v);return Number.isFinite(ms)?ms.toString(36):(v||null)}
 function encResultStatus(s){return {correct:"c",out_of_order:"o",wrong:"w",duplicate:"d"}[String(s||"")]||String(s||"")}
@@ -2374,15 +2374,16 @@ function restoreParticipantScroll(targetId,behavior="smooth"){
     document.body.style.overflowY="auto";
     document.body.style.touchAction="pan-y";
     document.body.style.overscrollBehavior="auto";
-    if(window.parent&&window.parent!==window){
-      const pdoc=window.parent.document;
-      pdoc.documentElement.style.overflow="";
-      pdoc.body.style.overflow="";
-      const frame=window.frameElement;
-      if(frame){frame.style.overflow="auto";frame.style.touchAction="pan-y";}
-    }
+    resizeParticipantFrameFromInside();
     const target=targetId?document.getElementById(targetId):null;
-    if(target)setTimeout(()=>target.scrollIntoView({behavior,block:"start"}),80);
+    if(window.parent&&window.parent!==window){
+      const pdoc=window.parent.document,frame=window.frameElement;
+      pdoc.documentElement.style.overflowY="auto";
+      pdoc.body.style.overflowY="auto";
+      pdoc.body.style.overflowX="hidden";
+      if(frame){frame.style.overflow="hidden";frame.style.touchAction="auto";}
+      if(target&&frame)setTimeout(()=>{const top=(frame.getBoundingClientRect().top+(window.parent.scrollY||pdoc.documentElement.scrollTop||0)+target.offsetTop-8);window.parent.scrollTo({top,behavior})},120);
+    }else if(target)setTimeout(()=>target.scrollIntoView({behavior,block:"start"}),120);
   }catch(e){}
 }
 function enterCameraFullscreen(){
@@ -2533,7 +2534,7 @@ async function loop(){
   if(running)requestAnimationFrame(loop)
 }
 
-window.addEventListener("pageshow",()=>restoreParticipantScroll());
-window.addEventListener("focus",()=>{if(!document.getElementById("cameraOverlay")?.classList.contains("active"))restoreParticipantScroll()});
+window.addEventListener("pageshow",()=>{resizeParticipantFrameFromInside();restoreParticipantScroll()});
+window.addEventListener("focus",()=>{if(!document.getElementById("cameraOverlay")?.classList.contains("active")){resizeParticipantFrameFromInside();restoreParticipantScroll()}});
 init();
 </script></body></html>
