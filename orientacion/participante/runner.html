@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>MILITOPO Participante</title>
 <style>
-:root{--p:#344724;--g:#f0c16a;--c:#f5e6c8;--m:#cbb894;--r:#c85e45;--v:#8bb56a}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#10190b,#202916,#151b10);color:var(--c);font-family:"Courier New",monospace}.app{max-width:760px;margin:auto;padding:16px 12px 44px}.card{border-radius:28px;margin:0 0 16px;padding:18px;background:radial-gradient(circle at 88% 10%,rgba(240,193,106,.13),transparent 26%),linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.035)),var(--p);border:1px solid rgba(230,188,122,.28);box-shadow:0 18px 44px rgba(0,0,0,.26)}h1,h2{margin:0 0 12px;color:var(--g);letter-spacing:2px}.status{border-radius:18px;padding:12px;margin-top:10px;background:rgba(0,0,0,.16);border:1px solid rgba(230,188,122,.35);font-weight:900;line-height:1.35}.ok{border-color:rgba(139,181,106,.6);background:rgba(139,181,106,.16)}.err{border-color:rgba(200,94,69,.6);background:rgba(200,94,69,.14)}.btn{width:100%;min-height:54px;border:0;border-radius:999px;margin-top:10px;font-family:inherit;font-weight:900;letter-spacing:.8px;background:linear-gradient(180deg,var(--g),#d79735);color:#261708}.green{background:linear-gradient(180deg,#8bb56a,#5f8838);color:#f7ffe9}.red{background:linear-gradient(180deg,#c85e45,#963d2b);color:#fff4e9}.secondary{background:linear-gradient(180deg,#573a22,#332419);color:var(--c)}input,textarea{width:100%;min-height:48px;border-radius:16px;border:1px solid rgba(230,188,122,.45);background:linear-gradient(180deg,#4e3722,#33261b);color:var(--c);font-family:inherit;font-weight:900;padding:12px;margin-top:10px}.route{font-size:1rem;line-height:1.55;font-weight:900}.next{font-size:clamp(1.5rem,8vw,2.6rem);text-align:center;color:var(--g);padding:16px;border-radius:22px;background:rgba(0,0,0,.18);border:1px solid rgba(230,188,122,.35);margin-top:12px}.scan{display:grid;grid-template-columns:82px 1fr auto;gap:8px;border-radius:14px;padding:10px;margin-top:8px;background:rgba(0,0,0,.15);border:1px solid rgba(230,188,122,.2)}.scan.ok{border-color:rgba(139,181,106,.5)}.scan.bad{border-color:rgba(200,94,69,.6)}video{width:100%;max-height:380px;border-radius:18px;background:#111;object-fit:cover;margin-top:10px}.qr img{width:min(92vw,520px);max-width:100%;background:#fff;padding:18px;border-radius:18px;image-rendering:pixelated;border:4px solid #fff;box-shadow:0 12px 30px rgba(0,0,0,.35)}.qr{text-align:center;margin-top:12px}.small{color:var(--m);font-size:.82rem;line-height:1.35}.result-qr-instruction{margin:12px auto 10px;padding:14px 12px;border-radius:18px;background:linear-gradient(180deg,#f0c16a,#d79735);color:#24170a;font-weight:900;text-align:center;line-height:1.35;border:2px solid rgba(255,255,255,.55);box-shadow:0 10px 28px rgba(0,0,0,.35);font-size:1rem;max-width:310px}
+:root{--p:#344724;--g:#f0c16a;--c:#f5e6c8;--m:#cbb894;--r:#c85e45;--v:#8bb56a}*{box-sizing:border-box}html,body{min-height:100%;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}body{margin:0;background:linear-gradient(180deg,#10190b,#202916,#151b10);color:var(--c);font-family:"Courier New",monospace}.app{max-width:760px;margin:auto;padding:16px 12px 44px}.card{border-radius:28px;margin:0 0 16px;padding:18px;background:radial-gradient(circle at 88% 10%,rgba(240,193,106,.13),transparent 26%),linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.035)),var(--p);border:1px solid rgba(230,188,122,.28);box-shadow:0 18px 44px rgba(0,0,0,.26)}h1,h2{margin:0 0 12px;color:var(--g);letter-spacing:2px}.status{border-radius:18px;padding:12px;margin-top:10px;background:rgba(0,0,0,.16);border:1px solid rgba(230,188,122,.35);font-weight:900;line-height:1.35}.ok{border-color:rgba(139,181,106,.6);background:rgba(139,181,106,.16)}.err{border-color:rgba(200,94,69,.6);background:rgba(200,94,69,.14)}.btn{width:100%;min-height:54px;border:0;border-radius:999px;margin-top:10px;font-family:inherit;font-weight:900;letter-spacing:.8px;background:linear-gradient(180deg,var(--g),#d79735);color:#261708}.green{background:linear-gradient(180deg,#8bb56a,#5f8838);color:#f7ffe9}.red{background:linear-gradient(180deg,#c85e45,#963d2b);color:#fff4e9}.secondary{background:linear-gradient(180deg,#573a22,#332419);color:var(--c)}input,textarea{width:100%;min-height:48px;border-radius:16px;border:1px solid rgba(230,188,122,.45);background:linear-gradient(180deg,#4e3722,#33261b);color:var(--c);font-family:inherit;font-weight:900;padding:12px;margin-top:10px}.route{font-size:1rem;line-height:1.55;font-weight:900}.next{font-size:clamp(1.5rem,8vw,2.6rem);text-align:center;color:var(--g);padding:16px;border-radius:22px;background:rgba(0,0,0,.18);border:1px solid rgba(230,188,122,.35);margin-top:12px}.scan{display:grid;grid-template-columns:82px 1fr auto;gap:8px;border-radius:14px;padding:10px;margin-top:8px;background:rgba(0,0,0,.15);border:1px solid rgba(230,188,122,.2)}.scan.ok{border-color:rgba(139,181,106,.5)}.scan.bad{border-color:rgba(200,94,69,.6)}video{width:100%;max-height:380px;border-radius:18px;background:#111;object-fit:cover;margin-top:10px}.qr img{width:min(92vw,520px);max-width:100%;background:#fff;padding:18px;border-radius:18px;image-rendering:pixelated;border:4px solid #fff;box-shadow:0 12px 30px rgba(0,0,0,.35)}.qr{text-align:center;margin-top:12px}.small{color:var(--m);font-size:.82rem;line-height:1.35}.result-qr-instruction{margin:12px auto 10px;padding:14px 12px;border-radius:18px;background:linear-gradient(180deg,#f0c16a,#d79735);color:#24170a;font-weight:900;text-align:center;line-height:1.35;border:2px solid rgba(255,255,255,.55);box-shadow:0 10px 28px rgba(0,0,0,.35);font-size:1rem;max-width:310px}
 
 .camera-overlay{position:fixed;inset:0;width:100vw;height:100dvh;z-index:99999;background:rgba(4,10,4,.98);display:none;align-items:stretch;justify-content:flex-start;padding:0;overflow:hidden}
 .camera-overlay.active{display:flex}
@@ -2192,7 +2192,7 @@ function loadParticipant(q){
     renderLoaded();
     ensureOfflinePageAvailable();
     try{stopQrCamera()}catch(e){};
-    setTimeout(()=>{try{document.getElementById("race")?.scrollIntoView({behavior:"smooth",block:"start"})}catch(e){}},150);
+    setTimeout(()=>restoreParticipantScroll("race","smooth"),180);
     notifyMilitopoLive("READY");
     toast("Recorrido cargado y guardado offline")
 }
@@ -2232,6 +2232,7 @@ function startRace(){
     log.startTime=new Date().toISOString();
     save();renderNext();renderScans();notifyMilitopoLive("START");gpsRefreshState();toast("Salida registrada");
     if(gpsWatchId===null)setTimeout(showGpsStartReminder,180);
+    else setTimeout(()=>restoreParticipantScroll("gpsProximity","smooth"),220);
 }
 async function finishRace(source="qr"){
     if(!route)return toast("Primero QR participante");
@@ -2364,6 +2365,26 @@ function loadJsQr(){return new Promise(async(res,rej)=>{
     }catch(e){rej(e)}
 })}
 
+function restoreParticipantScroll(targetId,behavior="smooth"){
+  try{
+    document.body.classList.remove("camera-open");
+    document.documentElement.classList.remove("camera-open");
+    document.documentElement.style.overflowY="auto";
+    document.documentElement.style.touchAction="pan-y";
+    document.body.style.overflowY="auto";
+    document.body.style.touchAction="pan-y";
+    document.body.style.overscrollBehavior="auto";
+    if(window.parent&&window.parent!==window){
+      const pdoc=window.parent.document;
+      pdoc.documentElement.style.overflow="";
+      pdoc.body.style.overflow="";
+      const frame=window.frameElement;
+      if(frame){frame.style.overflow="auto";frame.style.touchAction="pan-y";}
+    }
+    const target=targetId?document.getElementById(targetId):null;
+    if(target)setTimeout(()=>target.scrollIntoView({behavior,block:"start"}),80);
+  }catch(e){}
+}
 function enterCameraFullscreen(){
   document.body.classList.add("camera-open");
   try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"CAMERA_OPEN"},"*")}catch(e){}
@@ -2397,6 +2418,7 @@ function exitCameraFullscreen(){
     }
   }catch(e){}
   cameraLayoutRestore=null;
+  restoreParticipantScroll();
   setTimeout(resizeParticipantFrameFromInside,50);
 }
 
@@ -2496,9 +2518,10 @@ async function loop(){
       if(raw!==last||now-lastT>2500){
         last=raw;lastT=now;
         if(st){st.className="status ok";st.textContent="QR leído";}
+        stopQrCamera();
+        restoreParticipantScroll();
         handleQr(raw);
         if(navigator.vibrate)navigator.vibrate(120);
-        stopQrCamera();
       }
     }else if(st){
       st.className="status";
@@ -2510,5 +2533,7 @@ async function loop(){
   if(running)requestAnimationFrame(loop)
 }
 
+window.addEventListener("pageshow",()=>restoreParticipantScroll());
+window.addEventListener("focus",()=>{if(!document.getElementById("cameraOverlay")?.classList.contains("active"))restoreParticipantScroll()});
 init();
 </script></body></html>

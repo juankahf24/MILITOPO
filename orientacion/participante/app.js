@@ -83,6 +83,9 @@
       if(!runnerTemplate){const response=await fetch("runner.html",{cache:"no-cache"});if(!response.ok)throw new Error("runner.html");runnerTemplate=await response.text();}
       currentEventData=eventFromUrl()||readSavedEventData()||emptyEventData();
       const savedRun=readSavedRunState();
+      frame.setAttribute("scrolling","yes");
+      frame.style.overflow="auto";
+      frame.style.touchAction="pan-y";
       frame.srcdoc=runnerTemplate
         .replace("__EVENT_DATA__",safeJsonForScript(currentEventData))
         .replace("__SAVED_LOG__",safeJsonForScript(savedRun));
@@ -163,7 +166,7 @@
     }
     if(msg.action==="RESET_REQUEST")showResetDialog(msg.payload||{});
     if(msg.action==="CAMERA_OPEN")document.body.classList.add("camera-active");
-    if(msg.action==="CAMERA_CLOSE")document.body.classList.remove("camera-active");
+    if(msg.action==="CAMERA_CLOSE"){document.body.classList.remove("camera-active");frame.style.touchAction="pan-y";frame.style.overflow="auto";}
     if(msg.action==="DIALOG_OPEN")document.body.classList.add("participant-dialog-active");
     if(msg.action==="DIALOG_CLOSE")document.body.classList.remove("participant-dialog-active");
   });
