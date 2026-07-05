@@ -1583,8 +1583,22 @@ module.exports = QRCode;
 
 <div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
 <script>
-const EVENT_DATA=__EVENT_DATA__;const PARENT_SAVED_LOG=__SAVED_LOG__;let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-independiente-v11-url-rescate";
+const BOOT_PAYLOAD_KEYS=["militopo_participant_boot_payload_v3","militopo_participant_boot_payload_latest","militopo_participant_app_snapshot_v1","militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"];
+function emptyParticipantEventData(){return {version:"participant_independent_empty_v1",participantMode:true,webParticipantId:"",eventId:"",eventName:"MILITOPO PARTICIPANTE",points:{},routes:[],metrics:[],participantNames:{},participantLogs:{},skippedRoutes:{},importedResults:[],iofDescriptions:{}}}
+function parseBootJson(raw){try{return raw?JSON.parse(raw):null}catch(e){return null}}
+function readBootPayload(){
+  const values=[];
+  try{BOOT_PAYLOAD_KEYS.forEach(k=>{const a=localStorage.getItem(k);if(a)values.push(a);const b=sessionStorage.getItem(k);if(b)values.push(b);});}catch(e){}
+  try{const wn=String(window.name||"");if(wn.startsWith("MILITOPO_RUN_BACKUP:"))values.push(wn.slice("MILITOPO_RUN_BACKUP:".length));if(wn.startsWith("MILITOPO_PARTICIPANT_SNAPSHOT:"))values.push(wn.slice("MILITOPO_PARTICIPANT_SNAPSHOT:".length));}catch(e){}
+  const payloads=values.map(parseBootJson).filter(Boolean);
+  payloads.sort((a,b)=>String(b.savedAt||b.log?.lastSavedAt||"").localeCompare(String(a.savedAt||a.log?.lastSavedAt||"")));
+  return payloads[0]||null;
+}
+const BOOT_PAYLOAD=readBootPayload();
+const EVENT_DATA=(BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData();
+const PARENT_SAVED_LOG=(BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null;
+let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
+const APP_VERSION="militopo-participante-independiente-v12-runner-real-progreso";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -1668,7 +1682,7 @@ function writePermanentParticipantSnapshot(eventData,runLog){
         const snap={savedAt:safeNow(),eventData};
         if(runLog&&typeof runLog==="object")snap.log=runLog;
         const raw=JSON.stringify(snap);
-        [APP_SNAPSHOT_KEY,APP_EVENT_KEY,APP_EVENT_BACKUP_KEY,APP_PERMANENT_SNAPSHOT_KEY,"militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"].forEach(k=>writeKeyEverywhere(k,raw));
+        [APP_SNAPSHOT_KEY,APP_EVENT_KEY,APP_EVENT_BACKUP_KEY,APP_PERMANENT_SNAPSHOT_KEY,"militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1","militopo_participant_boot_payload_v3","militopo_participant_boot_payload_latest"].forEach(k=>writeKeyEverywhere(k,raw));
         writeKeyEverywhere(APP_PERMANENT_EVENT_KEY,JSON.stringify({savedAt:snap.savedAt,eventData}));
         if(runLog&&runLog.participantId)writeKeyEverywhere(APP_RUN_STATE_KEY,JSON.stringify(runLog));
         try{window.name="MILITOPO_PARTICIPANT_SNAPSHOT:"+raw}catch(e){}

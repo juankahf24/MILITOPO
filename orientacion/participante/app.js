@@ -201,28 +201,30 @@
     return data;
   }
   function safeJsonForScript(data){return JSON.stringify(data||emptyEventData()).replace(/<\/script/gi,"<\\/script").replace(/<!--/g,"<\\!--");}
+  const BOOT_KEY = "militopo_participant_boot_payload_v3";
+  function saveBootPayload(eventData, log){
+    try{
+      const payload={savedAt:new Date().toISOString(),eventData:eventData||emptyEventData(),log:log||null};
+      const raw=JSON.stringify(payload);
+      writeStorageEverywhere(BOOT_KEY,raw);
+      writeStorageEverywhere("militopo_participant_boot_payload_latest",raw);
+      return true;
+    }catch(_){return false;}
+  }
   async function loadRunner(){
     try{
-      if(!runnerTemplate){
-        let response=null;
-        try{response=await fetch("runner.html",{cache:"no-cache"})}catch(_){response=null}
-        if(!response||!response.ok){
-          try{response=await caches.match("./runner.html")||await caches.match("runner.html")}catch(_){response=null}
-        }
-        if(!response||!response.ok)throw new Error("runner.html");
-        runnerTemplate=await response.text();
-      }
       currentEventData=eventFromUrl()||readSavedEventData()||emptyEventData();
       const savedRun=readSavedRunState();
+      saveBootPayload(currentEventData,savedRun);
       frame.removeAttribute("scrolling");
       frame.style.overflow="hidden";
       frame.style.touchAction="auto";
       frame.style.height=Math.max(window.innerHeight||0,720)+"px";
       frame.style.minHeight=Math.max(window.innerHeight||0,720)+"px";
-      frame.srcdoc=runnerTemplate
-        .replace("__EVENT_DATA__",safeJsonForScript(currentEventData))
-        .replace("__SAVED_LOG__",safeJsonForScript(savedRun));
+      frame.removeAttribute("srcdoc");
+      const url="runner.html?app=1&v=progreso-real-20260705#boot";
       frame.addEventListener("load",()=>loading?.classList.add("is-hidden"),{once:true});
+      frame.src=url;
     }catch(error){
       loading.innerHTML="<b>No se pudo abrir MILITOPO Participante.</b><span>Comprueba la conexión y vuelve a cargar.</span>";
       console.error(error);
@@ -245,7 +247,7 @@
     if(!navigator.onLine){toast("Conéctate a internet antes de borrar la caché completa.");return false;}
     try{frame.srcdoc="<!doctype html><body style='margin:0;background:#10190b;color:#f5e6c8;font-family:monospace;display:grid;place-items:center;height:100vh'>Restableciendo…</body>";}catch(_){ }
     cleanParticipantQueue(payload.eventId,currentEventData?.webParticipantId||payload.participantId);
-    const prefixes=["militopo_runner_","militopo_participant_app_run_state_v1","militopo_participant_gps_enabled_v1:","militopo_participant_gps_lock_v1:","militopo_live_v2_last_sync_","militopo_participant_app_","militopo_participant_web_event_v1","militopo_jsqr_cache_v1"];
+    const prefixes=["militopo_runner_","militopo_participant_app_run_state_v1","militopo_participant_gps_enabled_v1:","militopo_participant_gps_lock_v1:","militopo_live_v2_last_sync_","militopo_participant_app_","militopo_participant_boot_payload_","militopo_participant_web_event_v1","militopo_jsqr_cache_v1"];
     const exact=new Set([EVENT_KEY,EVENT_BACKUP_KEY,RUN_STATE_KEY,SNAPSHOT_KEY,"militopo_live_v2_participant_context","militopo_participant_web_event_v1","militopo_jsqr_cache_v1"]);
     const predicate=key=>exact.has(key)||prefixes.some(prefix=>String(key).startsWith(prefix));
     removeMatchingStorage(localStorage,predicate);removeMatchingStorage(sessionStorage,predicate);
@@ -341,11 +343,13 @@
     if(msg.action==="EVENT_LOADED"&&msg.payload?.eventData){saveEventData(msg.payload.eventData);toast("Recorrido guardado en MILITOPO Participante");}
     if(msg.action==="RUN_STATE"&&msg.payload?.log){
       try{writeStorageEverywhere(RUN_STATE_KEY,JSON.stringify(msg.payload.log))}catch(_){ }
-      if(msg.payload?.eventData)saveSnapshot(msg.payload.eventData,msg.payload.log);
-      else{const saved=readSavedEventData(); if(saved)saveSnapshot(saved,msg.payload.log);}
+      if(msg.payload?.eventData){saveSnapshot(msg.payload.eventData,msg.payload.log);saveBootPayload(msg.payload.eventData,msg.payload.log);}
+      else{const saved=readSavedEventData(); if(saved){saveSnapshot(saved,msg.payload.log);saveBootPayload(saved,msg.payload.log);}}
     }
     if(msg.action==="PERSIST_SNAPSHOT"&&msg.payload?.eventData){
-      saveSnapshot(msg.payload.eventData,msg.payload.log||readSavedRunState());
+      const log=msg.payload.log||readSavedRunState();
+      saveSnapshot(msg.payload.eventData,log);
+      saveBootPayload(msg.payload.eventData,log);
     }
     if(msg.action==="RESET_REQUEST")showResetDialog(msg.payload||{});
     if(msg.action==="CAMERA_OPEN")openCameraFrame();
