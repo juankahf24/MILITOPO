@@ -1582,6 +1582,7 @@ module.exports = QRCode;
 </div>
 
 <div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
+<script type="module" src="../js/live/live-phase2.js?v=participante-directa-v1"></script>
 <script>
 const BOOT_PAYLOAD_KEYS=["militopo_participant_boot_payload_v3","militopo_participant_boot_payload_latest","militopo_participant_app_snapshot_v1","militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"];
 function emptyParticipantEventData(){return {version:"participant_independent_empty_v1",participantMode:true,webParticipantId:"",eventId:"",eventName:"MILITOPO PARTICIPANTE",points:{},routes:[],metrics:[],participantNames:{},participantLogs:{},skippedRoutes:{},importedResults:[],iofDescriptions:{}}}
@@ -1594,11 +1595,57 @@ function readBootPayload(){
   payloads.sort((a,b)=>String(b.savedAt||b.log?.lastSavedAt||"").localeCompare(String(a.savedAt||a.log?.lastSavedAt||"")));
   return payloads[0]||null;
 }
+function initialDecodeB64UrlJson(value){
+  try{
+    const b64=String(value||"").replace(/-/g,"+").replace(/_/g,"/");
+    const pad=b64.length%4 ? "=".repeat(4-(b64.length%4)) : "";
+    const bin=atob(b64+pad);
+    const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    return JSON.parse(new TextDecoder("utf-8").decode(bytes));
+  }catch(e){return null}
+}
+function initialExpandParticipantPack(compact){
+  if(!compact||typeof compact!=="object")return null;
+  if(compact.routes&&compact.points)return compact;
+  if(compact.v===1){
+    const points={};
+    (compact.pts||[]).forEach(row=>{const id=String(row[0]||"");if(!id)return;points[id]={id,type:String(row[1]||"BALIZA"),lat:Number.isFinite(Number(row[2]))?Number(row[2]):null,lon:Number.isFinite(Number(row[3]))?Number(row[3]):null,elevation:Number.isFinite(Number(row[4]))?Number(row[4]):null,utm:String(row[5]||""),desc:String(row[6]||"")};});
+    const pid=String(compact.p||"P01"),routeId=String(compact.r&&compact.r.d||"R01"),routePoints=((compact.r&&compact.r.q)||[]).filter(Boolean);
+    return{version:"participant_compact_v1_direct_start",participantMode:true,webParticipantId:pid,eventId:String(compact.e||""),eventName:String(compact.n||"ENTRENAMIENTO ORIENTACIÓN"),points,routes:[{participantId:pid,routeId,points:routePoints}],metrics:[{participantId:pid,routeId,distanceKm:compact.m&&compact.m.km,climbUp:compact.m&&compact.m.pp,climbDown:compact.m&&compact.m.pn,netClimb:compact.m&&compact.m.dg,difficulty:compact.m&&compact.m.df}],participantNames:{[pid]:String(compact.pn||"")},participantLogs:{},skippedRoutes:{},importedResults:[],iofDescriptions:{}};
+  }
+  if(compact.v===2){
+    const points={};
+    (compact.pts||[]).forEach(row=>{const id=String(row[0]||"");if(!id)return;const up=id.toUpperCase();points[id]={id,type:up==="START"?"SALIDA":up==="FINISH"?"LLEGADA":"BALIZA",lat:Number.isFinite(Number(row[1]))?Number(row[1]):null,lon:Number.isFinite(Number(row[2]))?Number(row[2]):null,elevation:null,utm:"",desc:""};});
+    const pid=String(compact.p||"P01"),routeId=String(compact.r&&compact.r[0]||"R01"),routePoints=((compact.r&&compact.r[1])||[]).filter(Boolean);
+    return{version:"participant_compact_v2_direct_start",participantMode:true,webParticipantId:pid,eventId:String(compact.e||""),eventName:String(compact.n||"ENTRENAMIENTO ORIENTACIÓN"),points,routes:[{participantId:pid,routeId,points:routePoints}],metrics:[{participantId:pid,routeId,distanceKm:compact.m&&compact.m[0],climbUp:compact.m&&compact.m[1],climbDown:compact.m&&compact.m[2],netClimb:compact.m&&compact.m[3],difficulty:compact.m&&compact.m[4]}],participantNames:{[pid]:String(compact.pn||"")},participantLogs:{},skippedRoutes:{},importedResults:[],iofDescriptions:{}};
+  }
+  return null;
+}
+function readInitialUrlEventData(){
+  try{
+    const params=new URLSearchParams(location.search||"");
+    const packed=params.get("c")||params.get("pdata")||params.get("data")||"";
+    if(!packed)return null;
+    return initialExpandParticipantPack(initialDecodeB64UrlJson(packed));
+  }catch(e){return null}
+}
+function readInitialUrlLog(){
+  try{
+    const hash=String(location.hash||"");
+    const m=hash.match(/(?:^#|[&#])mplog=([^&]+)/);
+    if(!m)return null;
+    const log=initialDecodeB64UrlJson(decodeURIComponent(m[1]));
+    return log&&log.participantId&&log.routeId?log:null;
+  }catch(e){return null}
+}
 const BOOT_PAYLOAD=readBootPayload();
-const EVENT_DATA=(BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData();
-const PARENT_SAVED_LOG=(BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null;
+const INITIAL_URL_EVENT_DATA=readInitialUrlEventData();
+const INITIAL_URL_LOG=readInitialUrlLog();
+const EVENT_DATA=(INITIAL_URL_EVENT_DATA&&Array.isArray(INITIAL_URL_EVENT_DATA.routes)&&INITIAL_URL_EVENT_DATA.routes.length)?INITIAL_URL_EVENT_DATA:((BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData());
+const PARENT_SAVED_LOG=INITIAL_URL_LOG||((BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null);
 let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-independiente-v12-runner-real-progreso";
+const APP_VERSION="militopo-participante-directa-v1-progreso-persistente";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -2303,14 +2350,23 @@ function loadParticipant(q){
 function requestParticipantAppReset(){
     const expected=(route&&route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");
     const completed=log&&Array.isArray(log.scans)?log.scans.filter(scan=>scan.status==="correct").length:0;
-    const payload={
-        eventId:String(EVENT_DATA.eventId||""),participantId:String(pid||""),routeId:String(route&&route.routeId||""),
-        inProgress:!!(log&&log.startTime&&!log.finishTime),finished:!!(log&&log.finishTime),
-        completedControls:completed,totalControls:expected.length,pendingControls:Math.max(0,expected.length-completed),
-        pendingSync:Number(participantPendingSyncCount||0),pendingControlSync:Number(participantPendingControlSyncCount||0),pendingResultSync:!!participantPendingResultSync,
-        resultCode:log&&log.resultPayload?("ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+log.resultPayload):""
-    };
-    try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"RESET_REQUEST",payload},"*")}catch(e){toast("No se pudo abrir el reinicio de la aplicación")}
+    const pending=Number(participantPendingSyncCount||0)||Number(participantPendingControlSyncCount||0)||0;
+    const msg="¿Borrar este recorrido y preparar una nueva prueba?"+(pending>0?"\n\nHay cambios pendientes de sincronizar. Si borras ahora, podrías perderlos.":"")+"\n\nProgreso actual: "+completed+"/"+expected.length+" controles.";
+    if(!confirm(msg))return;
+    try{stopProximityGps(true)}catch(e){}
+    try{stopQrCamera()}catch(e){}
+    try{
+        const prefixes=["militopo_runner_","militopo_participant_app_","militopo_participant_boot_payload_","militopo_participant_permanent_","militopo_participante_recorrido_","militopo_participant_gps_","militopo_live_v2_last_sync_","militopo_live_v2_participant_context","militopo_jsqr_cache_v1"];
+        const wipe=storage=>{try{const keys=[];for(let i=0;i<storage.length;i++)keys.push(storage.key(i));keys.filter(Boolean).forEach(k=>{if(prefixes.some(p=>String(k).startsWith(p))||String(k)==="militopo_live_v2_participant_context")storage.removeItem(k);});}catch(e){}};
+        wipe(localStorage);wipe(sessionStorage);
+    }catch(e){}
+    try{window.name=""}catch(e){}
+    try{
+        const url=new URL(location.href);
+        url.search="?app=1&fresh="+Date.now();
+        url.hash="";
+        location.replace(url.pathname+url.search);
+    }catch(e){location.reload()}
 }
 
 function restoreBestSavedRun(silent){

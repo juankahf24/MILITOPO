@@ -3,7 +3,7 @@
   "short_name": "MILITOPO P.",
   "description": "Aplicación del participante para carreras de orientación MILITOPO.",
   "id": "./participante-app",
-  "start_url": "./?modo=participante",
+  "start_url": "./runner.html?app=1",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",

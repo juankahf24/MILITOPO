@@ -8,6 +8,20 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MILITOPO Participante">
   <title>MILITOPO Participante</title>
+  <script>
+    (function(){
+      try{
+        var params=new URLSearchParams(location.search||'');
+        if(!params.has('install') && !params.has('shell')){
+          var target=new URL('runner.html', location.href);
+          params.forEach(function(v,k){ target.searchParams.set(k,v); });
+          if(!target.searchParams.has('app')) target.searchParams.set('app','1');
+          target.hash=location.hash||'';
+          location.replace(target.pathname+target.search+target.hash);
+        }
+      }catch(e){}
+    })();
+  </script>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/participante-192.png?v=20260703-small-p">
   <link rel="icon" href="icons/participante-192.png?v=20260703-small-p">
