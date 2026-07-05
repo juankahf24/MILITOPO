@@ -1622,8 +1622,20 @@ function initialExpandParticipantPack(compact){
   }
   return null;
 }
+function readInitialUrlSnapshot(){
+  try{
+    const hash=String(location.hash||"");
+    const m=hash.match(/(?:^#|[&#])mpstate=([^&]+)/);
+    if(!m)return null;
+    const snap=initialDecodeB64UrlJson(decodeURIComponent(m[1]));
+    if(snap&&typeof snap==="object"&&snap.eventData&&Array.isArray(snap.eventData.routes)&&snap.eventData.routes.length)return snap;
+  }catch(e){}
+  return null;
+}
 function readInitialUrlEventData(){
   try{
+    const snap=readInitialUrlSnapshot();
+    if(snap&&snap.eventData&&Array.isArray(snap.eventData.routes)&&snap.eventData.routes.length)return snap.eventData;
     const params=new URLSearchParams(location.search||"");
     const packed=params.get("c")||params.get("pdata")||params.get("data")||"";
     if(!packed)return null;
@@ -1632,6 +1644,8 @@ function readInitialUrlEventData(){
 }
 function readInitialUrlLog(){
   try{
+    const snap=readInitialUrlSnapshot();
+    if(snap&&snap.log&&snap.log.participantId&&snap.log.routeId)return snap.log;
     const hash=String(location.hash||"");
     const m=hash.match(/(?:^#|[&#])mplog=([^&]+)/);
     if(!m)return null;
@@ -1645,7 +1659,7 @@ const INITIAL_URL_LOG=readInitialUrlLog();
 const EVENT_DATA=(INITIAL_URL_EVENT_DATA&&Array.isArray(INITIAL_URL_EVENT_DATA.routes)&&INITIAL_URL_EVENT_DATA.routes.length)?INITIAL_URL_EVENT_DATA:((BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData());
 const PARENT_SAVED_LOG=INITIAL_URL_LOG||((BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null);
 let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-directa-v1-progreso-persistente";
+const APP_VERSION="militopo-participante-directa-v2-url-mpstate-persistente";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -1783,17 +1797,25 @@ function writeKeyEverywhere(k,raw){
 function updateParentUrlState(packed){
     try{
         const logForUrl=(log&&pid&&route)?log:null;
-        const encLog=logForUrl?encodeB64UrlJson(logForUrl):"";
         const top=(window.parent&&window.parent!==window)?window.parent:window;
+        const pack=packed||EVENT_DATA.__participantPacked||"";
+        let encLog=logForUrl?encodeB64UrlJson(logForUrl):"";
+        let encState="";
+        try{
+            if(logForUrl&&isUsableEventData(EVENT_DATA)){
+                const snap={v:2,savedAt:safeNow(),eventData:EVENT_DATA,log:logForUrl};
+                encState=encodeB64UrlJson(snap);
+            }
+        }catch(_){encState=""}
         try{
             const url=new URL(top.location.href);
             url.searchParams.set("modo","participante");
-            const pack=packed||EVENT_DATA.__participantPacked||"";
             if(pack)url.searchParams.set("c",String(pack));
-            if(encLog)url.hash="mplog="+encodeURIComponent(encLog);
+            if(encState)url.hash="mpstate="+encodeURIComponent(encState);
+            else if(encLog)url.hash="mplog="+encodeURIComponent(encLog);
             top.history.replaceState(top.history.state||{},top.document?top.document.title:document.title,url.pathname+url.search+url.hash);
         }catch(e){
-            try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"SET_URL_STATE",payload:{packed:packed||EVENT_DATA.__participantPacked||"",log:logForUrl}},"*")}catch(_){ }
+            try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"SET_URL_STATE",payload:{packed:pack,log:logForUrl,state:encState}},"*")}catch(_){ }
         }
     }catch(e){}
 }
