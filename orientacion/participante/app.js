@@ -4,6 +4,8 @@
   const EVENT_BACKUP_KEY = "militopo_participant_app_event_backup_v1";
   const RUN_STATE_KEY = "militopo_participant_app_run_state_v1";
   const SNAPSHOT_KEY = "militopo_participant_app_snapshot_v1";
+  const PERMANENT_EVENT_KEY = "militopo_participant_permanent_event_v2";
+  const PERMANENT_SNAPSHOT_KEY = "militopo_participant_permanent_snapshot_v2";
   let cameraFrameRestore = null;
   const MODE_QUERY = "modo=participante";
   const frame = document.getElementById("participantFrame");
@@ -23,6 +25,49 @@
   };
   const openDialog = id => { const el=document.getElementById(id); if(el){el.classList.add("is-open");el.setAttribute("aria-hidden","false");} };
   const closeDialog = el => { if(el){el.classList.remove("is-open");el.setAttribute("aria-hidden","true");} };
+
+
+  function validEventData(value){
+    return !!(value&&typeof value==="object"&&Array.isArray(value.routes)&&value.routes.length&&value.points&&typeof value.points==="object");
+  }
+  function validRunLog(value){
+    return !!(value&&typeof value==="object"&&value.participantId&&value.routeId);
+  }
+  function snapshotScore(value){
+    try{
+      const log=value&&value.log?value.log:value;
+      const scans=Array.isArray(log?.scans)?log.scans.length:0;
+      return scans+(log?.startTime?3:0)+(log?.finishTime?8:0)+(log?.resultPayload?5:0);
+    }catch(_){return 0}
+  }
+  function writeStorageEverywhere(key,raw){
+    try{localStorage.setItem(key,raw)}catch(_){ }
+    try{sessionStorage.setItem(key,raw)}catch(_){ }
+  }
+  function readStorageEverywhere(key){
+    const out=[];
+    try{out.push(localStorage.getItem(key))}catch(_){ }
+    try{out.push(sessionStorage.getItem(key))}catch(_){ }
+    return out;
+  }
+  function collectAllParticipantSnapshots(){
+    const found=[];
+    const scanStorage=storage=>{
+      try{
+        for(let i=0;i<storage.length;i++){
+          const key=storage.key(i)||"";
+          if(!/militopo_(participant|runner|live)/i.test(key))continue;
+          const raw=storage.getItem(key); if(!raw)continue;
+          try{
+            const value=JSON.parse(raw);
+            if(validEventData(value?.eventData)||validRunLog(value?.log)||validRunLog(value))found.push(value);
+          }catch(_){ }
+        }
+      }catch(_){ }
+    };
+    scanStorage(localStorage); scanStorage(sessionStorage);
+    return found;
+  }
 
   function decodeB64UrlJson(value){
     try{
@@ -48,14 +93,16 @@
   }
   function saveSnapshot(eventData,log){
     try{
-      if(!eventData?.routes||!eventData?.points)return false;
+      if(!validEventData(eventData))return false;
       const snapshot={savedAt:new Date().toISOString(),eventData};
       if(log&&typeof log==="object")snapshot.log=log;
       const raw=JSON.stringify(snapshot);
-      localStorage.setItem(SNAPSHOT_KEY,raw);
-      localStorage.setItem(EVENT_KEY,raw);
-      localStorage.setItem(EVENT_BACKUP_KEY,raw);
-      try{sessionStorage.setItem(SNAPSHOT_KEY,raw);sessionStorage.setItem(EVENT_KEY,raw)}catch(_){ }
+      writeStorageEverywhere(SNAPSHOT_KEY,raw);
+      writeStorageEverywhere(EVENT_KEY,raw);
+      writeStorageEverywhere(EVENT_BACKUP_KEY,raw);
+      writeStorageEverywhere(PERMANENT_EVENT_KEY,JSON.stringify({savedAt:snapshot.savedAt,eventData}));
+      writeStorageEverywhere(PERMANENT_SNAPSHOT_KEY,raw);
+      try{window.name="MILITOPO_PARTICIPANT_SNAPSHOT:"+raw}catch(_){ }
       return true;
     }catch(_){return false}
   }
@@ -66,25 +113,39 @@
   }
   function readSavedEventData(){
     const candidates=[];
-    try{candidates.push(localStorage.getItem(SNAPSHOT_KEY),localStorage.getItem(EVENT_KEY),localStorage.getItem(EVENT_BACKUP_KEY))}catch(_){ }
-    try{candidates.push(sessionStorage.getItem(SNAPSHOT_KEY),sessionStorage.getItem(EVENT_KEY))}catch(_){ }
+    [SNAPSHOT_KEY,EVENT_KEY,EVENT_BACKUP_KEY,PERMANENT_EVENT_KEY,PERMANENT_SNAPSHOT_KEY].forEach(key=>candidates.push(...readStorageEverywhere(key)));
+    try{
+      const raw=String(window.name||"");
+      if(raw.startsWith("MILITOPO_PARTICIPANT_SNAPSHOT:"))candidates.push(raw.slice("MILITOPO_PARTICIPANT_SNAPSHOT:".length));
+    }catch(_){ }
+    candidates.push(...collectAllParticipantSnapshots().map(value=>{try{return JSON.stringify(value)}catch(_){return null}}));
+    const valid=[];
     for(const raw of candidates){
-      try{const value=JSON.parse(raw||"null");if(value?.eventData?.routes?.length&&value?.eventData?.points)return value.eventData}catch(_){ }
+      try{const value=JSON.parse(raw||"null");const eventData=value?.eventData||value;if(validEventData(eventData))valid.push({eventData,value})}catch(_){ }
     }
-    return null;
+    if(!valid.length)return null;
+    valid.sort((a,b)=>snapshotScore(b.value)-snapshotScore(a.value)||String(b.value?.savedAt||"").localeCompare(String(a.value?.savedAt||"")));
+    return valid[0].eventData;
   }
   function readSavedRunState(){
     const candidates=[];
-    try{candidates.push(localStorage.getItem(RUN_STATE_KEY),localStorage.getItem(SNAPSHOT_KEY))}catch(_){ }
-    try{candidates.push(sessionStorage.getItem(RUN_STATE_KEY),sessionStorage.getItem(SNAPSHOT_KEY))}catch(_){ }
+    [RUN_STATE_KEY,SNAPSHOT_KEY,EVENT_KEY,EVENT_BACKUP_KEY,PERMANENT_SNAPSHOT_KEY].forEach(key=>candidates.push(...readStorageEverywhere(key)));
+    try{
+      const raw=String(window.name||"");
+      if(raw.startsWith("MILITOPO_PARTICIPANT_SNAPSHOT:"))candidates.push(raw.slice("MILITOPO_PARTICIPANT_SNAPSHOT:".length));
+    }catch(_){ }
+    candidates.push(...collectAllParticipantSnapshots().map(value=>{try{return JSON.stringify(value)}catch(_){return null}}));
+    const valid=[];
     for(const raw of candidates){
       try{
         const value=JSON.parse(raw||"null");
-        if(value?.log?.participantId)return value.log;
-        if(value?.participantId)return value;
+        const log=value?.log||value;
+        if(validRunLog(log))valid.push(log);
       }catch(_){ }
     }
-    return null;
+    if(!valid.length)return null;
+    valid.sort((a,b)=>snapshotScore(b)-snapshotScore(a)||String(b.lastSavedAt||"").localeCompare(String(a.lastSavedAt||"")));
+    return valid[0];
   }
   function eventFromUrl(){
     const params=new URLSearchParams(location.search||"");const packed=params.get("c")||params.get("pdata")||params.get("data")||"";
@@ -236,7 +297,7 @@
     const msg=event.data;if(!msg||msg.source!=="MILITOPO_PARTICIPANT_APP")return;
     if(msg.action==="EVENT_LOADED"&&msg.payload?.eventData){saveEventData(msg.payload.eventData);toast("Recorrido guardado en MILITOPO Participante");}
     if(msg.action==="RUN_STATE"&&msg.payload?.log){
-      try{localStorage.setItem(RUN_STATE_KEY,JSON.stringify(msg.payload.log));sessionStorage.setItem(RUN_STATE_KEY,JSON.stringify(msg.payload.log))}catch(_){ }
+      try{writeStorageEverywhere(RUN_STATE_KEY,JSON.stringify(msg.payload.log))}catch(_){ }
       if(msg.payload?.eventData)saveSnapshot(msg.payload.eventData,msg.payload.log);
     }
     if(msg.action==="RESET_REQUEST")showResetDialog(msg.payload||{});

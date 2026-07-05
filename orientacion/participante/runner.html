@@ -1586,8 +1586,13 @@ module.exports = QRCode;
 <div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
 <script>
 const EVENT_DATA=__EVENT_DATA__;const PARENT_SAVED_LOG=__SAVED_LOG__;let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-independiente-v8-scroll-persistente";
+const APP_VERSION="militopo-participante-independiente-v9-progreso-permanente";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
+const APP_EVENT_KEY="militopo_participant_app_event_v1";
+const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
+const APP_RUN_STATE_KEY="militopo_participant_app_run_state_v1";
+const APP_PERMANENT_EVENT_KEY="militopo_participant_permanent_event_v2";
+const APP_PERMANENT_SNAPSHOT_KEY="militopo_participant_permanent_snapshot_v2";
 function notifyMilitopoLive(kind,extra={}){
     try{
         if(!route||!pid)return;
@@ -1629,6 +1634,19 @@ const RUN_WINDOW_PREFIX="MILITOPO_RUN_BACKUP:";
 const RUN_MEMORY={raw:""};
 let offlinePageReady=false,offlinePageChecked=false,qrReaderReady=false;
 function safeNow(){return new Date().toISOString()}
+function writePermanentParticipantSnapshot(eventData,runLog){
+    try{
+        if(!eventData||!Array.isArray(eventData.routes)||!eventData.routes.length||!eventData.points)return false;
+        const snap={savedAt:safeNow(),eventData};
+        if(runLog&&typeof runLog==="object")snap.log=runLog;
+        const raw=JSON.stringify(snap);
+        [APP_SNAPSHOT_KEY,APP_EVENT_KEY,APP_EVENT_BACKUP_KEY,APP_PERMANENT_SNAPSHOT_KEY].forEach(k=>writeKeyEverywhere(k,raw));
+        writeKeyEverywhere(APP_PERMANENT_EVENT_KEY,JSON.stringify({savedAt:snap.savedAt,eventData}));
+        if(runLog&&runLog.participantId)writeKeyEverywhere(APP_RUN_STATE_KEY,JSON.stringify(runLog));
+        try{window.name=RUN_WINDOW_PREFIX+raw}catch(e){}
+        return true;
+    }catch(e){return false}
+}
 function baseKey(){return "militopo_runner_"+EVENT_DATA.eventId}
 function allRecoveryKeys(p){return [baseKey()+"_"+p,baseKey(),baseKey()+"_active",baseKey()+"_backup_"+p,baseKey()+"_backup_last",baseKey()+"_emergency_"+p,baseKey()+"_emergency_last",baseKey()+"_checkpoint_"+p]}
 function normalizeLog(x){
@@ -1845,6 +1863,7 @@ function importParticipantEventData(pack){
     try{
         Object.keys(EVENT_DATA).forEach(k=>delete EVENT_DATA[k]);
         Object.assign(EVENT_DATA,pack);
+        writePermanentParticipantSnapshot(EVENT_DATA,log);
         try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"EVENT_LOADED",payload:{eventData:pack}},"*")}catch(e){}
         return true;
     }catch(e){console.warn("No se pudo importar pack participante",e);return false;}
@@ -2284,11 +2303,7 @@ function save(){
         writeKeyEverywhere(key()+"_emergency_"+pid,raw);
         writeKeyEverywhere(key()+"_emergency_last",raw);
         writeKeyEverywhere(key()+"_checkpoint_"+pid,raw);
-        try{
-            const snapshot=JSON.stringify({savedAt:safeNow(),eventData:EVENT_DATA,log});
-            localStorage.setItem(APP_SNAPSHOT_KEY,snapshot);
-            sessionStorage.setItem(APP_SNAPSHOT_KEY,snapshot);
-        }catch(e){}
+        writePermanentParticipantSnapshot(EVENT_DATA,log);
         try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"RUN_STATE",payload:{log,eventData:EVENT_DATA}},"*")}catch(e){}
     }catch(e){
         console.warn("No se pudo guardar registro offline",e);
