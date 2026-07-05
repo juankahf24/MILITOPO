@@ -52,6 +52,8 @@
   }
   function collectAllParticipantSnapshots(){
     const found=[];
+    const urlSnapshot=readUrlSnapshot();
+    if(urlSnapshot)found.push(urlSnapshot);
     const pushValue=value=>{
       try{
         if(!value||typeof value!=="object")return;
@@ -84,6 +86,35 @@
       return JSON.parse(new TextDecoder("utf-8").decode(bytes));
     }catch(error){return null;}
   }
+  function encodeB64UrlJson(value){
+    try{
+      const json=JSON.stringify(value||{});
+      const bytes=new TextEncoder().encode(json);
+      let bin=""; for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+      return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
+    }catch(_){return "";}
+  }
+  function readUrlSnapshot(){
+    try{
+      const hash=String(location.hash||"");
+      const m=hash.match(/(?:^#|[&#])mpstate=([^&]+)/);
+      if(!m)return null;
+      const value=decodeB64UrlJson(decodeURIComponent(m[1]));
+      if(value&&typeof value==="object"&&(validEventData(value.eventData)||validRunLog(value.log)))return value;
+    }catch(_){ }
+    return null;
+  }
+  function writeUrlSnapshot(snapshot){
+    try{
+      if(!snapshot||!validEventData(snapshot.eventData))return false;
+      const enc=encodeB64UrlJson(snapshot);
+      if(!enc)return false;
+      const base=location.pathname+location.search;
+      const next=base+"#mpstate="+encodeURIComponent(enc);
+      if(location.pathname+location.search+location.hash!==next)history.replaceState(history.state||{},document.title,next);
+      return true;
+    }catch(_){return false;}
+  }
   function expandCompact(compact){
     if(!compact||typeof compact!=="object")return null;
     if(compact.routes&&compact.points)return compact;
@@ -113,10 +144,7 @@
       writeStorageEverywhere("militopo_participante_recorrido_activo_v1",raw);
       writeStorageEverywhere("militopo_participante_recorrido_rescate_v1",raw);
       try{window.name="MILITOPO_PARTICIPANT_SNAPSHOT:"+raw}catch(_){ }
-      try{
-        const short={e:eventData.eventId||"",p:eventData.webParticipantId||eventData.routes?.[0]?.participantId||"",r:eventData.routes?.[0]?.routeId||""};
-        history.replaceState(history.state||{},document.title,location.pathname+location.search+"#militopo-participante-cargado");
-      }catch(_){ }
+      writeUrlSnapshot(snapshot);
       return true;
     }catch(_){return false}
   }
@@ -163,12 +191,13 @@
   }
   function eventFromUrl(){
     const params=new URLSearchParams(location.search||"");const packed=params.get("c")||params.get("pdata")||params.get("data")||"";
-    const data=expandCompact(decodeB64UrlJson(packed));if(data)saveEventData(data);
+    const data=expandCompact(decodeB64UrlJson(packed));
     if(packed){
       const clean=new URL(location.href);clean.search="";clean.searchParams.set("modo","participante");
       const install=params.get("install");if(install)clean.searchParams.set("install",install);
       history.replaceState({},document.title,clean.pathname+clean.search);
     }
+    if(data)saveEventData(data);
     return data;
   }
   function safeJsonForScript(data){return JSON.stringify(data||emptyEventData()).replace(/<\/script/gi,"<\\/script").replace(/<!--/g,"<\\!--");}
@@ -313,6 +342,10 @@
     if(msg.action==="RUN_STATE"&&msg.payload?.log){
       try{writeStorageEverywhere(RUN_STATE_KEY,JSON.stringify(msg.payload.log))}catch(_){ }
       if(msg.payload?.eventData)saveSnapshot(msg.payload.eventData,msg.payload.log);
+      else{const saved=readSavedEventData(); if(saved)saveSnapshot(saved,msg.payload.log);}
+    }
+    if(msg.action==="PERSIST_SNAPSHOT"&&msg.payload?.eventData){
+      saveSnapshot(msg.payload.eventData,msg.payload.log||readSavedRunState());
     }
     if(msg.action==="RESET_REQUEST")showResetDialog(msg.payload||{});
     if(msg.action==="CAMERA_OPEN")openCameraFrame();

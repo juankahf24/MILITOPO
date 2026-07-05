@@ -1584,7 +1584,7 @@ module.exports = QRCode;
 <div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
 <script>
 const EVENT_DATA=__EVENT_DATA__;const PARENT_SAVED_LOG=__SAVED_LOG__;let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-independiente-v10-progreso-inborrable";
+const APP_VERSION="militopo-participante-independiente-v11-url-rescate";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -1630,6 +1630,16 @@ function notifyMilitopoLive(kind,extra={}){
 const JSQR_CACHE_KEY="militopo_jsqr_cache_v1";
 const RUN_WINDOW_PREFIX="MILITOPO_RUN_BACKUP:";
 const RUN_MEMORY={raw:""};
+function readParentUrlSnapshot(){
+    try{
+        const href=(window.parent&&window.parent!==window)?String(window.parent.location.href||""):String(location.href||"");
+        const hash=href.split("#")[1]||"";
+        const m=hash.match(/(?:^|&)mpstate=([^&]+)/);
+        if(!m)return null;
+        const value=decodeB64UrlJson(decodeURIComponent(m[1]));
+        return value&&typeof value==="object"?value:null;
+    }catch(e){return null}
+}
 function isUsableEventData(data){return !!(data&&typeof data==="object"&&Array.isArray(data.routes)&&data.routes.length&&data.points&&typeof data.points==="object")}
 function isUsableRunLog(data){return !!(data&&typeof data==="object"&&data.participantId&&data.routeId)}
 function runScoreForRecovery(x){try{return (Array.isArray(x?.scans)?x.scans.length:0)+(x?.startTime?3:0)+(x?.finishTime?8:0)+(x?.resultPayload?5:0)}catch(e){return 0}}
@@ -1638,6 +1648,7 @@ function recoverStoredEventDataBeforeInit(){
         if(isUsableEventData(EVENT_DATA))return true;
         const candidates=[];
         const push=value=>{try{if(value&&typeof value==="object"){const eventData=value.eventData||value;if(isUsableEventData(eventData))candidates.push({eventData,value})}}catch(e){}};
+        push(readParentUrlSnapshot());
         const scan=storage=>{try{for(let i=0;i<storage.length;i++){const k=storage.key(i)||"";if(!/militopo/i.test(k))continue;const raw=storage.getItem(k);if(!raw)continue;try{push(JSON.parse(raw))}catch(e){}}}catch(e){}};
         scan(localStorage);scan(sessionStorage);
         try{const raw=String(window.name||"");if(raw.startsWith("MILITOPO_PARTICIPANT_SNAPSHOT:"))push(JSON.parse(raw.slice("MILITOPO_PARTICIPANT_SNAPSHOT:".length)));if(raw.startsWith("MILITOPO_RUN_BACKUP:"))push(JSON.parse(raw.slice("MILITOPO_RUN_BACKUP:".length)))}catch(e){}
@@ -1661,6 +1672,7 @@ function writePermanentParticipantSnapshot(eventData,runLog){
         writeKeyEverywhere(APP_PERMANENT_EVENT_KEY,JSON.stringify({savedAt:snap.savedAt,eventData}));
         if(runLog&&runLog.participantId)writeKeyEverywhere(APP_RUN_STATE_KEY,JSON.stringify(runLog));
         try{window.name="MILITOPO_PARTICIPANT_SNAPSHOT:"+raw}catch(e){}
+        try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"PERSIST_SNAPSHOT",payload:snap},"*")}catch(e){}
         return true;
     }catch(e){return false}
 }
@@ -1781,7 +1793,8 @@ function autoLoadEmbeddedParticipantRoute(){
         pid=String(EVENT_DATA.webParticipantId||r.participantId);
         route=r;
 
-        const candidates=[PARENT_SAVED_LOG,...allRecoveryKeys(pid).map(readJsonKey)];
+        const parentSnap=readParentUrlSnapshot();
+        const candidates=[parentSnap&&parentSnap.log,PARENT_SAVED_LOG,...allRecoveryKeys(pid).map(readJsonKey)];
         log=chooseBestLog(candidates);
         if(!log){
             log={
@@ -2249,7 +2262,8 @@ function requestParticipantAppReset(){
 }
 
 function restoreBestSavedRun(silent){
-    const guesses=[readWindowNameBackup(),readMemoryBackup()];
+    const parentSnap=readParentUrlSnapshot();
+    const guesses=[parentSnap&&parentSnap.log,readWindowNameBackup(),readMemoryBackup()];
     try{guesses.push(readJsonKey(key()),readJsonKey(key()+"_active"),readJsonKey(key()+"_backup_last"),readJsonKey(key()+"_emergency_last"))}catch(e){}
     (EVENT_DATA.routes||[]).forEach(r=>allRecoveryKeys(r.participantId).forEach(k=>guesses.push(readJsonKey(k))));
     const best=chooseBestLog(guesses);
