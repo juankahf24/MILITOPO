@@ -1659,7 +1659,7 @@ const INITIAL_URL_LOG=readInitialUrlLog();
 const EVENT_DATA=(INITIAL_URL_EVENT_DATA&&Array.isArray(INITIAL_URL_EVENT_DATA.routes)&&INITIAL_URL_EVENT_DATA.routes.length)?INITIAL_URL_EVENT_DATA:((BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData());
 const PARENT_SAVED_LOG=INITIAL_URL_LOG||((BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null);
 let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-directa-v2-url-mpstate-persistente";
+const APP_VERSION="militopo-participante-directa-v2-fix-init-restaura-progreso";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -1875,7 +1875,7 @@ async function ensureOfflinePageAvailable(){
         }catch(e){}
     }
     try{
-        const cache=await caches.open("militopo-participante-page-v60");
+        const cache=await caches.open("militopo-participante-page-v61");
         const pageUrl=location.href.split("#")[0];
         const html="<!DOCTYPE html>\n"+document.documentElement.outerHTML;
         await cache.put(new Request(pageUrl),new Response(html,{headers:{"Content-Type":"text/html;charset=utf-8"}}));
@@ -1942,15 +1942,24 @@ function autoLoadEmbeddedParticipantRoute(){
 }
 
 function init(){
-    recoverStoredEventDataBeforeInit();
-    document.getElementById("eventInfo").innerHTML="Evento: <b>"+EVENT_DATA.eventId+"</b><br>"+(EVENT_DATA.eventName||"Orientación");
-    requestPersistentStorage();
-    bindParticipantAutosave();
-    const restored=restoreBestSavedRun(true);
-    const embedded=restored?true:autoLoadEmbeddedParticipantRoute();
-    updateOfflineSafetyPanel((restored||embedded)?"RECORRIDO CARGADO Y GUARDADO AUTOMÁTICAMENTE":"CARGA TU QR DE PARTICIPANTE ANTES DE SALIR");
-    ensureOfflinePageAvailable().then(()=>updateOfflineSafetyPanel());
-    precacheQrReader().then(ok=>{qrReaderReady=!!ok;updateOfflineSafetyPanel();});
+    try{
+        recoverStoredEventDataBeforeInit();
+        const eventInfoEl=document.getElementById("eventInfo");
+        if(eventInfoEl)eventInfoEl.innerHTML="Evento: <b>"+EVENT_DATA.eventId+"</b><br>"+(EVENT_DATA.eventName||"Orientación");
+        requestPersistentStorage();
+        bindParticipantAutosave();
+        const restored=restoreBestSavedRun(true);
+        const embedded=restored?true:autoLoadEmbeddedParticipantRoute();
+        updateOfflineSafetyPanel((restored||embedded)?"RECORRIDO CARGADO Y GUARDADO AUTOMÁTICAMENTE":"CARGA TU QR DE PARTICIPANTE ANTES DE SALIR");
+        ensureOfflinePageAvailable().then(()=>updateOfflineSafetyPanel()).catch(()=>{});
+        precacheQrReader().then(ok=>{qrReaderReady=!!ok;updateOfflineSafetyPanel();}).catch(()=>{});
+    }catch(e){
+        console.error("Error al iniciar MILITOPO Participante",e);
+        try{
+            const restored=restoreBestSavedRun(true);
+            if(!restored)autoLoadEmbeddedParticipantRoute();
+        }catch(_){ }
+    }
 }
 function key(){return baseKey()}function toast(m){const t=document.getElementById("toast");t.textContent=m;t.style.display="block";clearTimeout(t._t);t._t=setTimeout(()=>t.style.display="none",2500)}
 function manual(){document.getElementById("manualInput").style.display="block";document.getElementById("manualBtn").style.display="block"}function loadManual(){handleQr(document.getElementById("manualInput").value)}
