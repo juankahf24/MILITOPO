@@ -3,6 +3,8 @@
   const EVENT_KEY = "militopo_participant_app_event_v1";
   const EVENT_BACKUP_KEY = "militopo_participant_app_event_backup_v1";
   const RUN_STATE_KEY = "militopo_participant_app_run_state_v1";
+  const SNAPSHOT_KEY = "militopo_participant_app_snapshot_v1";
+  let cameraFrameRestore = null;
   const MODE_QUERY = "modo=participante";
   const frame = document.getElementById("participantFrame");
   const loading = document.getElementById("shellLoading");
@@ -44,28 +46,45 @@
     }
     return null;
   }
-  function saveEventData(data){
-    if(!data?.routes||!data?.points)return false;
-    currentEventData=data;
+  function saveSnapshot(eventData,log){
     try{
-      const raw=JSON.stringify({savedAt:new Date().toISOString(),eventData:data});
+      if(!eventData?.routes||!eventData?.points)return false;
+      const snapshot={savedAt:new Date().toISOString(),eventData};
+      if(log&&typeof log==="object")snapshot.log=log;
+      const raw=JSON.stringify(snapshot);
+      localStorage.setItem(SNAPSHOT_KEY,raw);
       localStorage.setItem(EVENT_KEY,raw);
       localStorage.setItem(EVENT_BACKUP_KEY,raw);
-      try{sessionStorage.setItem(EVENT_KEY,raw)}catch(_){ }
+      try{sessionStorage.setItem(SNAPSHOT_KEY,raw);sessionStorage.setItem(EVENT_KEY,raw)}catch(_){ }
       return true;
     }catch(_){return false}
   }
+  function saveEventData(data){
+    if(!data?.routes||!data?.points)return false;
+    currentEventData=data;
+    return saveSnapshot(data,readSavedRunState());
+  }
   function readSavedEventData(){
     const candidates=[];
-    try{candidates.push(localStorage.getItem(EVENT_KEY),localStorage.getItem(EVENT_BACKUP_KEY))}catch(_){ }
-    try{candidates.push(sessionStorage.getItem(EVENT_KEY))}catch(_){ }
+    try{candidates.push(localStorage.getItem(SNAPSHOT_KEY),localStorage.getItem(EVENT_KEY),localStorage.getItem(EVENT_BACKUP_KEY))}catch(_){ }
+    try{candidates.push(sessionStorage.getItem(SNAPSHOT_KEY),sessionStorage.getItem(EVENT_KEY))}catch(_){ }
     for(const raw of candidates){
       try{const value=JSON.parse(raw||"null");if(value?.eventData?.routes?.length&&value?.eventData?.points)return value.eventData}catch(_){ }
     }
     return null;
   }
   function readSavedRunState(){
-    try{return JSON.parse(localStorage.getItem(RUN_STATE_KEY)||"null")}catch(_){return null}
+    const candidates=[];
+    try{candidates.push(localStorage.getItem(RUN_STATE_KEY),localStorage.getItem(SNAPSHOT_KEY))}catch(_){ }
+    try{candidates.push(sessionStorage.getItem(RUN_STATE_KEY),sessionStorage.getItem(SNAPSHOT_KEY))}catch(_){ }
+    for(const raw of candidates){
+      try{
+        const value=JSON.parse(raw||"null");
+        if(value?.log?.participantId)return value.log;
+        if(value?.participantId)return value;
+      }catch(_){ }
+    }
+    return null;
   }
   function eventFromUrl(){
     const params=new URLSearchParams(location.search||"");const packed=params.get("c")||params.get("pdata")||params.get("data")||"";
@@ -80,10 +99,18 @@
   function safeJsonForScript(data){return JSON.stringify(data||emptyEventData()).replace(/<\/script/gi,"<\\/script").replace(/<!--/g,"<\\!--");}
   async function loadRunner(){
     try{
-      if(!runnerTemplate){const response=await fetch("runner.html",{cache:"no-cache"});if(!response.ok)throw new Error("runner.html");runnerTemplate=await response.text();}
+      if(!runnerTemplate){
+        let response=null;
+        try{response=await fetch("runner.html",{cache:"no-cache"})}catch(_){response=null}
+        if(!response||!response.ok){
+          try{response=await caches.match("./runner.html")||await caches.match("runner.html")}catch(_){response=null}
+        }
+        if(!response||!response.ok)throw new Error("runner.html");
+        runnerTemplate=await response.text();
+      }
       currentEventData=eventFromUrl()||readSavedEventData()||emptyEventData();
       const savedRun=readSavedRunState();
-      frame.setAttribute("scrolling","no");
+      frame.removeAttribute("scrolling");
       frame.style.overflow="hidden";
       frame.style.touchAction="auto";
       frame.style.height=Math.max(window.innerHeight||0,720)+"px";
@@ -115,7 +142,7 @@
     try{frame.srcdoc="<!doctype html><body style='margin:0;background:#10190b;color:#f5e6c8;font-family:monospace;display:grid;place-items:center;height:100vh'>Restableciendo…</body>";}catch(_){ }
     cleanParticipantQueue(payload.eventId,currentEventData?.webParticipantId||payload.participantId);
     const prefixes=["militopo_runner_","militopo_participant_app_run_state_v1","militopo_participant_gps_enabled_v1:","militopo_participant_gps_lock_v1:","militopo_live_v2_last_sync_","militopo_participant_app_","militopo_participant_web_event_v1","militopo_jsqr_cache_v1"];
-    const exact=new Set([EVENT_KEY,"militopo_live_v2_participant_context","militopo_participant_web_event_v1","militopo_jsqr_cache_v1"]);
+    const exact=new Set([EVENT_KEY,EVENT_BACKUP_KEY,RUN_STATE_KEY,SNAPSHOT_KEY,"militopo_live_v2_participant_context","militopo_participant_web_event_v1","militopo_jsqr_cache_v1"]);
     const predicate=key=>exact.has(key)||prefixes.some(prefix=>String(key).startsWith(prefix));
     removeMatchingStorage(localStorage,predicate);removeMatchingStorage(sessionStorage,predicate);
     try{window.name=""}catch(_){ }
@@ -157,18 +184,64 @@
     const url=new URL(location.href);url.searchParams.delete("install");history.replaceState({},document.title,url.pathname+url.search);
   }
 
+
+  function openCameraFrame(){
+    if(!frame)return;
+    try{
+      if(!cameraFrameRestore){
+        cameraFrameRestore={
+          cssText:frame.style.cssText||"",
+          htmlOverflow:document.documentElement.style.overflow||"",
+          bodyOverflow:document.body.style.overflow||"",
+          scrollY:window.scrollY||document.documentElement.scrollTop||0
+        };
+      }
+      document.body.classList.add("camera-active");
+      document.documentElement.style.overflow="hidden";
+      document.body.style.overflow="hidden";
+      frame.style.position="fixed";
+      frame.style.inset="0";
+      frame.style.left="0";
+      frame.style.top="0";
+      frame.style.width="100vw";
+      frame.style.height="100dvh";
+      frame.style.minHeight="100dvh";
+      frame.style.maxHeight="100dvh";
+      frame.style.zIndex="999999";
+      frame.style.background="#10190b";
+      frame.style.border="0";
+      frame.style.overflow="hidden";
+      frame.style.touchAction="none";
+    }catch(_){document.body.classList.add("camera-active");}
+  }
+  function closeCameraFrame(){
+    try{
+      document.body.classList.remove("camera-active");
+      document.documentElement.style.overflow=cameraFrameRestore?.htmlOverflow||"";
+      document.body.style.overflow=cameraFrameRestore?.bodyOverflow||"";
+      if(frame){
+        frame.style.cssText=cameraFrameRestore?.cssText||frame.style.cssText;
+        frame.style.overflow="hidden";
+        frame.style.touchAction="auto";
+      }
+      const y=Number(cameraFrameRestore?.scrollY||0);
+      cameraFrameRestore=null;
+      setTimeout(()=>{try{window.scrollTo({top:y,behavior:"auto"})}catch(_){ }},0);
+    }catch(_){document.body.classList.remove("camera-active");cameraFrameRestore=null;}
+  }
+
   window.addEventListener("beforeinstallprompt",event=>{event.preventDefault();deferredInstallPrompt=event;});
   window.addEventListener("appinstalled",()=>{deferredInstallPrompt=null;toast("MILITOPO Participante instalada");closeInstallGuide();});
   window.addEventListener("message",event=>{
     const msg=event.data;if(!msg||msg.source!=="MILITOPO_PARTICIPANT_APP")return;
     if(msg.action==="EVENT_LOADED"&&msg.payload?.eventData){saveEventData(msg.payload.eventData);toast("Recorrido guardado en MILITOPO Participante");}
     if(msg.action==="RUN_STATE"&&msg.payload?.log){
-      try{localStorage.setItem(RUN_STATE_KEY,JSON.stringify(msg.payload.log))}catch(_){ }
-      if(msg.payload?.eventData)saveEventData(msg.payload.eventData);
+      try{localStorage.setItem(RUN_STATE_KEY,JSON.stringify(msg.payload.log));sessionStorage.setItem(RUN_STATE_KEY,JSON.stringify(msg.payload.log))}catch(_){ }
+      if(msg.payload?.eventData)saveSnapshot(msg.payload.eventData,msg.payload.log);
     }
     if(msg.action==="RESET_REQUEST")showResetDialog(msg.payload||{});
-    if(msg.action==="CAMERA_OPEN")document.body.classList.add("camera-active");
-    if(msg.action==="CAMERA_CLOSE"){document.body.classList.remove("camera-active");document.documentElement.style.overflowY="auto";document.body.style.overflowY="auto";frame.style.touchAction="auto";frame.style.overflow="hidden";}
+    if(msg.action==="CAMERA_OPEN")openCameraFrame();
+    if(msg.action==="CAMERA_CLOSE")closeCameraFrame();
     if(msg.action==="DIALOG_OPEN")document.body.classList.add("participant-dialog-active");
     if(msg.action==="DIALOG_CLOSE")document.body.classList.remove("participant-dialog-active");
   });

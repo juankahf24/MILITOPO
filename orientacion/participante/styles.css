@@ -18,3 +18,9 @@ body.camera-active .participant-shell-main,body.participant-dialog-active .parti
 /* FIX SCROLL PARTICIPANTE: el iframe conserva desplazamiento táctil vertical */
 .participant-shell-main iframe{overflow:hidden!important;touch-action:auto!important;overscroll-behavior:contain!important}
 body:not(.camera-active):not(.participant-dialog-active) .participant-shell-main{touch-action:auto!important}
+
+
+/* FIX REAL QR: cuando se abre lector, el iframe de participante ocupa la pantalla completa */
+body.camera-active{overflow:hidden!important;touch-action:none!important;overscroll-behavior:none!important}
+body.camera-active #participantFrame{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;min-height:100dvh!important;max-height:100dvh!important;z-index:999999!important;background:#10190b!important;overflow:hidden!important;touch-action:none!important}
+body:not(.camera-active) #participantFrame{touch-action:auto!important}
