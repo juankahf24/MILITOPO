@@ -1654,6 +1654,16 @@ function readParentUrlSnapshot(){
         return value&&typeof value==="object"?value:null;
     }catch(e){return null}
 }
+function readParentUrlLog(){
+    try{
+        const href=(window.parent&&window.parent!==window)?String(window.parent.location.href||""):String(location.href||"");
+        const hash=href.split("#")[1]||"";
+        const m=hash.match(/(?:^|&)mplog=([^&]+)/);
+        if(!m)return null;
+        const value=decodeB64UrlJson(decodeURIComponent(m[1]));
+        return isUsableRunLog(value)?value:null;
+    }catch(e){return null}
+}
 function isUsableEventData(data){return !!(data&&typeof data==="object"&&Array.isArray(data.routes)&&data.routes.length&&data.points&&typeof data.points==="object")}
 function isUsableRunLog(data){return !!(data&&typeof data==="object"&&data.participantId&&data.routeId)}
 function runScoreForRecovery(x){try{return (Array.isArray(x?.scans)?x.scans.length:0)+(x?.startTime?3:0)+(x?.finishTime?8:0)+(x?.resultPayload?5:0)}catch(e){return 0}}
@@ -1687,6 +1697,7 @@ function writePermanentParticipantSnapshot(eventData,runLog){
         if(runLog&&runLog.participantId)writeKeyEverywhere(APP_RUN_STATE_KEY,JSON.stringify(runLog));
         try{window.name="MILITOPO_PARTICIPANT_SNAPSHOT:"+raw}catch(e){}
         try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"PERSIST_SNAPSHOT",payload:snap},"*")}catch(e){}
+        updateParentUrlState();
         return true;
     }catch(e){return false}
 }
@@ -1721,6 +1732,23 @@ function writeKeyEverywhere(k,raw){
     try{sessionStorage.setItem(k,raw)}catch(e){}
     try{RUN_MEMORY.raw=raw}catch(e){}
     try{window.name=RUN_WINDOW_PREFIX+raw}catch(e){}
+}
+function updateParentUrlState(packed){
+    try{
+        const logForUrl=(log&&pid&&route)?log:null;
+        const encLog=logForUrl?encodeB64UrlJson(logForUrl):"";
+        const top=(window.parent&&window.parent!==window)?window.parent:window;
+        try{
+            const url=new URL(top.location.href);
+            url.searchParams.set("modo","participante");
+            const pack=packed||EVENT_DATA.__participantPacked||"";
+            if(pack)url.searchParams.set("c",String(pack));
+            if(encLog)url.hash="mplog="+encodeURIComponent(encLog);
+            top.history.replaceState(top.history.state||{},top.document?top.document.title:document.title,url.pathname+url.search+url.hash);
+        }catch(e){
+            try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"SET_URL_STATE",payload:{packed:packed||EVENT_DATA.__participantPacked||"",log:logForUrl}},"*")}catch(_){ }
+        }
+    }catch(e){}
 }
 function storageHealth(){
     let localOk=false,sessionOk=false;
@@ -1873,6 +1901,14 @@ function decodeB64UrlJson(value){
         }catch(err){return null}
     }
 }
+function encodeB64UrlJson(value){
+    try{
+        const json=JSON.stringify(value||{});
+        const bytes=new TextEncoder().encode(json);
+        let bin="";for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+        return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
+    }catch(e){return ""}
+}
 function expandParticipantCompactPack(compact){
     if(!compact||typeof compact!=="object")return null;
     if(compact.v===1){
@@ -1925,7 +1961,7 @@ function parse(raw){
             const pack=expandParticipantCompactPack(decoded);
             const pid=urlPid||(pack&&pack.webParticipantId)||"";
             const routeId=(pack&&pack.routes&&pack.routes[0]&&pack.routes[0].routeId)||"";
-            return{ok:true,type:"PARTICIPANT",eventId:String((pack&&pack.eventId)||EVENT_DATA.eventId||""),id:String(pid),routeId:String(routeId||""),eventData:pack};
+            return{ok:true,type:"PARTICIPANT",eventId:String((pack&&pack.eventId)||EVENT_DATA.eventId||""),id:String(pid),routeId:String(routeId||""),eventData:pack,packed:String(packed||""),originalUrl:value};
         }
     }catch(e){}
     const p=value.split("|");
@@ -2244,6 +2280,7 @@ function handleQr(raw){
 }
 function loadParticipant(q){
     if(q.eventData)importParticipantEventData(q.eventData);
+    if(q.packed)EVENT_DATA.__participantPacked=String(q.packed);
     route=EVENT_DATA.routes.find(r=>r.participantId===q.id&&(!q.routeId||r.routeId===q.routeId))||EVENT_DATA.routes.find(r=>r.participantId===q.id)||(EVENT_DATA.routes.length===1?EVENT_DATA.routes[0]:null);
     if(!route)return toast("Participante no encontrado");
     pid=route.participantId||q.id;
@@ -2253,6 +2290,7 @@ function loadParticipant(q){
     log.eventId=EVENT_DATA.eventId;
     log.participantId=pid;
     log.routeId=route.routeId;
+    updateParentUrlState(q.packed||EVENT_DATA.__participantPacked||"");
     save();
     renderLoaded();
     ensureOfflinePageAvailable();
@@ -2277,7 +2315,7 @@ function requestParticipantAppReset(){
 
 function restoreBestSavedRun(silent){
     const parentSnap=readParentUrlSnapshot();
-    const guesses=[parentSnap&&parentSnap.log,readWindowNameBackup(),readMemoryBackup()];
+    const guesses=[readParentUrlLog(),parentSnap&&parentSnap.log,readWindowNameBackup(),readMemoryBackup()];
     try{guesses.push(readJsonKey(key()),readJsonKey(key()+"_active"),readJsonKey(key()+"_backup_last"),readJsonKey(key()+"_emergency_last"))}catch(e){}
     (EVENT_DATA.routes||[]).forEach(r=>allRecoveryKeys(r.participantId).forEach(k=>guesses.push(readJsonKey(k))));
     const best=chooseBestLog(guesses);
@@ -2350,6 +2388,7 @@ function save(){
         writeKeyEverywhere(key()+"_emergency_last",raw);
         writeKeyEverywhere(key()+"_checkpoint_"+pid,raw);
         writePermanentParticipantSnapshot(EVENT_DATA,log);
+        updateParentUrlState();
         try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"RUN_STATE",payload:{log,eventData:EVENT_DATA}},"*")}catch(e){}
     }catch(e){
         console.warn("No se pudo guardar registro offline",e);

@@ -104,13 +104,26 @@
     }catch(_){ }
     return null;
   }
+  function readUrlLog(){
+    try{
+      const hash=String(location.hash||"");
+      const m=hash.match(/(?:^#|[&#])mplog=([^&]+)/);
+      if(!m)return null;
+      const value=decodeB64UrlJson(decodeURIComponent(m[1]));
+      if(validRunLog(value))return value;
+    }catch(_){ }
+    return null;
+  }
   function writeUrlSnapshot(snapshot){
     try{
-      if(!snapshot||!validEventData(snapshot.eventData))return false;
-      const enc=encodeB64UrlJson(snapshot);
+      const log=snapshot&&snapshot.log;
+      if(!validRunLog(log))return false;
+      const enc=encodeB64UrlJson(log);
       if(!enc)return false;
-      const base=location.pathname+location.search;
-      const next=base+"#mpstate="+encodeURIComponent(enc);
+      const url=new URL(location.href);
+      url.searchParams.set("modo","participante");
+      url.hash="mplog="+encodeURIComponent(enc);
+      const next=url.pathname+url.search+url.hash;
       if(location.pathname+location.search+location.hash!==next)history.replaceState(history.state||{},document.title,next);
       return true;
     }catch(_){return false;}
@@ -171,6 +184,8 @@
   }
   function readSavedRunState(){
     const candidates=[];
+    const urlLog=readUrlLog();
+    if(urlLog)candidates.push(JSON.stringify(urlLog));
     [RUN_STATE_KEY,SNAPSHOT_KEY,EVENT_KEY,EVENT_BACKUP_KEY,PERMANENT_SNAPSHOT_KEY,"militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"].forEach(key=>candidates.push(...readStorageEverywhere(key)));
     try{
       const raw=String(window.name||"");
@@ -192,12 +207,15 @@
   function eventFromUrl(){
     const params=new URLSearchParams(location.search||"");const packed=params.get("c")||params.get("pdata")||params.get("data")||"";
     const data=expandCompact(decodeB64UrlJson(packed));
-    if(packed){
-      const clean=new URL(location.href);clean.search="";clean.searchParams.set("modo","participante");
-      const install=params.get("install");if(install)clean.searchParams.set("install",install);
-      history.replaceState({},document.title,clean.pathname+clean.search);
+    if(data){
+      try{
+        const keep=new URL(location.href);
+        keep.searchParams.set("modo","participante");
+        if(packed&&!keep.searchParams.get("c"))keep.searchParams.set("c",packed);
+        history.replaceState(history.state||{},document.title,keep.pathname+keep.search+keep.hash);
+      }catch(_){ }
+      saveEventData(data);
     }
-    if(data)saveEventData(data);
     return data;
   }
   function safeJsonForScript(data){return JSON.stringify(data||emptyEventData()).replace(/<\/script/gi,"<\\/script").replace(/<!--/g,"<\\!--");}
@@ -350,6 +368,18 @@
       const log=msg.payload.log||readSavedRunState();
       saveSnapshot(msg.payload.eventData,log);
       saveBootPayload(msg.payload.eventData,log);
+    }
+    if(msg.action==="SET_URL_STATE"){
+      try{
+        const url=new URL(location.href);
+        url.searchParams.set("modo","participante");
+        if(msg.payload?.packed)url.searchParams.set("c",String(msg.payload.packed));
+        if(msg.payload?.log&&validRunLog(msg.payload.log)){
+          const enc=encodeB64UrlJson(msg.payload.log);
+          if(enc)url.hash="mplog="+encodeURIComponent(enc);
+        }
+        history.replaceState(history.state||{},document.title,url.pathname+url.search+url.hash);
+      }catch(_){ }
     }
     if(msg.action==="RESET_REQUEST")showResetDialog(msg.payload||{});
     if(msg.action==="CAMERA_OPEN")openCameraFrame();
