@@ -52,20 +52,28 @@
   }
   function collectAllParticipantSnapshots(){
     const found=[];
+    const pushValue=value=>{
+      try{
+        if(!value||typeof value!=="object")return;
+        if(validEventData(value?.eventData)||validRunLog(value?.log)||validRunLog(value))found.push(value);
+      }catch(_){ }
+    };
     const scanStorage=storage=>{
       try{
         for(let i=0;i<storage.length;i++){
           const key=storage.key(i)||"";
-          if(!/militopo_(participant|runner|live)/i.test(key))continue;
+          if(!/militopo/i.test(key))continue;
           const raw=storage.getItem(key); if(!raw)continue;
-          try{
-            const value=JSON.parse(raw);
-            if(validEventData(value?.eventData)||validRunLog(value?.log)||validRunLog(value))found.push(value);
-          }catch(_){ }
+          try{pushValue(JSON.parse(raw));}catch(_){ }
         }
       }catch(_){ }
     };
     scanStorage(localStorage); scanStorage(sessionStorage);
+    try{
+      const raw=String(window.name||"");
+      if(raw.startsWith("MILITOPO_PARTICIPANT_SNAPSHOT:"))pushValue(JSON.parse(raw.slice("MILITOPO_PARTICIPANT_SNAPSHOT:".length)));
+      if(raw.startsWith("MILITOPO_RUN_BACKUP:"))pushValue(JSON.parse(raw.slice("MILITOPO_RUN_BACKUP:".length)));
+    }catch(_){ }
     return found;
   }
 
@@ -102,7 +110,13 @@
       writeStorageEverywhere(EVENT_BACKUP_KEY,raw);
       writeStorageEverywhere(PERMANENT_EVENT_KEY,JSON.stringify({savedAt:snapshot.savedAt,eventData}));
       writeStorageEverywhere(PERMANENT_SNAPSHOT_KEY,raw);
+      writeStorageEverywhere("militopo_participante_recorrido_activo_v1",raw);
+      writeStorageEverywhere("militopo_participante_recorrido_rescate_v1",raw);
       try{window.name="MILITOPO_PARTICIPANT_SNAPSHOT:"+raw}catch(_){ }
+      try{
+        const short={e:eventData.eventId||"",p:eventData.webParticipantId||eventData.routes?.[0]?.participantId||"",r:eventData.routes?.[0]?.routeId||""};
+        history.replaceState(history.state||{},document.title,location.pathname+location.search+"#militopo-participante-cargado");
+      }catch(_){ }
       return true;
     }catch(_){return false}
   }
@@ -113,7 +127,7 @@
   }
   function readSavedEventData(){
     const candidates=[];
-    [SNAPSHOT_KEY,EVENT_KEY,EVENT_BACKUP_KEY,PERMANENT_EVENT_KEY,PERMANENT_SNAPSHOT_KEY].forEach(key=>candidates.push(...readStorageEverywhere(key)));
+    [SNAPSHOT_KEY,EVENT_KEY,EVENT_BACKUP_KEY,PERMANENT_EVENT_KEY,PERMANENT_SNAPSHOT_KEY,"militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"].forEach(key=>candidates.push(...readStorageEverywhere(key)));
     try{
       const raw=String(window.name||"");
       if(raw.startsWith("MILITOPO_PARTICIPANT_SNAPSHOT:"))candidates.push(raw.slice("MILITOPO_PARTICIPANT_SNAPSHOT:".length));
@@ -129,7 +143,7 @@
   }
   function readSavedRunState(){
     const candidates=[];
-    [RUN_STATE_KEY,SNAPSHOT_KEY,EVENT_KEY,EVENT_BACKUP_KEY,PERMANENT_SNAPSHOT_KEY].forEach(key=>candidates.push(...readStorageEverywhere(key)));
+    [RUN_STATE_KEY,SNAPSHOT_KEY,EVENT_KEY,EVENT_BACKUP_KEY,PERMANENT_SNAPSHOT_KEY,"militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"].forEach(key=>candidates.push(...readStorageEverywhere(key)));
     try{
       const raw=String(window.name||"");
       if(raw.startsWith("MILITOPO_PARTICIPANT_SNAPSHOT:"))candidates.push(raw.slice("MILITOPO_PARTICIPANT_SNAPSHOT:".length));
