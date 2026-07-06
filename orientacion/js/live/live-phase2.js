@@ -532,6 +532,40 @@ async function stopOrganizerRun() {
   }
 }
 
+async function resetOrganizerEventForReusableExercise(eventId) {
+  const eventKey = safeFirebaseKey(eventId || organizerEventKey || "");
+  if (!eventKey) return false;
+  try { localStorage.removeItem(ORGANIZER_RUN_KEY_PREFIX + eventKey); } catch (_) {}
+  try { localStorage.removeItem(AUTO_IMPORT_KEY_PREFIX + eventKey); } catch (_) {}
+  try { organizerAutoImportedCount = 0; organizerLatestRows = []; organizerAutoImportBusy.clear(); } catch (_) {}
+  try {
+    if (typeof organizerUnsubActive === "function") organizerUnsubActive();
+    organizerUnsubActive = null;
+  } catch (_) {}
+  cleanupOrganizerRunListener();
+  const previousRunId = organizerRunId || "";
+  organizerEventKey = eventKey;
+  organizerRunId = "";
+  if (db && currentUser) {
+    try {
+      const activeSnap = await get(ref(db, activeRunPath(eventKey)));
+      const active = activeSnap.val();
+      const runId = String(active?.runId || previousRunId || "");
+      if (runId) {
+        try { await update(ref(db, `${runPath(eventKey, runId)}/meta`), { status:"reset", resetAt:serverTimestamp(), resetAtClient:nowIso() }); } catch (_) {}
+      }
+      await set(ref(db, activeRunPath(eventKey)), null);
+    } catch (error) {
+      console.warn("MILITOPO LIVE · reset reusable exercise", error);
+    }
+  }
+  try { attachOrganizerRun(eventKey, ""); } catch (_) {}
+  try { updateOrganizerButtons(); } catch (_) {}
+  try { setMessage("Ejercicio restaurado limpio. La carrera en vivo queda cerrada hasta que pulses INICIAR CARRERA EN VIVO.", "warn"); } catch (_) {}
+  try { if (currentUser && db) bindOrganizerEvent({eventId:eventKey}); } catch (_) {}
+  return true;
+}
+
 function startOrganizerContextWatcher() {
   buildOrganizerPanel();
   const tick = () => {
@@ -921,6 +955,7 @@ window.MILITOPO_LIVE_PHASE2 = {
   get runId() { return organizerRunId || participantRunId; },
   startOrganizerRun,
   stopOrganizerRun,
+  resetOrganizerEventForReusableExercise,
   flushParticipantQueue
 };
 
