@@ -8511,6 +8511,81 @@ function validateReusableExerciseData(data){
     return true;
 }
 
+
+function clearOrganizerSavedStateBeforeReusableImport(){
+    try{clearTimeout(__autoSaveTimer)}catch(e){}
+    try{localStorage.removeItem(STORAGE_KEY_MAIN)}catch(e){}
+    try{localStorage.removeItem(STORAGE_KEY_BACKUP)}catch(e){}
+    try{localStorage.removeItem(STORAGE_KEY_LEGACY)}catch(e){}
+    try{localStorage.removeItem(STORAGE_KEY_LAST_STEP)}catch(e){}
+    try{sessionStorage.removeItem(STORAGE_KEY_SESSION);sessionStorage.removeItem(STORAGE_KEY_LEGACY);sessionStorage.removeItem(STORAGE_KEY_LAST_STEP)}catch(e){}
+    try{if(String(window.name||"").startsWith(WINDOW_NAME_PREFIX))window.name=""}catch(e){}
+}
+
+function hardResetStateForReusableExerciseImport(){
+    Object.keys(state).forEach(key=>delete state[key]);
+    Object.assign(state,{
+        eventId:"",
+        eventName:"ENTRENAMIENTO ORIENTACIÓN",
+        planScale:10000,
+        pdfPlanCenterManual:null,
+        selectedMapLayer:"mapant",
+        planEquidistanceM:5,
+        participantCount:10,
+        controlCount:25,
+        controlsPerRoute:8,
+        maxControlReuse:6,
+        points:{},
+        routes:[],
+        metrics:[],
+        elevations:{},
+        participantLogs:{},
+        participantNames:{},
+        skippedRoutes:{},
+        importedResults:[],
+        iofDescriptions:{},
+        routeWarnings:[],
+        startFlowStatus:{},
+        startTimes:{},
+        finishTimes:{},
+        scanHistory:[],
+        classification:[],
+        liveRunId:"",
+        liveRunStartedAt:"",
+        liveRunStatus:""
+    });
+    selectedPointId="START";
+    selectedIofPointId="START";
+}
+
+function clearAllReusableExerciseRuntimeStorage(eventId){
+    try{
+        const eventKey=String(eventId||"").trim();
+        const safe=eventKey.replace(/[.#$\[\]\/]/g,"-").replace(/\s+/g,"-").replace(/-+/g,"-").slice(0,100);
+        const prefixes=[
+            "militopo_live_v2_organizer_run_",
+            "militopo_live_v2_auto_import_",
+            "militopo_orientacion_last_live_run_",
+            "militopo_live_v2_last_sync_"
+        ];
+        const exact=new Set([
+            "militopo_live_v2_pending_events",
+            "militopo_live_v2_participant_context"
+        ]);
+        const wipe=storage=>{try{
+            const keys=[];
+            for(let i=0;i<storage.length;i++)keys.push(storage.key(i));
+            keys.filter(Boolean).forEach(k=>{
+                const key=String(k);
+                const byPrefix=prefixes.some(p=>key.startsWith(p));
+                const byEvent=safe&&key.includes(safe)&&key.startsWith("militopo_live_v2_");
+                if(exact.has(key)||byPrefix||byEvent)storage.removeItem(key);
+            });
+        }catch(e){}};
+        wipe(localStorage);wipe(sessionStorage);
+    }catch(e){}
+}
+
 function resetRuntimeForReusableExerciseImport(){
     try{
         state.participantLogs={};
@@ -8529,6 +8604,7 @@ function resetRuntimeForReusableExerciseImport(){
 }
 
 function clearReusableExerciseLocalRuntimeKeys(eventId){
+    clearAllReusableExerciseRuntimeStorage(eventId);
     try{
         const eventKey=String(eventId||"").trim();
         const safe=eventKey.replace(/[.#$\[\]\/]/g,"-").replace(/\s+/g,"-").replace(/-+/g,"-").slice(0,100);
@@ -8557,6 +8633,7 @@ async function resetLiveForReusableExerciseImport(eventId){
 }
 
 function applyReusableExerciseData(data){
+    hardResetStateForReusableExerciseImport();
     const cfg=data.config||{};
     const plan=data.plan||{};
     const routes=safeJsonClone(data.routes||[],[]);
@@ -8564,7 +8641,7 @@ function applyReusableExerciseData(data){
 
     state.eventId=String(data.eventId);
     state.eventName=String(data.eventName||"ENTRENAMIENTO ORIENTACIÓN");
-    state.participantCount=Number(cfg.participantCount)||routes.length||10;
+    state.participantCount=routes.length||Number(cfg.participantCount)||10;
     state.controlCount=Number(cfg.controlCount)||Object.values(points).filter(p=>p&&p.type==="BALIZA").length;
     state.controlsPerRoute=Number(cfg.controlsPerRoute)||Math.max(2,(routes[0]?.points||[]).filter(id=>id!=="START"&&id!=="FINISH").length);
     state.maxControlReuse=Number(cfg.maxControlReuse)||6;
@@ -8628,9 +8705,12 @@ async function importReusableExerciseFile(file){
         }
 
         try{localStorage.setItem(STORAGE_KEY_PRE_IMPORT_BACKUP,JSON.stringify({savedAt:new Date().toISOString(),currentStep:beforeStep,state:beforeState}))}catch(e){}
+        clearOrganizerSavedStateBeforeReusableImport();
+        clearAllReusableExerciseRuntimeStorage(data.eventId);
+        await resetLiveForReusableExerciseImport(data.eventId);
         applyReusableExerciseData(data);
         resetRuntimeForReusableExerciseImport();
-        await resetLiveForReusableExerciseImport(state.eventId);
+        clearAllReusableExerciseRuntimeStorage(state.eventId);
 
         syncConfigToUi();
         syncPlanScaleSettingUi();
@@ -8644,6 +8724,9 @@ async function importReusableExerciseFile(file){
         if(typeof updateOrganizerParticipantSelects==="function")updateOrganizerParticipantSelects();
         if(typeof renderStartFlowStatusPanel==="function")renderStartFlowStatusPanel();
         if(typeof hideStep5DeliveryConfirmPanels==="function")hideStep5DeliveryConfirmPanels();
+        if(typeof cleanupStartFlowStatusStore==="function")cleanupStartFlowStatusStore();
+        if(typeof renderImportedResults==="function")renderImportedResults();
+        if(typeof renderStep5RoutePicker==="function"){renderStep5RoutePicker("start");renderStep5RoutePicker("finish");}
 
         currentAppStep=5;
         saveState();
