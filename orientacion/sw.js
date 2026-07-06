@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · GPS precisión 10 m, 3 lecturas y avisos reforzados */
-const MILITOPO_CACHE = "militopo-orientacion-participante-independiente-v1";
+/* MILITOPO Orientación · restaurar ejercicio limpio y reset live */
+const MILITOPO_CACHE = "militopo-orientacion-reset-ejercicio-limpio-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
