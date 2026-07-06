@@ -8511,6 +8511,51 @@ function validateReusableExerciseData(data){
     return true;
 }
 
+function resetRuntimeForReusableExerciseImport(){
+    try{
+        state.participantLogs={};
+        state.importedResults=[];
+        state.startTimes={};
+        state.finishTimes={};
+        state.scanHistory=[];
+        state.classification=[];
+        state.startFlowStatus={};
+        state.participantNames={};
+        state.skippedRoutes={};
+        state.liveRunId="";
+        state.liveRunStartedAt="";
+        state.liveRunStatus="";
+    }catch(e){}
+}
+
+function clearReusableExerciseLocalRuntimeKeys(eventId){
+    try{
+        const eventKey=String(eventId||"").trim();
+        const safe=eventKey.replace(/[.#$\[\]\/]/g,"-").replace(/\s+/g,"-").replace(/-+/g,"-").slice(0,100);
+        const exact=new Set([
+            "militopo_live_v2_organizer_run_"+safe,
+            "militopo_live_v2_auto_import_"+safe,
+            "militopo_orientacion_last_live_run_"+safe
+        ]);
+        const prefixes=["militopo_live_v2_auto_import_","militopo_live_v2_organizer_run_"];
+        const wipe=storage=>{try{
+            const keys=[];
+            for(let i=0;i<storage.length;i++)keys.push(storage.key(i));
+            keys.filter(Boolean).forEach(k=>{const key=String(k);if(exact.has(key)||(safe&&key.includes(safe)&&prefixes.some(p=>key.startsWith(p))))storage.removeItem(key);});
+        }catch(e){}};
+        wipe(localStorage);wipe(sessionStorage);
+    }catch(e){}
+}
+
+async function resetLiveForReusableExerciseImport(eventId){
+    clearReusableExerciseLocalRuntimeKeys(eventId);
+    try{
+        if(window.MILITOPO_LIVE_PHASE2 && typeof window.MILITOPO_LIVE_PHASE2.resetOrganizerEventForReusableExercise==="function"){
+            await window.MILITOPO_LIVE_PHASE2.resetOrganizerEventForReusableExercise(eventId);
+        }
+    }catch(e){console.warn("No se pudo reiniciar la carrera en vivo al restaurar ejercicio",e)}
+}
+
 function applyReusableExerciseData(data){
     const cfg=data.config||{};
     const plan=data.plan||{};
@@ -8534,8 +8579,9 @@ function applyReusableExerciseData(data){
     state.metrics=safeJsonClone(data.metrics||[],[]);
     state.elevations=safeJsonClone(data.elevations||{},{});
     state.iofDescriptions=safeJsonClone(data.iofDescriptions||{},{});
-    state.participantNames=safeJsonClone(data.participantNames||{},{});
-    state.skippedRoutes=safeJsonClone(data.skippedRoutes||{},{});
+    // Nueva repetición limpia: no se heredan nombres, descartes ni estados de otra carrera.
+    state.participantNames={};
+    state.skippedRoutes={};
     state.routeWarnings=safeJsonClone(data.routeWarnings||[],[]);
 
     // Nueva ejecución del mismo material: se limpia únicamente la actividad anterior.
@@ -8545,6 +8591,10 @@ function applyReusableExerciseData(data){
     state.finishTimes={};
     state.scanHistory=[];
     state.classification=[];
+    state.startFlowStatus={};
+    state.liveRunId="";
+    state.liveRunStartedAt="";
+    state.liveRunStatus="";
 
     const symbols=data.customIofSymbols||{};
     try{
@@ -8579,6 +8629,8 @@ async function importReusableExerciseFile(file){
 
         try{localStorage.setItem(STORAGE_KEY_PRE_IMPORT_BACKUP,JSON.stringify({savedAt:new Date().toISOString(),currentStep:beforeStep,state:beforeState}))}catch(e){}
         applyReusableExerciseData(data);
+        resetRuntimeForReusableExerciseImport();
+        await resetLiveForReusableExerciseImport(state.eventId);
 
         syncConfigToUi();
         syncPlanScaleSettingUi();
@@ -8590,6 +8642,8 @@ async function importReusableExerciseFile(file){
         if(typeof renderMapMarkers==="function")renderMapMarkers();
         if(typeof renderPlanPdfPreview==="function")renderPlanPdfPreview();
         if(typeof updateOrganizerParticipantSelects==="function")updateOrganizerParticipantSelects();
+        if(typeof renderStartFlowStatusPanel==="function")renderStartFlowStatusPanel();
+        if(typeof hideStep5DeliveryConfirmPanels==="function")hideStep5DeliveryConfirmPanels();
 
         currentAppStep=5;
         saveState();
