@@ -553,6 +553,8 @@ async function resetOrganizerEventForReusableExercise(eventId) {
       const runId = String(active?.runId || previousRunId || "");
       if (runId) {
         try { await update(ref(db, `${runPath(eventKey, runId)}/meta`), { status:"reset", resetAt:serverTimestamp(), resetAtClient:nowIso() }); } catch (_) {}
+        try { await set(ref(db, `${runPath(eventKey, runId)}/participants`), null); } catch (_) {}
+        try { await set(ref(db, `${runPath(eventKey, runId)}/events`), null); } catch (_) {}
       }
       await set(ref(db, activeRunPath(eventKey)), null);
     } catch (error) {
@@ -560,6 +562,7 @@ async function resetOrganizerEventForReusableExercise(eventId) {
     }
   }
   try { attachOrganizerRun(eventKey, ""); } catch (_) {}
+  try { renderOrganizerParticipants({}); } catch (_) {}
   try { updateOrganizerButtons(); } catch (_) {}
   try { setMessage("Ejercicio restaurado limpio. La carrera en vivo queda cerrada hasta que pulses INICIAR CARRERA EN VIVO.", "warn"); } catch (_) {}
   try { if (currentUser && db) bindOrganizerEvent({eventId:eventKey}); } catch (_) {}
