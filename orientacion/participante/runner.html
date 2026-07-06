@@ -2093,7 +2093,7 @@ function parse(raw){
 }
 
 /* GPS de proximidad ejecutado dentro del iframe participante */
-const GPS_RADIUS_M=10,GPS_MAX_ACCURACY_M=10,GPS_REQUIRED_HITS=3;
+const GPS_RADIUS_M=12,GPS_MAX_ACCURACY_M=10,GPS_REQUIRED_HITS=1,GPS_DUPLICATE_COOLDOWN_MS=4000;
 const GPS_PREF_PREFIX="militopo_participant_gps_enabled_v1:";
 const GPS_LOCK_PREF_PREFIX="militopo_participant_gps_lock_v1:";
 let gpsWatchId=null,gpsWakeLock=null,gpsInsideHits=0,gpsLastTarget="",gpsLastPosition=null,gpsLastValidatedAt=0,gpsUnlockTimer=null,gpsPrefsRestoredFor="",participantLiveSyncState="inactive",participantPendingSyncCount=0,participantPendingControlSyncCount=0,participantPendingResultSync=false,gpsFinishedByProximity=false,gpsFinishNoticeMode="",gpsFinishNoticeDismissedMode="",gpsFinishInsideHits=0,gpsFinishConfirmOpen=false,gpsFinishDeclinedUntilLeave=false,gpsStartReminderOpen=false,cameraLayoutRestore=null;
@@ -2316,7 +2316,7 @@ function processGpsPosition(pos){
             gpsFinishDeclinedUntilLeave=false;
         }else if(acc<=GPS_MAX_ACCURACY_M&&finishDist<=GPS_RADIUS_M&&!gpsFinishDeclinedUntilLeave&&!gpsFinishConfirmOpen){
             gpsFinishInsideHits++;
-            if(gpsFinishInsideHits>=GPS_REQUIRED_HITS&&Date.now()-gpsLastValidatedAt>3500){
+            if(gpsFinishInsideHits>=GPS_REQUIRED_HITS&&Date.now()-gpsLastValidatedAt>GPS_DUPLICATE_COOLDOWN_MS){
                 gpsLastValidatedAt=Date.now();
                 gpsFinishInsideHits=0;
                 handleGpsArrivalDetected();
@@ -2365,7 +2365,7 @@ function processGpsPosition(pos){
     }else if(dist<=GPS_RADIUS_M){
         gpsInsideHits++;
         setGpsStatus("Dentro de "+GPS_RADIUS_M+" m de "+label+" · confirmando "+gpsInsideHits+"/"+GPS_REQUIRED_HITS,"ok");
-        if(gpsInsideHits>=GPS_REQUIRED_HITS&&Date.now()-gpsLastValidatedAt>3500){
+        if(gpsInsideHits>=GPS_REQUIRED_HITS&&Date.now()-gpsLastValidatedAt>GPS_DUPLICATE_COOLDOWN_MS){
             gpsLastValidatedAt=Date.now();
             const before=gpsCorrectCount();
             scanControl(target.id);
