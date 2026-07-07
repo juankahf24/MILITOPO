@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · restaurar ejercicio limpio y reset live */
-const MILITOPO_CACHE = "militopo-orientacion-fix-import-limpio-radio-10-v1";
+/* MILITOPO Orientación · QR balizas A4 optimizado */
+const MILITOPO_CACHE = "militopo-orientacion-qr-balizas-a4-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
