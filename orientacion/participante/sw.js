@@ -1,5 +1,5 @@
-/* MILITOPO Participante · iPhone audio/vibración reforzada + reset total */
-const CACHE_NAME="militopo-participante-apple-icon-fix-v1";
+/* MILITOPO Participante · persistencia IndexedDB + audio iPhone reforzado */
+const CACHE_NAME="militopo-participante-idb-audio-ios-v20260707";
 const APP_SHELL=["./","./index.html","./runner.html","./styles.css","./app.js","./manifest.webmanifest","./icons/participante-192.png","./icons/participante-512.png","./icons/apple-touch-icon.png","../js/live/live-phase2.js"];
 self.addEventListener("install",event=>{self.skipWaiting();event.waitUntil((async()=>{const cache=await caches.open(CACHE_NAME);await Promise.allSettled(APP_SHELL.map(url=>cache.add(new Request(url,{cache:"reload"}))));})())});
 self.addEventListener("activate",event=>{event.waitUntil((async()=>{const names=await caches.keys();await Promise.all(names.filter(name=>name.startsWith("militopo-participante-")&&name!==CACHE_NAME).map(name=>caches.delete(name)));await self.clients.claim();})())});

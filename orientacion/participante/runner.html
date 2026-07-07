@@ -1710,13 +1710,124 @@ const INITIAL_URL_LOG=readInitialUrlLog();
 const EVENT_DATA=(INITIAL_URL_EVENT_DATA&&Array.isArray(INITIAL_URL_EVENT_DATA.routes)&&INITIAL_URL_EVENT_DATA.routes.length)?INITIAL_URL_EVENT_DATA:((BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData());
 const PARENT_SAVED_LOG=INITIAL_URL_LOG||((BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null);
 let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-directa-v2-fix-init-restaura-progreso";
+const APP_VERSION="militopo-participante-directa-v3-idb-audio-ios-restauracion";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
 const APP_RUN_STATE_KEY="militopo_participant_app_run_state_v1";
 const APP_PERMANENT_EVENT_KEY="militopo_participant_permanent_event_v2";
 const APP_PERMANENT_SNAPSHOT_KEY="militopo_participant_permanent_snapshot_v2";
+const PARTICIPANT_IDB_NAME="MILITOPO_PARTICIPANTE_DB_V1";
+const PARTICIPANT_IDB_STORE="estado";
+function participantIdbSupported(){return !!window.indexedDB}
+function participantIdbOpen(){
+    return new Promise((resolve,reject)=>{
+        try{
+            if(!participantIdbSupported())return reject(new Error("IndexedDB no disponible"));
+            const req=indexedDB.open(PARTICIPANT_IDB_NAME,1);
+            req.onupgradeneeded=()=>{try{req.result.createObjectStore(PARTICIPANT_IDB_STORE)}catch(e){}};
+            req.onsuccess=()=>resolve(req.result);
+            req.onerror=()=>reject(req.error||new Error("No se pudo abrir IndexedDB"));
+        }catch(e){reject(e)}
+    });
+}
+async function participantIdbSet(key,value){
+    try{
+        const db=await participantIdbOpen();
+        await new Promise((resolve,reject)=>{
+            const tx=db.transaction(PARTICIPANT_IDB_STORE,"readwrite");
+            tx.objectStore(PARTICIPANT_IDB_STORE).put(value,key);
+            tx.oncomplete=()=>resolve();
+            tx.onerror=()=>reject(tx.error||new Error("No se pudo guardar"));
+        });
+        try{db.close()}catch(e){}
+        return true;
+    }catch(e){return false}
+}
+async function participantIdbGet(key){
+    try{
+        const db=await participantIdbOpen();
+        const value=await new Promise((resolve,reject)=>{
+            const tx=db.transaction(PARTICIPANT_IDB_STORE,"readonly");
+            const req=tx.objectStore(PARTICIPANT_IDB_STORE).get(key);
+            req.onsuccess=()=>resolve(req.result||null);
+            req.onerror=()=>reject(req.error||new Error("No se pudo leer"));
+        });
+        try{db.close()}catch(e){}
+        return value||null;
+    }catch(e){return null}
+}
+async function participantIdbClearAll(){
+    try{
+        const db=await participantIdbOpen();
+        await new Promise((resolve,reject)=>{
+            const tx=db.transaction(PARTICIPANT_IDB_STORE,"readwrite");
+            tx.objectStore(PARTICIPANT_IDB_STORE).clear();
+            tx.oncomplete=()=>resolve();
+            tx.onerror=()=>reject(tx.error||new Error("No se pudo limpiar"));
+        });
+        try{db.close()}catch(e){}
+        return true;
+    }catch(e){return false}
+}
+function participantSnapshotPayload(eventData,runLog){
+    try{
+        if(!eventData||!Array.isArray(eventData.routes)||!eventData.routes.length||!eventData.points)return null;
+        const snap={v:4,savedAt:safeNow(),eventData};
+        if(runLog&&typeof runLog==="object")snap.log=runLog;
+        return snap;
+    }catch(e){return null}
+}
+function persistParticipantSnapshotAsync(eventData,runLog){
+    try{
+        const snap=participantSnapshotPayload(eventData,runLog);
+        if(!snap)return false;
+        participantIdbSet("snapshot",snap);
+        participantIdbSet("eventData",snap.eventData);
+        if(snap.log)participantIdbSet("runLog",snap.log);
+        return true;
+    }catch(e){return false}
+}
+function applyParticipantSnapshotObject(snap,silent=true){
+    try{
+        if(!snap||typeof snap!=="object")return false;
+        const eventData=snap.eventData||snap;
+        if(!isUsableEventData(eventData))return false;
+        Object.keys(EVENT_DATA).forEach(k=>delete EVENT_DATA[k]);
+        Object.assign(EVENT_DATA,eventData);
+        let candidateLog=snap.log||null;
+        if(!isUsableRunLog(candidateLog))candidateLog=chooseBestLog([candidateLog,readParentUrlLog(),readParentUrlSnapshot()&&readParentUrlSnapshot().log,readWindowNameBackup(),readMemoryBackup()]);
+        let routeCandidate=null;
+        if(candidateLog&&candidateLog.participantId){
+            routeCandidate=EVENT_DATA.routes.find(r=>String(r.participantId||"")===String(candidateLog.participantId||"")&&(!candidateLog.routeId||String(r.routeId||"")===String(candidateLog.routeId||"")))||EVENT_DATA.routes.find(r=>String(r.participantId||"")===String(candidateLog.participantId||""));
+        }
+        if(!routeCandidate)routeCandidate=EVENT_DATA.routes.find(r=>String(r.participantId||"")===String(EVENT_DATA.webParticipantId||""))||EVENT_DATA.routes[0];
+        if(!routeCandidate)return false;
+        route=routeCandidate;
+        pid=String(route.participantId||EVENT_DATA.webParticipantId||candidateLog?.participantId||"P01");
+        log=normalizeLog(candidateLog)||{eventId:EVENT_DATA.eventId,participantId:pid,routeId:route.routeId,startTime:null,finishTime:null,scans:[],completed:false,missingControls:[]};
+        log.eventId=EVENT_DATA.eventId;
+        log.participantId=pid;
+        log.routeId=route.routeId;
+        if(!Array.isArray(log.scans))log.scans=[];
+        if(!Array.isArray(log.missingControls))log.missingControls=[];
+        save();
+        renderLoaded();
+        notifyMilitopoLive("READY");
+        if(!silent)toast("Recorrido restaurado");
+        return true;
+    }catch(e){console.warn("No se pudo aplicar snapshot participante",e);return false}
+}
+async function restoreParticipantFromIndexedDb(silent=true){
+    try{
+        const snap=await participantIdbGet("snapshot");
+        if(snap&&applyParticipantSnapshotObject(snap,silent))return true;
+        const eventData=await participantIdbGet("eventData");
+        const runLog=await participantIdbGet("runLog");
+        if(eventData&&applyParticipantSnapshotObject({eventData,log:runLog},silent))return true;
+    }catch(e){}
+    return false;
+}
 function notifyMilitopoLive(kind,extra={}){
     try{
         if(!route||!pid)return;
@@ -1809,6 +1920,7 @@ function writePermanentParticipantSnapshot(eventData,runLog){
         if(runLog&&runLog.participantId)writeKeyEverywhere(APP_RUN_STATE_KEY,JSON.stringify(runLog));
         try{window.name="MILITOPO_PARTICIPANT_SNAPSHOT:"+raw}catch(e){}
         try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"PERSIST_SNAPSHOT",payload:snap},"*")}catch(e){}
+        try{persistParticipantSnapshotAsync(eventData,runLog)}catch(e){}
         updateParentUrlState();
         return true;
     }catch(e){return false}
@@ -1992,22 +2104,25 @@ function autoLoadEmbeddedParticipantRoute(){
     }
 }
 
-function init(){
+async function init(){
     try{
         recoverStoredEventDataBeforeInit();
         const eventInfoEl=document.getElementById("eventInfo");
         if(eventInfoEl)eventInfoEl.innerHTML="Evento: <b>"+EVENT_DATA.eventId+"</b><br>"+(EVENT_DATA.eventName||"Orientación");
         requestPersistentStorage();
         bindParticipantAutosave();
-        const restored=restoreBestSavedRun(true);
-        const embedded=restored?true:autoLoadEmbeddedParticipantRoute();
+        let restored=restoreBestSavedRun(true);
+        let embedded=restored?true:autoLoadEmbeddedParticipantRoute();
+        if(!restored&&!embedded){
+            restored=await restoreParticipantFromIndexedDb(true);
+        }
         updateOfflineSafetyPanel((restored||embedded)?"RECORRIDO CARGADO Y GUARDADO AUTOMÁTICAMENTE":"CARGA TU QR DE PARTICIPANTE ANTES DE SALIR");
         ensureOfflinePageAvailable().then(()=>updateOfflineSafetyPanel()).catch(()=>{});
         precacheQrReader().then(ok=>{qrReaderReady=!!ok;updateOfflineSafetyPanel();}).catch(()=>{});
     }catch(e){
         console.error("Error al iniciar MILITOPO Participante",e);
         try{
-            const restored=restoreBestSavedRun(true);
+            const restored=restoreBestSavedRun(true)||await restoreParticipantFromIndexedDb(true);
             if(!restored)autoLoadEmbeddedParticipantRoute();
         }catch(_){ }
     }
@@ -2257,7 +2372,42 @@ function setGpsStatus(text,kind=""){const box=gpsEl("gpsStatus");if(box){box.tex
 function updateGpsMetrics(dist=null,acc=null,targetId=null){const next=gpsNextControl(),target=targetId||(next&&(next.label||next.id))||"—";if(gpsEl("gpsTarget"))gpsEl("gpsTarget").textContent=target;if(gpsEl("gpsAccuracy"))gpsEl("gpsAccuracy").textContent=acc==null?"—":"±"+Math.round(acc)+" m";if(gpsEl("gpsLockTarget"))gpsEl("gpsLockTarget").textContent=target}
 let militopoParticipantAudioCtx=null;
 let militopoParticipantAudioUnlocked=false;
+let militopoParticipantAudioEl=null;
+let militopoParticipantAudioPrimedAt=0;
 function isIosLike(){return /iPad|iPhone|iPod/.test(navigator.userAgent||"")||((navigator.platform||"")==="MacIntel"&&navigator.maxTouchPoints>1)}
+function makeMilitopoBeepDataUri(kind="control"){
+    try{
+        const sr=44100,duration=kind==="finish"?1.45:1.05,frames=Math.floor(sr*duration);
+        const buffer=new ArrayBuffer(44+frames*2),view=new DataView(buffer);
+        const write=(off,str)=>{for(let i=0;i<str.length;i++)view.setUint8(off+i,str.charCodeAt(i))};
+        write(0,"RIFF");view.setUint32(4,36+frames*2,true);write(8,"WAVE");write(12,"fmt ");view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,sr,true);view.setUint32(28,sr*2,true);view.setUint16(32,2,true);view.setUint16(34,16,true);write(36,"data");view.setUint32(40,frames*2,true);
+        const tones=kind==="finish"?[740,980,1280,1580,1980,1580]:[1180,1580,1980,1580,1980];
+        for(let i=0;i<frames;i++){
+            const t=i/sr;
+            const seg=Math.min(tones.length-1,Math.floor(t/(duration/tones.length)));
+            const f=tones[seg];
+            const local=(t%(duration/tones.length))/(duration/tones.length);
+            const env=Math.max(0,Math.sin(Math.PI*local));
+            const v=Math.max(-1,Math.min(1,Math.sin(2*Math.PI*f*t)*env*0.95));
+            view.setInt16(44+i*2,Math.round(v*32767),true);
+        }
+        let bin="";const bytes=new Uint8Array(buffer);for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+        return "data:audio/wav;base64,"+btoa(bin);
+    }catch(e){return ""}
+}
+function ensureParticipantAudioElement(){
+    try{
+        if(!militopoParticipantAudioEl){
+            militopoParticipantAudioEl=new Audio(makeMilitopoBeepDataUri("control"));
+            militopoParticipantAudioEl.preload="auto";
+            militopoParticipantAudioEl.playsInline=true;
+            militopoParticipantAudioEl.setAttribute("playsinline","");
+            militopoParticipantAudioEl.setAttribute("webkit-playsinline","");
+            document.body.appendChild(militopoParticipantAudioEl);
+        }
+        return militopoParticipantAudioEl;
+    }catch(e){return null}
+}
 async function primeParticipantAudio(){
     try{
         const C=window.AudioContext||window.webkitAudioContext;
@@ -2270,8 +2420,23 @@ async function primeParticipantAudio(){
         o.frequency.setValueAtTime(440,t);
         o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.015);
         militopoParticipantAudioUnlocked=c.state!=="suspended";
+        try{
+            const a=ensureParticipantAudioElement();
+            if(a){
+                a.muted=true;a.volume=0.01;a.currentTime=0;
+                await a.play().catch(()=>{});
+                a.pause();a.currentTime=0;a.muted=false;a.volume=1.0;
+            }
+        }catch(e){}
+        militopoParticipantAudioPrimedAt=Date.now();
         return militopoParticipantAudioUnlocked;
-    }catch(e){return false}
+    }catch(e){
+        try{
+            const a=ensureParticipantAudioElement();
+            if(a){a.muted=true;a.volume=0.01;await a.play().catch(()=>{});a.pause();a.currentTime=0;a.muted=false;a.volume=1.0;militopoParticipantAudioPrimedAt=Date.now();return true;}
+        }catch(_){ }
+        return false
+    }
 }
 ["pointerdown","touchstart","click","keydown"].forEach(ev=>document.addEventListener(ev,()=>{primeParticipantAudio()}, {capture:true,passive:true}));
 function participantVisualPulse(kind="control"){
@@ -2295,29 +2460,42 @@ function strongParticipantVibrate(kind="control"){
     return false;
 }
 async function gpsBeep(kind="control"){
+    let played=false;
     try{
-        const C=window.AudioContext||window.webkitAudioContext;if(!C){participantVisualPulse(kind);return;}
-        if(!militopoParticipantAudioCtx)militopoParticipantAudioCtx=new C();
-        const c=militopoParticipantAudioCtx;
-        if(c.state==="suspended")await c.resume().catch(()=>{});
-        const master=c.createGain();
-        const t0=c.currentTime;
-        master.gain.setValueAtTime(0.0001,t0);
-        master.gain.exponentialRampToValueAtTime(1.0,t0+0.025);
-        master.gain.exponentialRampToValueAtTime(0.0001,t0+(kind==="finish"?1.65:1.15));
-        master.connect(c.destination);
-        const tones=kind==="finish"?[740,980,1280,1580,1980,1580,1980]:[1180,1580,1980,1580,1980];
-        tones.forEach((freq,index)=>{
-            const o=c.createOscillator(),g=c.createGain(),start=t0+(index*(kind==="finish"?.18:.14)),duration=kind==="finish"?.16:.13;
-            o.type=index%2?"square":"sawtooth";
-            o.frequency.setValueAtTime(freq,start);
-            g.gain.setValueAtTime(.0001,start);
-            g.gain.exponentialRampToValueAtTime(1.0,start+.014);
-            g.gain.exponentialRampToValueAtTime(.0001,start+duration);
-            o.connect(g);g.connect(master);o.start(start);o.stop(start+duration+.02);
-        });
-        participantVisualPulse(kind);
-    }catch(e){participantVisualPulse(kind)}
+        const C=window.AudioContext||window.webkitAudioContext;
+        if(C){
+            if(!militopoParticipantAudioCtx)militopoParticipantAudioCtx=new C();
+            const c=militopoParticipantAudioCtx;
+            if(c.state==="suspended")await c.resume().catch(()=>{});
+            const master=c.createGain();
+            const t0=c.currentTime;
+            master.gain.setValueAtTime(0.0001,t0);
+            master.gain.exponentialRampToValueAtTime(1.0,t0+0.025);
+            master.gain.exponentialRampToValueAtTime(0.0001,t0+(kind==="finish"?1.75:1.25));
+            master.connect(c.destination);
+            const tones=kind==="finish"?[740,980,1280,1580,1980,1580,1980]:[1180,1580,1980,1580,1980];
+            tones.forEach((freq,index)=>{
+                const o=c.createOscillator(),g=c.createGain(),start=t0+(index*(kind==="finish"?.18:.14)),duration=kind==="finish"?.16:.13;
+                o.type=index%2?"square":"sawtooth";
+                o.frequency.setValueAtTime(freq,start);
+                g.gain.setValueAtTime(.0001,start);
+                g.gain.exponentialRampToValueAtTime(1.0,start+.014);
+                g.gain.exponentialRampToValueAtTime(.0001,start+duration);
+                o.connect(g);g.connect(master);o.start(start);o.stop(start+duration+.02);
+            });
+            played=true;
+        }
+    }catch(e){}
+    try{
+        const a=ensureParticipantAudioElement();
+        if(a){
+            a.src=makeMilitopoBeepDataUri(kind)||a.src;
+            a.muted=false;a.volume=1.0;a.currentTime=0;
+            await a.play().then(()=>{played=true}).catch(()=>{});
+        }
+    }catch(e){}
+    participantVisualPulse(kind);
+    if(!played&&isIosLike())toast("iPhone bloqueó el sonido. Pulsa ACTIVAR GPS o la pantalla una vez y continúa.");
 }
 function gpsValidated(id){primeParticipantAudio();gpsBeep("control");strongParticipantVibrate("control");toast("Baliza "+id+" validada por proximidad")}
 function gpsArrivalDetected(needsConfirmation=true){primeParticipantAudio();gpsBeep("finish");strongParticipantVibrate("finish");toast(needsConfirmation?"Llegada detectada. Confirma si quieres terminar":"Llegada detectada. Recorrido completo; finalizando e importando resultado")}
@@ -2492,6 +2670,7 @@ async function performParticipantAppReset(){
     try{stopQrCamera()}catch(e){}
     try{localStorage.setItem(PARTICIPANT_FORCE_BLANK_KEY,String(Date.now()));sessionStorage.setItem(PARTICIPANT_FORCE_BLANK_KEY,String(Date.now()))}catch(e){}
     try{wipeParticipantLocalRaceData()}catch(e){}
+    try{await participantIdbClearAll()}catch(e){}
     try{
         if("caches" in window){
             const names=await caches.keys();
