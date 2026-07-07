@@ -5504,72 +5504,145 @@ async function printableParticipantsQrPdfBlob(items){
 async function printableControlsQrPdfBlob(items){
     const jsPDF=await ensureJsPdf();
     const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
-    const pageW=210,pageH=297,margin=9;
+    const pageW=210,pageH=297,margin=8,gap=6;
     const eventName=participantPrintEventName();
     const eventCode=String(state.eventId||"").trim()||"—";
     const generatedAt=new Date().toLocaleString("es-ES");
+    let hasContent=false;
 
-    for(let i=0;i<items.length;i++){
-        if(i>0)doc.addPage("a4","portrait");
-        const item=items[i]||{};
-        const point=item.point||{};
+    const pointGroup=item=>{
+        const point=item?.point||{};
+        const id=String(point.id||"").toUpperCase();
+        const type=String(point.type||"").toUpperCase();
+        if(id==="START"||type==="SALIDA"||type==="START")return "start";
+        if(id==="FINISH"||type==="LLEGADA"||type==="FINISH")return "finish";
+        return "control";
+    };
+
+    const newSheet=()=>{
+        if(hasContent)doc.addPage("a4","portrait");
+        hasContent=true;
+    };
+
+    const drawOuterFrame=()=>{
+        doc.setDrawColor(0,0,0);
+        doc.setLineWidth(0.25);
+        doc.rect(margin,margin,pageW-margin*2,pageH-margin*2);
+    };
+
+    const drawControlQrCard=async(item,x,y,w,h,mode)=>{
+        const point=item?.point||{};
         const id=String(point.id||"").toUpperCase();
         const title=pointQrPrintTitle(point);
         const type=String(point.type||"PUNTO");
         const desc=String(point.desc||"Escanear este QR en el punto correspondiente.");
         const utm=String(point.utm||"—");
         const latLon=pointLatLonMeta(point);
-        const payload=String(item.payload||"");
         const qr=await printableQrPngDataUrl(item.qrDataUrl,1400);
+        const isHalf=mode==="half";
 
         doc.setDrawColor(0,0,0);
-        doc.setLineWidth(0.35);
-        doc.rect(margin,margin,pageW-margin*2,pageH-margin*2);
+        doc.setLineWidth(isHalf?0.55:0.42);
+        doc.roundedRect(x,y,w,h,3,3);
 
         doc.setFillColor(24,35,15);
-        doc.rect(margin,margin,pageW-margin*2,25,"F");
+        doc.roundedRect(x,y,w,isHalf?18:16,3,3,"F");
         doc.setTextColor(255,255,255);
         doc.setFont("helvetica","bold");
-        doc.setFontSize(8);
-        doc.text("ID DEL PUNTO",pageW/2,margin+6,{align:"center"});
-        doc.setFontSize(32);
-        doc.text(id||"—",pageW/2,margin+20,{align:"center"});
+        doc.setFontSize(isHalf?7.5:6.8);
+        doc.text("ID DEL PUNTO",x+w/2,y+(isHalf?5.2:4.7),{align:"center"});
+        doc.setFontSize(isHalf?24:20);
+        doc.text(id||"—",x+w/2,y+(isHalf?14.5:13.2),{align:"center"});
         doc.setTextColor(0,0,0);
 
-        const qrSize=155;
-        const qrX=(pageW-qrSize)/2;
-        const qrY=margin+33;
-        doc.setLineWidth(0.9);
-        doc.rect(qrX-3,qrY-3,qrSize+6,qrSize+6);
-        doc.addImage(qr,"PNG",qrX,qrY,qrSize,qrSize,undefined,"FAST");
+        const qrSize=isHalf?76:58;
+        const qrX=x+(w-qrSize)/2;
+        const qrY=y+(isHalf?24:21);
+        doc.setLineWidth(isHalf?0.8:0.58);
+        doc.rect(qrX-2,qrY-2,qrSize+4,qrSize+4);
+        if(qr)doc.addImage(qr,"PNG",qrX,qrY,qrSize,qrSize,undefined,"FAST");
 
+        const titleY=qrY+qrSize+(isHalf?8.5:7.2);
         doc.setFont("helvetica","bold");
-        doc.setFontSize(24);
-        doc.text(pdfSafeText(title),pageW/2,qrY+qrSize+13,{align:"center"});
-        doc.setFont("helvetica","normal");
-        doc.setFontSize(8.5);
-        const descLines=pdfTextLines(doc,desc,pageW-margin*2-18).slice(0,2);
-        doc.text(descLines,pageW/2,qrY+qrSize+20,{align:"center"});
-
-        const boxY=qrY+qrSize+29;
-        const boxW=(pageW-margin*2-4)/2;
-        const left=margin+4;
-        const right=left+boxW+4;
-        drawPdfLabelValue(doc,"Ejercicio",eventName,left,boxY,boxW,13,{valueSize:7,maxLines:2});
-        drawPdfLabelValue(doc,"Evento",eventCode,right,boxY,boxW,13,{valueSize:7,maxLines:2,boldValue:true});
-        drawPdfLabelValue(doc,"Tipo",type,left,boxY+16,boxW,10,{valueSize:7.5,maxLines:1,boldValue:true});
-        drawPdfLabelValue(doc,"ID punto",id,right,boxY+16,boxW,10,{valueSize:7.5,maxLines:1,boldValue:true});
-        drawPdfLabelValue(doc,"UTM",utm,left,boxY+29,boxW,10,{valueSize:7,maxLines:1});
-        drawPdfLabelValue(doc,"Coordenadas",latLon,right,boxY+29,boxW,10,{valueSize:7,maxLines:1});
-        drawPdfLabelValue(doc,"Payload",payload,left,boxY+42,pageW-margin*2-8,13,{valueSize:6,maxLines:2});
+        doc.setFontSize(isHalf?16:12.5);
+        doc.text(pdfSafeText(title),x+w/2,titleY,{align:"center"});
 
         doc.setFont("helvetica","normal");
-        doc.setFontSize(6);
-        doc.text(`MILITOPO · ORIENTACIÓN · ${generatedAt}`,pageW/2,pageH-margin-3,{align:"center"});
+        doc.setFontSize(isHalf?7.6:6.5);
+        const descLines=pdfTextLines(doc,desc,w-12).slice(0,isHalf?2:1);
+        doc.text(descLines,x+w/2,titleY+(isHalf?5.8:4.7),{align:"center"});
+
+        const infoY=isHalf?y+h-29:y+h-30;
+        const boxGap=2;
+        const boxW=(w-10-boxGap)/2;
+        const left=x+5;
+        const right=left+boxW+boxGap;
+        drawPdfLabelValue(doc,"Ejercicio",eventName,left,infoY,boxW,10,{valueSize:isHalf?6.2:5.8,maxLines:1});
+        drawPdfLabelValue(doc,"Evento",eventCode,right,infoY,boxW,10,{valueSize:isHalf?6.2:5.8,maxLines:1,boldValue:true});
+        drawPdfLabelValue(doc,"Tipo",type,left,infoY+12,boxW,8.6,{valueSize:isHalf?6.2:5.8,maxLines:1,boldValue:true});
+        drawPdfLabelValue(doc,"Coord.",latLon,right,infoY+12,boxW,8.6,{valueSize:isHalf?5.8:5.3,maxLines:1});
+        if(isHalf){
+            drawPdfLabelValue(doc,"UTM",utm,left,infoY+22,w-10,7,{valueSize:5.7,maxLines:1});
+        }
+    };
+
+    const startItem=(items||[]).find(item=>pointGroup(item)==="start");
+    const finishItem=(items||[]).find(item=>pointGroup(item)==="finish");
+    const controlItems=(items||[])
+        .filter(item=>pointGroup(item)==="control")
+        .sort((a,b)=>String(a?.point?.id||"").localeCompare(String(b?.point?.id||""),"es",{numeric:true}));
+
+    if(startItem||finishItem){
+        newSheet();
+        drawOuterFrame();
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(9);
+        doc.text("QR SALIDA Y LLEGADA",pageW/2,margin+5,{align:"center"});
+        const cardW=pageW-margin*2-8;
+        const cardH=(pageH-margin*2-13)/2;
+        const x=margin+4;
+        const y1=margin+9;
+        const y2=y1+cardH+5;
+        if(startItem)await drawControlQrCard(startItem,x,y1,cardW,cardH,"half");
+        if(finishItem)await drawControlQrCard(finishItem,x,y2,cardW,cardH,"half");
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(5.8);
+        doc.text(`MILITOPO · ORIENTACIÓN · ${generatedAt}`,pageW/2,pageH-margin-2,{align:"center"});
     }
+
+    for(let i=0;i<controlItems.length;i+=4){
+        newSheet();
+        drawOuterFrame();
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(9);
+        doc.text("QR BALIZAS",pageW/2,margin+5,{align:"center"});
+        const usableW=pageW-margin*2-8;
+        const usableH=pageH-margin*2-13;
+        const cardW=(usableW-gap)/2;
+        const cardH=(usableH-gap)/2;
+        const baseX=margin+4;
+        const baseY=margin+9;
+        const pageItems=controlItems.slice(i,i+4);
+        for(let j=0;j<pageItems.length;j++){
+            const col=j%2;
+            const row=Math.floor(j/2);
+            const x=baseX+col*(cardW+gap);
+            const y=baseY+row*(cardH+gap);
+            await drawControlQrCard(pageItems[j],x,y,cardW,cardH,"quarter");
+        }
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(5.8);
+        doc.text(`MILITOPO · ORIENTACIÓN · ${generatedAt}`,pageW/2,pageH-margin-2,{align:"center"});
+    }
+
+    if(!hasContent){
+        doc.setFont("helvetica","bold");
+        doc.setFontSize(14);
+        doc.text("No hay QR de balizas para imprimir",pageW/2,pageH/2,{align:"center"});
+    }
+
     return doc.output("blob");
 }
-
 
 
 async function participantAccessWebQrPdfBlob(){
