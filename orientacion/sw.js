@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · QR balizas A4 optimizado */
-const MILITOPO_CACHE = "militopo-orientacion-qr-balizas-a4-v1";
+/* MILITOPO Orientación · QR salida/llegada compacto */
+const MILITOPO_CACHE = "militopo-orientacion-qr-start-finish-compact-v2";
 const CORE_ASSETS = [
   "./",
   "./index.html",
