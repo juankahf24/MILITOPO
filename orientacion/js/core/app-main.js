@@ -5555,35 +5555,42 @@ async function printableControlsQrPdfBlob(items){
         doc.text(id||"—",x+w/2,y+(isHalf?14.5:13.2),{align:"center"});
         doc.setTextColor(0,0,0);
 
-        const qrSize=isHalf?76:58;
+        const qrSize=isHalf?68:58;
         const qrX=x+(w-qrSize)/2;
         const qrY=y+(isHalf?24:21);
         doc.setLineWidth(isHalf?0.8:0.58);
         doc.rect(qrX-2,qrY-2,qrSize+4,qrSize+4);
         if(qr)doc.addImage(qr,"PNG",qrX,qrY,qrSize,qrSize,undefined,"FAST");
 
-        const titleY=qrY+qrSize+(isHalf?8.5:7.2);
+        const titleY=qrY+qrSize+(isHalf?8:7.2);
         doc.setFont("helvetica","bold");
-        doc.setFontSize(isHalf?16:12.5);
+        doc.setFontSize(isHalf?15:12.5);
         doc.text(pdfSafeText(title),x+w/2,titleY,{align:"center"});
 
-        doc.setFont("helvetica","normal");
-        doc.setFontSize(isHalf?7.6:6.5);
-        const descLines=pdfTextLines(doc,desc,w-12).slice(0,isHalf?2:1);
-        doc.text(descLines,x+w/2,titleY+(isHalf?5.8:4.7),{align:"center"});
-
-        const infoY=isHalf?y+h-29:y+h-30;
         const boxGap=2;
         const boxW=(w-10-boxGap)/2;
         const left=x+5;
         const right=left+boxW+boxGap;
-        drawPdfLabelValue(doc,"Ejercicio",eventName,left,infoY,boxW,10,{valueSize:isHalf?6.2:5.8,maxLines:1});
-        drawPdfLabelValue(doc,"Evento",eventCode,right,infoY,boxW,10,{valueSize:isHalf?6.2:5.8,maxLines:1,boldValue:true});
-        drawPdfLabelValue(doc,"Tipo",type,left,infoY+12,boxW,8.6,{valueSize:isHalf?6.2:5.8,maxLines:1,boldValue:true});
-        drawPdfLabelValue(doc,"Coord.",latLon,right,infoY+12,boxW,8.6,{valueSize:isHalf?5.8:5.3,maxLines:1});
+
         if(isHalf){
-            drawPdfLabelValue(doc,"UTM",utm,left,infoY+22,w-10,7,{valueSize:5.7,maxLines:1});
+            // SALIDA y LLEGADA comparten una hoja A4: formato más limpio y compacto.
+            // Solo se imprimen los recuadros necesarios: Ejercicio y Evento.
+            const infoY=y+h-17;
+            drawPdfLabelValue(doc,"Ejercicio",eventName,left,infoY,boxW,11,{valueSize:6.4,maxLines:1});
+            drawPdfLabelValue(doc,"Evento",eventCode,right,infoY,boxW,11,{valueSize:6.4,maxLines:1,boldValue:true});
+            return;
         }
+
+        doc.setFont("helvetica","normal");
+        doc.setFontSize(6.5);
+        const descLines=pdfTextLines(doc,desc,w-12).slice(0,1);
+        doc.text(descLines,x+w/2,titleY+4.7,{align:"center"});
+
+        const infoY=y+h-30;
+        drawPdfLabelValue(doc,"Ejercicio",eventName,left,infoY,boxW,10,{valueSize:5.8,maxLines:1});
+        drawPdfLabelValue(doc,"Evento",eventCode,right,infoY,boxW,10,{valueSize:5.8,maxLines:1,boldValue:true});
+        drawPdfLabelValue(doc,"Tipo",type,left,infoY+12,boxW,8.6,{valueSize:5.8,maxLines:1,boldValue:true});
+        drawPdfLabelValue(doc,"Coord.",latLon,right,infoY+12,boxW,8.6,{valueSize:5.3,maxLines:1});
     };
 
     const startItem=(items||[]).find(item=>pointGroup(item)==="start");
