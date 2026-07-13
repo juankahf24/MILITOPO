@@ -240,7 +240,7 @@
       frame.style.height=Math.max(window.innerHeight||0,720)+"px";
       frame.style.minHeight=Math.max(window.innerHeight||0,720)+"px";
       frame.removeAttribute("srcdoc");
-      const url="runner.html?app=1&v=progreso-real-20260705#boot";
+      const url="runner.html?app=1&v=salto-balizas-20260713#boot";
       frame.addEventListener("load",()=>loading?.classList.add("is-hidden"),{once:true});
       frame.src=url;
     }catch(error){

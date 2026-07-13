@@ -1543,6 +1543,7 @@ module.exports = QRCode;
   <h2>Escanear controles</h2>
   <div id="next" class="next">--</div>
   <button class="btn green" onclick="startQrCamera()">📷 ESCANEAR CONTROL</button>
+  <button id="skipControlBtn" class="btn secondary" onclick="skipCurrentControl()" style="display:none">⏭️ DESCARTAR ESTE PUNTO Y CONTINUAR</button>
   <div id="scans" class="simple-scans"></div>
 </section>
 
@@ -1709,10 +1710,8 @@ const INITIAL_URL_EVENT_DATA=readInitialUrlEventData();
 const INITIAL_URL_LOG=readInitialUrlLog();
 const EVENT_DATA=(INITIAL_URL_EVENT_DATA&&Array.isArray(INITIAL_URL_EVENT_DATA.routes)&&INITIAL_URL_EVENT_DATA.routes.length)?INITIAL_URL_EVENT_DATA:((BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData());
 const PARENT_SAVED_LOG=INITIAL_URL_LOG||((BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null);
-let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0,qrLastAnalysisAt=0;
-const QR_SCAN_INTERVAL_MS=100;
-const QR_SCAN_MAX_WIDTH=960;
-const APP_VERSION="militopo-participante-directa-v4-qr-optimizado";
+let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
+const APP_VERSION="militopo-participante-v4-salto-balizas-20260713";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -2282,9 +2281,11 @@ function gpsFinishPoint(){
     const lat=Number(point&&point.lat),lon=Number(point&&point.lon);
     return Number.isFinite(lat)&&Number.isFinite(lon)?{id:"FINISH",label:"LLEGADA",lat,lon,isFinish:true}:null;
 }
+function routeAdvancedCount(){return log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="correct"||s.status==="skipped").length:0}
+function routeCorrectCount(){return log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="correct").length:0}
 function gpsProgressData(){
     const expected=(route&&route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");
-    const completed=gpsCorrectCount();
+    const completed=routeCorrectCount();
     return{completed,total:expected.length,pending:Math.max(0,expected.length-completed)};
 }
 function notifyParentDialog(open){try{if(window.parent&&window.parent!==window)window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:open?"DIALOG_OPEN":"DIALOG_CLOSE"},"*")}catch(e){}}
@@ -2359,11 +2360,11 @@ window.addEventListener("message",event=>{
         if(log&&log.finishTime){showGpsFinishNotice("imported");toast("Resultado importado. Carrera finalizada.")}
     }
 });
-function gpsCorrectCount(){return log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="correct").length:0}
+function gpsCorrectCount(){return routeCorrectCount()}
 function gpsNextControl(){
     if(!route||!log||!log.startTime||log.finishTime)return null;
     const ids=(route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");
-    const done=gpsCorrectCount();
+    const done=routeAdvancedCount();
     let id=ids[done],isFinish=false;
     if(!id&&done>=ids.length){id="FINISH";isFinish=true}
     const point=id&&EVENT_DATA.points?EVENT_DATA.points[id]:null,lat=Number(point&&point.lat),lon=Number(point&&point.lon);
@@ -2724,9 +2725,22 @@ function restoreBestSavedRun(silent){
 }
 
 function renderLoaded(){document.body.classList.add("route-loaded");document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences();setTimeout(resizeParticipantFrameFromInside,80)}
-function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=log.scans.filter(s=>s.status==="correct").length;const expected=exp[done]||"FINISH";const dup=log.scans.some(s=>s.controlId===id);let status=dup?"duplicate":id===expected?"correct":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});save();renderNext();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
-function scanStatusLabel(status){return {correct:"Correcto",out_of_order:"Fuera de orden",wrong:"Incorrecto",duplicate:"Duplicado"}[String(status||"")]||"Estado desconocido"}
-function scanStatusMessage(status,expected){return {correct:"Baliza correcta",out_of_order:"Fuera de orden. Tocaba "+expected,wrong:"Baliza incorrecta: no pertenece a tu recorrido",duplicate:"Baliza duplicada"}[String(status||"")]||"Baliza registrada"}
+function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=routeAdvancedCount();const expected=exp[done]||"FINISH";const alreadyCorrect=log.scans.some(s=>s.controlId===id&&s.status==="correct");let status=id===expected?"correct":alreadyCorrect?"duplicate":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});save();renderNext();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
+function scanStatusLabel(status){return {correct:"Correcto",out_of_order:"Fuera de orden",wrong:"Incorrecto",duplicate:"Duplicado",skipped:"Descartado · pendiente"}[String(status||"")]||"Estado desconocido"}
+function scanStatusMessage(status,expected){return {correct:"Baliza correcta",out_of_order:"Fuera de orden. Tocaba "+expected,wrong:"Baliza incorrecta: no pertenece a tu recorrido",duplicate:"Baliza ya registrada correctamente",skipped:"Punto descartado. Queda pendiente en el resultado final"}[String(status||"")]||"Baliza registrada"}
+function skipCurrentControl(){
+    if(!route)return toast("Primero carga tu recorrido");
+    if(!log||!log.startTime)return toast("Primero registra la SALIDA");
+    if(log.finishTime)return toast("El recorrido ya está finalizado");
+    const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");
+    const index=routeAdvancedCount();
+    const expected=exp[index];
+    if(!expected)return toast("No quedan balizas pendientes. Dirígete a LLEGADA");
+    const ok=window.confirm("¿CONFIRMAR DESCARTE DEL PUNTO?\n\nVas a marcar la baliza "+expected+" como pendiente y avanzar a la siguiente. Este punto contará como no completado en el resultado final.\n\nEsta acción no se puede deshacer durante la carrera.");
+    if(!ok)return;
+    log.scans.push({controlId:expected,timestamp:new Date().toISOString(),expectedControlId:expected,status:"skipped",skipped:true});
+    save();renderNext();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:"skipped",controlId:expected});gpsRefreshState();toast("Punto "+expected+" descartado. Continúa con la siguiente baliza");
+}
 function startRace(){
     primeParticipantAudio();
     if(!route)return toast("Primero QR participante");
@@ -2793,11 +2807,11 @@ function save(){
     }
     updateOfflineSafetyPanel();
 }
-function renderNext(){const n=document.getElementById("next");if(!log.startTime){n.textContent="TE TOCA: SALIDA";return}if(log.finishTime){n.textContent=log.completed?"FINALIZADO OK":"FINALIZADO CON AVISOS";return}const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=log.scans.filter(s=>s.status==="correct").length;n.textContent="TE TOCA: "+(exp[done]||"FINISH")}
-function renderScans(){let h="<div class='scan "+(log.startTime?"ok":"")+"'><b>SALIDA</b><span>"+(log.startTime?tm(log.startTime):"Pendiente")+"</span><span>"+(log.startTime?"✅":"⏳")+"</span></div>";log.scans.forEach(s=>{const cls=s.status==="correct"?"ok":"bad";h+="<div class='scan "+cls+"'><b>"+s.controlId+"</b><span>"+tm(s.timestamp)+" · tocaba "+s.expectedControlId+" · "+scanStatusLabel(s.status)+"</span><span>"+(s.status==="correct"?"✅":"⚠️")+"</span></div>"});h+="<div class='scan "+(log.finishTime?(log.completed?"ok":"bad"):"")+"'><b>LLEGADA</b><span>"+(log.finishTime?tm(log.finishTime):"Pendiente")+"</span><span>"+(log.finishTime?"🏁":"⏳")+"</span></div>";document.getElementById("scans").innerHTML=h;setTimeout(resizeParticipantFrameFromInside,30)}
+function renderNext(){const n=document.getElementById("next"),skipBtn=document.getElementById("skipControlBtn");if(!log.startTime){n.textContent="TE TOCA: SALIDA";if(skipBtn)skipBtn.style.display="none";return}const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const correct=routeCorrectCount();if(log.finishTime){n.textContent=(log.completed?"FINALIZADO OK":"FINALIZADO CON AVISOS")+" · PROGRESO "+correct+"/"+exp.length;if(skipBtn)skipBtn.style.display="none";return}const advanced=routeAdvancedCount(),next=exp[advanced]||"FINISH";n.textContent="TE TOCA: "+next+" · PROGRESO "+correct+"/"+exp.length;if(skipBtn)skipBtn.style.display=next==="FINISH"?"none":"block"}
+function renderScans(){let h="<div class='scan "+(log.startTime?"ok":"")+"'><b>SALIDA</b><span>"+(log.startTime?tm(log.startTime):"Pendiente")+"</span><span>"+(log.startTime?"✅":"⏳")+"</span></div>";log.scans.forEach(s=>{const cls=s.status==="correct"?"ok":"bad";const icon=s.status==="correct"?"✅":(s.status==="skipped"?"⏭️":"⚠️");h+="<div class='scan "+cls+"'><b>"+s.controlId+"</b><span>"+tm(s.timestamp)+" · tocaba "+s.expectedControlId+" · "+scanStatusLabel(s.status)+"</span><span>"+icon+"</span></div>"});h+="<div class='scan "+(log.finishTime?(log.completed?"ok":"bad"):"")+"'><b>LLEGADA</b><span>"+(log.finishTime?tm(log.finishTime):"Pendiente")+"</span><span>"+(log.finishTime?"🏁":"⏳")+"</span></div>";document.getElementById("scans").innerHTML=h;setTimeout(resizeParticipantFrameFromInside,30)}
 
 function encResultTime(v){const ms=Date.parse(v);return Number.isFinite(ms)?ms.toString(36):(v||null)}
-function encResultStatus(s){return {correct:"c",out_of_order:"o",wrong:"w",duplicate:"d"}[String(s||"")]||String(s||"")}
+function encResultStatus(s){return {correct:"c",out_of_order:"o",wrong:"w",duplicate:"d",skipped:"s"}[String(s||"")]||String(s||"")}
 function compactResultObject(partial=false){
     return {
         v:3,
@@ -2953,7 +2967,7 @@ async function startQrCamera(){primeParticipantAudio();
 
     await video.play();
 
-    running=true;last="";lastT=0;qrLastAnalysisAt=0;
+    running=true;last="";lastT=0;
 
     if(st){st.className="status ok";st.textContent="Cámara activa. Apunta al QR.";}
 
@@ -2967,7 +2981,6 @@ async function startQrCamera(){primeParticipantAudio();
 
 function stopQrCamera(){
   running=false;
-  qrLastAnalysisAt=0;
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
   const video=document.getElementById("video");
   if(video) video.srcObject=null;
@@ -2978,12 +2991,6 @@ function stopQrCamera(){
 
 async function loop(){
   if(!running)return;
-  const analysisNow=Date.now();
-  if(analysisNow-qrLastAnalysisAt<QR_SCAN_INTERVAL_MS){
-    requestAnimationFrame(loop);
-    return;
-  }
-  qrLastAnalysisAt=analysisNow;
   const video=document.getElementById("video"),canvas=document.getElementById("canvas"),st=document.getElementById("camStatus");
   try{
     let raw="";
@@ -2992,15 +2999,9 @@ async function loop(){
         try{const c=await detector.detect(video); if(c&&c.length)raw=(c[0].rawValue||"").trim();}catch(e){}
       }
       if(!raw&&useJsQr&&window.jsQR&&canvas){
-        const sourceW=video.videoWidth||1280,sourceH=video.videoHeight||720;
-        // El QR de participante contiene todo el recorrido y necesita el máximo detalle.
-        // Los QR de salida, controles y llegada son mucho más cortos y se analizan reducidos.
-        const scale=!route?1:Math.min(1,QR_SCAN_MAX_WIDTH/sourceW);
-        const w=Math.max(1,Math.round(sourceW*scale)),h=Math.max(1,Math.round(sourceH*scale));
-        if(canvas.width!==w)canvas.width=w;
-        if(canvas.height!==h)canvas.height=h;
+        const w=video.videoWidth||1280,h=video.videoHeight||720;
+        canvas.width=w;canvas.height=h;
         const ctx=canvas.getContext("2d",{willReadFrequently:true});
-        ctx.imageSmoothingEnabled=false;
         ctx.drawImage(video,0,0,w,h);
         const img=ctx.getImageData(0,0,w,h);
         const code=window.jsQR(img.data,w,h,{inversionAttempts:"attemptBoth"});
