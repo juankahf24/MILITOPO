@@ -126,6 +126,14 @@ function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.
         validateIofDescriptions();
         setTimeout(()=>{if(map)map.invalidateSize();renderMapMarkers();cleanupStep2ImportAndTableUi()},200);
     }
+    if(currentAppStep===3){
+        // Los recorridos pueden proceder de una generación nueva, una restauración
+        // automática o la importación de un ejercicio anterior. El paso 3 debe
+        // reconstruirse siempre desde el estado real y no depender de haber pasado
+        // antes por el botón de generación del paso 2.
+        updateRouteCountInfo();
+        renderRoutes();
+    }
     if(currentAppStep===4){runExerciseVerifier(false)}
     if(currentAppStep===5){
         if(previousAppStep!==5)setFinishOrganizedPanelOpen(false);
@@ -8799,6 +8807,10 @@ async function importReusableExerciseFile(file){
         renderIofDescriptionsEditor();
         updateParticipantSelect();
         updateRouteCountInfo();
+        // Aunque la importación abra directamente el paso 5, dejamos preparados
+        // los pasos intermedios para que al volver a ellos reflejen todo lo cargado.
+        if(typeof renderRoutes==="function")renderRoutes();
+        if(typeof renderQrPreview==="function")renderQrPreview();
         if(typeof renderMapMarkers==="function")renderMapMarkers();
         if(typeof renderPlanPdfPreview==="function")renderPlanPdfPreview();
         if(typeof updateOrganizerParticipantSelects==="function")updateOrganizerParticipantSelects();
