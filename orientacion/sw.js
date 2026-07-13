@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · QR salida/llegada compacto */
-const MILITOPO_CACHE = "militopo-orientacion-step3-print-frame-v1";
+const MILITOPO_CACHE = "militopo-orientacion-puntos-descartados-live-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
