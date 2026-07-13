@@ -1834,6 +1834,7 @@ function notifyMilitopoLive(kind,extra={}){
         if(!route||!pid)return;
         const expected=(route.points||[]).filter(x=>x!=="START"&&x!=="FINISH");
         const completed=log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="correct").length:0;
+        const discarded=log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="skipped").length:0;
         const participantName=String((EVENT_DATA.participantNames&&EVENT_DATA.participantNames[pid])||"").trim();
         let finishPayload="";
         if(kind==="FINISH"&&log){
@@ -1852,6 +1853,7 @@ function notifyMilitopoLive(kind,extra={}){
                 routeId:String(route.routeId||""),
                 totalControls:expected.length,
                 completedControls:completed,
+                discardedControls:discarded,
                 pendingControls:Math.max(0,expected.length-completed),
                 startTime:log&&log.startTime?log.startTime:null,
                 finishTime:log&&log.finishTime?log.finishTime:null,
