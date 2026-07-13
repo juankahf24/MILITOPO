@@ -2684,10 +2684,10 @@ function drawStep3MapRoute(idx){
     const route=state.routes[idx];
     if(!route)return;
 
-    const pts=route.points.map(id=>state.points[id]).filter(p=>p&&p.lat!==null&&p.lon!==null);
+    const pts=route.points.map(id=>state.points[id]).filter(p=>p&&Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon)));
     if(pts.length<2)return;
 
-    const latlngs=pts.map(p=>[p.lat,p.lon]);
+    const latlngs=pts.map(p=>[Number(p.lat),Number(p.lon)]);
     L.polyline(latlngs,{color:"#ff3ecf",weight:4,opacity:.9}).addTo(step3RouteLines);
 
     pts.forEach((p,i)=>{
@@ -2697,14 +2697,39 @@ function drawStep3MapRoute(idx){
             iconSize:[22,22],
             iconAnchor:[11,11]
         });
-        L.marker([p.lat,p.lon],{icon})
+        L.marker([Number(p.lat),Number(p.lon)],{icon})
             .bindTooltip(`${i+1}. ${p.id}`,{permanent:true,direction:"right",className:"marker-label"})
             .bindPopup(`<b>${escapeHtml(p.id)}</b><br>${escapeHtml(p.desc||"")}<br>${escapeHtml(p.utm||"")}`)
             .addTo(step3RouteMarkers);
     });
 
-    step3RouteMap.fitBounds(latlngs,{padding:[22,22],maxZoom:20});
-    setTimeout(()=>step3RouteMap.invalidateSize(),120);
+    // Usa exactamente la misma ventana geográfica que los planos PDF.
+    // De esta forma, al pulsar "VER EN PLANO" se ve el recorrido dentro del
+    // borde real de impresión (escala y centro manual/automático incluidos).
+    const printGeometry=typeof getPlanPdfPreviewGeometry==="function"?getPlanPdfPreviewGeometry():null;
+    let targetBounds=L.latLngBounds(latlngs);
+    if(printGeometry&&printGeometry.bounds){
+        const b=printGeometry.bounds;
+        const printBounds=L.latLngBounds([[b.south,b.west],[b.north,b.east]]);
+        L.rectangle(printBounds,{
+            color:"#e7c46f",
+            weight:3,
+            opacity:.96,
+            fillColor:"#e7c46f",
+            fillOpacity:.035,
+            dashArray:"12 8",
+            interactive:false
+        }).addTo(step3RouteLines);
+        targetBounds=printBounds;
+    }
+
+    const applyPrintFit=()=>{
+        if(!step3RouteMap)return;
+        step3RouteMap.invalidateSize();
+        step3RouteMap.fitBounds(targetBounds,{padding:[14,14],animate:false});
+    };
+    requestAnimationFrame(()=>requestAnimationFrame(applyPrintFit));
+    setTimeout(applyPrintFit,180);
 }
 
 function drawRoute(idx){
