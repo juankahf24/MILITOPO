@@ -1854,6 +1854,8 @@ function notifyMilitopoLive(kind,extra={}){
                 totalControls:expected.length,
                 completedControls:completed,
                 discardedControls:discarded,
+                skippedControlsCount:discarded,
+                discardedControlIds:(log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="skipped").map(s=>String(s.controlId)):[]),
                 pendingControls:Math.max(0,expected.length-completed),
                 startTime:log&&log.startTime?log.startTime:null,
                 finishTime:log&&log.finishTime?log.finishTime:null,
@@ -2926,7 +2928,19 @@ async function startQrCamera(){primeParticipantAudio();
   const st=document.getElementById("camStatus");
   const title=document.getElementById("cameraTitle");
 
-  if(title) title.textContent=route ? "ESCANEAR BALIZA / SALIDA / LLEGADA" : "ESCANEAR QR PARTICIPANTE";
+  if(title){
+    if(!route){
+      title.textContent="ESCANEAR QR PARTICIPANTE";
+    }else if(!log||!log.startTime){
+      title.textContent="ESCANEAR SALIDA";
+    }else if(log.finishTime){
+      title.textContent="RECORRIDO FINALIZADO";
+    }else{
+      const controls=route.points.filter(x=>x!=="START"&&x!=="FINISH");
+      const nextControl=controls[routeAdvancedCount()]||"FINISH";
+      title.textContent=nextControl==="FINISH"?"ESCANEAR LLEGADA":"ESCANEAR BALIZA "+nextControl;
+    }
+  }
   enterCameraFullscreen();
   if(overlay) overlay.classList.add("active");
   if(st){st.className="status";st.textContent="Solicitando cámara...";}
