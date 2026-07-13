@@ -3827,11 +3827,11 @@ function resultDecodeTime(v){
 }
 
 function resultEncodeStatus(status){
-    return {correct:"c",out_of_order:"o",wrong:"w",duplicate:"d"}[String(status||"")]||String(status||"");
+    return {correct:"c",out_of_order:"o",wrong:"w",duplicate:"d",skipped:"s"}[String(status||"")]||String(status||"");
 }
 
 function resultDecodeStatus(status){
-    return {c:"correct",o:"out_of_order",w:"wrong",d:"duplicate"}[String(status||"")]||String(status||"");
+    return {c:"correct",o:"out_of_order",w:"wrong",d:"duplicate",s:"skipped"}[String(status||"")]||String(status||"");
 }
 
 function parseResultPayload(raw){
@@ -4609,14 +4609,14 @@ function scanControl(){
 
     const expectedControls=route.points.filter(id=>id!=="START"&&id!=="FINISH");
     const validInRoute=expectedControls.includes(qr.id);
-    const alreadyScanned=log.scans.some(s=>s.controlId===qr.id);
+    const alreadyCorrect=log.scans.some(s=>s.controlId===qr.id&&s.status==="correct");
     const correctCount=log.scans.filter(s=>s.status==="correct").length;
     const expectedId=expectedControls[correctCount]||"FINISH";
     const expectedOrder=correctCount+1;
 
     let status="wrong";
-    if(alreadyScanned) status="duplicate";
-    else if(qr.id===expectedId) status="correct";
+    if(qr.id===expectedId) status="correct";
+    else if(alreadyCorrect) status="duplicate";
     else if(validInRoute) status="out_of_order";
 
     log.scans.push({
@@ -9129,6 +9129,7 @@ function resultStatusEs(status){
         pendiente:"Pendiente",
         duplicate:"Duplicado",
         duplicated:"Duplicado",
+        skipped:"Descartado · pendiente",
         out_of_order:"Fuera de orden",
         wrong_order:"Fuera de orden",
         wrong:"Incorrecto",
