@@ -1,5 +1,6 @@
-/* MILITOPO PWA · instalación Android · v4 · icono borde negro */
-const CACHE_NAME = "militopo-pwa-v4-icono-borde-negro";
+/* MILITOPO Topografía · caché estable y separada · 2026-07-12 */
+const CACHE_NAME = "militopo-topografia-stable-v20260712-1";
+const LEGACY_CACHE_PREFIXES = ["militopo-topografia-", "militopo-pwa-"];
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -12,32 +13,67 @@ const APP_SHELL = [
 
 self.addEventListener("install", event => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(
+      APP_SHELL.map(url => new Request(url, { cache: "reload" }))
+    );
+  })());
 });
 
 self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(key => key.startsWith("militopo-pwa-") && key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-    )).then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const names = await caches.keys();
+    await Promise.all(
+      names
+        .filter(name => name !== CACHE_NAME && LEGACY_CACHE_PREFIXES.some(prefix => name.startsWith(prefix)))
+        .map(name => caches.delete(name))
+    );
+    if (self.registration.navigationPreload) {
+      try { await self.registration.navigationPreload.enable(); } catch (_) {}
+    }
+    await self.clients.claim();
+  })());
 });
 
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
+function belongsToOrientation(url) {
+  const scopePath = new URL(self.registration.scope).pathname;
+  if (!url.pathname.startsWith(scopePath)) return false;
+  const relativePath = url.pathname.slice(scopePath.length);
+  return relativePath === "orientacion" || relativePath.startsWith("orientacion/");
+}
 
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-        return response;
-      })
-      .catch(() => caches.match(event.request).then(cached => cached || caches.match("./index.html")))
-  );
+async function matchCurrentCache(cache, request) {
+  return (await cache.match(request, { ignoreSearch: false })) ||
+         (await cache.match(request, { ignoreSearch: true }));
+}
+
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || belongsToOrientation(url)) return;
+
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    try {
+      const preload = request.mode === "navigate" ? await event.preloadResponse : null;
+      const response = preload || await fetch(request);
+      if (response && response.ok && response.status !== 206) {
+        cache.put(request, response.clone()).catch(() => {});
+      }
+      return response;
+    } catch (_) {
+      const cached = await matchCurrentCache(cache, request);
+      if (cached) return cached;
+
+      if (request.mode === "navigate") {
+        const fallback = (await cache.match("./index.html")) || (await cache.match("./"));
+        if (fallback) return fallback;
+      }
+
+      return new Response("", { status: 503, statusText: "Offline" });
+    }
+  })());
 });
