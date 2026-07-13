@@ -1709,8 +1709,10 @@ const INITIAL_URL_EVENT_DATA=readInitialUrlEventData();
 const INITIAL_URL_LOG=readInitialUrlLog();
 const EVENT_DATA=(INITIAL_URL_EVENT_DATA&&Array.isArray(INITIAL_URL_EVENT_DATA.routes)&&INITIAL_URL_EVENT_DATA.routes.length)?INITIAL_URL_EVENT_DATA:((BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData());
 const PARENT_SAVED_LOG=INITIAL_URL_LOG||((BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null);
-let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-directa-v3-idb-audio-ios-restauracion";
+let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0,qrLastAnalysisAt=0;
+const QR_SCAN_INTERVAL_MS=100;
+const QR_SCAN_MAX_WIDTH=960;
+const APP_VERSION="militopo-participante-directa-v4-qr-optimizado";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -2951,7 +2953,7 @@ async function startQrCamera(){primeParticipantAudio();
 
     await video.play();
 
-    running=true;last="";lastT=0;
+    running=true;last="";lastT=0;qrLastAnalysisAt=0;
 
     if(st){st.className="status ok";st.textContent="Cámara activa. Apunta al QR.";}
 
@@ -2965,6 +2967,7 @@ async function startQrCamera(){primeParticipantAudio();
 
 function stopQrCamera(){
   running=false;
+  qrLastAnalysisAt=0;
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
   const video=document.getElementById("video");
   if(video) video.srcObject=null;
@@ -2975,6 +2978,12 @@ function stopQrCamera(){
 
 async function loop(){
   if(!running)return;
+  const analysisNow=Date.now();
+  if(analysisNow-qrLastAnalysisAt<QR_SCAN_INTERVAL_MS){
+    requestAnimationFrame(loop);
+    return;
+  }
+  qrLastAnalysisAt=analysisNow;
   const video=document.getElementById("video"),canvas=document.getElementById("canvas"),st=document.getElementById("camStatus");
   try{
     let raw="";
@@ -2983,9 +2992,15 @@ async function loop(){
         try{const c=await detector.detect(video); if(c&&c.length)raw=(c[0].rawValue||"").trim();}catch(e){}
       }
       if(!raw&&useJsQr&&window.jsQR&&canvas){
-        const w=video.videoWidth||1280,h=video.videoHeight||720;
-        canvas.width=w;canvas.height=h;
+        const sourceW=video.videoWidth||1280,sourceH=video.videoHeight||720;
+        // El QR de participante contiene todo el recorrido y necesita el máximo detalle.
+        // Los QR de salida, controles y llegada son mucho más cortos y se analizan reducidos.
+        const scale=!route?1:Math.min(1,QR_SCAN_MAX_WIDTH/sourceW);
+        const w=Math.max(1,Math.round(sourceW*scale)),h=Math.max(1,Math.round(sourceH*scale));
+        if(canvas.width!==w)canvas.width=w;
+        if(canvas.height!==h)canvas.height=h;
         const ctx=canvas.getContext("2d",{willReadFrequently:true});
+        ctx.imageSmoothingEnabled=false;
         ctx.drawImage(video,0,0,w,h);
         const img=ctx.getImageData(0,0,w,h);
         const code=window.jsQR(img.data,w,h,{inversionAttempts:"attemptBoth"});
