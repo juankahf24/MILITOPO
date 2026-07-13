@@ -174,7 +174,7 @@ function buildOrganizerPanel() {
     <div id="live2RunText" class="militopo-live2-run">Sin carrera en vivo activa para este ejercicio.</div>
     <div id="live2Message" class="militopo-live2-message">Inicializando Firebase…</div>
     <div class="militopo-live2-table-wrap">
-      <table class="militopo-live2-table"><colgroup><col style="width:24%"><col style="width:14%"><col style="width:10%"><col style="width:16%"><col style="width:11%"><col style="width:11%"><col style="width:14%"></colgroup><thead><tr><th>Participante</th><th>Estado</th><th>Progreso</th><th>Última sincronización</th><th>Salida</th><th>Llegada</th><th>Tiempo total</th></tr></thead><tbody id="live2ParticipantsBody"><tr><td colspan="7" class="militopo-live2-empty">Inicia la carrera en vivo para preparar los participantes.</td></tr></tbody></table>
+      <table class="militopo-live2-table"><colgroup><col style="width:22%"><col style="width:13%"><col style="width:9%"><col style="width:10%"><col style="width:15%"><col style="width:10%"><col style="width:10%"><col style="width:11%"></colgroup><thead><tr><th>Participante</th><th>Estado</th><th>Progreso</th><th>Puntos<br>descartados</th><th>Última sincronización</th><th>Salida</th><th>Llegada</th><th>Tiempo total</th></tr></thead><tbody id="live2ParticipantsBody"><tr><td colspan="8" class="militopo-live2-empty">Inicia la carrera en vivo para preparar los participantes.</td></tr></tbody></table>
     </div>`;
   const header = step5.querySelector(":scope > .card-header");
   if (header) header.insertAdjacentElement("afterend", panel); else step5.prepend(panel);
@@ -383,7 +383,7 @@ function renderOrganizerParticipants(participantsValue) {
   const body = $("live2ParticipantsBody");
   if (!body) return;
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="7" class="militopo-live2-empty">Todavía no hay participantes preparados.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" class="militopo-live2-empty">Todavía no hay participantes preparados.</td></tr>`;
     return;
   }
   body.innerHTML = rows.map(p => {
@@ -391,6 +391,7 @@ function renderOrganizerParticipants(participantsValue) {
     const pid = String(p.participantId || "—");
     const name = String(p.participantName || "").trim();
     const completed = Math.max(0, Number(p.completedControls) || 0);
+    const discarded = Math.max(0, Number(p.discardedControls) || 0);
     const total = Math.max(0, Number(p.totalControls) || 0);
     const routeId = String(p.routeId || "—");
     const startRaw = p.startTime || "";
@@ -399,6 +400,7 @@ function renderOrganizerParticipants(participantsValue) {
       <td class="militopo-live2-name"><b>${safeText(name || pid)}</b><small><span>${safeText(name ? pid : "Sin nombre asignado")}</span><span class="militopo-live2-route-tag">${safeText(routeId)}</span></small></td>
       <td><span class="militopo-live2-state ${st.cls}">${st.label}</span></td>
       <td class="militopo-live2-progress">${completed} / ${total}</td>
+      <td class="militopo-live2-progress">${discarded}</td>
       <td class="militopo-live2-time">${safeText(formatLastSeen(p.lastSeenClient || p.lastSeen))}</td>
       <td class="militopo-live2-time">${safeText(formatLiveClock(startRaw))}</td>
       <td class="militopo-live2-time">${safeText(formatLiveClock(finishRaw))}</td>
@@ -704,6 +706,7 @@ async function markParticipantReady() {
     routeId: String(ctx.routeId || ""),
     totalControls: Number(ctx.totalControls) || 0,
     completedControls: Number(ctx.completedControls) || 0,
+    discardedControls: Number(ctx.discardedControls) || 0,
     pendingControls: Math.max(0, (Number(ctx.totalControls)||0) - (Number(ctx.completedControls)||0)),
     status: ctx.finishTime ? "finished" : (ctx.startTime ? "racing" : "ready"),
     online: true,
@@ -778,6 +781,7 @@ async function applyParticipantEvent(event) {
     routeId: String(payload.routeId || participantContext.routeId || ""),
     totalControls: total,
     completedControls: completed,
+    discardedControls: Math.max(0, Number(payload.discardedControls) || 0),
     pendingControls: Math.max(0, total - completed),
     online: true,
     connectedUid: currentUser.uid,
