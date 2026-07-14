@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · QR salida/llegada compacto */
-const MILITOPO_CACHE = "militopo-orientacion-estado-filas-es-v3";
+const MILITOPO_CACHE = "militopo-orientacion-puntos-pendientes-lock-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
