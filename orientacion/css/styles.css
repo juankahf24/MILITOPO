@@ -2136,3 +2136,9 @@ th,td{
 .geotiff-map-head{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.geotiff-map-head .btn{margin-left:auto}
 .geotiff-map-controls{display:grid;grid-template-columns:minmax(220px,1fr) auto auto;gap:10px;align-items:end;margin-top:12px}.geotiff-opacity-label{margin:0}.geotiff-opacity-label input[type=range]{min-height:38px;padding:4px 0;background:transparent;border:0;box-shadow:none}
 @media(max-width:700px){.geotiff-map-controls{grid-template-columns:1fr 1fr}.geotiff-opacity-label{grid-column:1/-1}.geotiff-map-controls .btn{width:100%;padding-left:10px;padding-right:10px;font-size:.72rem}}
+
+/* MILITOPO · BIBLIOTECA GEOTIFF / KMZ V2 */
+.layer-pills .layer-btn[data-layer="custom"]{min-width:210px;min-height:58px;padding:12px 18px;white-space:normal;line-height:1.2}
+.geotiff-import-main{min-width:205px;min-height:62px;line-height:1.08;text-align:center}.geotiff-import-main small{font-size:.68em;opacity:.85}
+.geotiff-library-row{margin-top:12px}.geotiff-library-row label{margin:0}.geotiff-library-row select{width:100%;min-height:52px}
+@media(max-width:700px){.layer-pills .layer-btn[data-layer="custom"]{width:100%;min-width:0;font-size:.86rem}.geotiff-map-head{display:grid;grid-template-columns:1fr}.geotiff-map-head .btn{margin-left:0;width:100%}.geotiff-import-main{min-width:0}}
