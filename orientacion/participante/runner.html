@@ -89,7 +89,7 @@ body.route-loaded #race,body.route-loaded #gpsProximity{position:relative!import
 .gps-choice-overlay{position:fixed;inset:0;z-index:120000;display:none;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 12px;overflow:auto;overscroll-behavior:contain;background:rgba(5,10,4,.86);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}.gps-choice-overlay.open{display:grid}.gps-choice-card{width:min(94vw,520px);max-height:calc(100dvh - env(safe-area-inset-top,0px) - 22px);overflow:auto;padding:20px 16px;border-radius:28px;border:2px solid rgba(240,193,106,.72);background:radial-gradient(circle at 50% 0,rgba(240,193,106,.16),transparent 38%),linear-gradient(180deg,#2d2a1d,#12150e);box-shadow:0 22px 60px rgba(0,0,0,.58);text-align:center}.gps-choice-icon{font-size:52px;line-height:1}.gps-choice-title{margin-top:9px;font-size:1.22rem;font-weight:1000;color:#fff0c8}.gps-choice-text{margin:10px 0 16px;color:#f5e6c8;font-size:.9rem;line-height:1.48}.gps-choice-actions{display:grid;grid-template-columns:1fr;gap:9px}.gps-choice-actions .btn{margin-top:0;width:100%}
 #gpsLockOverlay{position:fixed;inset:0;z-index:100000;display:none;place-items:center;padding:18px;background:radial-gradient(circle at 50% 25%,#4b341f,#17120d 72%);color:#fff8e8;touch-action:none;user-select:none}
 #gpsLockOverlay.open{display:grid}.gps-lock-card{width:min(92vw,520px);text-align:center;padding:26px 18px;border:2px solid #d9ab58;border-radius:28px;background:rgba(24,18,12,.96);box-shadow:0 18px 55px rgba(0,0,0,.55)}
-.gps-lock-icon{font-size:54px}.gps-lock-target{font-size:46px;font-weight:900;margin:8px 0;color:#ffd982}.gps-unlock{margin-top:22px;width:100%;padding:18px;border-radius:18px;border:1px solid #e4bd78;background:#5b3b21;color:#fff;font-weight:900;position:relative;overflow:hidden}.gps-unlock:before{content:"";position:absolute;inset:0;transform:scaleX(0);transform-origin:left;background:rgba(255,217,130,.28)}.gps-unlock.holding:before{transform:scaleX(1);transition:transform 2.2s linear}
+.gps-lock-icon{font-size:54px}.gps-lock-target{font-size:46px;font-weight:900;margin:8px 0;color:#ffd982}.gps-unlock{margin-top:22px;width:100%;padding:18px;border-radius:18px;border:1px solid #e4bd78;background:#5b3b21;color:#fff;font-weight:900;position:relative;overflow:hidden}.gps-unlock:before{content:"";position:absolute;inset:0;transform:scaleX(0);transform-origin:left;background:rgba(255,217,130,.28)}.gps-unlock.holding:before{transform:scaleX(1);transition:transform 2.2s linear}.gps-skip-hold{margin-top:10px;width:100%;padding:16px;border-radius:18px;border:1px solid #e4bd78;background:#765027;color:#fff;font-weight:900;position:relative;overflow:hidden;touch-action:none}.gps-skip-hold:before{content:"";position:absolute;inset:0;transform:scaleX(0);transform-origin:left;background:rgba(255,217,130,.28)}.gps-skip-hold.holding:before{transform:scaleX(1);transition:transform 2s linear}
 .participant-reset-card{border-color:rgba(200,94,69,.36);background:linear-gradient(180deg,rgba(200,94,69,.08),rgba(255,255,255,.035)),var(--p)}
 .participant-reset-card h2{font-size:1.05rem;color:#ffd0c4}.participant-reset-card .small{margin-bottom:4px}
 html.gps-locked,html.gps-locked body{overflow:hidden}
@@ -1559,6 +1559,7 @@ module.exports = QRCode;
     <button id="gpsStartBtn" class="btn green" onclick="startProximityGps()">📡 ACTIVAR GPS</button>
     <button id="gpsStopBtn" class="btn secondary" onclick="stopProximityGps(true)" disabled>DETENER GPS</button>
     <button id="gpsLockBtn" class="btn" onclick="lockRaceScreen()">🔒 BLOQUEAR PANTALLA</button>
+    <button id="gpsSkipHoldBtn" class="gps-skip-hold" type="button" style="display:none">⏭️ MANTÉN 2 SEGUNDOS PARA DESCARTAR ESTE PUNTO</button>
   </div>
 </section>
 
@@ -1575,7 +1576,7 @@ module.exports = QRCode;
   <button class="btn red" type="button" onclick="requestParticipantAppReset()">🗑 BORRAR RECORRIDO Y PREPARAR NUEVA PRUEBA</button>
 </section>
 </div>
-<div id="gpsLockOverlay"><div class="gps-lock-card"><div class="gps-lock-icon">🔒📍</div><div>MODO CARRERA BLOQUEADO</div><div id="gpsLockTarget" class="gps-lock-target">—</div><div id="gpsLockStatus">Activa el GPS para detectar la siguiente baliza.</div><button id="gpsUnlockBtn" class="gps-unlock" type="button">MANTÉN PULSADO 2 SEGUNDOS PARA DESBLOQUEAR</button></div></div>
+<div id="gpsLockOverlay"><div class="gps-lock-card"><div class="gps-lock-icon">🔒📍</div><div>MODO CARRERA BLOQUEADO</div><div id="gpsLockTarget" class="gps-lock-target">—</div><div id="gpsLockStatus">Activa el GPS para detectar la siguiente baliza.</div><button id="gpsLockSkipHoldBtn" class="gps-skip-hold" type="button" style="display:none">⏭️ MANTÉN 2 SEGUNDOS PARA DESCARTAR ESTE PUNTO</button><button id="gpsUnlockBtn" class="gps-unlock" type="button">MANTÉN PULSADO 2 SEGUNDOS PARA DESBLOQUEAR</button></div></div>
 <div id="cameraOverlay" class="camera-overlay">
   <div class="camera-shell">
     <div id="cameraTitle" class="camera-title">LECTOR QR</div>
@@ -2626,7 +2627,9 @@ function stopProximityGps(show,remember=true){if(gpsWatchId!==null){navigator.ge
 function lockRaceScreen(remember=true){if(remember)gpsWritePref(GPS_LOCK_PREF_PREFIX,true);requestGpsWakeLock();if(gpsEl("gpsLockOverlay"))gpsEl("gpsLockOverlay").classList.add("open");document.documentElement.classList.add("gps-locked");gpsRefreshState()}
 function unlockRaceScreen(remember=true){clearTimeout(gpsUnlockTimer);gpsUnlockTimer=null;if(remember)gpsWritePref(GPS_LOCK_PREF_PREFIX,false);if(gpsEl("gpsLockOverlay"))gpsEl("gpsLockOverlay").classList.remove("open");document.documentElement.classList.remove("gps-locked")}
 function bindGpsUnlock(){const b=gpsEl("gpsUnlockBtn");if(!b)return;const start=()=>{clearTimeout(gpsUnlockTimer);b.classList.add("holding");gpsUnlockTimer=setTimeout(()=>{b.classList.remove("holding");unlockRaceScreen()},2200)},cancel=()=>{clearTimeout(gpsUnlockTimer);gpsUnlockTimer=null;b.classList.remove("holding")};["pointerdown","touchstart"].forEach(e=>b.addEventListener(e,start,{passive:true}));["pointerup","pointercancel","pointerleave","touchend","touchcancel"].forEach(e=>b.addEventListener(e,cancel,{passive:true}))}
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){if(gpsWatchId!==null||gpsReadPref(GPS_LOCK_PREF_PREFIX))requestGpsWakeLock();if(gpsWatchId===null&&gpsReadPref(GPS_PREF_PREFIX)&&route)setTimeout(()=>startProximityGps(false),80)}});window.addEventListener("pagehide",()=>stopProximityGps(false,false));setTimeout(bindGpsUnlock,0);
+function bindSkipHoldButton(id){const b=gpsEl(id);if(!b||b.dataset.bound==="1")return;b.dataset.bound="1";let timer=null,done=false;const cancel=()=>{clearTimeout(timer);timer=null;if(!done)b.classList.remove("holding")};const start=e=>{if(b.style.display==="none"||b.disabled)return;done=false;clearTimeout(timer);b.classList.add("holding");timer=setTimeout(()=>{done=true;b.classList.remove("holding");skipCurrentControl(true);setTimeout(()=>{done=false;gpsRefreshState()},80)},2000)};["pointerdown","touchstart"].forEach(ev=>b.addEventListener(ev,start,{passive:true}));["pointerup","pointercancel","pointerleave","touchend","touchcancel"].forEach(ev=>b.addEventListener(ev,cancel,{passive:true}))}
+function bindSkipHoldButtons(){bindSkipHoldButton("gpsSkipHoldBtn");bindSkipHoldButton("gpsLockSkipHoldBtn")}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){if(gpsWatchId!==null||gpsReadPref(GPS_LOCK_PREF_PREFIX))requestGpsWakeLock();if(gpsWatchId===null&&gpsReadPref(GPS_PREF_PREFIX)&&route)setTimeout(()=>startProximityGps(false),80)}});window.addEventListener("pagehide",()=>stopProximityGps(false,false));setTimeout(()=>{bindGpsUnlock();bindSkipHoldButtons()},0);
 
 function handleQr(raw){
     const q=parse(raw);
@@ -2728,11 +2731,11 @@ function restoreBestSavedRun(silent){
     log=best;save();renderLoaded();notifyMilitopoLive("READY");if(!silent)toast("Recorrido restaurado correctamente");return true;
 }
 
-function renderLoaded(){document.body.classList.add("route-loaded");document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences();setTimeout(resizeParticipantFrameFromInside,80)}
-function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=routeAdvancedCount();const expected=exp[done]||"FINISH";const alreadyCorrect=log.scans.some(s=>s.controlId===id&&s.status==="correct");let status=id===expected?"correct":alreadyCorrect?"duplicate":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});save();renderNext();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
+function renderLoaded(){document.body.classList.add("route-loaded");document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();refreshSkipHoldVisibility();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences();setTimeout(resizeParticipantFrameFromInside,80)}
+function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=routeAdvancedCount();const expected=exp[done]||"FINISH";const alreadyCorrect=log.scans.some(s=>s.controlId===id&&s.status==="correct");let status=id===expected?"correct":alreadyCorrect?"duplicate":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});save();renderNext();refreshSkipHoldVisibility();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
 function scanStatusLabel(status){return {correct:"Correcto",out_of_order:"Fuera de orden",wrong:"Incorrecto",duplicate:"Duplicado",skipped:"Descartado · pendiente"}[String(status||"")]||"Estado desconocido"}
 function scanStatusMessage(status,expected){return {correct:"Baliza correcta",out_of_order:"Fuera de orden. Tocaba "+expected,wrong:"Baliza incorrecta: no pertenece a tu recorrido",duplicate:"Baliza ya registrada correctamente",skipped:"Punto descartado. Queda pendiente en el resultado final"}[String(status||"")]||"Baliza registrada"}
-function skipCurrentControl(){
+function skipCurrentControl(skipConfirm=false){
     if(!route)return toast("Primero carga tu recorrido");
     if(!log||!log.startTime)return toast("Primero registra la SALIDA");
     if(log.finishTime)return toast("El recorrido ya está finalizado");
@@ -2740,17 +2743,16 @@ function skipCurrentControl(){
     const index=routeAdvancedCount();
     const expected=exp[index];
     if(!expected)return toast("No quedan balizas pendientes. Dirígete a LLEGADA");
-    const ok=window.confirm("¿CONFIRMAR DESCARTE DEL PUNTO?\n\nVas a marcar la baliza "+expected+" como pendiente y avanzar a la siguiente. Este punto contará como no completado en el resultado final.\n\nEsta acción no se puede deshacer durante la carrera.");
-    if(!ok)return;
+    if(!skipConfirm){const ok=window.confirm("¿CONFIRMAR DESCARTE DEL PUNTO?\n\nVas a marcar la baliza "+expected+" como pendiente y avanzar a la siguiente. Este punto contará como no completado en el resultado final.\n\nEsta acción no se puede deshacer durante la carrera.");if(!ok)return;}
     log.scans.push({controlId:expected,timestamp:new Date().toISOString(),expectedControlId:expected,status:"skipped",skipped:true});
-    save();renderNext();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:"skipped",controlId:expected});gpsRefreshState();toast("Punto "+expected+" descartado. Continúa con la siguiente baliza");
+    save();renderNext();refreshSkipHoldVisibility();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:"skipped",controlId:expected});gpsRefreshState();toast("Punto "+expected+" descartado. Continúa con la siguiente baliza");
 }
 function startRace(){
     primeParticipantAudio();
     if(!route)return toast("Primero QR participante");
     if(log.startTime)return toast("Salida ya registrada");
     log.startTime=new Date().toISOString();
-    save();renderNext();renderScans();notifyMilitopoLive("START");gpsRefreshState();toast("Salida registrada");
+    save();renderNext();refreshSkipHoldVisibility();renderScans();notifyMilitopoLive("START");gpsRefreshState();toast("Salida registrada");
     if(gpsWatchId===null)setTimeout(showGpsStartReminder,180);
     else setTimeout(()=>restoreParticipantScroll("gpsProximity","smooth"),220);
 }
@@ -2767,7 +2769,7 @@ async function finishRace(source="qr"){
     log.completed=log.missingControls.length===0;
     log.resultPayload=resultPayload();
     if(byGps)log.finishSource="gps";
-    save();renderNext();renderScans();await renderResult();
+    save();renderNext();refreshSkipHoldVisibility();renderScans();await renderResult();
     log.resultPayload=resultPayload();
     save();
     notifyMilitopoLive("FINISH",{resultCode:"ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+log.resultPayload});
@@ -2811,6 +2813,7 @@ function save(){
     }
     updateOfflineSafetyPanel();
 }
+function refreshSkipHoldVisibility(){const exp=route&&route.points?route.points.filter(x=>x!=="START"&&x!=="FINISH"):[];const can=!!(route&&log&&log.startTime&&!log.finishTime&&exp[routeAdvancedCount()]);["gpsSkipHoldBtn","gpsLockSkipHoldBtn"].forEach(id=>{const b=gpsEl(id);if(b)b.style.display=can?"block":"none"})}
 function renderNext(){const n=document.getElementById("next"),skipBtn=document.getElementById("skipControlBtn");if(!log.startTime){n.textContent="TE TOCA: SALIDA";if(skipBtn)skipBtn.style.display="none";return}const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const correct=routeCorrectCount();if(log.finishTime){n.textContent=(log.completed?"FINALIZADO OK":"FINALIZADO CON AVISOS")+" · PROGRESO "+correct+"/"+exp.length;if(skipBtn)skipBtn.style.display="none";return}const advanced=routeAdvancedCount(),next=exp[advanced]||"FINISH";n.textContent="TE TOCA: "+next+" · PROGRESO "+correct+"/"+exp.length;if(skipBtn)skipBtn.style.display=next==="FINISH"?"none":"block"}
 function renderScans(){let h="<div class='scan "+(log.startTime?"ok":"")+"'><b>SALIDA</b><span>"+(log.startTime?tm(log.startTime):"Pendiente")+"</span><span>"+(log.startTime?"✅":"⏳")+"</span></div>";log.scans.forEach(s=>{const cls=s.status==="correct"?"ok":"bad";const icon=s.status==="correct"?"✅":(s.status==="skipped"?"⏭️":"⚠️");h+="<div class='scan "+cls+"'><b>"+s.controlId+"</b><span>"+tm(s.timestamp)+" · tocaba "+s.expectedControlId+" · "+scanStatusLabel(s.status)+"</span><span>"+icon+"</span></div>"});h+="<div class='scan "+(log.finishTime?(log.completed?"ok":"bad"):"")+"'><b>LLEGADA</b><span>"+(log.finishTime?tm(log.finishTime):"Pendiente")+"</span><span>"+(log.finishTime?"🏁":"⏳")+"</span></div>";document.getElementById("scans").innerHTML=h;setTimeout(resizeParticipantFrameFromInside,30)}
 
