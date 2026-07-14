@@ -371,14 +371,14 @@
     </div>
 </div>
 
-<script src="js/app.js?v=resultados-estados-exclusivos-v2"></script>
+<script src="js/app.js?v=estado-participantes-filas-es-v3"></script>
 <script type="module" src="js/live/live-phase2.js?v=descartes-dinamicos-v2"></script>
 <script>
 (function(){
   if (!("serviceWorker" in navigator) || !("caches" in window) || !/^https?:$/.test(location.protocol)) return;
   async function cacheCurrentMilitopoPage(){
     try {
-      const cache = await caches.open("militopo-page-snapshot-v79-estados-exclusivos");
+      const cache = await caches.open("militopo-page-snapshot-v80-estado-filas-es");
       await cache.add(new Request(location.href, { cache: "reload" })).catch(function(){});
       await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/live/live-phase2.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js"].map(function(url){
         return cache.add(new Request(url, { cache: "reload" }));
