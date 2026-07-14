@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=integrated-maps-v10" />
+<link rel="stylesheet" href="css/styles.css?v=integrated-kmz-v11" />
 
 
 
@@ -33,6 +33,20 @@
 .custom-map-main-button{width:100%!important;min-height:72px!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;font-size:1.05rem!important;letter-spacing:.08em!important}
 .custom-map-layer-stack .geotiff-opacity-active-panel{margin:8px 0 0!important;width:100%;box-sizing:border-box}
 @media(max-width:640px){.custom-map-main-button{min-height:68px!important;font-size:1rem!important}.custom-map-layer-stack{margin:0}}
+/* MILITOPO V11 · Selector de plano propio compacto */
+.map-layer-selector-panel{padding:16px 14px!important}
+.custom-map-layer-stack{width:100%;max-width:none;margin:0!important;display:grid;gap:8px}
+.custom-map-main-button{width:100%!important;min-height:50px!important;padding:10px 16px!important;border-radius:16px!important;font-size:.94rem!important;letter-spacing:.055em!important;box-shadow:0 7px 16px rgba(0,0,0,.18)!important}
+.custom-map-layer-stack .geotiff-opacity-active-panel{width:100%!important;margin:0!important;padding:10px 13px!important;border-radius:16px!important;box-sizing:border-box!important}
+.geotiff-opacity-active-panel .geotiff-opacity-label{grid-template-columns:1fr auto!important;gap:5px 10px!important;font-size:.82rem!important;letter-spacing:.035em!important;line-height:1.15!important}
+.geotiff-opacity-active-panel input[type=range]{height:24px!important;margin:0!important}
+.layer-pills-main{margin-top:10px!important}
+@media(max-width:640px){
+ .map-layer-selector-panel{padding:13px 12px!important}
+ .custom-map-main-button{min-height:48px!important;padding:9px 12px!important;border-radius:15px!important;font-size:.9rem!important}
+ .custom-map-layer-stack .geotiff-opacity-active-panel{padding:9px 12px!important;border-radius:15px!important}
+ .geotiff-opacity-active-panel .geotiff-opacity-label{font-size:.76rem!important;letter-spacing:.02em!important}
+}
 .map-layer-selector-panel{margin:16px 0;padding:14px;border:1px solid rgba(215,184,96,.38);border-radius:24px;background:rgba(24,43,23,.38);box-shadow:inset 0 0 0 1px rgba(255,255,255,.035)}
 .map-layer-selector-title{display:block;margin:0 0 10px;font-weight:900;letter-spacing:.1em;text-align:center}
 @media(max-width:640px){.map-layer-selector-panel{padding:12px;border-radius:21px}.map-layer-selector-title{font-size:.92rem}}
@@ -409,7 +423,7 @@
     </div>
 </div>
 
-<script src="js/app.js?v=integrated-maps-v10"></script>
+<script src="js/app.js?v=integrated-kmz-v11"></script>
 <script type="module" src="js/live/live-phase2.js?v=tabla-ordenable-v1"></script>
 <script>
 (function(){
@@ -418,7 +432,7 @@
     try {
       const cache = await caches.open("militopo-page-snapshot-v80-estado-filas-es");
       await cache.add(new Request(location.href, { cache: "reload" })).catch(function(){});
-      await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/live/live-phase2.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js", "./maps/index.json", "./maps/valle-perdido-integrado.jpg"].map(function(url){
+      await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/live/live-phase2.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js", "./maps/index.json"].map(function(url){
         return cache.add(new Request(url, { cache: "reload" }));
       }));
     } catch (e) {}

@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · QR salida/llegada compacto */
-const MILITOPO_CACHE = "militopo-orientacion-integrated-maps-v10";
+const MILITOPO_CACHE = "militopo-orientacion-integrated-kmz-v11";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -13,7 +13,6 @@ const CORE_ASSETS = [
   "./css/styles.css",
   "./js/vendor/qr.js",
   "./maps/index.json",
-  "./maps/valle-perdido-integrado.jpg",
   "./js/qr.js",
   "./participante/",
   "./participante/index.html",
