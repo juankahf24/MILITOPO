@@ -9339,14 +9339,19 @@ function renderParticipantsStatusGrid(){
         const r=st.result;
         const ms=resultMs(r);
         const time=ms!==null?formatDuration(ms):"--";
-        const pendingIds=r?resultPendingControlIds(r):[]; const discardedIds=r?resultDiscardedControlIds(r):[];
-        const details=[pendingIds.length?`⏳ Pendientes: ${pendingIds.join(", ")}`:"",discardedIds.length?`⏭️ Descartados: ${discardedIds.join(", ")}`:""].filter(Boolean).join(" · ");
-        const missing=details?` · ${details}`:"";
+        const pendingIds=r?resultPendingControlIds(r):[];
+        const discardedIds=r?resultDiscardedControlIds(r):[];
         const name=resultParticipantName(route.participantId);
-        return `<div class="scan-item ${st.cls}" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;overflow:hidden;">
-            <b style="display:block;grid-column:1;white-space:normal;word-break:break-word;overflow-wrap:anywhere;line-height:1.25;">${escapeHtml(name?`${route.participantId} · ${name}`:route.participantId)}</b>
-            <span style="display:block;grid-column:1;white-space:normal;word-break:break-word;overflow-wrap:anywhere;line-height:1.25;font-size:.92em;">${escapeHtml(route.routeId)} · ${st.status} · ${time}${escapeHtml(missing)}</span>
-            <span style="grid-column:2;grid-row:1/3;font-size:1.45rem;align-self:center;">${st.icon}</span>
+        const participantLabel=name?`${route.participantId} · ${name}`:route.participantId;
+        const detailRows=[
+            discardedIds.length?`<div style="grid-column:1;line-height:1.35;">⏭️ <b>Descartados:</b> ${escapeHtml(discardedIds.join(", "))}</div>`:"",
+            pendingIds.length?`<div style="grid-column:1;line-height:1.35;">⏳ <b>Pendientes:</b> ${escapeHtml(pendingIds.join(", "))}</div>`:""
+        ].filter(Boolean).join("");
+        return `<div class="scan-item ${st.cls}" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 12px;align-items:center;overflow:hidden;">
+            <b style="display:block;grid-column:1;line-height:1.25;white-space:normal;overflow-wrap:anywhere;">${escapeHtml(participantLabel)}</b>
+            <div style="grid-column:1;line-height:1.35;white-space:normal;overflow-wrap:anywhere;"><b>${escapeHtml(route.routeId)}</b> · ${escapeHtml(st.status)} <span style="white-space:nowrap;">Tiempo: <b>${escapeHtml(time)}</b></span></div>
+            ${detailRows}
+            <span style="grid-column:2;grid-row:1 / span 4;font-size:1.45rem;align-self:center;">${st.icon}</span>
         </div>`;
     }).join("");
 }
