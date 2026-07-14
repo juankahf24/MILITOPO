@@ -3,6 +3,9 @@
    Forzado final: dificultad en tabla/Excel y estados ES.
    ========================================================= */
 (function(){
+
+    const discardedIdsOf=r=>[...new Set((r?.scans||[]).filter(s=>String(s?.st||s?.status||"").toLowerCase()==="skipped").map(s=>String(s?.id||s?.controlId||s?.expectedControlId||"").trim()).filter(Boolean))];
+    const pendingIdsOf=r=>{const d=new Set(discardedIdsOf(r));return [...new Set((Array.isArray(r?.missingControls)?r.missingControls:[]).map(x=>String(x||"").trim()).filter(Boolean).filter(x=>!d.has(x)))];};
     if(window.__MILITOPO_RESULTADOS_V18_REAL__)return;
     window.__MILITOPO_RESULTADOS_V18_REAL__=true;
 
@@ -69,7 +72,7 @@
         const rows=typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])];
         if(!rows.length){box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;return;}
         let rank=0;
-        box.innerHTML=`<div class="classification-scroll-v18" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;"><table class="results-table classification-table-v18" style="width:100%;min-width:1260px;table-layout:fixed;border-collapse:separate;border-spacing:0;"><colgroup><col style="width:7%"><col style="width:18%"><col style="width:11%"><col style="width:10%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:9%"><col style="width:9%"></colgroup><thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th><th>Controles<br>descartados</th></tr></thead><tbody>${rows.map(r=>{rank++;const ms=typeof resultMs==="function"?resultMs(r):null,time=ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--",metric=routeMetricForResult(r);const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;const cls=typeof classificationRankClass==="function"?classificationRankClass(rank,r.completed):"";const name=(typeof resultParticipantName==="function"?resultParticipantName(r):"")||r.participantId||"--";return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${esc(name)}</td><td style="text-align:center">${esc(time)}</td><td style="text-align:center">${esc(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${esc(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${esc(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td style="text-align:center">${esc(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td><td style="text-align:center">${(r.scans||[]).filter(s=>(s.st||s.status)==="skipped").length}</td></tr>`;}).join("")}</tbody></table></div>`;
+        box.innerHTML=`<div class="classification-scroll-v18" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;"><table class="results-table classification-table-v18" style="width:100%;min-width:1260px;table-layout:fixed;border-collapse:separate;border-spacing:0;"><colgroup><col style="width:7%"><col style="width:18%"><col style="width:11%"><col style="width:10%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:9%"><col style="width:9%"></colgroup><thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th><th>Controles<br>descartados</th></tr></thead><tbody>${rows.map(r=>{rank++;const ms=typeof resultMs==="function"?resultMs(r):null,time=ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--",metric=routeMetricForResult(r);const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;const missingCount=pendingIdsOf(r).length;const cls=typeof classificationRankClass==="function"?classificationRankClass(rank,r.completed):"";const name=(typeof resultParticipantName==="function"?resultParticipantName(r):"")||r.participantId||"--";return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${esc(name)}</td><td style="text-align:center">${esc(time)}</td><td style="text-align:center">${esc(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${esc(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${esc(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td style="text-align:center">${esc(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td><td style="text-align:center">${discardedIdsOf(r).length}</td></tr>`;}).join("")}</tbody></table></div>`;
     };
 
     window.renderSelectedResultDetail=function(){
@@ -102,7 +105,9 @@
             <div><b>Salida:</b> ${esc(formatDateTimeSpain(r.startTime))}</div>
             <div><b>Llegada:</b> ${esc(formatDateTimeSpain(r.finishTime))}</div>
             <div><b>Tiempo:</b> ${esc(time)}</div>
-            <div><b>Controles pendientes:</b> ${esc((r.missingControls||[]).join(", ")||"--")}</div>
+            <div><b>✅ Controles completados:</b> ${typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length}</div>
+            <div><b>⏭️ Controles descartados:</b> ${esc(discardedIdsOf(r).join(", ")||"Ninguno")}</div>
+            <div><b>⏳ Controles pendientes:</b> ${esc(pendingIdsOf(r).join(", ")||"Ninguno")}</div>
             <div style="margin-top:8px;"><b>Pasos registrados</b></div>
             <div>${scans||"--"}</div>
         </div>`;
@@ -110,7 +115,7 @@
 
     window.classificationRowsForExport=function(){
         const rows=[["Puesto","Nombre","Tiempo","Recorrido","Dificultad","Distancia","Desnivel +","Controles\ncompletados","Controles\npendientes","Controles\ndescartados"]];let rank=0;const data=typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])];
-        data.forEach(r=>{rank++;const ms=typeof resultMs==="function"?resultMs(r):null,metric=routeMetricForResult(r);const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;rows.push([rank,(typeof resultParticipantName==="function"?resultParticipantName(r):"")||r.participantId||"",ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0,(r.scans||[]).filter(s=>(s.st||s.status)==="skipped").length]);});return rows;
+        data.forEach(r=>{rank++;const ms=typeof resultMs==="function"?resultMs(r):null,metric=routeMetricForResult(r);const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;rows.push([rank,(typeof resultParticipantName==="function"?resultParticipantName(r):"")||r.participantId||"",ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,pendingIdsOf(r).length,discardedIdsOf(r).length]);});return rows;
     };
 
     window.downloadClassificationExcel=async function(){
@@ -133,7 +138,7 @@
         const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
  <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
- <dimension ref="A1:I${rows.length}"/>
+ <dimension ref="A1:J${rows.length}"/>
  <cols>${widths}</cols>
  <sheetData>${sheetRows}</sheetData>
  <pageMargins left="0.25" right="0.25" top="0.45" bottom="0.45" header="0.15" footer="0.15"/>
