@@ -2142,3 +2142,13 @@ th,td{
 .geotiff-import-main{min-width:205px;min-height:62px;line-height:1.08;text-align:center}.geotiff-import-main small{font-size:.68em;opacity:.85}
 .geotiff-library-row{margin-top:12px}.geotiff-library-row label{margin:0}.geotiff-library-row select{width:100%;min-height:52px}
 @media(max-width:700px){.layer-pills .layer-btn[data-layer="custom"]{width:100%;min-width:0;font-size:.86rem}.geotiff-map-head{display:grid;grid-template-columns:1fr}.geotiff-map-head .btn{margin-left:0;width:100%}.geotiff-import-main{min-width:0}}
+
+/* MILITOPO custom maps v3: botones de capas equilibrados en móvil */
+.layer-pills{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:stretch}
+.layer-pills .layer-btn{width:100%;min-width:0;min-height:58px;padding:11px 10px;display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal;line-height:1.15}
+.layer-pills .layer-btn[data-layer="custom"]{min-width:0;min-height:58px;padding:11px 10px}
+@media(max-width:700px){
+  .layer-pills{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .layer-pills .layer-btn{font-size:.82rem;letter-spacing:.35px}
+  .layer-pills .layer-btn[data-layer="custom"]{grid-column:1 / -1;width:100%;min-height:64px;font-size:.94rem;letter-spacing:.8px}
+}
