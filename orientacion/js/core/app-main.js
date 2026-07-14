@@ -3402,8 +3402,24 @@ function toggleStep5RoutePicker(kind){
     const picker=document.getElementById(meta.pickerId);
     if(!picker)return;
     const willOpen=!picker.classList.contains("open");
-    document.querySelectorAll(".step5-route-picker.open").forEach(el=>el.classList.remove("open"));
-    if(willOpen)picker.classList.add("open");
+    document.querySelectorAll(".step5-route-picker.open").forEach(el=>{
+        el.classList.remove("open");
+        if(el.dataset.pendingRefresh==="1"){
+            el.dataset.pendingRefresh="0";
+            const otherKind=el.id==="finishFlowParticipantPicker"?"finish":"start";
+            renderStep5RoutePicker(otherKind,true);
+        }
+    });
+    if(willOpen){
+        picker.classList.add("open");
+        picker.dataset.userBrowsing="1";
+    }else{
+        picker.dataset.userBrowsing="0";
+        if(picker.dataset.pendingRefresh==="1"){
+            picker.dataset.pendingRefresh="0";
+            renderStep5RoutePicker(kind,true);
+        }
+    }
 }
 
 function chooseStep5RouteFromPicker(kind,pid){
@@ -3413,15 +3429,21 @@ function chooseStep5RouteFromPicker(kind,pid){
     sel.value=pid;
     const picker=document.getElementById(meta.pickerId);
     if(picker)picker.classList.remove("open");
+    picker.dataset.userBrowsing="0";
+    picker.dataset.pendingRefresh="0";
     meta.onSelect();
-    renderStep5RoutePicker(kind);
+    renderStep5RoutePicker(kind,true);
 }
 
-function renderStep5RoutePicker(kind){
+function renderStep5RoutePicker(kind,force=false){
     const meta=step5RoutePickerMeta(kind);
     const sel=document.getElementById(meta.selectId);
     const picker=document.getElementById(meta.pickerId);
     if(!sel||!picker)return;
+    if(!force && picker.classList.contains("open")){
+        picker.dataset.pendingRefresh="1";
+        return;
+    }
     const routes=state.routes||[];
     const selectedRoute=routes.find(r=>String(r.participantId)===String(sel.value))||routes[0]||null;
     picker.innerHTML="";
