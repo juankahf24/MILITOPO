@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "maps": [
+    {
+      "id": "valle-perdido",
+      "name": "Valle Perdido",
+      "format": "kmz",
+      "file": "./maps/valle-perdido.kmz"
+    }
+  ]
+}
