@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · QR salida/llegada compacto */
-const MILITOPO_CACHE = "militopo-orientacion-integrated-kmz-v11";
+const MILITOPO_CACHE = "militopo-orientacion-modern-compass-v12";
 const CORE_ASSETS = [
   "./",
   "./index.html",
