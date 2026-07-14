@@ -8129,7 +8129,7 @@ function iofDescriptionsSheetHtml(){
             <td>${escapeHtml(io.text||"")}</td>
         </tr>`;
     }).join("");
-    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Descripciones_${state.eventId}</title><style>@page{size:A4 portrait;margin:8mm}body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#eee;color:#111}.page{background:#fff;max-width:1120px;margin:0 auto;padding:18px}.title{font-size:36px;font-weight:900;color:#c000a0}.meta{margin:8px 0 16px;font-size:14px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:6px;vertical-align:middle}th{background:#f4d7ef;color:#6d005d}.symbol{font-size:18px;text-align:center;font-weight:900}.symbol .iof-c-svg{width:18px;height:18px;color:#111;display:inline-block;vertical-align:middle}.symbol .iof-c-svg path,.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.symbol .iof-c-svg{width:26px;height:26px;color:#111}.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.symbol .iof-combo-svg{width:26px;height:26px;color:#111;display:inline-block;vertical-align:middle}.toolbar{margin:10px 0 14px}.toolbar button{border:0;border-radius:999px;background:#c000a0;color:white;font-weight:800;padding:9px 13px}@media print{body{background:white}.page{max-width:none;padding:0}.toolbar{display:none}.title{font-size:28px}table{font-size:10px}}</style></head><body><div class="page"><div class="title">Descripciones de control · ${escapeHtml(state.eventName||"Orientación")}</div><div class="meta"><b>Evento:</b> ${escapeHtml(state.eventId)} · <b>Formato:</b> IOF A-H · <b>Fecha:</b> ${new Date().toLocaleDateString("es-ES")}</div><div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div><table><thead><tr><th>A<br>Nº</th><th>B<br>Código</th><th>C</th><th>D<br>Símbolo</th><th>D<br>Elemento</th><th>E<br>Aspecto</th><th>F<br>Dim.</th><th>G<br>Situación</th><th>H<br>Info</th><th>Texto</th></tr></thead><tbody>${rows}</tbody></table></div></body></html>`;
+    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Descripciones_${state.eventId}</title><style>@page{size:A4 portrait;margin:8mm}body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#eee;color:#111}.page{background:#fff;max-width:1260px;margin:0 auto;padding:18px}.title{font-size:36px;font-weight:900;color:#c000a0}.meta{margin:8px 0 16px;font-size:14px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:6px;vertical-align:middle}th{background:#f4d7ef;color:#6d005d}.symbol{font-size:18px;text-align:center;font-weight:900}.symbol .iof-c-svg{width:18px;height:18px;color:#111;display:inline-block;vertical-align:middle}.symbol .iof-c-svg path,.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.symbol .iof-c-svg{width:26px;height:26px;color:#111}.symbol .iof-c-svg line,.symbol .iof-c-svg polyline{fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:miter}.symbol .iof-c-svg circle{fill:currentColor;stroke:none}.symbol .iof-combo-svg{width:26px;height:26px;color:#111;display:inline-block;vertical-align:middle}.toolbar{margin:10px 0 14px}.toolbar button{border:0;border-radius:999px;background:#c000a0;color:white;font-weight:800;padding:9px 13px}@media print{body{background:white}.page{max-width:none;padding:0}.toolbar{display:none}.title{font-size:28px}table{font-size:10px}}</style></head><body><div class="page"><div class="title">Descripciones de control · ${escapeHtml(state.eventName||"Orientación")}</div><div class="meta"><b>Evento:</b> ${escapeHtml(state.eventId)} · <b>Formato:</b> IOF A-H · <b>Fecha:</b> ${new Date().toLocaleDateString("es-ES")}</div><div class="toolbar"><button onclick="window.print()">🖨️ Imprimir / guardar PDF</button></div><table><thead><tr><th>A<br>Nº</th><th>B<br>Código</th><th>C</th><th>D<br>Símbolo</th><th>D<br>Elemento</th><th>E<br>Aspecto</th><th>F<br>Dim.</th><th>G<br>Situación</th><th>H<br>Info</th><th>Texto</th></tr></thead><tbody>${rows}</tbody></table></div></body></html>`;
 }
 
 function openIofDescriptionsSheet(){
@@ -9291,16 +9291,16 @@ function renderClassificationTable(){
     if(!rows.length){box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;return;}
     let rank=0;
     box.innerHTML=`<div style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;">
-    <table class="results-table" style="width:100%;min-width:1120px;table-layout:fixed;border-collapse:separate;border-spacing:0;">
-        <colgroup><col style="width:7%"><col style="width:18%"><col style="width:11%"><col style="width:10%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:10%"></colgroup>
-        <thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th></tr></thead>
+    <table class="results-table" style="width:100%;min-width:1260px;table-layout:fixed;border-collapse:separate;border-spacing:0;">
+        <colgroup><col style="width:7%"><col style="width:18%"><col style="width:11%"><col style="width:10%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:9%"><col style="width:9%"></colgroup>
+        <thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th><th>Controles<br>descartados</th></tr></thead>
         <tbody>${rows.map(r=>{
             rank++;
             const ms=resultMs(r),time=ms!==null?formatDuration(ms):"--",metric=routeMetricForResult(r);
             const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
             const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;
             const cls=classificationRankClass(rank,r.completed);
-            return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||"--")}</td><td style="text-align:center">${escapeHtml(time)}</td><td style="text-align:center">${escapeHtml(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${escapeHtml(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${escapeHtml(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td style="text-align:center">${escapeHtml(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td></tr>`;
+            return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||"--")}</td><td style="text-align:center">${escapeHtml(time)}</td><td style="text-align:center">${escapeHtml(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${escapeHtml(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${escapeHtml(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td style="text-align:center">${escapeHtml(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td><td style="text-align:center">${(r.scans||[]).filter(s=>(s.st||s.status)==="skipped").length}</td></tr>`;
         }).join("")}</tbody>
     </table></div>`;
 }
@@ -9416,13 +9416,13 @@ function importStep5ResultFromInput(){
 
 
 function classificationRowsForExport(){
-    const rows=[["Puesto","Nombre","Tiempo","Recorrido","Dificultad","Distancia","Desnivel +","Controles completados","Controles pendientes"]];
+    const rows=[["Puesto","Nombre","Tiempo","Recorrido","Dificultad","Distancia","Desnivel +","Controles\ncompletados","Controles\npendientes","Controles\ndescartados"]];
     let rank=0;
     sortedImportedResults().forEach(r=>{
         rank++;
         const ms=resultMs(r),metric=routeMetricForResult(r);
         const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
-        rows.push([rank,resultParticipantName(r)||r.participantId||"",ms!==null?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0]);
+        rows.push([rank,resultParticipantName(r)||r.participantId||"",ms!==null?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0,(r.scans||[]).filter(s=>(s.st||s.status)==="skipped").length]);
     });
     return rows;
 }
@@ -9467,7 +9467,7 @@ async function downloadClassificationExcel(){
         return `<row r="${r}" ht="${rowHeight}" customHeight="1">${cells}</row>`;
     }).join("");
 
-    const widths=[8,24,14,12,14,14,14,22,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
+    const widths=[8,24,14,12,14,14,14,22,22,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
 
     const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
