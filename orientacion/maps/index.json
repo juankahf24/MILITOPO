@@ -1,11 +1,24 @@
 {
-  "version": 1,
+  "version": 2,
   "maps": [
     {
       "id": "valle-perdido",
       "name": "Valle Perdido",
-      "format": "kmz",
-      "file": "./maps/valle-perdido.kmz"
+      "format": "image",
+      "file": "./maps/valle-perdido-integrado.jpg",
+      "bounds": [
+        [
+          37.92494711760332,
+          -1.1557765559794673
+        ],
+        [
+          37.9374122963103,
+          -1.1315343593479756
+        ]
+      ],
+      "width": 4096,
+      "height": 2670,
+      "source": "Valle v2(2).kmz"
     }
   ]
 }
