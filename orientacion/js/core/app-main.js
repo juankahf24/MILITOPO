@@ -1146,7 +1146,7 @@ function bringPlanPreviewToFront(){
         if(pdfPlanCenterMarker&&typeof pdfPlanCenterMarker.setZIndexOffset==="function")pdfPlanCenterMarker.setZIndexOffset(1250);
     }catch(e){console.warn("No se pudo colocar el borde de impresión al frente",e)}
 }
-function switchLayer(name){if(!map)return;if(name==="custom"){if(!orientationGeoTiffRuntime.ready){toast("Importa primero un GeoTIFF o KMZ georreferenciado");return}showOrientationGeoTiffOverlay();state.selectedMapLayer="custom"}else{if(!layers[name])return;hideOrientationGeoTiffOverlay();if(currentLayer)map.removeLayer(currentLayer);currentLayer=layers[name].addTo(map);state.selectedMapLayer=name}document.querySelectorAll(".layer-btn").forEach(b=>b.classList.toggle("active",b.dataset.layer===name));bringPlanPreviewToFront();saveState();setTimeout(()=>{map.invalidateSize();bringPlanPreviewToFront()},80)}
+function switchLayer(name){if(!map)return;if(name==="custom"){if(!orientationGeoTiffRuntime.ready){toast("Importa primero un GeoTIFF o KMZ georreferenciado");updateOrientationCustomOpacityPanel();return}showOrientationGeoTiffOverlay();state.selectedMapLayer="custom"}else{if(!layers[name])return;hideOrientationGeoTiffOverlay();if(currentLayer)map.removeLayer(currentLayer);currentLayer=layers[name].addTo(map);state.selectedMapLayer=name}document.querySelectorAll(".layer-btn").forEach(b=>b.classList.toggle("active",b.dataset.layer===name));updateOrientationCustomOpacityPanel();bringPlanPreviewToFront();saveState();setTimeout(()=>{map.invalidateSize();bringPlanPreviewToFront()},80)}
 
 // ORIENTATION POINT POPUP JS START
 function getPointPopupIcon(type){
@@ -9860,6 +9860,13 @@ function setOrientationGeoTiffStatus(message,type="warn"){
     if(el){el.className="status "+type;el.innerHTML=message}
 }
 function orientationMapId(){return "map_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8)}
+function updateOrientationCustomOpacityPanel(){
+    const panel=document.getElementById("orientationGeoTiffOpacityPanel");
+    if(!panel)return;
+    const visible=state.selectedMapLayer==="custom"&&orientationGeoTiffRuntime.ready;
+    panel.hidden=!visible;
+    panel.setAttribute("aria-hidden",visible?"false":"true");
+}
 function updateOrientationGeoTiffUi(){
     const ready=orientationGeoTiffRuntime.ready;
     const fit=document.getElementById("orientationGeoTiffFitBtn"),rem=document.getElementById("orientationGeoTiffRemoveBtn");
@@ -9867,6 +9874,7 @@ function updateOrientationGeoTiffUi(){
     const opacity=Number.isFinite(Number(state.customGeoTiffOpacity))?Number(state.customGeoTiffOpacity):1;
     const slider=document.getElementById("orientationGeoTiffOpacity");if(slider)slider.value=Math.round(opacity*100);
     const label=document.getElementById("orientationGeoTiffOpacityValue");if(label)label.textContent=Math.round(opacity*100)+" %";
+    updateOrientationCustomOpacityPanel();
     if(ready){
         const m=state.customGeoTiffMeta||{};
         const format=(m.format||orientationGeoTiffRuntime.format||"PLANO").toUpperCase();
