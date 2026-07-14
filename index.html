@@ -1,452 +1,635 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0" />
-<title>MILITOPO · Orientación V1</title>
-<meta name="theme-color" content="#20351f">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="../manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="../icons/militopo-192.png">
-<link rel="apple-touch-icon" href="../icons/militopo-192.png">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-<script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=participant-independent-v1" />
-
-
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>MILITOPO | Sistema de Recorridos Topográficos</title>
+    <meta name="theme-color" content="#20351f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/militopo-192.png">
+    <link rel="apple-touch-icon" href="icons/militopo-192.png">
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Proj4js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    <!-- SheetJS -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script>window.XLSXBase = window.XLSX;</script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script>window.XLSXStyle = window.XLSX; window.XLSX = window.XLSXBase;</script>
+    <!-- JSZip y FileSaver -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- QRCode -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<div id="militopoAccessGate" class="militopo-access-gate" style="display:none;">
-    <div class="militopo-access-card">
-        <div class="militopo-access-kicker">MILITOPO · ORIENTACIÓN</div>
-        <h1>Selecciona acceso</h1>
-        <p class="militopo-access-subtitle"></p>
+<div id="militopoSplash" class="mt-splash" aria-hidden="false">
+    <div class="mt-splash-backdrop"></div>
+    <div class="mt-splash-card">
+        <div class="mt-splash-orbit orbit-a"></div>
+        <div class="mt-splash-orbit orbit-b"></div>
+        <div class="mt-splash-logo-wrap">
+            <span class="mt-splash-logo-glow"></span>
+            <img class="mt-splash-logo" src="https://i.postimg.cc/RFmGrHdD/IMG-4917.jpg" alt="MILITOPO">
+        </div>
+        <div class="mt-splash-copy">
+            <span class="mt-splash-kicker">Sistema táctico · Inicio</span>
+            <h1>MILITOPO</h1>
+            <p>Topografía · Interfaz optimizada para Android</p>
+        </div>
+        <div class="mt-splash-loader" aria-hidden="true"><span></span></div>
+        <button id="mtSplashEnter" type="button" class="mt-splash-enter">Entrar</button>
+    </div>
+</div>
 
-        <div id="militopoAccessChoices" class="militopo-access-choices">
-            <button id="militopoOrganizerAccessBtn" type="button" class="militopo-access-btn organizer">
-                <span class="icon">🪖</span>
-                <span>
-                    <strong>ORGANIZADOR</strong>
-                    <small>Configuración, recorridos, ZIP, resultados y material completo</small>
-                </span>
-            </button>
-            <button id="militopoParticipantAccessBtn" type="button" class="militopo-access-btn participant">
-                <span class="icon">🏃</span>
-                <span>
-                    <strong>PARTICIPANTE</strong>
-                    <small>Escanea tu QR o entra directamente como corredor</small>
-                </span>
-            </button>
+<div class="container">
+    <div class="header header-clean-topografia">
+        <div class="header-content header-content-clean">
+            <div class="topo-militar topo-militar-clean">
+                <img class="logo-imagen logo-imagen-clean" src="https://i.postimg.cc/RFmGrHdD/IMG-4917.jpg" alt="Logo MILITOPO">
+                <div class="topo-info topo-info-clean">
+                    <h1>MILITOPO</h1>
+                    <div class="topografia-subtitle-clean">TOPOGRAFÍA</div>
+                    <div id="headerModeTabs" class="branch-tabs header-branch-tabs-modern" aria-label="Selector de rama MILITOPO">
+                        <button id="headerTopoTab" type="button" class="branch-tab header-branch-btn active" data-branch="topografica">
+                            <span class="branch-tab-icon">🗺️</span>
+                            <span class="branch-tab-text">Topográfica</span>
+                        </button>
+                        <button id="headerOriTab" type="button" class="branch-tab header-branch-btn" data-branch="orientacion" aria-disabled="false">
+                            <span class="branch-tab-icon">🧭</span>
+                            <span class="branch-tab-text">Orientación</span>
+                            
+                        </button>
+                        <button id="installMilitopoBtn" type="button" class="branch-tab header-branch-btn install-app-header-btn" aria-label="Instalar MILITOPO como aplicación en Android">
+                            <span class="branch-tab-icon">📲</span>
+                            <span class="branch-tab-text">APP</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="steps-container workflow-steps" aria-label="Pasos principales de Topográfica">
+        <div class="step" data-step="1">
+            <span class="step-number">01</span>
+            <span class="step-icon">⚙️</span>
+            <span class="step-copy">
+                <strong>Configurar</strong>
+                <small>Módulos, puntos y coordenadas</small>
+            </span>
+        </div>
+        <div class="step" data-step="2">
+            <span class="step-number">02</span>
+            <span class="step-icon">📍</span>
+            <span class="step-copy">
+                <strong>Editar puntos</strong>
+                <small>Mapa IGN o carga manual</small>
+            </span>
+        </div>
+        <div class="step" data-step="3">
+            <span class="step-number">03</span>
+            <span class="step-icon">📦</span>
+            <span class="step-copy">
+                <strong>Generar</strong>
+                <small>Recorridos y ZIP final</small>
+            </span>
+        </div>
+    </div>
+
+    <section id="topoVisualHud" class="topo-workflow-panel" aria-label="Progreso guiado de la rama Topográfica">
+        <div class="topo-workflow-header">
+            <div class="topo-workflow-compass" aria-hidden="true">🧭</div>
+            <div class="topo-workflow-title">
+                <div class="topo-hud-kicker">Rama activa · Topográfica</div>
+                <h2>Procedimiento del ejercicio</h2>
+                <p>Sigue el flujo en orden: primero estructura, después puntos y por último generación del paquete final.</p>
+            </div>
+            <div class="topo-workflow-percent" aria-live="polite">
+                <strong id="topoHudProgreso">0%</strong>
+                <span>avance</span>
+            </div>
         </div>
 
-        <div id="militopoPasswordPanel" class="militopo-password-panel" style="display:none;">
-            <label for="militopoOrganizerPassword">Contraseña de organizador</label>
-            <input id="militopoOrganizerPassword" type="password" autocomplete="current-password" placeholder="Introduce contraseña">
-            <div id="militopoPasswordError" class="militopo-password-error" aria-live="polite"></div>
-            <div class="militopo-password-actions">
-                <button id="militopoPasswordCancelBtn" type="button" class="btn secondary">CANCELAR</button>
-                <button id="militopoPasswordEnterBtn" type="button" class="btn green">ENTRAR</button>
+        <div class="topo-workflow-bar" aria-hidden="true">
+            <span id="topoHudProgressFill"></span>
+        </div>
+
+        <div class="topo-workflow-cards" aria-label="Estado de cada fase">
+            <article class="workflow-card" data-workflow-step="1">
+                <span class="workflow-card-icon">⚙️</span>
+                <div>
+                    <strong>1. Configurar estructura</strong>
+                    <small id="workflowStatus1">Pendiente de confirmar</small>
+                </div>
+            </article>
+            <article class="workflow-card" data-workflow-step="2">
+                <span class="workflow-card-icon">📍</span>
+                <div>
+                    <strong>2. Completar puntos</strong>
+                    <small id="workflowStatus2">0 puntos revisados</small>
+                </div>
+            </article>
+            <article class="workflow-card" data-workflow-step="3">
+                <span class="workflow-card-icon">📦</span>
+                <div>
+                    <strong>3. Generar archivos</strong>
+                    <small id="workflowStatus3">Listo cuando los puntos estén completos</small>
+                </div>
+            </article>
+        </div>
+
+        <div class="topo-workflow-metrics" aria-label="Resumen de estructura">
+            <div><span>📦</span><strong id="topoHudModulos">8</strong><small>Módulos</small></div>
+            <div><span>📍</span><strong id="topoHudPuntos">40</strong><small>Puntos totales</small></div>
+        </div>
+    </section>
+
+    <div id="step1" class="step-content active">
+        <div class="card">
+            <div class="card-header"><h2>✦ CONFIGURACIÓN DE LA ESTRUCTURA ✦</h2></div>
+            <div class="config-row">
+                <div class="config-item">
+                    <label>📦 MÓDULOS <button type="button" class="modern-info-btn" id="infoModulosIcon" aria-label="Información sobre módulos"><span>i</span></button></label>
+                    <select id="numModulosSelect"><option value="2">2 módulos</option><option value="3">3 módulos</option><option value="4">4 módulos</option><option value="5">5 módulos</option><option value="6">6 módulos</option><option value="7">7 módulos</option><option value="8" selected>8 módulos</option></select>
+                </div>
+                <div class="config-item">
+                    <label>📍 PUNTOS POR MÓDULO <button type="button" class="modern-info-btn" id="infoPuntosIcon" aria-label="Información sobre puntos por módulo"><span>i</span></button></label>
+                    <select id="puntosPorModuloSelect"><option value="2">2 puntos</option><option value="3">3 puntos</option><option value="4">4 puntos</option><option value="5" selected>5 puntos</option></select>
+                </div>
+                <div class="config-item">
+                    <label>🗺️ COORDENADAS <button type="button" class="modern-info-btn" id="infoCoordIcon" aria-label="Información sobre coordenadas"><span>i</span></button></label>
+                    <select id="coordTypeConfig"><option value="UTM">UTM</option><option value="MGRS">MGRS</option></select>
+                </div>
+            </div>
+            <div id="infoMessagesStep1"></div>
+            <div class="config-info"><strong>📌 ESTRUCTURA ACTUAL:</strong> <span id="infoEstructura">8 módulos × 5 puntos = 40 puntos totales</span></div>
+            <div class="nav-buttons">
+                <button id="nuevoEjercicioTopoBtn" type="button" class="btn btn-secondary">🧹 BORRAR Y EMPEZAR DE CERO</button>
+                <button id="confirmStep1" class="btn btn-primary">✓ CONFIRMAR Y CONTINUAR →</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="step2" class="step-content">
+        <div class="card">
+            <div class="card-header"><h2>📍 EDITAR PUNTOS TOPOGRÁFICOS</h2></div>
+
+            <section id="gpxImportContainer" class="topo-atak-import-card" aria-labelledby="topoAtakTitle">
+                <div class="topo-atak-logo-shell" aria-hidden="true">
+                    <img src="assets/atak.png" alt="">
+                </div>
+                <h3 id="topoAtakTitle">IMPORTAR PUNTOS CON<br>ATAK</h3>
+                <button id="importGPXBtn" type="button" class="topo-atak-import-btn">IMPORTAR POR ATAK GPX</button>
+                <button type="button" id="importGPXInfoIcon" class="topo-atak-info-btn" aria-label="Información sobre importar GPX o KML">i</button>
+            </section>
+
+            <div class="edit-options">
+                <div class="option-card">
+                    <div class="option-icon">🗺️</div>
+                    <div class="option-title">Automático con mapa IGN</div>
+                    <div class="option-desc">Utiliza el mapa topográfico/aéreo del IGN para seleccionar puntos visualmente. Haz clic en la pestaña de abajo, selecciona qué punto quieres modificar y haz clic en un punto del mapa para asignar coordenadas automáticamente.</div>
+                    <button id="mapBtn" class="btn btn-primary" style="padding: 6px 16px; font-size:0.75rem;">🗺️ Mapa topográfico y aéreo IGN</button>
+                    <button id="geoTiffBtn" class="btn btn-secondary" type="button" style="padding: 6px 16px; font-size:0.75rem; margin-top:8px;">🗂️ Subir plano militar GeoTIFF</button>
+                    <input id="geoTiffInput" type="file" accept=".tif,.tiff,image/tiff" style="display:none;">
+                </div>
+                <div class="option-card">
+                    <div class="option-icon">✍️</div>
+                    <div class="option-title">Manual</div>
+                    <div class="option-desc">Introduce las coordenadas directamente en cada punto. Puedes escribir en formato UTM o MGRS según la configuración del paso 1.</div>
+                    <div class="option-badge">Escribe directamente en los campos</div>
+                    <div class="import-export-buttons" id="importButtonsContainer">
+                        <div style="display: flex; align-items: center; gap: 8px;" id="csvImportContainer">
+                            <button id="importCSVBtn" class="btn btn-secondary btn-small">📂 Importar desde CSV/Excel</button>
+                            <button type="button" id="importCSVInfoIcon" class="modern-info-btn modern-info-btn-inline" aria-label="Información sobre importar CSV o Excel"><span>i</span></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="infoMessagesStep2"></div>
+
+            
+            
+
+            <div class="points-action-tabs" aria-label="Acciones rápidas de puntos topográficos">
+                <button type="button" id="autofillPuntosBtn" class="points-action-tab autofill">✨ Autorellenar puntos y descripciones</button>
+                <button type="button" id="clearPuntosTopBtn" class="points-action-tab clear">🧹 Limpiar puntos y descripciones</button>
+            </div>
+
+            <div id="puntosGrid" class="modulos-acordeon"></div>
+
+            <div class="dashboard" id="dashboard">
+                <div class="dashboard-title">📊 TABLERO DE CONTROL</div>
+                <div class="dashboard-stats">
+                    <div class="stat-card"><div class="stat-value" id="totalPuntos">0</div><div class="stat-label">Total puntos</div></div>
+                    <div class="stat-card"><div class="stat-value" id="completadosPuntos">0</div><div class="stat-label">Completados</div></div>
+                    <div class="stat-card"><div class="stat-value" id="porcentajePuntos">0%</div><div class="stat-label">Progreso</div></div>
+                    <div class="stat-card"><div class="stat-value" id="maxRecorridos">0</div><div class="stat-label">Recorridos máximos</div></div>
+                </div>
+                <div class="progress-bar-big"><div class="progress-fill-big" id="progressFillBig"></div></div>
+                <div id="dashboardWarnings" style="margin-top:14px;"></div>
+            </div>
+
+            <div class="nav-buttons">
+                <button id="backToStep1" class="btn btn-secondary">← ANTERIOR</button>
+                <button id="confirmStep2" class="btn btn-primary">CONFIRMAR Y CONTINUAR →</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="step3" class="step-content">
+        <div class="card">
+            <div class="card-header"><h2>🗺️ GENERAR RECORRIDOS</h2></div>
+            <div class="recorridos-selector">
+                <div class="recorridos-label">📊 NÚMERO DE RECORRIDOS A GENERAR</div>
+                <select id="numRecorridos" class="recorridos-select"></select>
+                <div class="recorridos-select-hint">Pulsa para desplegar opciones ▼</div>
+            </div>
+            <div id="resumenTecnicoBox" class="tech-summary">
+                <h3>📋 RESUMEN TÉCNICO PREVIO</h3>
+                <div id="resumenTecnicoContent" class="tech-grid"></div>
+                <div id="resumenTecnicoAvisos" style="margin-top:12px;"></div>
+                <div class="preview-inline-actions">
+                    <button id="previewRecorridoBtn" class="btn btn-secondary">🗺️ VISTA PREVIA EN MAPA</button>
+                    <button id="verRecorridosDetalleBtn" class="btn btn-secondary">📋 VER RECORRIDOS Y CARACTERÍSTICAS</button>
+                    <button id="regenerarRecorridosBtn" class="btn btn-primary">🔄 REGENERAR RECORRIDOS</button>
+                </div>
+                <div id="routeDetailsPanel" class="route-details-panel" style="display:none;"></div>
+            </div>
+            <div id="resultadosGen"></div>
+            
+
+            <div class="zip-include-panel" style="margin-top: 20px;">
+                <div class="zip-include-title">📦 EL ZIP INCLUYE:</div>
+                <div class="file-grid">
+                    <div class="file-card"><div class="file-icon">📁</div><div class="file-title">Organizadores/</div><div class="file-desc">PDF de recorridos/resultados + informe PDF + puntos GPX</div><div class="badge">Carpeta</div></div>
+                    <div class="file-card"><div class="file-icon">🗺️</div><div class="file-title">Balizas/</div><div class="file-desc">Solo balizas normales en PDF A4 vertical, listas para imprimir</div><div class="badge">Carpeta</div></div>
+                    <div class="file-card"><div class="file-icon">📄</div><div class="file-title">Hojas_Recorrido/</div><div class="file-desc">Hojas para participantes en PDF A4 vertical, listas para imprimir</div><div class="badge">Carpeta</div></div>
+                </div>
+            </div>
+            <div id="zipNotification"></div>
+            <div class="nav-buttons">
+                <button id="backToStep2" class="btn btn-secondary">← ANTERIOR</button>
+                <button id="generarBtn" class="btn btn-success">✨ GENERAR ZIP</button>
+<div class="classification-upload-panel">
+                <div class="classification-upload-title">🏆 GENERAR CLASIFICACIÓN DESDE EXCEL</div>
+                <p>Sube el archivo <strong>Resultados de recorridos.xlsx</strong> ya rellenado para crear un PDF de clasificación ordenado por puntos y tiempo.</p>
+                <div class="classification-upload-actions">
+                    <button id="importResultadosExcelBtn" type="button" class="btn btn-secondary">📥 SUBIR EXCEL DE RESULTADOS</button>
+                    <div id="clasificacionStatus" class="classification-status"></div>
+                </div>
+            </div>
             </div>
         </div>
     </div>
 </div>
 
-<div id="militopoParticipantOnlyShell" class="militopo-participant-only-shell" style="display:none;">
-    <div class="participant-only-topbar">
-        <div>
-            <strong>MILITOPO PARTICIPANTE</strong>
-            <small>Vista de corredor integrada</small>
+
+
+
+
+<div id="startupModeOverlay" class="startup-overlay startup-overlay-minimal" role="dialog" aria-modal="true" aria-labelledby="startupTitle">
+    <div class="startup-backdrop-grid" aria-hidden="true"></div>
+    <div class="startup-minimal-shell">
+        <div class="startup-minimal-logo-wrap">
+            <img class="startup-minimal-logo" src="https://i.postimg.cc/RFmGrHdD/IMG-4917.jpg" alt="Logo MILITOPO">
         </div>
-        <button id="militopoBackToAccessBtn" type="button">Cambiar acceso</button>
+        <h1 id="startupTitle" class="startup-minimal-title">MILITOPO</h1>
+        <div class="startup-minimal-actions" aria-label="Ramas disponibles">
+            <button id="startupTopoBtn" type="button" class="startup-minimal-btn startup-minimal-btn-primary">Entrar en Topografía</button>
+            <button id="startupOriBtn" type="button" class="startup-minimal-btn startup-minimal-btn-secondary">Entrar en Orientación</button>
+        </div>
+        <div id="startupPendingNotice" class="startup-notice startup-notice-floating" hidden>
+            🧭 Orientación estará disponible cuando incorpores esa rama.
+        </div>
     </div>
-    <div id="militopoParticipantOnlyContent" class="participant-only-content"></div>
 </div>
 
-<div class="app">
-<header class="hero"><div class="hero-inner"><div class="logo"><img src="data:image/jpeg;base64,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" alt="Logotipo MILITOPO"></div><div class="hero-title-block">
-<h1>MILITOPO ORIENTACIÓN</h1>
-<div class="orientation-branch-tabs" aria-label="Selector de rama MILITOPO">
-<a class="orientation-branch-btn" href="../?militopo_menu=1">
-<span class="orientation-branch-icon">🗺️</span>
-<span>Topográfica</span>
-</a>
-<a class="orientation-branch-btn active" href="./" aria-current="page">
-<span class="orientation-branch-icon">🧭</span>
-<span>Orientación</span>
-</a>
-<button id="installMilitopoOrientationBtn" type="button" class="orientation-branch-btn orientation-install-btn" aria-label="Mostrar instalación de MILITOPO Participante">
-<span class="orientation-branch-icon">📲</span>
-<span class="orientation-branch-text">APP</span>
-</button>
-</div>
-</div></div></header>
-<nav class="steps"><button class="step-tab active" data-step="1">PASO 1 · CONFIGURAR</button><button class="step-tab" data-step="2">PASO 2 · BALIZAS Y MAPA</button><button class="step-tab" data-step="3">PASO 3 · RECORRIDOS</button><button class="step-tab" data-step="4">PASO 4 · MATERIAL QR</button><button class="step-tab" data-step="5">PASO 5 · 🚦 SECUENCIA</button><button class="step-tab" data-step="6">PASO 6 · RESULTADOS</button></nav>
-<section id="step1" class="card active"><div class="card-header"><h2>⚙️ CONFIGURAR PRUEBA</h2></div><div class="grid two"><div class="block"><label>Nombre de la prueba</label><input id="eventName" value="ENTRENAMIENTO ORIENTACIÓN"><div class="help">Se usa para identificar el evento y para el ZIP.</div>
-            <div class="grid-2">
-                <div>
-                    <label>Escala del plano</label>
-                    <select id="planScaleSelect" onchange="updatePlanScaleSetting()">
-                        <option value="10000">1:10.000</option>
-                        <option value="7500">1:7.500</option>
+<div id="orientacionShell" style="display:none;">
+    <div class="steps-container">
+        <div class="step active">PASO 1 · CONFIGURAR ORIENTACIÓN</div>
+        <div class="step">PASO 2 · PARTICIPANTES Y CONTROL</div>
+        <div class="step">PASO 3 · GENERAR ORIENTACIÓN</div>
+    </div>
+
+    <div id="oriStep1" class="step-content active">
+        <div class="card">
+            <div class="card-header"><h2>🏃 CONFIGURACIÓN DE ORIENTACIÓN</h2></div>
+            <div class="config-info" style="margin-bottom:14px;">
+                Este modo queda separado del topográfico. Esta zona queda reservada para conectar tu código definitivo de orientación cuando esté cerrado. No afecta a la rama topográfica.
+            </div>
+
+            <div class="config-row">
+                <div class="config-item">
+                    <label>📦 MÓDULOS</label>
+                    <select id="oriNumModulosMirror" disabled></select>
+                </div>
+                <div class="config-item">
+                    <label>📍 PUNTOS POR MÓDULO</label>
+                    <select id="oriPuntosPorModuloMirror" disabled></select>
+                </div>
+                <div class="config-item">
+                    <label>🧭 MODO</label>
+                    <select id="oriOrderMode">
+                        <option value="strict" selected>Orden obligatorio</option>
                     </select>
-                    <div class="help">Se aplica a todos los planos imprimibles.</div>
                 </div>
+            </div>
+
+            <div class="card" style="margin-top:14px; border:1px solid var(--border-light);">
+                <div class="card-header"><h2>👥 PARTICIPANTES</h2></div>
+                <div class="config-item">
+                    <label>Lista de participantes (uno por línea)</label>
+                    <textarea id="oriParticipantsText" rows="8" style="width:100%; resize:vertical; border-radius:14px; padding:12px; background:var(--input-bg); color:var(--text-primary); border:1px solid var(--border-light); font-family:monospace;" placeholder="Ejemplo:
+ALFA 1
+ALFA 2
+BRAVO 1"></textarea>
+                </div>
+                <div class="config-info" style="margin-top:10px;">
+                    <strong>Flujo previsto:</strong> tú les enseñas su QR personal en salida, lo escanean, quedan identificados y empieza a contar la hora de salida. Después validan balizas QR en orden, guiándose por su mapa de orientación.
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <div></div>
+                <button id="oriContinueBtn" class="btn btn-primary">✓ CONTINUAR ORIENTACIÓN →</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="oriStep2" class="step-content" style="display:block;">
+        <div class="card" style="display:none;" id="oriStep2Card">
+            <div class="card-header"><h2>📲 CONTROL DE SALIDA Y VALIDACIÓN</h2></div>
+            <div class="config-info">
+                Aquí irá la parte específica de orientación para salida con QR, validación de balizas y control del progreso.
+            </div>
+            <div class="config-info" style="margin-top:10px;">
+                Por ahora queda ya separado del modo topográfico y preparado para seguir construyéndolo sin tocar lo que ya funciona.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="topoInfoModal" class="topo-info-modal" aria-hidden="true">
+    <div class="topo-info-dialog" role="dialog" aria-modal="true" aria-labelledby="topoInfoModalTitle">
+        <div class="topo-info-dialog-header">
+            <div class="topo-info-dialog-title">
+                <span id="topoInfoModalIcon" class="topo-info-dialog-icon">ℹ️</span>
+                <span id="topoInfoModalTitle">Información</span>
+            </div>
+            <button type="button" id="topoInfoModalClose" class="topo-info-close" aria-label="Cerrar información">×</button>
+        </div>
+        <div id="topoInfoModalBody" class="topo-info-dialog-body"></div>
+    </div>
+</div>
+
+<div id="mapModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🗺️ Mapa Topográfico IGN (España)</h3>
+            <span class="close-modal">&times;</span>
+        </div>
+        <div class="map-search-panel">
+            <div class="map-search-title">🔎 Buscar zona del mapa</div>
+            <div class="map-search-row">
+                <input type="text" id="searchInput" placeholder="Lugar, dirección o coordenadas. Ej: Madrid, 40.4168 -3.7038">
+                <button id="searchBtn" class="btn btn-primary" type="button">🔍 Buscar</button>
+            </div>
+        </div>
+        <div class="map-coord-panel">
+            <div class="map-coord-card">
+                <div class="k">Coordenadas bajo el cursor</div>
+                <div class="v" id="coordMouseDisplay">--</div>
+            </div>
+            <div class="map-coord-card">
+                <div class="k">Coordenada de la baliza seleccionada</div>
+                <div class="v" id="coordPreview">--</div>
+            </div>
+        </div>
+        <div class="map-point-control-panel">
+            <div class="map-point-selector-box">
+                <label class="map-point-selector-label" for="mapPointSelect">Baliza a editar sobre el plano</label>
+                <select id="mapPointSelect" class="map-point-select" title="Selecciona el punto que quieres editar"></select>
+            </div>
+            <div id="mapPointStatusCard" class="map-point-status-card incomplete">
+                <div class="map-point-status-icon">✕</div>
                 <div>
-                    <label>Equidistancia del plano</label>
-                    <input id="planEquidistanceInput" type="number" min="1" step="0.5" value="5" onchange="updatePlanScaleSetting()">
-                    <div class="help">Por defecto 5 m. Cámbiala solo si el plano real usa otra.</div>
+                    <div class="map-point-status-title">Baliza pendiente</div>
+                    <div class="map-point-status-detail">Selecciona una baliza</div>
                 </div>
             </div>
-</div><div class="block"><label>Identificador interno</label><input id="eventId" readonly><div class="help">Preparado para una futura sincronización, sin mostrar nada en vivo.</div></div><div class="block"><label>Participantes / recorridos</label><select id="participantCount"></select></div><div class="block"><label>Balizas totales</label><select id="controlCount"></select></div><div class="block"><label>Balizas por recorrido</label><select id="controlsPerRoute"></select></div><div class="block"><label>Máximo uso por baliza</label><select id="maxControlReuse"></select><div class="help">Limita que una misma baliza aparezca en demasiados recorridos.</div></div></div><div class="nav-row"><span></span><button class="btn green" onclick="confirmStep1()">CONFIRMAR Y PASAR AL MAPA →</button><button class="btn red" onclick="resetSavedEvent()">🆕 BORRAR EVENTO GUARDADO</button></div></section>
-<section id="step2" class="card"><div class="card-header"><h2>🗺️ EDITAR BALIZAS Y MAPA</h2><div class="mode-pill">Salida · Llegada · Balizas con etiqueta</div></div>
-<div class="grid two"><div class="block"><label>Buscar zona del mapa</label><div class="map-tools"><input id="searchBox" placeholder="Lugar, dirección o coordenada UTM"><button class="btn" onclick="searchPlace()">🔍 BUSCAR</button><button class="btn secondary" onclick="fitAllPoints()">🧭 VER TODO</button></div></div><div class="block autofill-test-panel"><label>Herramientas rápidas de prueba</label><div class="btn-row"><button class="btn green" onclick="autofillOrientationPoints()">✨ AUTORRELLENAR TODOS LOS PUNTOS</button><button class="btn red" onclick="clearAllOrientationPoints()">🧹 LIMPIAR TODOS LOS PUNTOS</button></div><div class="help">Solo para pruebas: rellena salida, llegada y balizas alrededor de una zona base para generar recorridos rápidamente.</div></div></div>
-<div class="layer-pills"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button></div><div id="map"></div>
-<div class="block" style="margin-top:16px"><label>BALIZA A EDITAR SOBRE EL PLANO</label><div class="grid two"><div><label>Baliza</label><select id="selectedPoint"></select><div class="btn-row"><button class="btn" onclick="useMyLocation()">📍 MI UBICACIÓN</button></div></div><div><label>Coordenada UTM de la selección</label><input id="selectedUtm" placeholder="30T 451520 4780100"></div></div><div class="btn-row"><button class="btn green" onclick="saveSelectedPoint()">💾 GUARDAR PUNTO</button><button class="btn red" onclick="clearSelectedPoint()">🧹 LIMPIAR PUNTO</button></div></div>
-<div class="block" style="margin-top:16px"><label>Importar coordenadas</label><textarea id="importText" rows="6" placeholder="CSV o texto: ID,UTM&#10;B01,30T 451520 4780100&#10;B02,30T 451700 4780200"></textarea><div class="btn-row"><button class="btn" onclick="importTextPoints()">📥 IMPORTAR TEXTO / EXCEL CSV</button><button class="btn secondary" onclick="exportPointsCsv()">📤 EXPORTAR CSV</button><button class="btn green" onclick="document.getElementById('atakGpxFile').click()">📡 IMPORTAR GPX ATAK POR ID</button></div><input type="file" id="atakGpxFile" onchange="importAtakGpxById(event)" style="display:none"><input type="file" id="gpxFile" accept=".gpx,.kml,.xml,.txt" onchange="importGpxKmlFile(event)" style="margin-top:12px"><div class="help">ATAK GPX: el nombre/descripción del waypoint debe ser START, FINISH o B01, B02, etc. Solo actualiza el punto cuyo ID coincida.</div></div>
-<div class="block" style="margin-top:16px"><label>Tabla editable de salida, llegada y balizas</label><div class="table-wrap points-table-wrap"><table class="points-base-table"><thead><tr><th>ID</th><th>Tipo</th><th>Coordenada UTM</th><th>Estado</th></tr></thead><tbody id="pointsTable"></tbody></table></div></div>
-<div class="block" id="iofDescriptionsBlock" style="margin-top:16px">
-  <h3>📋 DESCRIPCIONES DE CONTROL · IOF</h3>
-  <div class="help">Rellena aquí la descripción profesional de cada baliza antes de generar el ZIP. Las columnas A-H siguen la estructura de orientación: A número de control, B código, C cuál de objetos similares, D elemento, E aspecto, F dimensión/combinación, G situación exacta de la baliza y H información extra.</div>
-<div class="iof-compact-wrap">
-        <div class="iof-status-line">
-            <div id="iofCompactSummary" class="iof-status-pill warn">Descripciones pendientes.</div>
-            <div id="iofCurrentStatus" class="iof-status-pill warn">Baliza pendiente</div>
         </div>
-
-        <div class="iof-select-line">
-            <div>
-                <label>Baliza a editar</label>
-                <select id="iofPointSelector" onchange="selectIofPoint(this.value)"></select>
+        <div id="geoStatusBanner" class="geo-status-banner"></div>
+        <div class="map-container" id="mapContainer"></div>
+        <div class="layer-selector map-layer-selector-bottom">
+            <button class="layer-btn" data-layer="topo">🗺️ Topográfico IGN</button>
+            <button class="layer-btn" data-layer="aerea">🛰️ Aérea PNOA</button>
+            <button class="layer-btn" data-layer="mapant">🧭 Orientación MAPANT</button>
+        </div>
+        <div id="mapManualEditor" class="map-manual-editor">
+            <div class="map-manual-editor-header">
+                <div class="map-manual-editor-title">🗂️ Edición manual dentro del mapa</div>
+                <div class="map-manual-editor-hint">Puedes modificar coordenadas y descripción sin salir de esta ventana.</div>
             </div>
-            <div class="iof-nav-buttons">
-                <button class="btn secondary" onclick="moveIofPoint(-1)">← ANTERIOR</button>
-                <button class="btn secondary" onclick="moveIofPoint(1)">SIGUIENTE →</button>
+            <div class="points-action-tabs map-action-tabs" aria-label="Acciones rápidas de puntos dentro del mapa">
+                <button type="button" id="mapAutofillPuntosBtn" class="points-action-tab autofill">✨ Autorellenar puntos y descripciones</button>
+                <button type="button" id="mapClearPuntosBtn" class="points-action-tab clear">🧹 Limpiar puntos y descripciones</button>
             </div>
+            <div id="mapPuntosGrid" class="map-modulos-acordeon"></div>
         </div>
-
-        <div class="iof-current-card">
-            <div class="iof-current-title">
-                <h4 id="iofCurrentTitle">START</h4>
-                <span id="iofCurrentKind">Salida</span>
-            </div>
-            <div id="iofDescriptionsEditor" class="iof-editor-grid"></div>
+        <div class="alert alert-info" style="margin-top:12px;">
+            En Safari, el icono de mi ubicación puede no funcionar. Prueba en otro navegador del móvil.
         </div>
-
-        <div class="iof-complete-toggle">
-            <button class="btn green" onclick="markCurrentIofComplete()">✅ MARCAR BALIZA COMO COMPLETA</button>
-            <button class="btn secondary" onclick="markCurrentIofPending()">↩️ MARCAR COMO PENDIENTE</button>
+        <div class="alert alert-info">
+            <strong>🔹 ASIGNACIÓN CON DESCRIPCIÓN:</strong> Selecciona el punto, haz clic en el mapa → rellena coordenada y descripción, confirma.<br>
+            <strong>🔹 ARRASTRE CON CONFIRMACIÓN.</strong> 🔹 ELIMINAR PUNTO desde popup.<br>
+            <strong>🔹 BUSCADOR:</strong> Escribe un lugar y pulsa "Buscar".<br>
+            <strong>🔹 MI UBICACIÓN:</strong> Usa “📍 Mi ubicación” para centrar el mapa en tu posición actual.<br>
+            <strong>🔹 COORDENADAS BAJO EL RATÓN.</strong>
         </div>
-
-        <div class="iof-quick-buttons">
-            <button class="btn green" onclick="autofillOfficialIofDescriptions()">🎲 AUTORRELLENAR OFICIAL</button>
-            <button class="btn red" onclick="clearIofDescriptions()">🧹 LIMPIAR DESCRIPCIONES IOF</button>
-        </div>
-
-        <div id="iofValidationStatus" class="status warn">Rellena las descripciones antes de generar el material.</div>
     </div>
 </div>
-<div class="nav-row"><button class="btn secondary" onclick="goStep(1)">← ANTERIOR</button><button class="btn green" onclick="confirmStep2()">GENERAR RECORRIDOS →</button></div></section>
-<section id="step3" class="card"><div class="card-header"><h2>🏃 GENERAR RECORRIDOS</h2></div><div class="grid one"><div class="block"><label>Recorridos</label><div class="status" id="routeCountInfo">--</div></div></div><div id="routeSummary" class="status warn">Todavía no hay recorridos generados.</div>
-<div id="step3MapPanel" class="block" style="display:none;margin-top:14px;">
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;">
-        <div>
-            <div style="color:#cbb894;font-size:.72rem;font-weight:900;letter-spacing:1px;">🗺️ PLANO DEL RECORRIDO SELECCIONADO</div>
-            <h3 id="step3MapTitle" style="margin:4px 0 0;color:#f0c16a;">Recorrido</h3>
-        </div>
-        <button class="btn secondary" type="button" onclick="hideStep3Map()">OCULTAR PLANO</button>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-        <button class="btn secondary" type="button" onclick="switchStep3MapLayer('mapant')">🧭 MAPANT</button>
-        <button class="btn secondary" type="button" onclick="switchStep3MapLayer('ign')">🗺️ IGN</button>
-        <button class="btn secondary" type="button" onclick="switchStep3MapLayer('pnoa')">🛰️ PNOA</button>
-    </div>
-    <div id="step3RouteMap" style="width:100%;height:min(58vh,560px);min-height:380px;border-radius:22px;overflow:hidden;border:2px solid rgba(230,188,122,.42);background:#d9d1b8;"></div>
-</div><div id="routesGrid" class="grid two" style="margin-top:16px"></div><div class="nav-row"><button class="btn secondary" onclick="goStep(2)">← ANTERIOR</button><button class="btn green" onclick="confirmStep3()">GENERAR MATERIAL →</button></div></section>
-<section id="step4" class="card">
-  <div class="card-header">
-    <h2>📦 MATERIAL · PLANOS · QR</h2>
-    <div class="mode-pill">Verificar · generar material</div>
-  </div>
 
-  <div class="block" id="exerciseVerifierBlock" style="margin-top:16px;">
-    <h3>✅ VERIFICADOR DEL EJERCICIO</h3>
 
-    <div class="verify-actions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:12px;">
-        <button class="btn secondary" onclick="runExerciseVerifier(true)">🔍 VERIFICAR EJERCICIO</button>
-        <button class="btn green" onclick="generateZip()">📦 GENERAR ZIP</button>
-    </div>
 
-    <div id="zipStatus" class="status warn" style="margin-top:12px;">Genera primero los recorridos y después el material.</div>
-    <div id="exerciseVerifierSummary" class="status warn" style="margin-top:12px;">Todavía no se ha verificado el ejercicio.</div>
-    <div id="exerciseVerifierResults" class="verify-grid"></div>
-  </div>
 
-  <div class="nav-row"><button class="btn secondary" onclick="goStep(3)">← ANTERIOR</button><button class="btn green" onclick="goStep(5)">SECUENCIA SALIDA/LLEGADA →</button></div>
-</section>
-<section id="step5" class="card">
-  <div class="card-header">
-    <h2>🚦 SECUENCIA SALIDA / LLEGADA</h2>
-    <div class="mode-pill">Organizador · entrega · confirmación · control</div>
-  </div>
-  <div class="block" id="organizerQrSequenceBlock" style="margin-top:16px;">
-    <h3>🚦 SALIDAS ORGANIZADAS</h3>
-        <div id="organizerFlowGrid" class="organizer-flow-grid" style="grid-template-columns:1fr;">
-        <div class="block">
-            <label>Asignación de recorridos a participantes y salida organizada</label>
-            <select id="startFlowParticipantSelect" onchange="setStartFlowParticipantFromSelect()"></select>
-            <div class="organizer-step-buttons" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
-                <button class="btn green" onclick="showParticipantQrForStart()">1️⃣ QR PARTICIPANTE</button>
-                <button class="btn" onclick="showStartQrForParticipant()">2️⃣ QR SALIDA</button>
+<div id="geoTiffModal" class="modal geotiff-modal-fixed">
+    <div class="modal-content geotiff-modal-content-fixed">
+        <div class="modal-header geotiff-fixed-header">
+            <div class="geotiff-fixed-titlebox">
+                <h3>🗂️ Plano militar GeoTIFF</h3>
+                <p>Sube un plano georreferenciado y edita puntos directamente sobre él.</p>
             </div>
-            <button class="btn secondary" style="margin-top:10px;width:100%;" onclick="nextStartFlowParticipant()">SIGUIENTE RECORRIDO ACTIVO →</button>
-            <button id="discardStartRouteBtn" class="btn red" style="margin-top:10px;width:100%;" onclick="discardCurrentStartRoute()">🚫 DESCARTAR / NO ASIGNAR ESTE RECORRIDO</button>
-            <div id="startFlowInfo" class="status warn" style="margin-top:10px;">Orden: 1️⃣ QR participante → 2️⃣ QR salida → confirmar entrega.</div>
-            <div id="discardedRoutesInfo" class="status warn" style="display:none;margin-top:10px;"></div>
-            <div id="organizerStartQrBox" class="organizer-qr-box">QR pendiente</div>
-            <div id="startQrDeliveryConfirmPanel" class="status warn step5-confirm-panel" style="display:block;margin-top:10px;">2️⃣ QR SALIDA pendiente de mostrar. Mostrarlo en pantalla todavía no cuenta como entregado.</div>
-            <div id="organizerStartPayload" class="organizer-payload"></div>
+            <span class="close-modal" id="closeGeoTiffModal">&times;</span>
         </div>
 
-        <div id="finishOrganizedBlock" class="block" style="display:none;">
-            <label>Llegada organizada</label>
-            <select id="finishFlowParticipantSelect" onchange="renderFinishFlowQr()"></select>
-            <div class="organizer-step-buttons" style="grid-template-columns:1fr;">
-                <button class="btn red" onclick="renderFinishFlowQr()">🏁 QR LLEGADA</button>
-            </div>
-            <div id="finishFlowInfo" class="status warn" style="margin-top:10px;">Selecciona participante y enseña QR llegada.</div>
-            <div id="organizerFinishQrBox" class="organizer-qr-box">QR pendiente</div>
-            <div id="finishQrDeliveryConfirmPanel" class="status warn step5-confirm-panel" style="display:block;margin-top:10px;">🏁 QR LLEGADA pendiente de mostrar. Mostrarlo en pantalla todavía no cuenta como entregado.</div>
-            <div id="organizerFinishPayload" class="organizer-payload"></div>
+        <div class="geotiff-fixed-body">
+            <div id="geoTiffStatus" class="geo-status-banner geotiff-status geotiff-fixed-status"></div>
 
-            <div id="step5ResultScanBlock" class="status ok" style="margin-top:14px;">
-                <b>3️⃣ QR RESULTADO</b><br>
-                Cuando confirmes la llegada, escanea aquí el QR final que te enseña el participante. Se importará directamente en el paso 6.
-                <div class="btn-row" style="margin-top:10px;">
-                    <button class="btn green" onclick="startStep5ResultQrCamera()">📷 ESCANEAR QR RESULTADO</button>
+            <div class="geotiff-fixed-section">
+                <div class="geotiff-section-title">1 · Archivo</div>
+                <button type="button" id="geoTiffChooseAgainBtn" class="btn btn-secondary btn-small geotiff-full-btn">📁 Cargar otro GeoTIFF</button>
+            </div>
+
+            <div class="geotiff-fixed-section">
+                <div class="geotiff-section-title">2 · Baliza</div>
+                <label class="map-point-selector-label" for="geoTiffPointSelect">Baliza a editar</label>
+                <div class="geotiff-select-wrap">
+                    <select id="geoTiffPointSelect" class="map-point-select geotiff-point-select"></select>
                 </div>
-                <div id="step5ResultQrCameraPanel" class="block" style="display:none;margin-top:12px;">
-                    <label>LECTOR QR RESULTADO</label>
-                    <video id="step5ResultQrVideo" playsinline muted style="width:100%;max-height:380px;border-radius:18px;background:#111;object-fit:cover;"></video>
-                    <canvas id="step5ResultQrCanvas" style="display:none;"></canvas>
-                    <div id="step5ResultQrCameraStatus" class="status warn" style="margin-top:10px;">Preparando cámara...</div>
-                    <div class="btn-row">
-                        <button class="btn red" onclick="stopStep5ResultQrCamera()">DETENER CÁMARA</button>
-                    </div>
-                </div>
-                <div class="block" style="margin-top:12px;padding:12px;border-radius:18px;">
-                    <label>Importar resultado manual</label>
-                    <div class="help">Úsalo solo si la cámara no lee el QR final. Pega aquí el texto ORI|RESULT que enseña el móvil del participante.</div>
-                    <textarea id="step5ResultImportInput" placeholder="ORI|RESULT|EVENTO|P01|..." style="min-height:100px;"></textarea>
-                    <div class="btn-row">
-                        <button class="btn" onclick="importStep5ResultFromInput()">📥 IMPORTAR MANUAL</button>
+                <div id="geoTiffPointStatusCard" class="map-point-status-card incomplete geotiff-point-card">
+                    <div class="map-point-status-icon">✕</div>
+                    <div>
+                        <div class="map-point-status-title">Baliza pendiente</div>
+                        <div class="map-point-status-detail">Selecciona una baliza y haz clic en el plano</div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <div class="btn-row" style="margin-top:14px;">
-        <button id="toggleFinishOrganizedBtn" class="btn secondary" type="button" style="width:100%;min-height:54px;" aria-expanded="false" onclick="toggleFinishOrganizedPanel()">🏁 ABRIR LLEGADA ORGANIZADA</button>
-    </div>
+            <div class="geotiff-fixed-section">
+                <div class="geotiff-section-title">3 · Vista</div>
+                <div class="geotiff-zoom-controls">
+                    <button type="button" id="geoTiffZoomOutBtn" class="btn btn-secondary btn-small">−</button>
+                    <button type="button" id="geoTiffFitBtn" class="btn btn-secondary btn-small">Ajustar</button>
+                    <button type="button" id="geoTiffZoomInBtn" class="btn btn-secondary btn-small">+</button>
+                </div>
+                <div id="geoTiffZoomLabel" class="geotiff-zoom-label">100%</div>
+            </div>
 
-    <div class="block" id="step5StatusBlock" style="margin-top:16px;">
-        <label>Estado de salidas y participantes</label>
-        <div id="startFlowStatusPanel" class="step5-status-panel">
-            <div class="status warn">Genera recorridos o entra al paso 5 para ver el estado.</div>
+            <div class="geotiff-fixed-help">
+                <strong>Uso:</strong> selecciona una baliza y haz clic sobre el plano. Usa dos dedos para ampliar y un dedo para moverte por la imagen.
+            </div>
+
+            <div class="geotiff-viewer-title geotiff-fixed-viewer-title">
+                <span>Plano cargado</span>
+                <small>El zoom afecta solo a la imagen, no a toda la ventana.</small>
+            </div>
+
+            <div class="geotiff-canvas-shell geotiff-fixed-canvas-shell" id="geoTiffCanvasShell">
+                <div id="geoTiffCanvasViewport" class="geotiff-canvas-viewport">
+                    <canvas id="geoTiffCanvas"></canvas>
+                    <div id="geoTiffMarkersLayer" class="geotiff-markers-layer"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 
-  <div class="nav-row">
-    <button class="btn secondary" onclick="goStep(4)">← VERIFICACIÓN Y ZIP</button>
-    <button class="btn green" onclick="goStep(6)">RESULTADOS →</button>
-  </div>
-</section>
-<section id="step6" class="card">
-  <div class="card-header">
-    <h2>🏁 RESULTADOS Y CONTROL</h2>
-    <div class="mode-pill">Clasificación · importación · revisión · exportación</div>
-  </div>
-
-  <div class="block">
-    <label>Resumen del evento</label>
-    <div id="resultsControlSummary" class="status warn">Genera recorridos e importa resultados para ver el resumen.</div>
-    <div class="grid two" style="margin-top:12px;">
-      <div class="metric-card"><small>Participantes</small><strong id="resTotalParticipants">--</strong></div>
-      <div class="metric-card"><small>Resultados importados</small><strong id="resImportedCount">--</strong></div>
-      <div class="metric-card"><small>Finalizados OK</small><strong id="resCompletedCount">--</strong></div>
-      <div class="metric-card"><small>Con avisos</small><strong id="resWarningCount">--</strong></div>
-    </div>
-  </div>
-
-
-  <div class="block">
-    <label>Clasificación</label>
-    <div class="btn-row" style="margin-bottom:10px;">
-      <button class="btn green" onclick="downloadClassificationExcel()">📗 DESCARGAR EXCEL CLASIFICACIÓN</button>
-    </div>
-    <div id="classificationTable" class="table-wrap"></div>
-  </div>
-
-  <div class="block">
-    <label>Estado de participantes</label>
-    <div id="participantsStatusGrid" class="scan-list"></div>
-  </div>
-
-  <div class="block">
-    <label>Detalle del resultado seleccionado</label>
-    <select id="resultDetailSelect" onchange="renderSelectedResultDetail()"></select>
-    <div id="selectedResultDetail" class="status warn">Selecciona un resultado importado.</div>
-  </div>
-
-  <div class="block">
-    <label>Herramientas de resultados</label>
-    <div class="btn-row">
-      <button class="btn secondary" onclick="downloadImportedResults()">📤 EXPORTAR JSON COMPLETO</button>
-      <button class="btn secondary" onclick="downloadImportedResultsCsv()">📊 EXPORTAR CSV RESUMEN</button>
-      <button class="btn secondary" onclick="downloadDetailedSplitsCsv()">⏱️ EXPORTAR PARCIALES CSV</button>
-      <button class="btn red" onclick="clearImportedResults()">🧹 LIMPIAR RESULTADOS</button>
-      <button class="btn" onclick="saveState();toast('Resultados guardados')">💾 GUARDAR ESTADO</button>
-    </div>
-  </div>
-
-  <div class="nav-row">
-    <button class="btn secondary" onclick="goStep(5)">← SECUENCIA SALIDA/LLEGADA</button>
-    <button class="btn green" onclick="renderResultsControl()">ACTUALIZAR RESULTADOS</button>
-  </div>
-</section>
-<div id="restoreDebugStatus" class="status warn" style="display:none;margin:12px 0;"></div><div class="footer-note">MILITOPO · Rama Orientación V1 offline · topografía cerrada</div></div><!-- ROUTE GENERATION LOADER START -->
-<div id="routeGenerationLoader" class="route-generation-loader" style="display:none;">
-    <div class="route-generation-card">
-        <div class="route-generation-icon">🧭</div>
-        <div class="route-generation-title">GENERANDO RECORRIDOS</div>
-        <div id="routeGenerationText" class="route-generation-text">Preparando cálculo...</div>
-        <div class="route-generation-bar">
-            <div id="routeGenerationFill" class="route-generation-fill" style="width:0%;"></div>
+<div id="previewRouteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🗺️ Vista previa del recorrido</h3>
+            <span class="close-modal" id="closePreviewRouteModal">&times;</span>
         </div>
-        <div id="routeGenerationPercent" class="route-generation-percent">0%</div>
+        <div class="point-selector preview-combined-selectors">
+            <div class="preview-select-stack">
+                <div class="preview-select-group">
+                    <select id="previewRouteSelect"></select>
+                </div>
+                <div class="preview-select-group">
+                    <select id="previewCompareRouteSelect"></select>
+                    <span class="coord-info preview-compare-hint">Comparar con (rojo)</span>
+                </div>
+            </div>
+            <div id="previewRouteInfo" class="coord-info">Recorrido: --</div>
+        </div>
+        <div id="previewRouteWarnings"></div>
+        <div class="route-preview-map" id="previewRouteMap"></div>
+        <div class="layer-selector" id="previewRouteLayerSelector">
+            <button class="layer-btn preview-layer-btn" data-preview-layer="topo">🗺️ Topográfico IGN</button>
+            <button class="layer-btn preview-layer-btn" data-preview-layer="aerea">🛰️ Aérea PNOA</button>
+            <button class="layer-btn preview-layer-btn" data-preview-layer="mapant">🧭 Orientación MAPANT</button>
+        </div>
     </div>
 </div>
-<!-- ROUTE GENERATION LOADER END -->
-<div id="toast" class="toast"></div>
 
-<div id="orientationGuideModal" class="orientation-guide-modal">
-    <div class="orientation-guide-content">
-        <div class="orientation-guide-header">
-            <h3>🧭 Guía fácil de MILITOPO Orientación</h3>
-            <button type="button" id="closeOrientationGuideBtn" class="orientation-guide-close" aria-label="Cerrar guía">&times;</button>
+<div id="instructionsModal" class="instructions-modal">
+    <div class="instructions-content">
+        <div class="instructions-header">
+            <h3>📖 GUÍA DE USO DE MILITOPO TOPOGRAFIA</h3>
+            <span class="close-instr" id="closeInstructionsBtn">&times;</span>
         </div>
+        <h4>🎯 ¿Qué es MILITOPO?</h4>
+        <p>MILITOPO es una herramienta para <strong>crear, organizar y generar recorridos topográficos</strong> a partir de puntos de control o balizas. Está pensada para preparar ejercicios, prácticas, competiciones o actividades de orientación de una forma rápida, clara y ordenada.</p>
 
-        <h4>🎯 ¿Qué hace esta rama?</h4>
-        <p>Esta rama sirve para crear un <strong>ejercicio de orientación</strong>: salida, llegada, balizas, recorridos para participantes, códigos QR, planos PDF, control de salida/llegada y resultados.</p>
+        <h4>🧭 ¿Para qué sirve?</h4>
+        <p>Su objetivo es <strong>facilitar toda la preparación del recorrido</strong>: ordenar los puntos, repartirlos de forma equilibrada y generar automáticamente la documentación necesaria para organizadores, balizas y participantes.</p>
 
-        <h4>🪖 Guía a seguir paso por paso</h4>
-        <p><strong>1. Paso 1 · Configurar prueba.</strong> Pon el nombre del ejercicio. Elige participantes, número de balizas, cuántas balizas lleva cada recorrido y cuántas veces se puede reutilizar una baliza.</p>
-        <p><strong>2. Escala del plano.</strong> Elige 1:10.000 o 1:7.500 y la equidistancia. Esto afecta a los planos PDF que se generan después.</p>
-        <p><strong>3. Paso 2 · Balizas y mapa.</strong> Coloca START, FINISH y las balizas. Puedes hacerlo desde el mapa, escribiendo UTM o importando GPX de ATAK por ID.</p>
-        <p><strong>4. Si importas desde ATAK.</strong> Nombra los waypoints como <strong>START</strong>, <strong>FINISH</strong>, <strong>B01</strong>, <strong>B02</strong>, <strong>B03</strong>... y usa el botón de importar GPX ATAK por ID.</p>
-        <p><strong>5. Revisa que todo esté completo.</strong> Si un punto sale pendiente, le falta coordenada o no se ha reconocido bien. No pases al siguiente paso hasta que salida, llegada y balizas estén bien.</p>
-        <p><strong>6. Paso 3 · Generar recorridos.</strong> La app crea recorridos para los participantes siguiendo una lógica limpia: evita repetir demasiado, intenta equilibrar distancias y ordena los controles.</p>
-        <p><strong>7. Regenerar un recorrido.</strong> Si un recorrido no te gusta, puedes regenerarlo individualmente. La app intentará buscar otra variante sin cambiar toda la prueba.</p>
-        <p><strong>8. Paso 4 · Material.</strong> Verifica el ejercicio y genera el ZIP. Ahí salen planos PDF, QR, CSV, app participante y archivos de control.</p>
-        <p><strong>9. Paso 5 · Salida y llegada.</strong> Sirve para organizar participantes, confirmar salidas, registrar llegadas y controlar el ejercicio con QR.</p>
-        <p><strong>10. Paso 6 · Resultados.</strong> Importa o revisa resultados y genera la clasificación final.</p>
+        <h4>⚙️ ¿Cómo funciona?</h4>
+        <p>La aplicación se organiza mediante <strong>módulos</strong> y <strong>puntos</strong>. Cada recorrido pasa por <strong>un punto de cada módulo</strong>, lo que permite crear recorridos variados manteniendo una estructura lógica y equilibrada.</p>
 
-        <h4>✅ Resumen rápido</h4>
-        <p><strong>Configuras → colocas puntos → generas recorridos → verificas → descargas ZIP → controlas salida/llegada → sacas resultados.</strong></p>
+        <h4>📍 ¿Qué significa un punto como P11?</h4>
+        <p>Los puntos siguen una identificación sencilla: <strong>P</strong> significa Punto, el <strong>primer número</strong> indica el módulo y el <strong>segundo número</strong> el punto dentro de ese módulo. Por ejemplo, <strong>P11</strong> es el Punto 1 del Módulo 1 y <strong>P23</strong> es el Punto 3 del Módulo 2.</p>
+
+        <h4>📝 ¿Qué es la descripción del punto?</h4>
+        <p>La descripción indica <strong>qué representa ese punto o cómo reconocerlo en el terreno</strong>. Puede ser, por ejemplo: cota, collado, árbol, cruce o fuente. Así, cada punto queda definido por su identificador, su coordenada y su descripción.</p>
+
+        <h4>🗺️ ¿Qué puedes hacer?</h4>
+        <p>MILITOPO permite configurar módulos y puntos, trabajar con coordenadas <strong>UTM</strong> o <strong>MGRS</strong>, editar puntos manualmente o desde el mapa, importar puntos desde archivos, generar recorridos automáticamente y obtener archivos listos para usar.</p>
+
+        <h4>📦 ¿Cómo se usa?</h4>
+        <p>La aplicación se divide en <strong>tres pasos</strong>: <strong>configurar la estructura</strong>, <strong>editar los puntos</strong> y <strong>generar los recorridos</strong>.</p>
+
+        <h4>🗂️ ¿Qué genera al final?</h4>
+        <p>MILITOPO crea un <strong>ZIP organizado</strong> con archivos para <strong>organizadores</strong>, <strong>balizas</strong> y <strong>participantes</strong>. Incluye recorridos, resultados, códigos, hojas de recorrido, puntos y otros archivos auxiliares para facilitar el trabajo en campo.</p>
+
+        <h4>✅ ¿Qué aporta?</h4>
+        <p>Permite <strong>ahorrar tiempo, reducir errores y dejar toda la actividad preparada</strong> antes de empezar. Convierte una lista de puntos en un sistema completo de recorridos ya organizado y listo para usar.</p>
+
+
+        <h4>🪖 Guía rápida para no perderse</h4>
+        <p><strong>1. Entra en Topografía.</strong> Esta rama sirve para preparar recorridos topográficos con módulos, puntos, balizas, hojas, PDF y ZIP final.</p>
+        <p><strong>2. Paso 1: configura la estructura.</strong> Elige cuántos módulos quieres, cuántos puntos tiene cada módulo y si vas a trabajar en UTM o MGRS. Después pulsa <strong>Confirmar y continuar</strong>.</p>
+        <p><strong>3. Paso 2: mete los puntos.</strong> Puedes escribir las coordenadas a mano, importarlas desde CSV/Excel/GPX/KML o colocarlas con el mapa. Cada punto debe tener coordenada y descripción.</p>
+        <p><strong>4. Revisa el tablero.</strong> Mira que los puntos estén completos. Si falta algo, arréglalo antes de seguir.</p>
+        <p><strong>5. Paso 3: genera recorridos.</strong> Elige cuántos recorridos quieres crear en el desplegable y pulsa generar. La app reparte los puntos de forma automática.</p>
+        <p><strong>6. Descarga el ZIP.</strong> Dentro tendrás carpetas para organizadores, balizas y participantes. Ese ZIP es lo que usarás para imprimir o llevar al ejercicio.</p>
 
         <div class="guide-modal-actions">
-            <button type="button" id="dontShowOrientationGuideBtn" class="dont-show-guide-btn">No volver a mostrar</button>
+            <button type="button" id="dontShowTopoGuideBtn" class="dont-show-guide-btn">No volver a mostrar</button>
         </div>
-        <div class="orientation-guide-footer">MILITOPO · Orientación paso a paso</div>
+        <div class="footer-instr">🧭 MILITOPO – Topografía de campo con precisión táctica.</div>
+    </div>
+</div>
+    
+    <div id="clasificacionDownloadModal" class="clasificacion-download-modal" style="display:none;">
+        <div class="clasificacion-download-card">
+            <button id="clasificacionDownloadClose" class="clasificacion-download-close" type="button">×</button>
+            <div class="clasificacion-download-icon">🏆</div>
+            <h3>CLASIFICACIÓN LISTA</h3>
+            <p id="clasificacionDownloadText">Excel leído correctamente. Pulsa DESCARGAR PDF y en iPhone elige Guardar en Archivos.</p>
+            <div class="clasificacion-download-actions">
+                <button id="clasificacionDownloadCancel" type="button" class="btn btn-secondary">CANCELAR</button>
+                <button id="clasificacionDownloadConfirm" type="button" class="btn btn-primary">DESCARGAR PDF</button>
+            </div>
+        </div>
+    </div>
+
+<script src="app.js"></script>
+
+<div id="locationDeniedOverlay" class="location-overlay">
+    <div class="location-overlay-card">
+        <h3>📍 Ubicación denegada</h3>
+        <p id="locationDeniedMessage">No se ha podido obtener tu ubicación.</p>
+        <p id="locationDeniedAdvice">En iPhone y Safari es posible que esta función no funcione correctamente. Prueba en otro navegador del móvil, donde sí puede funcionar.</p>
+        <p class="small-note">Recomendación: en iPhone, si Safari bloquea la ubicación, usa otro navegador del dispositivo para centrarte en el mapa.</p>
+        <div class="location-overlay-actions">
+            <button id="retryLocationBtn" class="btn btn-primary">📍 Reintentar ubicación</button>
+            <button id="closeLocationOverlayBtn" class="btn btn-secondary">Cerrar aviso</button>
+        </div>
     </div>
 </div>
 
-<script src="js/app.js?v=selector-salidas-estable-v1"></script>
-<script type="module" src="js/live/live-phase2.js?v=selector-salidas-estable-v1"></script>
-<script>
-(function(){
-  if (!("serviceWorker" in navigator) || !("caches" in window) || !/^https?:$/.test(location.protocol)) return;
-  async function cacheCurrentMilitopoPage(){
-    try {
-      const cache = await caches.open("militopo-page-snapshot-v80-estado-filas-es");
-      await cache.add(new Request(location.href, { cache: "reload" })).catch(function(){});
-      await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/live/live-phase2.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js"].map(function(url){
-        return cache.add(new Request(url, { cache: "reload" }));
-      }));
-    } catch (e) {}
-  }
-  window.addEventListener("load", function(){
-    navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
-      .then(function(){ return navigator.serviceWorker.ready; })
-      .then(cacheCurrentMilitopoPage)
-      .catch(cacheCurrentMilitopoPage);
-  });
-})();
-</script>
 
-
-<script>
-/* MILITOPO · QR de instalación de la PWA independiente del participante */
-(() => {
-    const appButton=document.getElementById("installMilitopoOrientationBtn");
-    if(!appButton)return;
-    const participantInstallUrl=platform=>{
-        const url=new URL("./participante/",window.location.href);
-        url.searchParams.set("modo","participante");
-        url.searchParams.set("install",platform);
-        return url.toString();
-    };
-    const buildModal=()=>{
-        let modal=document.getElementById("militopoPlatformModal");if(modal)return modal;
-        modal=document.createElement("div");modal.id="militopoPlatformModal";modal.className="militopo-platform-modal";
-        modal.innerHTML=`<div class="militopo-platform-card" role="dialog" aria-modal="true" aria-labelledby="militopoPlatformTitle">
-          <div class="militopo-platform-head"><div><h3 id="militopoPlatformTitle">MILITOPO PARTICIPANTE</h3><p id="militopoPlatformSubtitle">Elige el móvil del participante.</p></div><button type="button" class="militopo-platform-close" aria-label="Cerrar">✕</button></div>
-          <div class="militopo-platform-options">
-            <button type="button" class="militopo-platform-choice" data-platform="android"><span class="platform-icon">🤖</span><strong>ANDROID</strong><small>QR de instalación</small></button>
-            <button type="button" class="militopo-platform-choice" data-platform="ios"><span class="platform-icon">🍎</span><strong>iPHONE</strong><small>QR para Safari</small></button>
-          </div>
-          <div class="militopo-participant-install-view">
-            <div id="militopoInstallPlatformIcon" class="militopo-install-platform-icon">📱</div>
-            <h4 id="militopoInstallQrTitle">Instalar MILITOPO Participante</h4>
-            <p id="militopoInstallQrHelp"></p>
-            <div id="militopoParticipantInstallQr" class="militopo-participant-install-qr">Generando QR…</div>
-            <div class="militopo-install-actions"><button type="button" class="militopo-copy-install-link">🔗 COPIAR ENLACE</button><button type="button" class="militopo-platform-back">← VOLVER</button></div>
-          </div>
-        </div>`;
-        document.body.appendChild(modal);return modal;
-    };
-    const showChoices=()=>{const modal=buildModal();modal.querySelector(".militopo-platform-options").style.display="grid";modal.querySelector(".militopo-participant-install-view").classList.remove("is-visible");modal.querySelector("#militopoPlatformTitle").textContent="MILITOPO PARTICIPANTE";modal.querySelector("#militopoPlatformSubtitle").textContent="Elige el móvil del participante.";modal.classList.add("is-open")};
-    const close=()=>buildModal().classList.remove("is-open");
-    async function showInstallQr(platform){
-        const modal=buildModal(),url=participantInstallUrl(platform),box=modal.querySelector("#militopoParticipantInstallQr");modal.dataset.installUrl=url;
-        modal.querySelector(".militopo-platform-options").style.display="none";modal.querySelector(".militopo-participant-install-view").classList.add("is-visible");
-        const ios=platform==="ios";modal.querySelector("#militopoInstallPlatformIcon").textContent=ios?"🍎":"🤖";modal.querySelector("#militopoInstallQrTitle").textContent=ios?"Instalar en iPhone":"Instalar en Android";
-        modal.querySelector("#militopoInstallQrHelp").textContent=ios?"El participante escanea este QR con la cámara, abre Safari y sigue los pasos para añadir la app a inicio.":"El participante escanea este QR con su cámara, abre Chrome y pulsa INSTALAR APLICACIÓN.";
-        box.textContent="Generando QR…";
-        try{const data=await QRCode.toDataURL(url,{margin:4,width:390,errorCorrectionLevel:"M"});box.innerHTML=`<img src="${data}" alt="QR para instalar MILITOPO Participante"><small>Escanea con el móvil del participante</small>`}catch(error){box.innerHTML=`<div class="status err">No se pudo generar el QR. Usa COPIAR ENLACE.</div>`}
-    }
-    appButton.addEventListener("click",showChoices);
-    document.addEventListener("click",async event=>{
-        const modal=document.getElementById("militopoPlatformModal");if(!modal)return;
-        if(event.target===modal||event.target.closest(".militopo-platform-close")){close();return}
-        if(event.target.closest(".militopo-platform-back")){showChoices();return}
-        const choice=event.target.closest(".militopo-platform-choice");if(choice){showInstallQr(choice.dataset.platform);return}
-        if(event.target.closest(".militopo-copy-install-link")){
-            const url=modal.dataset.installUrl||participantInstallUrl("android");
-            try{await navigator.clipboard.writeText(url);if(typeof toast==="function")toast("Enlace de MILITOPO Participante copiado");else alert("Enlace copiado")}catch(_){prompt("Copia este enlace:",url)}
-        }
-    });
-})();
-</script>
 </body>
 </html>
