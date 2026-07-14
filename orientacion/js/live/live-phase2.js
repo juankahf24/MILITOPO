@@ -63,6 +63,7 @@ let participantLastSyncIdentity = "";
 let participantHeartbeatTimer = null;
 let organizerAutoImportTimer = null;
 let organizerLatestRows = [];
+let organizerSort = { key: "default", direction: "asc" };
 
 const $ = id => document.getElementById(id);
 
@@ -138,7 +139,7 @@ function injectStyles() {
     .militopo-live2-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.militopo-live2-actions button{min-height:50px;border-radius:17px;padding:11px 14px;font-weight:900;font-size:.78rem;cursor:pointer}.militopo-live2-actions button:disabled{opacity:.45;cursor:not-allowed}.militopo-live2-start{border:0;background:linear-gradient(180deg,#9dce6b,#6c9f45);color:#17220f}.militopo-live2-stop{border:1px solid rgba(225,104,80,.44);background:rgba(157,56,39,.18);color:#ffe0d8}
     .militopo-live2-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}.militopo-live2-metric{padding:11px 7px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.075);text-align:center}.militopo-live2-metric strong{display:block;font-size:1.1rem}.militopo-live2-metric span{display:block;margin-top:3px;font-size:.59rem;color:rgba(255,247,232,.62)}
     .militopo-live2-run{margin-top:11px;padding:10px 12px;border-radius:15px;background:rgba(0,0,0,.16);font-size:.69rem;line-height:1.45;word-break:break-word}.militopo-live2-message{margin-top:10px;padding:10px 12px;border-radius:14px;font-size:.7rem;line-height:1.4;background:rgba(255,255,255,.05)}.militopo-live2-message.is-ok{color:#dff6c4}.militopo-live2-message.is-error{color:#ffd0c5}.militopo-live2-message.is-warn{color:#ffe0a0}
-    .militopo-live2-table-wrap{margin-top:14px;overflow-x:auto;border-radius:18px;border:1px solid rgba(237,214,145,.16);scrollbar-width:thin}.militopo-live2-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:850px;background:rgba(0,0,0,.12)}.militopo-live2-table th,.militopo-live2-table td{padding:7px 5px;border-bottom:1px solid rgba(237,214,145,.12);text-align:left;font-size:.63rem;line-height:1.18;vertical-align:middle;overflow:hidden}.militopo-live2-table th{color:#ffe2a0;font-size:.57rem;letter-spacing:.035em;text-transform:uppercase;background:rgba(0,0,0,.18);position:sticky;top:0;white-space:normal;overflow-wrap:normal;word-break:normal}.militopo-live2-th-nowrap{white-space:nowrap!important}.militopo-live2-th-two-lines{white-space:normal!important}.militopo-live2-th-two-lines span{display:block;white-space:nowrap}.militopo-live2-table th:not(:first-child),.militopo-live2-table td:not(:first-child){text-align:center}.militopo-live2-name{min-width:0}.militopo-live2-name b{display:block;color:#fff7e8;font-size:.69rem;line-height:1.15;white-space:normal;overflow-wrap:anywhere}.militopo-live2-name small{display:flex;align-items:center;gap:4px;color:#cbb894;margin-top:3px;min-width:0;flex-wrap:wrap}.militopo-live2-route-tag{display:inline-flex;padding:1px 5px;border-radius:999px;background:rgba(230,188,122,.12);border:1px solid rgba(230,188,122,.20);color:#ffe2a0;font-weight:900}.militopo-live2-time{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:.60rem}.militopo-live2-time.is-running{color:#d5edff;font-weight:900}.militopo-live2-time.is-finished{color:#eaffd8;font-weight:900}.militopo-live2-state{display:inline-flex;align-items:center;justify-content:center;max-width:100%;padding:4px 6px;border-radius:999px;font-weight:900;font-size:.55rem;line-height:1.05;white-space:normal;overflow-wrap:anywhere;text-align:center;border:1px solid rgba(255,255,255,.12)}.militopo-live2-state.ready,.militopo-live2-state.not_started{color:#ffe2a0;background:rgba(230,188,122,.12)}.militopo-live2-state.racing{color:#d5edff;background:rgba(70,139,206,.15);border-color:rgba(93,168,255,.36)}.militopo-live2-state.finished{color:#eaffd8;background:rgba(107,140,62,.18);border-color:rgba(139,181,106,.42)}.militopo-live2-state.offline{color:#ffd7ce;background:rgba(151,49,34,.15)}.militopo-live2-state.imported{color:#eaffd8;background:rgba(74,135,52,.24);border-color:rgba(157,220,108,.55)}.militopo-live2-progress{font-weight:900;color:#fff7e8}.militopo-live2-empty{padding:18px;text-align:center;color:rgba(255,247,232,.65);font-size:.75rem}
+    .militopo-live2-table-wrap{margin-top:14px;overflow-x:auto;border-radius:18px;border:1px solid rgba(237,214,145,.16);scrollbar-width:thin}.militopo-live2-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:850px;background:rgba(0,0,0,.12)}.militopo-live2-table th,.militopo-live2-table td{padding:7px 5px;border-bottom:1px solid rgba(237,214,145,.12);text-align:left;font-size:.63rem;line-height:1.18;vertical-align:middle;overflow:hidden}.militopo-live2-table th{color:#ffe2a0;font-size:.57rem;letter-spacing:.035em;text-transform:uppercase;background:rgba(0,0,0,.18);position:sticky;top:0;white-space:normal;overflow-wrap:normal;word-break:normal}.militopo-live2-th-nowrap{white-space:nowrap!important}.militopo-live2-th-two-lines{white-space:normal!important}.militopo-live2-th-two-lines span{display:block;white-space:nowrap}.militopo-live2-sortable{cursor:pointer;user-select:none;touch-action:manipulation}.militopo-live2-sortable>span.militopo-live2-sort-label{display:inline-flex;align-items:center;justify-content:center;gap:4px;max-width:100%}.militopo-live2-sortable .militopo-live2-sort-arrow{display:inline-block;min-width:10px;font-size:.62rem;line-height:1;color:rgba(255,226,160,.48)}.militopo-live2-sortable[aria-sort="ascending"] .militopo-live2-sort-arrow,.militopo-live2-sortable[aria-sort="descending"] .militopo-live2-sort-arrow{color:#fff3c8}.militopo-live2-sortable:focus-visible{outline:2px solid rgba(255,226,160,.8);outline-offset:-2px}.militopo-live2-table th:not(:first-child),.militopo-live2-table td:not(:first-child){text-align:center}.militopo-live2-name{min-width:0}.militopo-live2-name b{display:block;color:#fff7e8;font-size:.69rem;line-height:1.15;white-space:normal;overflow-wrap:anywhere}.militopo-live2-name small{display:flex;align-items:center;gap:4px;color:#cbb894;margin-top:3px;min-width:0;flex-wrap:wrap}.militopo-live2-route-tag{display:inline-flex;padding:1px 5px;border-radius:999px;background:rgba(230,188,122,.12);border:1px solid rgba(230,188,122,.20);color:#ffe2a0;font-weight:900}.militopo-live2-time{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:.60rem}.militopo-live2-time.is-running{color:#d5edff;font-weight:900}.militopo-live2-time.is-finished{color:#eaffd8;font-weight:900}.militopo-live2-state{display:inline-flex;align-items:center;justify-content:center;max-width:100%;padding:4px 6px;border-radius:999px;font-weight:900;font-size:.55rem;line-height:1.05;white-space:normal;overflow-wrap:anywhere;text-align:center;border:1px solid rgba(255,255,255,.12)}.militopo-live2-state.ready,.militopo-live2-state.not_started{color:#ffe2a0;background:rgba(230,188,122,.12)}.militopo-live2-state.racing{color:#d5edff;background:rgba(70,139,206,.15);border-color:rgba(93,168,255,.36)}.militopo-live2-state.finished{color:#eaffd8;background:rgba(107,140,62,.18);border-color:rgba(139,181,106,.42)}.militopo-live2-state.offline{color:#ffd7ce;background:rgba(151,49,34,.15)}.militopo-live2-state.imported{color:#eaffd8;background:rgba(74,135,52,.24);border-color:rgba(157,220,108,.55)}.militopo-live2-progress{font-weight:900;color:#fff7e8}.militopo-live2-empty{padding:18px;text-align:center;color:rgba(255,247,232,.65);font-size:.75rem}
     @media(max-width:680px){.militopo-live2-panel{padding:15px;border-radius:24px}.militopo-live2-statuses{grid-template-columns:1fr}.militopo-live2-actions{grid-template-columns:1fr}.militopo-live2-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.militopo-live2-head{align-items:center}.militopo-live2-phase{font-size:.56rem}}
   `;
   document.head.appendChild(style);
@@ -174,12 +175,13 @@ function buildOrganizerPanel() {
     <div id="live2RunText" class="militopo-live2-run">Sin carrera en vivo activa para este ejercicio.</div>
     <div id="live2Message" class="militopo-live2-message">Inicializando Firebase…</div>
     <div class="militopo-live2-table-wrap">
-      <table class="militopo-live2-table"><colgroup><col style="width:20%"><col style="width:12%"><col style="width:10%"><col style="width:12%"><col style="width:13%"><col style="width:13%"><col style="width:7%"><col style="width:7%"><col style="width:6%"></colgroup><thead><tr><th>Participante</th><th>Estado</th><th class="militopo-live2-th-nowrap">Progreso</th><th class="militopo-live2-th-two-lines"><span>Puntos</span><span>pendientes</span></th><th class="militopo-live2-th-two-lines"><span>Puntos</span><span>descartados</span></th><th>Última sincronización</th><th>Salida</th><th>Llegada</th><th>Tiempo total</th></tr></thead><tbody id="live2ParticipantsBody"><tr><td colspan="9" class="militopo-live2-empty">Inicia la carrera en vivo para preparar los participantes.</td></tr></tbody></table>
+      <table class="militopo-live2-table"><colgroup><col style="width:20%"><col style="width:12%"><col style="width:10%"><col style="width:12%"><col style="width:13%"><col style="width:13%"><col style="width:7%"><col style="width:7%"><col style="width:6%"></colgroup><thead><tr><th class="militopo-live2-sortable" data-sort-key="participant" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Participante <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="status" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Estado <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-th-nowrap militopo-live2-sortable" data-sort-key="progress" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Progreso <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-th-two-lines militopo-live2-sortable" data-sort-key="pending" tabindex="0" role="button" aria-sort="none"><span>Puntos</span><span class="militopo-live2-sort-label">pendientes <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-th-two-lines militopo-live2-sortable" data-sort-key="discarded" tabindex="0" role="button" aria-sort="none"><span>Puntos</span><span class="militopo-live2-sort-label">descartados <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="lastSync" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Última sincronización <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="start" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Salida <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="finish" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Llegada <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="totalTime" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Tiempo total <span class="militopo-live2-sort-arrow">↕</span></span></th></tr></thead><tbody id="live2ParticipantsBody"><tr><td colspan="9" class="militopo-live2-empty">Inicia la carrera en vivo para preparar los participantes.</td></tr></tbody></table>
     </div>`;
   const header = step5.querySelector(":scope > .card-header");
   if (header) header.insertAdjacentElement("afterend", panel); else step5.prepend(panel);
   $("live2StartRunBtn")?.addEventListener("click", startOrganizerRun);
   $("live2StopRunBtn")?.addEventListener("click", stopOrganizerRun);
+  bindOrganizerSortHeaders(panel);
   if (!organizerClockTimer) organizerClockTimer = window.setInterval(refreshOrganizerTimeCells, 1000);
 }
 
@@ -363,9 +365,78 @@ function sortOrganizerParticipants(participants) {
   });
 }
 
+
+function liveSortTime(value) {
+  const d = parseLiveDate(value);
+  return d ? d.getTime() : -1;
+}
+function liveSortStatusRank(status) {
+  return ({ finished:4, racing:3, ready:2, not_started:1, offline:0 })[String(status || "")] ?? 0;
+}
+function organizerSortValue(p, key) {
+  const completed = Math.max(0, Number(p?.completedControls) || 0);
+  const discarded = Math.max(0, Number(p?.discardedControls) || 0, Number(p?.skippedControlsCount) || 0);
+  const total = Math.max(0, Number(p?.totalControls) || 0);
+  const pending = Math.max(0, total - completed - discarded);
+  switch (key) {
+    case "participant": return `${String(p?.participantName || "").trim()} ${String(p?.participantId || "")}`.trim().toLocaleLowerCase("es");
+    case "status": return liveSortStatusRank(p?.status);
+    case "progress": return completed;
+    case "pending": return pending;
+    case "discarded": return discarded;
+    case "lastSync": return liveSortTime(p?.lastSeenClient || p?.lastSeen);
+    case "start": return liveSortTime(p?.startTime);
+    case "finish": return liveSortTime(p?.finishTime);
+    case "totalTime": {
+      const start = liveSortTime(p?.startTime);
+      if (start < 0) return -1;
+      const finish = liveSortTime(p?.finishTime);
+      return (finish >= 0 ? finish : Date.now()) - start;
+    }
+    default: return 0;
+  }
+}
+function applyOrganizerColumnSort(rows) {
+  if (!organizerSort || organizerSort.key === "default") return rows;
+  const factor = organizerSort.direction === "desc" ? -1 : 1;
+  return [...rows].sort((a, b) => {
+    const av = organizerSortValue(a, organizerSort.key);
+    const bv = organizerSortValue(b, organizerSort.key);
+    let result = 0;
+    if (typeof av === "string" || typeof bv === "string") result = String(av).localeCompare(String(bv), "es", { numeric:true, sensitivity:"base" });
+    else result = Number(av) - Number(bv);
+    return result ? result * factor : liveParticipantIdCompare(a, b);
+  });
+}
+function updateOrganizerSortHeaders() {
+  document.querySelectorAll(".militopo-live2-sortable[data-sort-key]").forEach(th => {
+    const active = th.dataset.sortKey === organizerSort.key;
+    th.setAttribute("aria-sort", active ? (organizerSort.direction === "desc" ? "descending" : "ascending") : "none");
+    const arrow = th.querySelector(".militopo-live2-sort-arrow");
+    if (arrow) arrow.textContent = active ? (organizerSort.direction === "desc" ? "▼" : "▲") : "↕";
+  });
+}
+function setOrganizerSort(key) {
+  if (!key) return;
+  if (organizerSort.key === key) organizerSort.direction = organizerSort.direction === "asc" ? "desc" : "asc";
+  else organizerSort = { key, direction:"asc" };
+  updateOrganizerSortHeaders();
+  renderOrganizerParticipants(Object.fromEntries(organizerLatestRows.map((p, i) => [String(p?.participantId || i), p])));
+}
+function bindOrganizerSortHeaders(panel) {
+  panel.querySelectorAll(".militopo-live2-sortable[data-sort-key]").forEach(th => {
+    const activate = () => setOrganizerSort(th.dataset.sortKey);
+    th.addEventListener("click", activate);
+    th.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); }
+    });
+  });
+  updateOrganizerSortHeaders();
+}
+
 function renderOrganizerParticipants(participantsValue) {
   const participants = participantsValue && typeof participantsValue === "object" ? participantsValue : {};
-  const rows = sortOrganizerParticipants(participants);
+  const rows = applyOrganizerColumnSort(sortOrganizerParticipants(participants));
   organizerLatestRows = rows;
   const counts = { total: rows.length, pending:0, racing:0, finished:0 };
   rows.forEach(p => {
