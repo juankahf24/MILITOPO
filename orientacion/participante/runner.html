@@ -1857,7 +1857,7 @@ function notifyMilitopoLive(kind,extra={}){
                 discardedControls:discarded,
                 skippedControlsCount:discarded,
                 discardedControlIds:(log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="skipped").map(s=>String(s.controlId)):[]),
-                pendingControls:Math.max(0,expected.length-completed),
+                pendingControls:Math.max(0,expected.length-completed-discarded),
                 startTime:log&&log.startTime?log.startTime:null,
                 finishTime:log&&log.finishTime?log.finishTime:null,
                 completed:!!(log&&log.completed),
@@ -2733,8 +2733,8 @@ function restoreBestSavedRun(silent){
 
 function renderLoaded(){document.body.classList.add("route-loaded");document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();refreshSkipHoldVisibility();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences();setTimeout(resizeParticipantFrameFromInside,80)}
 function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=routeAdvancedCount();const expected=exp[done]||"FINISH";const alreadyCorrect=log.scans.some(s=>s.controlId===id&&s.status==="correct");let status=id===expected?"correct":alreadyCorrect?"duplicate":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});save();renderNext();refreshSkipHoldVisibility();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
-function scanStatusLabel(status){return {correct:"Correcto",out_of_order:"Fuera de orden",wrong:"Incorrecto",duplicate:"Duplicado",skipped:"Descartado · pendiente"}[String(status||"")]||"Estado desconocido"}
-function scanStatusMessage(status,expected){return {correct:"Baliza correcta",out_of_order:"Fuera de orden. Tocaba "+expected,wrong:"Baliza incorrecta: no pertenece a tu recorrido",duplicate:"Baliza ya registrada correctamente",skipped:"Punto descartado. Queda pendiente en el resultado final"}[String(status||"")]||"Baliza registrada"}
+function scanStatusLabel(status){return {correct:"Correcto",out_of_order:"Fuera de orden",wrong:"Incorrecto",duplicate:"Duplicado",skipped:"Descartado"}[String(status||"")]||"Estado desconocido"}
+function scanStatusMessage(status,expected){return {correct:"Baliza correcta",out_of_order:"Fuera de orden. Tocaba "+expected,wrong:"Baliza incorrecta: no pertenece a tu recorrido",duplicate:"Baliza ya registrada correctamente",skipped:"Punto descartado. No se contará como pendiente; continúa con la siguiente baliza"}[String(status||"")]||"Baliza registrada"}
 function skipCurrentControl(skipConfirm=false){
     if(!route)return toast("Primero carga tu recorrido");
     if(!log||!log.startTime)return toast("Primero registra la SALIDA");
@@ -2763,10 +2763,11 @@ async function finishRace(source="qr"){
     const byGps=source==="gps";
     if(byGps){closeGpsArrivalConfirm();closeGpsStartReminder();gpsFinishDeclinedUntilLeave=false;gpsFinishInsideHits=0;unlockRaceScreen(true);}
     const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");
-    const done=log.scans.filter(s=>s.status==="correct").map(s=>s.controlId);
-    log.missingControls=exp.filter(x=>!done.includes(x));
+    const done=new Set(log.scans.filter(s=>s.status==="correct").map(s=>String(s.controlId)));
+    const discarded=new Set(log.scans.filter(s=>s.status==="skipped").map(s=>String(s.controlId)));
+    log.missingControls=exp.filter(x=>!done.has(String(x))&&!discarded.has(String(x)));
     log.finishTime=new Date().toISOString();
-    log.completed=log.missingControls.length===0;
+    log.completed=log.missingControls.length===0&&discarded.size===0;
     log.resultPayload=resultPayload();
     if(byGps)log.finishSource="gps";
     save();renderNext();refreshSkipHoldVisibility();renderScans();await renderResult();
@@ -2851,7 +2852,7 @@ async function showPartialResultQr(){
 }
 
 function resultPayload(){return encodeResultObject(compactResultObject(false))}
-async function renderResult(){const sec=document.getElementById("result");if(!sec)return;if(!log||!log.finishTime){sec.style.display="none";sec.classList.remove("result-open");return}sec.style.display="block";sec.classList.add("result-open");const payload=resultPayload();log.resultPayload=payload;const result="ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+payload;document.getElementById("summary").innerHTML="<b>"+pid+"</b> · "+route.routeId+"<br>"+(log.completed?"✅ Recorrido completo":"⚠️ Pendientes: "+(log.missingControls||[]).join(", "))+"<br><strong>ENSEÑA ESTE CÓDIGO AL ORGANIZADOR</strong>";document.getElementById("resultText").value=result;try{const url=await QRCode.toDataURL(result,{margin:8,width:1200,errorCorrectionLevel:"H"});document.getElementById("resultQr").innerHTML="<img src='"+url+"' alt='QR resultado'><div class='result-qr-instruction'>📲 QR FINAL DE RESULTADO<br>ENSÉÑASELO AL ORGANIZADOR PARA GUARDAR TU RESULTADO.</div>"}catch(e){document.getElementById("resultQr").innerHTML="<div class='status err'>No se pudo generar el QR final. Usa COPIAR CÓDIGO y enséñaselo al organizador.</div>"}save()}
+async function renderResult(){const sec=document.getElementById("result");if(!sec)return;if(!log||!log.finishTime){sec.style.display="none";sec.classList.remove("result-open");return}sec.style.display="block";sec.classList.add("result-open");const payload=resultPayload();log.resultPayload=payload;const result="ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+payload;const discardedIds=(log.scans||[]).filter(s=>s.status==="skipped").map(s=>String(s.controlId));const pendingIds=log.missingControls||[];const completedCount=(log.scans||[]).filter(s=>s.status==="correct").length;document.getElementById("summary").innerHTML="<b>"+pid+"</b> · "+route.routeId+"<br>✅ Completados: "+completedCount+"<br>⏭️ Descartados: "+(discardedIds.length?discardedIds.join(", "):"Ninguno")+"<br>⏳ Pendientes: "+(pendingIds.length?pendingIds.join(", "):"Ninguno")+"<br><strong>ENSEÑA ESTE CÓDIGO AL ORGANIZADOR</strong>";document.getElementById("resultText").value=result;try{const url=await QRCode.toDataURL(result,{margin:8,width:1200,errorCorrectionLevel:"H"});document.getElementById("resultQr").innerHTML="<img src='"+url+"' alt='QR resultado'><div class='result-qr-instruction'>📲 QR FINAL DE RESULTADO<br>ENSÉÑASELO AL ORGANIZADOR PARA GUARDAR TU RESULTADO.</div>"}catch(e){document.getElementById("resultQr").innerHTML="<div class='status err'>No se pudo generar el QR final. Usa COPIAR CÓDIGO y enséñaselo al organizador.</div>"}save()}
 function copyResult(){const t=document.getElementById("resultText");t.select();document.execCommand("copy");toast("Código de resultado copiado")}function downloadResult(){const b=new Blob([document.getElementById("resultText").value],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="codigo_resultado_"+(pid||"participante")+".txt";a.click();URL.revokeObjectURL(a.href)}function tm(i){return new Date(i).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
 function bindParticipantAutosave(){
     document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")save()});
