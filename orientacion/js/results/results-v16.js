@@ -9,7 +9,7 @@ function applyResultsV16Styles(){
     st.id="militopoResultsV16Styles";
     st.textContent=`
 #classificationTable{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
-#classificationTable .results-table-v16{width:1120px;min-width:1120px;max-width:none!important;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:13px;line-height:1.2}
+#classificationTable .results-table-v16{width:1260px;min-width:1260px;max-width:none!important;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:13px;line-height:1.2}
 #classificationTable .results-table-v16 th,#classificationTable .results-table-v16 td{white-space:normal!important;word-break:normal!important;overflow-wrap:anywhere!important;vertical-align:top!important;text-align:left;padding:10px 8px;line-height:1.18}
 #classificationTable .results-table-v16 th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;vertical-align:top!important;text-align:center!important}
 #classificationTable .results-table-v16 td.center{text-align:center!important}
@@ -21,7 +21,7 @@ function applyResultsV16Styles(){
 #selectedResultDetail .result-detail-row-v16 b{display:block;color:#f0c16a;margin-bottom:2px;letter-spacing:.04em}
 #selectedResultDetail .split-v16{padding:7px 0;border-top:1px solid rgba(255,255,255,.12)}
 #selectedResultDetail .split-v16 b{display:block;color:#f0c16a;margin-bottom:2px}
-@media(max-width:720px){#classificationTable .results-table-v16{width:1080px;min-width:1080px;font-size:12px}#classificationTable .results-table-v16 th,#classificationTable .results-table-v16 td{padding:9px 7px}.results-table-v16-wrap:before{content:'Desliza lateralmente para ver toda la clasificación';display:block;margin:0 0 8px;color:#f0c16a;font-weight:900;font-size:12px;letter-spacing:.05em}}
+@media(max-width:720px){#classificationTable .results-table-v16{width:1220px;min-width:1220px;font-size:12px}#classificationTable .results-table-v16 th,#classificationTable .results-table-v16 td{padding:9px 7px}.results-table-v16-wrap:before{content:'Desliza lateralmente para ver toda la clasificación';display:block;margin:0 0 8px;color:#f0c16a;font-weight:900;font-size:12px;letter-spacing:.05em}}
 `;
     document.head.appendChild(st);
 }
@@ -51,7 +51,7 @@ renderClassificationTable=function(){
     const box=document.getElementById("classificationTable");if(!box)return;
     const rows=sortedImportedResults();if(!rows.length){box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;return;}
     let rank=0;
-    box.innerHTML=`<div class="results-table-v16-wrap" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="results-table results-table-v16"><colgroup><col style="width:70px"><col style="width:220px"><col style="width:120px"><col style="width:105px"><col style="width:120px"><col style="width:125px"><col style="width:125px"><col style="width:145px"><col style="width:145px"></colgroup><thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th></tr></thead><tbody>${rows.map(r=>{rank++;const ms=resultMs(r),time=ms!==null?formatDuration(ms):"--",metric=typeof routeMetricForResult==="function"?routeMetricForResult(r):{};const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;const cls=classificationRankClass(rank,r.completed);return `<tr class="${cls}"><td class="center">${rank}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||"--")}</td><td class="center">${escapeHtml(time)}</td><td class="center">${escapeHtml(r.routeId||"--")}</td><td class="center">${escapeHtml(String(metric?.difficulty||"--"))}</td><td class="center">${escapeHtml(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td class="center">${escapeHtml(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td class="center">${controls}</td><td class="center">${missingCount}</td></tr>`;}).join("")}</tbody></table></div>`;
+    box.innerHTML=`<div class="results-table-v16-wrap" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="results-table results-table-v16"><colgroup><col style="width:70px"><col style="width:220px"><col style="width:120px"><col style="width:105px"><col style="width:120px"><col style="width:125px"><col style="width:125px"><col style="width:145px"><col style="width:145px"><col style="width:145px"></colgroup><thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th><th>Controles<br>descartados</th></tr></thead><tbody>${rows.map(r=>{rank++;const ms=resultMs(r),time=ms!==null?formatDuration(ms):"--",metric=typeof routeMetricForResult==="function"?routeMetricForResult(r):{};const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;const cls=classificationRankClass(rank,r.completed);return `<tr class="${cls}"><td class="center">${rank}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||"--")}</td><td class="center">${escapeHtml(time)}</td><td class="center">${escapeHtml(r.routeId||"--")}</td><td class="center">${escapeHtml(String(metric?.difficulty||"--"))}</td><td class="center">${escapeHtml(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td class="center">${escapeHtml(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td class="center">${controls}</td><td class="center">${missingCount}</td><td class="center">${(r.scans||[]).filter(s=>(s.st||s.status)==="skipped").length}</td></tr>`;}).join("")}</tbody></table></div>`;
 };
 
 renderSelectedResultDetail=function(){
@@ -93,8 +93,8 @@ renderSelectedResultDetail=function(){
 };
 
 classificationRowsForExport=function(){
-    const rows=[["Puesto","Nombre","Tiempo","Recorrido","Dificultad","Distancia","Desnivel +","Controles completados","Controles pendientes"]];let rank=0;
-    sortedImportedResults().forEach(r=>{rank++;const ms=resultMs(r),metric=typeof routeMetricForResult==="function"?routeMetricForResult(r):{};const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;rows.push([rank,resultParticipantName(r)||r.participantId||"",ms!==null?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0]);});
+    const rows=[["Puesto","Nombre","Tiempo","Recorrido","Dificultad","Distancia","Desnivel +","Controles\ncompletados","Controles\npendientes","Controles\ndescartados"]];let rank=0;
+    sortedImportedResults().forEach(r=>{rank++;const ms=resultMs(r),metric=typeof routeMetricForResult==="function"?routeMetricForResult(r):{};const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;rows.push([rank,resultParticipantName(r)||r.participantId||"",ms!==null?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0,(r.scans||[]).filter(s=>(s.st||s.status)==="skipped").length]);});
     return rows;
 };
 
@@ -127,7 +127,7 @@ downloadClassificationExcel=async function(){
         return `<row r="${r}" ht="${rowHeight(row,ri)}" customHeight="1">${cells}</row>`;
     }).join("");
 
-    const widths=[8,24,14,12,14,14,14,22,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
+    const widths=[8,24,14,12,14,14,14,22,22,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
     const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
  <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
