@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=custom-maps-v2" />
+<link rel="stylesheet" href="css/styles.css?v=custom-maps-v3" />
 
 
 
@@ -108,10 +108,10 @@
 </div><div class="block"><label>Identificador interno</label><input id="eventId" readonly><div class="help">Preparado para una futura sincronización, sin mostrar nada en vivo.</div></div><div class="block"><label>Participantes / recorridos</label><select id="participantCount"></select></div><div class="block"><label>Balizas totales</label><select id="controlCount"></select></div><div class="block"><label>Balizas por recorrido</label><select id="controlsPerRoute"></select></div><div class="block"><label>Máximo uso por baliza</label><select id="maxControlReuse"></select><div class="help">Limita que una misma baliza aparezca en demasiados recorridos.</div></div></div><div class="nav-row"><span></span><button class="btn green" onclick="confirmStep1()">CONFIRMAR Y PASAR AL MAPA →</button><button class="btn red" onclick="resetSavedEvent()">🆕 BORRAR EVENTO GUARDADO</button></div></section>
 <section id="step2" class="card"><div class="card-header"><h2>🗺️ EDITAR BALIZAS Y MAPA</h2><div class="mode-pill">Salida · Llegada · Balizas con etiqueta</div></div>
 <div class="grid two"><div class="block"><label>Buscar zona del mapa</label><div class="map-tools"><input id="searchBox" placeholder="Lugar, dirección o coordenada UTM"><button class="btn" onclick="searchPlace()">🔍 BUSCAR</button><button class="btn secondary" onclick="fitAllPoints()">🧭 VER TODO</button></div></div><div class="block autofill-test-panel"><label>Herramientas rápidas de prueba</label><div class="btn-row"><button class="btn green" onclick="autofillOrientationPoints()">✨ AUTORRELLENAR TODOS LOS PUNTOS</button><button class="btn red" onclick="clearAllOrientationPoints()">🧹 LIMPIAR TODOS LOS PUNTOS</button></div><div class="help">Solo para pruebas: rellena salida, llegada y balizas alrededor de una zona base para generar recorridos rápidamente.</div></div></div>
-<div class="layer-pills"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button><button class="layer-btn" data-layer="custom" onclick="switchLayer('custom')">🖼️ MI PLANO</button></div>
+<div class="layer-pills"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button><button class="layer-btn" data-layer="custom" onclick="switchLayer('custom')">📐 MI PLANO</button></div>
 <div class="geotiff-map-manager">
   <div class="geotiff-map-head"><div><b>🗺️ BIBLIOTECA DE PLANOS PROPIOS</b><div class="help">Importa un GeoTIFF o KMZ georreferenciado, guárdalo en este dispositivo y compáralo con MAPANT, IGN o PNOA.</div></div><button class="btn secondary geotiff-import-main" type="button" onclick="document.getElementById('orientationGeoTiffInput').click()">📂 IMPORTAR PLANO<br><small>GEOTIFF / KMZ</small></button></div>
-  <input id="orientationGeoTiffInput" type="file" accept=".tif,.tiff,.kmz,image/tiff,application/vnd.google-earth.kmz" hidden onchange="importOrientationCustomMap(this.files&&this.files[0])">
+  <input id="orientationGeoTiffInput" type="file" hidden onchange="importOrientationCustomMap(this.files&&this.files[0])">
   <div class="geotiff-library-row"><label>PLANO GUARDADO<select id="orientationGeoTiffLibrary" onchange="activateOrientationCustomMap(this.value)"><option value="">— Sin plano seleccionado —</option></select></label></div>
   <div class="geotiff-map-controls">
     <label class="geotiff-opacity-label">OPACIDAD DEL PLANO <span id="orientationGeoTiffOpacityValue">100 %</span><input id="orientationGeoTiffOpacity" type="range" min="0" max="100" value="100" oninput="setOrientationGeoTiffOpacity(this.value)"></label>
@@ -178,7 +178,7 @@
         <button class="btn secondary" type="button" onclick="switchStep3MapLayer('mapant')">🧭 MAPANT</button>
         <button class="btn secondary" type="button" onclick="switchStep3MapLayer('ign')">🗺️ IGN</button>
         <button class="btn secondary" type="button" onclick="switchStep3MapLayer('pnoa')">🛰️ PNOA</button>
-        <button class="btn secondary" type="button" onclick="switchStep3MapLayer('custom')">🖼️ MI PLANO</button>
+        <button class="btn secondary" type="button" onclick="switchStep3MapLayer('custom')">📐 MI PLANO</button>
     </div>
     <div id="step3RouteMap" style="width:100%;height:min(58vh,560px);min-height:380px;border-radius:22px;overflow:hidden;border:2px solid rgba(230,188,122,.42);background:#d9d1b8;"></div>
 </div><div id="routesGrid" class="grid two" style="margin-top:16px"></div><div class="nav-row"><button class="btn secondary" onclick="goStep(2)">← ANTERIOR</button><button class="btn green" onclick="confirmStep3()">GENERAR MATERIAL →</button></div></section>
@@ -383,7 +383,7 @@
     </div>
 </div>
 
-<script src="js/app.js?v=custom-maps-v2"></script>
+<script src="js/app.js?v=custom-maps-v3"></script>
 <script type="module" src="js/live/live-phase2.js?v=tabla-ordenable-v1"></script>
 <script>
 (function(){
