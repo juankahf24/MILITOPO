@@ -9129,7 +9129,7 @@ function resultStatusEs(status){
         pendiente:"Pendiente",
         duplicate:"Duplicado",
         duplicated:"Duplicado",
-        skipped:"Descartado · pendiente",
+        skipped:"Descartado",
         out_of_order:"Fuera de orden",
         wrong_order:"Fuera de orden",
         wrong:"Incorrecto",
@@ -9225,6 +9225,20 @@ function renderResultsControl(){
 function resultCompletedControlsCount(result){
     return (result?.scans||[]).filter(s=>(s?.st||s?.status)==="correct").length;
 }
+function resultDiscardedControlIds(result){
+    return [...new Set((result?.scans||[])
+        .filter(s=>String(s?.st||s?.status||"").toLowerCase()==="skipped")
+        .map(s=>String(s?.id||s?.controlId||s?.expectedControlId||"").trim())
+        .filter(Boolean))];
+}
+function resultPendingControlIds(result){
+    const discarded=new Set(resultDiscardedControlIds(result));
+    return [...new Set((Array.isArray(result?.missingControls)?result.missingControls:[])
+        .map(x=>String(x||"").trim()).filter(Boolean)
+        .filter(id=>!discarded.has(id)))];
+}
+function resultDiscardedControlsCount(result){return resultDiscardedControlIds(result).length;}
+function resultPendingControlsCount(result){return resultPendingControlIds(result).length;}
 
 function sortedImportedResults(){
     return [...activeImportedResults()].sort((a,b)=>{
@@ -9298,9 +9312,9 @@ function renderClassificationTable(){
             rank++;
             const ms=resultMs(r),time=ms!==null?formatDuration(ms):"--",metric=routeMetricForResult(r);
             const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
-            const missingCount=Array.isArray(r.missingControls)?r.missingControls.length:0;
+            const missingCount=resultPendingControlsCount(r);
             const cls=classificationRankClass(rank,r.completed);
-            return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||"--")}</td><td style="text-align:center">${escapeHtml(time)}</td><td style="text-align:center">${escapeHtml(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${escapeHtml(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${escapeHtml(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td style="text-align:center">${escapeHtml(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td><td style="text-align:center">${(r.scans||[]).filter(s=>(s.st||s.status)==="skipped").length}</td></tr>`;
+            return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||"--")}</td><td style="text-align:center">${escapeHtml(time)}</td><td style="text-align:center">${escapeHtml(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${escapeHtml(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${escapeHtml(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td style="text-align:center">${escapeHtml(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td><td style="text-align:center">${resultDiscardedControlsCount(r)}</td></tr>`;
         }).join("")}</tbody>
     </table></div>`;
 }
@@ -9325,7 +9339,9 @@ function renderParticipantsStatusGrid(){
         const r=st.result;
         const ms=resultMs(r);
         const time=ms!==null?formatDuration(ms):"--";
-        const missing=r&&r.missingControls&&r.missingControls.length?` · faltan: ${r.missingControls.join(", ")}`:"";
+        const pendingIds=r?resultPendingControlIds(r):[]; const discardedIds=r?resultDiscardedControlIds(r):[];
+        const details=[pendingIds.length?`⏳ Pendientes: ${pendingIds.join(", ")}`:"",discardedIds.length?`⏭️ Descartados: ${discardedIds.join(", ")}`:""].filter(Boolean).join(" · ");
+        const missing=details?` · ${details}`:"";
         const name=resultParticipantName(route.participantId);
         return `<div class="scan-item ${st.cls}" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;overflow:hidden;">
             <b style="display:block;grid-column:1;white-space:normal;word-break:break-word;overflow-wrap:anywhere;line-height:1.25;">${escapeHtml(name?`${route.participantId} · ${name}`:route.participantId)}</b>
@@ -9401,7 +9417,9 @@ function renderSelectedResultDetail(){
         <div><b>Salida:</b> ${escapeHtml(formatDateTimeSpain(r.startTime))}</div>
         <div><b>Llegada:</b> ${escapeHtml(formatDateTimeSpain(r.finishTime))}</div>
         <div><b>Tiempo:</b> ${escapeHtml(time)}</div>
-        <div><b>Controles pendientes:</b> ${escapeHtml((r.missingControls||[]).join(", ")||"--")}</div>
+        <div><b>✅ Controles completados:</b> ${resultCompletedControlsCount(r)}</div>
+        <div><b>⏭️ Controles descartados:</b> ${escapeHtml(resultDiscardedControlIds(r).join(", ")||"Ninguno")}</div>
+        <div><b>⏳ Controles pendientes:</b> ${escapeHtml(resultPendingControlIds(r).join(", ")||"Ninguno")}</div>
         <div style="margin-top:8px;"><b>Pasos registrados</b></div>
         <div>${scans||"--"}</div>
     </div>`;
@@ -9422,7 +9440,7 @@ function classificationRowsForExport(){
         rank++;
         const ms=resultMs(r),metric=routeMetricForResult(r);
         const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>s.st==="correct"||s.status==="correct").length;
-        rows.push([rank,resultParticipantName(r)||r.participantId||"",ms!==null?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,Array.isArray(r.missingControls)?r.missingControls.length:0,(r.scans||[]).filter(s=>(s.st||s.status)==="skipped").length]);
+        rows.push([rank,resultParticipantName(r)||r.participantId||"",ms!==null?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,resultPendingControlsCount(r),resultDiscardedControlsCount(r)]);
     });
     return rows;
 }
@@ -9473,7 +9491,7 @@ async function downloadClassificationExcel(){
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
  <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
- <dimension ref="A1:I${rows.length}"/>
+ <dimension ref="A1:J${rows.length}"/>
  <cols>${widths}</cols>
  <sheetData>${sheetRows}</sheetData>
  <pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>
@@ -9559,7 +9577,7 @@ async function downloadClassificationExcel(){
 }
 
 function downloadImportedResultsCsv(){
-    const rows=[["Puesto","Participante","Nombre","Recorrido","Dificultad","Estado","Tiempo","Salida","Llegada","ControlesCorrectos","Pendientes"]];
+    const rows=[["Puesto","Participante","Nombre","Recorrido","Dificultad","Estado","Tiempo","Salida","Llegada","ControlesCorrectos","ControlesDescartados","ControlesPendientes"]];
     let rank=0;
     sortedImportedResults().forEach(r=>{
         rank++;
@@ -9576,7 +9594,8 @@ function downloadImportedResultsCsv(){
             r.startTime||"",
             r.finishTime||"",
             controls,
-            (r.missingControls||[]).join(" ")
+            resultDiscardedControlIds(r).join(" "),
+            resultPendingControlIds(r).join(" ")
         ]);
     });
     downloadText(`clasificacion_${state.eventId}.csv`,rows.map(r=>r.map(csvEscape).join(";")).join("\n"));
