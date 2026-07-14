@@ -9966,7 +9966,11 @@ async function activateOrientationCustomMap(id){
         setOrientationGeoTiffStatus(`⏳ Cargando <b>${escapeHtml(meta.name)}</b> desde MILITOPO...`,"warn");
         try{
             let record=await orientationDbGet(id);
-            if(record&&(!record.pngBlob||!Array.isArray(record.bounds)||record.bounds.length!==2)){
+            const expectedFormat=String(meta.format||"").toLowerCase();
+            const storedFormat=String(record&&record.format||"").toLowerCase();
+            const sourceChanged=!!record&&String(record.sourceFile||"")!==String(meta.file||"");
+            const formatChanged=!!record&&storedFormat!==expectedFormat;
+            if(record&&(!record.pngBlob||!Array.isArray(record.bounds)||record.bounds.length!==2||sourceChanged||formatChanged)){
                 await orientationDbDelete(id);
                 record=null;
             }
