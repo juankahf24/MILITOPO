@@ -678,7 +678,7 @@ function cleanupStep2ImportAndTableUi(){
                 layerPills.style.background="linear-gradient(180deg, rgba(28,41,17,.10), rgba(15,25,9,.04))";
                 layerPills.style.border="1px solid rgba(237,214,145,.12)";
                 layerPills.style.boxShadow="inset 0 1px 0 rgba(255,255,255,.06)";
-                searchBlock.insertAdjacentElement("afterend", layerPills);
+                /* Las cuatro capas permanecen juntas dentro de CAPAS DEL MAPA. */
 
                 const styleLayerPillButtons=()=>{
                     const layerButtons=[...layerPills.querySelectorAll("button")];
@@ -9952,12 +9952,12 @@ async function importOrientationCustomMap(file){
     return await importOrientationGeoTiff(file);
   }catch(err){
     console.error(err);
-    setOrientationGeoTiffStatus(`⚠️ No se pudo reconocer el plano.<br><b>Motivo:</b> ${escapeHtml(err&&err.message?err.message:String(err))}`,"err");
+    setOrientationGeoTiffStatus(`⚠️ No se pudo reconocer el plano.<br><b>Motivo:</b> ${escapeHtml(err&&err.message?err.message:(err==null?"Error interno sin detalle":String(err)))}`,"err");
     const input=document.getElementById("orientationGeoTiffInput");if(input)input.value="";
   }
 }
-async function importOrientationGeoTiff(file){if(!file)return;setOrientationGeoTiffStatus("⏳ Leyendo y preparando el GeoTIFF. En planos grandes puede tardar...","warn");try{const GeoTIFF=await ensureOrientationGeoTiffLib(),tiff=await GeoTIFF.fromArrayBuffer(await file.arrayBuffer()),image=await tiff.getImage(),bbox=image.getBoundingBox(),epsg=orientationGeoTiffEpsg(image);if(!bbox||bbox.length!==4||!epsg)throw new Error("El archivo no contiene georreferenciación EPSG legible");const bounds=orientationBoundsFromProjected(bbox,epsg),png=await orientationRasterToPng(image,4096),record={id:orientationMapId(),name:file.name,format:"geotiff",epsg,bounds,pngBlob:png.blob,dataUrl:png.dataUrl,width:png.width,height:png.height,sourceWidth:png.sourceWidth,sourceHeight:png.sourceHeight,importedAt:new Date().toISOString()};await saveOrientationGeoTiffRecord(record);applyOrientationGeoTiffRecord(record);state.customGeoTiffOpacity=1;switchLayer("custom");fitOrientationGeoTiff();saveState();toast("Plano GeoTIFF guardado en la biblioteca")}catch(err){console.error(err);setOrientationGeoTiffStatus(`⚠️ No se pudo cargar el GeoTIFF.<br><b>Motivo:</b> ${escapeHtml(err&&err.message?err.message:String(err))}`,"err")}finally{const input=document.getElementById("orientationGeoTiffInput");if(input)input.value=""}}
-async function importOrientationKmz(file){setOrientationGeoTiffStatus("⏳ Abriendo el KMZ y preparando su imagen georreferenciada...","warn");try{const png=await parseOrientationKmz(file),record={id:orientationMapId(),name:file.name,format:"kmz",epsg:null,bounds:png.bounds,pngBlob:png.blob,dataUrl:png.dataUrl,width:png.width,height:png.height,sourceWidth:png.sourceWidth,sourceHeight:png.sourceHeight,importedAt:new Date().toISOString()};await saveOrientationGeoTiffRecord(record);applyOrientationGeoTiffRecord(record);state.customGeoTiffOpacity=1;switchLayer("custom");fitOrientationGeoTiff();saveState();toast("Plano KMZ guardado en la biblioteca")}catch(err){console.error(err);setOrientationGeoTiffStatus(`⚠️ No se pudo cargar el KMZ.<br><b>Motivo:</b> ${escapeHtml(err&&err.message?err.message:String(err))}`,"err")}finally{const input=document.getElementById("orientationGeoTiffInput");if(input)input.value=""}}
+async function importOrientationGeoTiff(file){if(!file)return;setOrientationGeoTiffStatus("⏳ Leyendo y preparando el GeoTIFF. En planos grandes puede tardar...","warn");try{const GeoTIFF=await ensureOrientationGeoTiffLib(),tiff=await GeoTIFF.fromArrayBuffer(await file.arrayBuffer()),image=await tiff.getImage(),bbox=image.getBoundingBox(),epsg=orientationGeoTiffEpsg(image);if(!bbox||bbox.length!==4||!epsg)throw new Error("El archivo no contiene georreferenciación EPSG legible");const bounds=orientationBoundsFromProjected(bbox,epsg),png=await orientationRasterToPng(image,4096),record={id:orientationMapId(),name:file.name,format:"geotiff",epsg,bounds,pngBlob:png.blob,dataUrl:png.dataUrl,width:png.width,height:png.height,sourceWidth:png.sourceWidth,sourceHeight:png.sourceHeight,importedAt:new Date().toISOString()};await saveOrientationGeoTiffRecord(record);applyOrientationGeoTiffRecord(record);state.customGeoTiffOpacity=1;switchLayer("custom");fitOrientationGeoTiff();saveState();toast("Plano GeoTIFF guardado en la biblioteca")}catch(err){console.error(err);setOrientationGeoTiffStatus(`⚠️ No se pudo cargar el GeoTIFF.<br><b>Motivo:</b> ${escapeHtml(err&&err.message?err.message:(err==null?"Error interno sin detalle":String(err)))}`,"err")}finally{const input=document.getElementById("orientationGeoTiffInput");if(input)input.value=""}}
+async function importOrientationKmz(file){setOrientationGeoTiffStatus("⏳ Abriendo el KMZ y preparando su imagen georreferenciada...","warn");try{const png=await parseOrientationKmz(file),record={id:orientationMapId(),name:file.name,format:"kmz",epsg:null,bounds:png.bounds,pngBlob:png.blob,dataUrl:png.dataUrl,width:png.width,height:png.height,sourceWidth:png.sourceWidth,sourceHeight:png.sourceHeight,importedAt:new Date().toISOString()};await saveOrientationGeoTiffRecord(record);applyOrientationGeoTiffRecord(record);state.customGeoTiffOpacity=1;switchLayer("custom");fitOrientationGeoTiff();saveState();toast("Plano KMZ guardado en la biblioteca")}catch(err){console.error(err);setOrientationGeoTiffStatus(`⚠️ No se pudo cargar el KMZ.<br><b>Motivo:</b> ${escapeHtml(err&&err.message?err.message:(err==null?"Error interno sin detalle":String(err)))}`,"err")}finally{const input=document.getElementById("orientationGeoTiffInput");if(input)input.value=""}}
 async function activateOrientationCustomMap(id){
     if(!id)return;
     if(String(id).startsWith("builtin:")){
@@ -9966,20 +9966,31 @@ async function activateOrientationCustomMap(id){
         setOrientationGeoTiffStatus(`⏳ Cargando <b>${escapeHtml(meta.name)}</b> desde MILITOPO...`,"warn");
         try{
             let record=await orientationDbGet(id);
+            if(record&&(!record.pngBlob||!Array.isArray(record.bounds)||record.bounds.length!==2)){
+                await orientationDbDelete(id);
+                record=null;
+            }
             if(!record){
-                const response=await fetch(meta.file);
-                if(!response.ok)throw new Error("No se pudo descargar el archivo del plano integrado");
+                const response=await fetch(meta.file,{cache:"force-cache"});
+                if(!response.ok)throw new Error(`No se pudo descargar el plano integrado (${response.status})`);
                 const blob=await response.blob();
-                const file=new File([blob],meta.name+"."+(meta.format||"kmz"),{type:blob.type||"application/octet-stream"});
-                const png=(String(meta.format).toLowerCase()==="kmz")?await parseOrientationKmz(file):null;
-                if(!png)throw new Error("Formato integrado no compatible");
-                record={id,name:meta.name,format:meta.format||"kmz",epsg:null,bounds:png.bounds,pngBlob:png.blob,dataUrl:png.dataUrl,width:png.width,height:png.height,sourceWidth:png.sourceWidth,sourceHeight:png.sourceHeight,importedAt:new Date().toISOString(),builtin:true,sourceFile:meta.file};
+                const format=String(meta.format||"").toLowerCase();
+                if(format==="image"||format==="png"||format==="jpg"||format==="jpeg"||format==="webp"){
+                    if(!Array.isArray(meta.bounds)||meta.bounds.length!==2)throw new Error("El catálogo no contiene los límites geográficos del plano");
+                    const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("No se pudo preparar la imagen integrada"));reader.readAsDataURL(blob)});
+                    record={id,name:meta.name,format:"image",epsg:null,bounds:meta.bounds,pngBlob:blob,dataUrl,width:Number(meta.width)||0,height:Number(meta.height)||0,sourceWidth:Number(meta.width)||0,sourceHeight:Number(meta.height)||0,importedAt:new Date().toISOString(),builtin:true,sourceFile:meta.file};
+                }else if(format==="kmz"){
+                    const png=await parseOrientationKmz(blob);
+                    record={id,name:meta.name,format:"kmz",epsg:null,bounds:png.bounds,pngBlob:png.blob,dataUrl:png.dataUrl,width:png.width,height:png.height,sourceWidth:png.sourceWidth,sourceHeight:png.sourceHeight,importedAt:new Date().toISOString(),builtin:true,sourceFile:meta.file};
+                }else{
+                    throw new Error("Formato integrado no compatible");
+                }
                 await orientationDbPut(record,id);
             }
             await orientationDbPut(id,ORIENTATION_MAP_ACTIVE_KEY);
             hideOrientationGeoTiffOverlay();applyOrientationGeoTiffRecord(record);switchLayer("custom");fitOrientationGeoTiff();saveState();toast(`Plano integrado activado: ${meta.name}`);
         }catch(err){
-            console.error(err);setOrientationGeoTiffStatus(`⚠️ No se pudo cargar el plano integrado.<br><b>Motivo:</b> ${escapeHtml(err&&err.message?err.message:String(err))}`,"err");
+            console.error(err);setOrientationGeoTiffStatus(`⚠️ No se pudo cargar el plano integrado.<br><b>Motivo:</b> ${escapeHtml(err&&err.message?err.message:(err==null?"Error interno sin detalle":String(err)))}`,"err");
         }
         return;
     }
