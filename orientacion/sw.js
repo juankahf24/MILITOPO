@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · QR salida/llegada compacto */
-const MILITOPO_CACHE = "militopo-orientacion-resultados-descartes-hold-v1";
+const MILITOPO_CACHE = "militopo-orientacion-estados-exclusivos-v2";
 const CORE_ASSETS = [
   "./",
   "./index.html",
