@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=custom-maps-v7" />
+<link rel="stylesheet" href="css/styles.css?v=integrated-maps-v8" />
 
 
 
@@ -28,6 +28,11 @@
 .geotiff-opacity-active-panel .geotiff-opacity-label{display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center;margin:0;font-weight:800;letter-spacing:.08em}
 .geotiff-opacity-active-panel input[type=range]{grid-column:1/-1;width:100%;margin:2px 0 0}
 @media(max-width:640px){.geotiff-opacity-active-panel{margin-top:8px;padding:13px 14px}.geotiff-opacity-active-panel .geotiff-opacity-label{font-size:.9rem;letter-spacing:.045em}}
+.layer-pills-main{margin-bottom:10px!important}
+.custom-map-layer-stack{display:grid;gap:0;margin:0 0 14px}
+.custom-map-main-button{width:100%!important;min-height:72px!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;font-size:1.05rem!important;letter-spacing:.08em!important}
+.custom-map-layer-stack .geotiff-opacity-active-panel{margin:8px 0 0!important;width:100%;box-sizing:border-box}
+@media(max-width:640px){.custom-map-main-button{min-height:68px!important;font-size:1rem!important}.custom-map-layer-stack{margin-bottom:12px}}
 </style>
 </head>
 <body>
@@ -127,9 +132,12 @@
   <div id="orientationGeoTiffStatus" class="status warn">No hay ningún plano propio cargado.</div>
 </div>
 <div class="block autofill-test-panel" style="margin-top:16px"><label>Herramientas rápidas de prueba</label><div class="btn-row"><button class="btn green" onclick="autofillOrientationPoints()">✨ AUTORRELLENAR TODOS LOS PUNTOS</button><button class="btn red" onclick="clearAllOrientationPoints()">🧹 LIMPIAR TODOS LOS PUNTOS</button></div><div class="help">Solo para pruebas: rellena salida, llegada y balizas alrededor de una zona base para generar recorridos rápidamente.</div></div>
-<div class="layer-pills"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button><button class="layer-btn" data-layer="custom" onclick="switchLayer('custom')">📐 MI PLANO</button></div>
-<div id="orientationGeoTiffOpacityPanel" class="geotiff-opacity-active-panel" hidden>
-  <label class="geotiff-opacity-label">OPACIDAD DE MI PLANO <span id="orientationGeoTiffOpacityValue">100 %</span><input id="orientationGeoTiffOpacity" type="range" min="0" max="100" value="100" oninput="setOrientationGeoTiffOpacity(this.value)"></label>
+<div class="layer-pills layer-pills-main"><button class="layer-btn active" data-layer="mapant" onclick="switchLayer('mapant')">🧭 Orientación MAPANT</button><button class="layer-btn" data-layer="ign" onclick="switchLayer('ign')">🗺️ Topográfico IGN</button><button class="layer-btn" data-layer="pnoa" onclick="switchLayer('pnoa')">🛰️ Aérea PNOA</button></div>
+<div class="custom-map-layer-stack">
+  <button class="layer-btn custom-map-main-button" data-layer="custom" onclick="switchLayer('custom')">🗺️ MI PLANO</button>
+  <div id="orientationGeoTiffOpacityPanel" class="geotiff-opacity-active-panel" hidden>
+    <label class="geotiff-opacity-label">OPACIDAD DE MI PLANO <span id="orientationGeoTiffOpacityValue">100 %</span><input id="orientationGeoTiffOpacity" type="range" min="0" max="100" value="100" oninput="setOrientationGeoTiffOpacity(this.value)"></label>
+  </div>
 </div>
 <div id="map"></div>
 <div class="block" style="margin-top:16px"><label>BALIZA A EDITAR SOBRE EL PLANO</label><div class="grid two"><div><label>Baliza</label><select id="selectedPoint"></select><div class="btn-row"><button class="btn" onclick="useMyLocation()">📍 MI UBICACIÓN</button></div></div><div><label>Coordenada UTM de la selección</label><input id="selectedUtm" placeholder="30T 451520 4780100"></div></div><div class="btn-row"><button class="btn green" onclick="saveSelectedPoint()">💾 GUARDAR PUNTO</button><button class="btn red" onclick="clearSelectedPoint()">🧹 LIMPIAR PUNTO</button></div></div>
@@ -395,7 +403,7 @@
     </div>
 </div>
 
-<script src="js/app.js?v=custom-maps-v6"></script>
+<script src="js/app.js?v=integrated-maps-v8"></script>
 <script type="module" src="js/live/live-phase2.js?v=tabla-ordenable-v1"></script>
 <script>
 (function(){
@@ -404,7 +412,7 @@
     try {
       const cache = await caches.open("militopo-page-snapshot-v80-estado-filas-es");
       await cache.add(new Request(location.href, { cache: "reload" })).catch(function(){});
-      await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/live/live-phase2.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js"].map(function(url){
+      await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/live/live-phase2.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js", "./maps/index.json", "./maps/valle-perdido.kmz"].map(function(url){
         return cache.add(new Request(url, { cache: "reload" }));
       }));
     } catch (e) {}
