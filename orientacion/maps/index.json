@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "maps": [
     {
       "id": "valle-perdido",
@@ -7,6 +7,13 @@
       "format": "kmz",
       "file": "./maps/valle-perdido.kmz",
       "source": "Valle v2(2).kmz"
+    },
+    {
+      "id": "valle-perdido-v2",
+      "name": "Valle Perdido v2",
+      "format": "kmz",
+      "file": "./maps/valle-perdido-v2.kmz",
+      "source": "valle v1.kmz"
     }
   ]
 }
