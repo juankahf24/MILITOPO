@@ -419,7 +419,17 @@ function applyOrganizerColumnSort(rows) {
     let result = 0;
     if (typeof av === "string" || typeof bv === "string") result = String(av).localeCompare(String(bv), "es", { numeric:true, sensitivity:"base" });
     else result = Number(av) - Number(bv);
-    return result ? result * factor : liveParticipantIdCompare(a, b);
+    if (result) return result * factor;
+    // Al ordenar por progreso, los empates se resuelven siempre por menor tiempo ajustado.
+    if (organizerSort.key === "progress") {
+      const adjustedDiff = organizerSortValue(a, "adjustedTime") - organizerSortValue(b, "adjustedTime");
+      if (adjustedDiff) return adjustedDiff;
+      const rawDiff = organizerSortValue(a, "totalTime") - organizerSortValue(b, "totalTime");
+      if (rawDiff) return rawDiff;
+      const discardedDiff = organizerSortValue(a, "discarded") - organizerSortValue(b, "discarded");
+      if (discardedDiff) return discardedDiff;
+    }
+    return liveParticipantIdCompare(a, b);
   });
 }
 function updateOrganizerSortHeaders() {
@@ -433,7 +443,7 @@ function updateOrganizerSortHeaders() {
 function setOrganizerSort(key) {
   if (!key) return;
   if (organizerSort.key === key) organizerSort.direction = organizerSort.direction === "asc" ? "desc" : "asc";
-  else organizerSort = { key, direction:"asc" };
+  else organizerSort = { key, direction:key === "progress" ? "desc" : "asc" };
   updateOrganizerSortHeaders();
   renderOrganizerParticipants(Object.fromEntries(organizerLatestRows.map((p, i) => [String(p?.participantId || i), p])));
 }
