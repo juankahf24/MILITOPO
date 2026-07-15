@@ -1811,7 +1811,7 @@ function applyParticipantSnapshotObject(snap,silent=true){
         log.eventId=EVENT_DATA.eventId;
         log.participantId=pid;
         log.routeId=route.routeId;
-        if(!Array.isArray(log.scans))log.scans=[];
+        if(!Array.isArray(log.scans))log.scans=[];if(!Array.isArray(log.track))log.track=[];
         if(!Array.isArray(log.missingControls))log.missingControls=[];
         save();
         renderLoaded();
@@ -2534,6 +2534,27 @@ function gpsRefreshState(){
     if(gpsLastPosition)processGpsPosition(gpsLastPosition);
     else{setGpsStatus("Salida registrada. Esperando posición GPS...","");updateGpsMetrics(null,null,next.label||next.id)}
 }
+let militopoTrackLastSavedAt=0;
+let militopoTrackLastPoint=null;
+function recordRaceTrackPoint(pos){
+    try{
+        if(!log||!log.startTime||log.finishTime||!pos||!pos.coords)return;
+        const c=pos.coords,acc=Number(c.accuracy)||9999;
+        if(acc>45)return;
+        const now=Number(pos.timestamp)||Date.now();
+        const lat=Number(c.latitude),lon=Number(c.longitude);
+        if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
+        const elapsed=now-militopoTrackLastSavedAt;
+        let moved=999;
+        if(militopoTrackLastPoint)moved=gpsDistanceM(militopoTrackLastPoint.lat,militopoTrackLastPoint.lon,lat,lon);
+        if(militopoTrackLastPoint&&elapsed<4000&&moved<4)return;
+        if(!Array.isArray(log.track))log.track=[];
+        log.track.push({timestamp:new Date(now).toISOString(),lat,lon,accuracy:Math.round(acc*10)/10,altitude:Number.isFinite(Number(c.altitude))?Number(c.altitude):null,speed:Number.isFinite(Number(c.speed))?Number(c.speed):null,heading:Number.isFinite(Number(c.heading))?Number(c.heading):null});
+        if(log.track.length>12000)log.track.splice(0,log.track.length-12000);
+        militopoTrackLastSavedAt=now;militopoTrackLastPoint={lat,lon};
+        if(log.track.length%5===0)save();
+    }catch(e){console.warn('No se pudo guardar punto de track',e)}
+}
 function processGpsPosition(pos){
     gpsLastPosition=pos;
     const acc=Number(pos&&pos.coords&&pos.coords.accuracy)||9999;
@@ -2549,6 +2570,7 @@ function processGpsPosition(pos){
         updateGpsMetrics(null,acc,"—");
         return;
     }
+    recordRaceTrackPoint(pos);
 
     const finishTarget=gpsFinishPoint();
     let finishDist=null;
