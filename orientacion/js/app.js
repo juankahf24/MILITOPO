@@ -1,7 +1,7 @@
 /* MILITOPO Orientación · cargador modular seguro fase 2
    No contiene lógica de la app: carga los bloques en orden clásico para mantener compatibilidad. */
 (function(){
-  var VERSION = "analysis-phase1-v13";
+  var VERSION = "analysis-penalties-v14";
   var files = [
     "js/core/app-main.js",
     "js/pdf/pdf-professional.js",
