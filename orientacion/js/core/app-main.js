@@ -10123,6 +10123,21 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   function trackPoints(r){const t=Array.isArray(r.track)?r.track:(Array.isArray(r.gpsTrack)?r.gpsTrack:[]);return t.filter(p=>Number.isFinite(Number(p.lat??p.latitude))&&Number.isFinite(Number(p.lng??p.lon??p.longitude)))}
   function haversineM(a,b){const R=6371000,rad=x=>x*Math.PI/180;const lat1=rad(Number(a.lat??a.latitude)),lat2=rad(Number(b.lat??b.latitude));const dlat=lat2-lat1,dlon=rad(Number(b.lng??b.lon??b.longitude)-Number(a.lng??a.lon??a.longitude));const h=Math.sin(dlat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dlon/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(h)))}
   function trackDistanceM(r){const pts=trackPoints(r);let d=0;for(let i=1;i<pts.length;i++){const x=haversineM(pts[i-1],pts[i]);if(Number.isFinite(x)&&x<500)d+=x}return pts.length>1?d:null}
+  function routeIdealDistanceM(r){
+    const route=resultRoute(r);if(!route)return null;
+    const idx=(state.routes||[]).indexOf(route);
+    const metric=idx>=0?(state.metrics||[])[idx]:null;
+    const km=Number(metric?.distanceKm);
+    if(Number.isFinite(km)&&km>0)return km*1000;
+    try{const fallback=Number(routeDistanceKm(route));return Number.isFinite(fallback)&&fallback>0?fallback*1000:null}catch(_){return null}
+  }
+  function routeEfficiencyData(r){
+    const real=trackDistanceM(r),ideal=routeIdealDistanceM(r),points=trackPoints(r).length;
+    if(!Number.isFinite(real)||!Number.isFinite(ideal)||real<=0||ideal<=0||points<2)return null;
+    const percent=ideal/real*100;
+    if(!Number.isFinite(percent)||percent<=0)return null;
+    return {real,ideal,percent,points};
+  }
   function participantLabel(r){const name=resultParticipantName(r)||r.participantId||'--';return String(name)}
   function resultSegmentTimes(r){
     const route=resultRoute(r);if(!route)return [];
@@ -10157,6 +10172,8 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
     const valid=rs.filter(r=>Number.isFinite(adjustedResultMs(r))).sort((a,b)=>adjustedResultMs(a)-adjustedResultMs(b));
     const winner=valid[0]||null,slowest=valid.length?valid[valid.length-1]:null;
     const distances=rs.map(trackDistanceM).filter(Number.isFinite);
+    const efficiencyRanking=rs.map(r=>({r,data:routeEfficiencyData(r)})).filter(x=>x.data).sort((a,b)=>b.data.percent-a.data.percent);
+    const mostEfficient=efficiencyRanking[0]||null;
     const cards=[
       ['Participantes con resultado',rs.length],
       ['Finalizados OK',completed],
@@ -10164,6 +10181,7 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
       ['Tiempo medio',rawTimes.length?formatDuration(Math.round(rawTimes.reduce((a,b)=>a+b,0)/rawTimes.length)):'--'],
       ['Tiempo central (mediana)',rawTimes.length?formatDuration(Math.round(median(rawTimes))):'--'],
       ['Distancia real media',distances.length?`${(distances.reduce((a,b)=>a+b,0)/distances.length/1000).toFixed(2)} km`:'Sin tracks'],
+      ['🎯 Participante más eficiente',mostEfficient?`${participantLabel(mostEfficient.r)} · ${mostEfficient.data.percent.toFixed(1)} % · ${(mostEfficient.data.ideal/1000).toFixed(2)} / ${(mostEfficient.data.real/1000).toFixed(2)} km`:'Sin tracks'],
       ['Mayor tiempo',slowest?`${participantLabel(slowest)} · ${formatAnalysisMs(adjustedResultMs(slowest))}`:'--'],
       ['Tramos configurados',segmentDefinitions().length]
     ];
@@ -10192,7 +10210,7 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
 
   function archivePayload(){
     ensureRaceAnalysisState();
-    return {format:'MILITOPO_RACE_ARCHIVE',version:1,createdAt:new Date().toISOString(),appVersion:'V14_ANALISIS_PENALIZACIONES',eventId:state.eventId,eventName:state.eventName,state:JSON.parse(JSON.stringify(state)),analysis:{segments:segmentDefinitions(),generatedAt:new Date().toISOString()}};
+    return {format:'MILITOPO_RACE_ARCHIVE',version:1,createdAt:new Date().toISOString(),appVersion:'V15_ANALISIS_EFICIENCIA',eventId:state.eventId,eventName:state.eventName,state:JSON.parse(JSON.stringify(state)),analysis:{segments:segmentDefinitions(),generatedAt:new Date().toISOString()}};
   }
   window.downloadMilitopoRaceArchive=async function(){
     try{saveState();const payload=archivePayload();const safe=(state.eventName||state.eventId||'carrera').replace(/[^a-z0-9_-]+/gi,'_');if(typeof JSZip!=='undefined'){const zip=new JSZip();zip.file('carrera.json',JSON.stringify(payload));zip.file('LEER_PRIMERO.txt','Archivo completo de carrera MILITOPO. Ábrelo desde PASO 7 > ARCHIVO.');const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`MILITOPO_CARRERA_${safe}.militopo`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}else downloadText(`MILITOPO_CARRERA_${safe}.militopo`,JSON.stringify(payload));const st=document.getElementById('raceArchiveStatus');if(st){st.className='status ok';st.textContent='Carrera completa guardada correctamente.'}toast('Archivo completo de carrera guardado')}catch(e){console.error(e);toast('No se pudo guardar la carrera: '+(e.message||e))}
