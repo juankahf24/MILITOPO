@@ -10010,3 +10010,179 @@ function fitOrientationGeoTiff(){if(map&&orientationGeoTiffRuntime.bounds){map.f
 async function removeOrientationGeoTiff(){if(!orientationGeoTiffRuntime.ready)return;if(!confirm(`¿Eliminar "${orientationGeoTiffRuntime.name}" de la biblioteca local de este dispositivo?`))return;const removedId=orientationGeoTiffRuntime.id;hideOrientationGeoTiffOverlay();await deleteOrientationGeoTiffRecord(removedId);if(orientationGeoTiffRuntime.url)URL.revokeObjectURL(orientationGeoTiffRuntime.url);Object.assign(orientationGeoTiffRuntime,{ready:false,url:null,dataUrl:null,bounds:null,imageWidth:0,imageHeight:0,overlay:null,name:"",epsg:null,id:null,format:null,builtin:false});state.customGeoTiffMeta=null;const records=await listOrientationMapRecords();if(records.length){await saveOrientationGeoTiffRecord(records[0]);applyOrientationGeoTiffRecord(records[0])}else{if(state.selectedMapLayer==="custom")switchLayer("mapant");await refreshOrientationMapLibrary();updateOrientationGeoTiffUi();setOrientationGeoTiffStatus("No hay ningún plano propio cargado.","warn")}saveState()}
 async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orientationGeoTiffRuntime.ready)throw new Error("No hay plano propio cargado");let src=orientationGeoTiffRuntime.dataUrl;if(!src){const record=await orientationDbGet(orientationGeoTiffRuntime.id);src=record&&record.dataUrl;if(!src)throw new Error("No se pudo leer la imagen guardada")}const b=orientationGeoTiffRuntime.bounds,sw=b[0],ne=b[1],west=sw[1],south=sw[0],east=ne[1],north=ne[0],inter={west:Math.max(west,bounds.west),east:Math.min(east,bounds.east),south:Math.max(south,bounds.south),north:Math.min(north,bounds.north)};if(inter.west>=inter.east||inter.south>=inter.north)throw new Error("El marco PDF queda fuera del plano importado");const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=()=>reject(new Error("No se pudo abrir el plano para el PDF"));i.src=src});const sx=(inter.west-west)/(east-west)*img.naturalWidth,sy=(north-inter.north)/(north-south)*img.naturalHeight,swp=(inter.east-inter.west)/(east-west)*img.naturalWidth,shp=(inter.north-inter.south)/(north-south)*img.naturalHeight,c=document.createElement("canvas");c.width=width;c.height=height;const ctx=c.getContext("2d");ctx.fillStyle="#ffffff";ctx.fillRect(0,0,width,height);const dx=(inter.west-bounds.west)/(bounds.east-bounds.west)*width,dy=(bounds.north-inter.north)/(bounds.north-bounds.south)*height,dw=(inter.east-inter.west)/(bounds.east-bounds.west)*width,dh=(inter.north-inter.south)/(bounds.north-bounds.south)*height;ctx.drawImage(img,sx,sy,swp,shp,dx,dy,dw,dh);return c.toDataURL("image/png")}
 /* ===== FIN BIBLIOTECA DE PLANOS GEOTIFF / KMZ V2 ===== */
+
+/* =========================================================
+   MILITOPO V13 · PASO 7 ANÁLISIS + TRAMOS MANUALES
+   Fase 1: configuración común por posición, análisis de
+   resultados existentes y archivo completo reabrible.
+   ========================================================= */
+(function(){
+  const originalNormalizeAppStep=normalizeAppStep;
+  normalizeAppStep=function(n){
+    n=Number(n);
+    return Number.isFinite(n)?Math.min(7,Math.max(1,Math.round(n))):1;
+  };
+
+  function ensureRaceAnalysisState(){
+    if(!state.raceAnalysis||typeof state.raceAnalysis!=="object")state.raceAnalysis={};
+    if(!Array.isArray(state.raceAnalysis.segments))state.raceAnalysis.segments=[];
+    if(!state.raceAnalysis.version)state.raceAnalysis.version=1;
+    if(!state.raceAnalysis.createdAt)state.raceAnalysis.createdAt=new Date().toISOString();
+    if(!state.raceAnalysis.trackSettings)state.raceAnalysis.trackSettings={enabled:true,minSeconds:4,minDistanceM:4,maxAccuracyM:35};
+    return state.raceAnalysis;
+  }
+
+  function controlsCountForSegments(){
+    const routes=(state.routes||[]).filter(r=>!isRouteSkipped(r));
+    const counts=routes.map(r=>(r.points||[]).filter(id=>id!=="START"&&id!=="FINISH").length).filter(Number.isFinite);
+    return counts.length?Math.min(...counts):Math.max(0,Number(state.controlsPerRoute)||0);
+  }
+
+  function balancedBoundaries(count,total){
+    const out=[];
+    for(let i=1;i<count;i++)out.push(Math.max(1,Math.min(total-1,Math.round(total*i/count))));
+    return [...new Set(out)].sort((a,b)=>a-b);
+  }
+
+  window.buildRaceSegmentsEditor=function(resetEvenly=false){
+    const analysis=ensureRaceAnalysisState();
+    const total=controlsCountForSegments();
+    const count=Math.max(2,Math.min(6,Number(document.getElementById("raceSegmentCount")?.value||analysis.segmentCount||3)));
+    let boundaries=Array.isArray(analysis.boundaries)?analysis.boundaries.slice():[];
+    if(resetEvenly||boundaries.length!==count-1)boundaries=balancedBoundaries(count,total);
+    const names=Array.isArray(analysis.segmentNames)?analysis.segmentNames.slice():[];
+    const editor=document.getElementById("raceSegmentsEditor");
+    if(!editor)return;
+    editor.innerHTML=Array.from({length:count},(_,i)=>{
+      const end=i===count-1?total:(boundaries[i]||Math.max(1,Math.round(total*(i+1)/count)));
+      return `<div class="race-segment-row">
+        <div><label>Nombre del tramo ${i+1}</label><input id="raceSegmentName${i}" value="${escapeHtml(names[i]||`Tramo ${i+1}`)}" maxlength="40"></div>
+        <div><label>${i===count-1?"Final del tramo":"Termina después del control"}</label>${i===count-1?`<input value="LLEGADA" disabled>`:`<select id="raceSegmentEnd${i}">${Array.from({length:Math.max(0,total-1)},(_,j)=>j+1).map(v=>`<option value="${v}" ${v===end?"selected":""}>Control ${v}</option>`).join("")}</select>`}</div>
+      </div>`;
+    }).join("");
+    const status=document.getElementById("raceSegmentsStatus");
+    if(status)status.innerHTML=total?`Todos los recorridos activos se analizarán con <b>${count} tramos</b> sobre <b>${total} controles</b>.`:`Genera recorridos antes de configurar los tramos.`;
+  };
+
+  window.distributeRaceSegmentsEvenly=function(){buildRaceSegmentsEditor(true);toast("Tramos distribuidos de forma equilibrada")};
+
+  function readSegmentsEditor(){
+    const total=controlsCountForSegments();
+    const count=Math.max(2,Math.min(6,Number(document.getElementById("raceSegmentCount")?.value||3)));
+    const names=[];const boundaries=[];
+    for(let i=0;i<count;i++){
+      names.push(String(document.getElementById(`raceSegmentName${i}`)?.value||`Tramo ${i+1}`).trim()||`Tramo ${i+1}`);
+      if(i<count-1)boundaries.push(Number(document.getElementById(`raceSegmentEnd${i}`)?.value||0));
+    }
+    if(!total)throw new Error("Primero genera recorridos válidos");
+    if(boundaries.some(v=>!Number.isInteger(v)||v<1||v>=total))throw new Error("Hay finales de tramo fuera del recorrido");
+    for(let i=1;i<boundaries.length;i++)if(boundaries[i]<=boundaries[i-1])throw new Error("Los finales de tramo deben avanzar en orden y no pueden repetirse");
+    return {segmentCount:count,segmentNames:names,boundaries,totalControls:total,savedAt:new Date().toISOString()};
+  }
+
+  window.saveRaceSegmentsConfig=function(){
+    try{
+      const cfg=readSegmentsEditor();
+      const analysis=ensureRaceAnalysisState();
+      Object.assign(analysis,cfg);
+      saveState();previewRaceSegmentsForRoutes();
+      const status=document.getElementById("raceSegmentsStatus");if(status){status.className="status ok";status.textContent=`Configuración guardada: ${cfg.segmentCount} tramos para ${cfg.totalControls} controles.`}
+      toast("Tramos de carrera guardados");
+    }catch(e){const status=document.getElementById("raceSegmentsStatus");if(status){status.className="status err";status.textContent=e.message||String(e)}toast(e.message||"Configuración no válida")}
+  };
+
+  function segmentDefinitions(){
+    const a=ensureRaceAnalysisState();
+    const total=controlsCountForSegments();
+    const count=Math.max(2,Math.min(6,Number(a.segmentCount||3)));
+    const boundaries=(Array.isArray(a.boundaries)&&a.boundaries.length===count-1?a.boundaries:balancedBoundaries(count,total));
+    const ends=[...boundaries,total];let start=0;
+    return ends.map((end,i)=>({index:i,name:(a.segmentNames&&a.segmentNames[i])||`Tramo ${i+1}`,startControl:start,endControl:end,isFinal:i===ends.length-1})).map((x,i,arr)=>({...x,startControl:i===0?0:arr[i-1].endControl}));
+  }
+
+  window.previewRaceSegmentsForRoutes=function(){
+    const box=document.getElementById("raceSegmentsPreview");if(!box)return;
+    const routes=(state.routes||[]).filter(r=>!isRouteSkipped(r));
+    const defs=segmentDefinitions();
+    if(!routes.length){box.innerHTML='<div class="status warn">No hay recorridos activos para mostrar.</div>';return}
+    box.innerHTML=routes.slice(0,12).map(r=>{
+      const controls=(r.points||[]).filter(id=>id!=="START"&&id!=="FINISH");
+      const parts=defs.map(d=>{const start=d.startControl===0?"SALIDA":controls[d.startControl-1]||`Control ${d.startControl}`;const end=d.isFinal?"LLEGADA":controls[d.endControl-1]||`Control ${d.endControl}`;return `<b>${escapeHtml(d.name)}:</b> ${escapeHtml(start)} → ${escapeHtml(end)}`}).join(" · ");
+      return `<div class="race-route-preview"><strong>${escapeHtml(r.routeId||r.participantId||"Recorrido")}</strong><br>${parts}</div>`;
+    }).join("")+(routes.length>12?`<div class="status warn">Vista previa limitada a 12 de ${routes.length} recorridos.</div>`:"");
+  };
+
+  function resultRoute(r){return (state.routes||[]).find(x=>String(x.routeId||"")===String(r.routeId||"")||String(x.participantId||"")===String(r.participantId||""));}
+  function correctOrSkippedScanMap(r){const m=new Map();(r.scans||[]).forEach(s=>{const st=String(s.st||s.status||"").toLowerCase();const id=String(s.id||s.controlId||s.expectedControlId||"");if(id&&(st==="correct"||st==="skipped")&&!m.has(id))m.set(id,{...s,status:st,time:s.timestamp||s.time||s.ts||null})});return m}
+  function toMs(v){const n=new Date(v).getTime();return Number.isFinite(n)?n:null}
+  function resultSegmentTimes(r){
+    const route=resultRoute(r);if(!route)return [];
+    const controls=(route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");const scanMap=correctOrSkippedScanMap(r);const defs=segmentDefinitions();
+    let previous=toMs(r.startTime);if(previous===null)return defs.map(d=>({...d,ms:null,status:"sin salida"}));
+    return defs.map(d=>{
+      let endTime=null;let status="ok";
+      if(d.isFinal)endTime=toMs(r.finishTime);
+      else{const id=controls[d.endControl-1];const scan=scanMap.get(id);endTime=scan?toMs(scan.time):null;if(scan&&scan.status==="skipped")status="descartado"}
+      const ms=endTime!==null&&previous!==null&&endTime>=previous?endTime-previous:null;
+      if(endTime!==null)previous=endTime;else status="incompleto";
+      return {...d,ms,status};
+    });
+  }
+  function formatAnalysisMs(ms){return ms==null?"--":formatDuration(ms)}
+  function median(values){const a=values.filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2}
+  function analysisResults(){return typeof activeImportedResults==="function"?activeImportedResults():(state.importedResults||[])}
+
+  window.openRaceAnalysisTab=function(name){
+    document.querySelectorAll('.analysis-tab').forEach(b=>b.classList.toggle('active',b.dataset.analysisTab===name));
+    document.querySelectorAll('.analysis-panel').forEach(p=>p.classList.remove('active'));
+    const id='analysisPanel'+name.charAt(0).toUpperCase()+name.slice(1);document.getElementById(id)?.classList.add('active');
+  };
+
+  function renderAnalysisSummary(){
+    const rs=analysisResults();const times=rs.map(resultMs).filter(Number.isFinite);const completed=rs.filter(r=>r.completed).length;
+    const discarded=rs.reduce((n,r)=>n+(r.scans||[]).filter(s=>String(s.st||s.status).toLowerCase()==='skipped').length,0);
+    const pending=rs.reduce((n,r)=>n+(r.missingControls||[]).length,0);
+    const cards=[['Participantes con resultado',rs.length],['Finalizados OK',completed],['Mejor tiempo',times.length?formatDuration(Math.min(...times)):'--'],['Tiempo medio',times.length?formatDuration(Math.round(times.reduce((a,b)=>a+b,0)/times.length)):'--'],['Mediana',times.length?formatDuration(Math.round(median(times))):'--'],['Controles descartados',discarded],['Controles pendientes',pending],['Tramos configurados',segmentDefinitions().length]];
+    const box=document.getElementById('raceAnalysisSummaryCards');if(box)box.innerHTML=cards.map(([a,b])=>`<div class="analysis-metric-card"><small>${escapeHtml(String(a))}</small><strong>${escapeHtml(String(b))}</strong></div>`).join('');
+    const sorted=[...rs].sort((a,b)=>(resultMs(a)??Infinity)-(resultMs(b)??Infinity));
+    const table=document.getElementById('raceAnalysisRanking');if(table)table.innerHTML=sorted.length?`<table class="results-table"><thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo</th><th>Completados</th><th>Descartados</th><th>Pendientes</th></tr></thead><tbody>${sorted.map((r,i)=>{const scans=r.scans||[];return `<tr><td>${i+1}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||'--')}</td><td>${escapeHtml(r.routeId||'--')}</td><td>${formatAnalysisMs(resultMs(r))}</td><td>${scans.filter(s=>String(s.st||s.status).toLowerCase()==='correct').length}</td><td>${scans.filter(s=>String(s.st||s.status).toLowerCase()==='skipped').length}</td><td>${(r.missingControls||[]).length}</td></tr>`}).join('')}</tbody></table>`:'<div class="status warn">Todavía no hay resultados para analizar.</div>';
+  }
+
+  function renderAnalysisSegments(){
+    const rs=analysisResults();const defs=segmentDefinitions();const box=document.getElementById('raceAnalysisSegments');const status=document.getElementById('raceAnalysisSegmentsStatus');
+    if(!box)return;if(!rs.length){box.innerHTML='';if(status){status.className='status warn';status.textContent='Importa resultados para calcular los tramos.'}return}
+    if(status){status.className='status ok';status.textContent=`${defs.length} tramos aplicados por posición a ${rs.length} participante(s).`}
+    box.innerHTML=defs.map((d,di)=>{const rows=rs.map(r=>({r,seg:resultSegmentTimes(r)[di]})).sort((a,b)=>(a.seg?.ms??Infinity)-(b.seg?.ms??Infinity));const leader=rows.find(x=>Number.isFinite(x.seg?.ms))?.seg.ms??null;return `<div class="analysis-segment-card"><h3>🧩 ${escapeHtml(d.name)}</h3><div class="table-wrap"><table class="results-table"><thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo tramo</th><th>Diferencia</th><th>Estado</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${Number.isFinite(x.seg?.ms)?i+1:'--'}</td><td>${escapeHtml(resultParticipantName(x.r)||x.r.participantId||'--')}</td><td>${escapeHtml(x.r.routeId||'--')}</td><td>${formatAnalysisMs(x.seg?.ms)}</td><td>${Number.isFinite(x.seg?.ms)&&leader!==null?(x.seg.ms===leader?'—':'+'+formatDuration(x.seg.ms-leader)):'--'}</td><td>${escapeHtml(x.seg?.status||'incompleto')}</td></tr>`).join('')}</tbody></table></div></div>`}).join('');
+  }
+
+  function renderAnalysisSplits(){
+    const rs=analysisResults();const box=document.getElementById('raceAnalysisSplits');if(!box)return;
+    const max=Math.max(0,...rs.map(r=>{const route=resultRoute(r);return route?(route.points||[]).filter(x=>x!=='START'&&x!=='FINISH').length:0}));
+    if(!rs.length||!max){box.innerHTML='<div class="status warn">No hay parciales disponibles.</div>';return}
+    const headers=Array.from({length:max+1},(_,i)=>i===max?'Último → Llegada':`${i===0?'Salida':'C'+i} → C${i+1}`);
+    box.innerHTML=`<table class="results-table"><thead><tr><th>Participante</th>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rs.map(r=>{const route=resultRoute(r);const controls=(route?.points||[]).filter(x=>x!=='START'&&x!=='FINISH');const map=correctOrSkippedScanMap(r);let prev=toMs(r.startTime);const vals=controls.map(id=>{const t=toMs(map.get(id)?.time);const ms=t!==null&&prev!==null?t-prev:null;if(t!==null)prev=t;return ms});const ft=toMs(r.finishTime);vals.push(ft!==null&&prev!==null?ft-prev:null);return `<tr><td>${escapeHtml(resultParticipantName(r)||r.participantId||'--')}</td>${headers.map((_,i)=>`<td>${formatAnalysisMs(vals[i])}</td>`).join('')}</tr>`}).join('')}</tbody></table>`;
+  }
+
+  function renderAnalysisTracks(){const box=document.getElementById('raceAnalysisTracksSummary');if(!box)return;const rs=analysisResults();box.innerHTML=rs.map(r=>{const n=Array.isArray(r.track)?r.track.length:Array.isArray(r.gpsTrack)?r.gpsTrack.length:0;return `<div class="race-route-preview"><strong>${escapeHtml(resultParticipantName(r)||r.participantId||'--')}</strong> · ${n?`${n} posiciones GPS guardadas`:'Track todavía no recibido en el organizador'}</div>`}).join('')||'<div class="status warn">No hay participantes con resultado.</div>'}
+
+  window.renderRaceAnalysis=function(){ensureRaceAnalysisState();renderAnalysisSummary();renderAnalysisSegments();renderAnalysisSplits();renderAnalysisTracks();};
+
+  function archivePayload(){
+    ensureRaceAnalysisState();
+    return {format:'MILITOPO_RACE_ARCHIVE',version:1,createdAt:new Date().toISOString(),appVersion:'V13_ANALISIS_FASE1',eventId:state.eventId,eventName:state.eventName,state:JSON.parse(JSON.stringify(state)),analysis:{segments:segmentDefinitions(),generatedAt:new Date().toISOString()}};
+  }
+  window.downloadMilitopoRaceArchive=async function(){
+    try{saveState();const payload=archivePayload();const safe=(state.eventName||state.eventId||'carrera').replace(/[^a-z0-9_-]+/gi,'_');if(typeof JSZip!=='undefined'){const zip=new JSZip();zip.file('carrera.json',JSON.stringify(payload));zip.file('LEER_PRIMERO.txt','Archivo completo de carrera MILITOPO. Ábrelo desde PASO 7 > ARCHIVO.');const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`MILITOPO_CARRERA_${safe}.militopo`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}else downloadText(`MILITOPO_CARRERA_${safe}.militopo`,JSON.stringify(payload));const st=document.getElementById('raceArchiveStatus');if(st){st.className='status ok';st.textContent='Carrera completa guardada correctamente.'}toast('Archivo completo de carrera guardado')}catch(e){console.error(e);toast('No se pudo guardar la carrera: '+(e.message||e))}
+  };
+  window.importMilitopoRaceArchive=async function(file){
+    if(!file)return;const st=document.getElementById('raceArchiveStatus');try{if(st){st.className='status warn';st.textContent='Abriendo archivo de carrera...'}let text='';const buf=await file.arrayBuffer();const bytes=new Uint8Array(buf);if(bytes[0]===0x50&&bytes[1]===0x4b&&typeof JSZip!=='undefined'){const zip=await JSZip.loadAsync(buf);const entry=zip.file('carrera.json')||Object.values(zip.files).find(x=>x.name.endsWith('.json'));if(!entry)throw new Error('El archivo no contiene carrera.json');text=await entry.async('string')}else text=new TextDecoder().decode(bytes);const payload=JSON.parse(text);if(payload.format!=='MILITOPO_RACE_ARCHIVE'||!payload.state)throw new Error('No es un archivo de carrera MILITOPO válido');if(!confirm(`Se reemplazará el ejercicio abierto por "${payload.eventName||payload.eventId||'Carrera guardada'}". ¿Continuar?`))return;Object.keys(state).forEach(k=>delete state[k]);Object.assign(state,payload.state);ensureRaceAnalysisState();syncConfigToUi();rebuildPointsFromConfig(true);renderPointSelectors();renderPointsTable();renderIofDescriptionsEditor();updateParticipantSelect();updateRouteCountInfo();renderMapMarkers();saveState();buildRaceSegmentsEditor(false);previewRaceSegmentsForRoutes();renderResultsControl();renderRaceAnalysis();goStep(7,{silent:true});if(st){st.className='status ok';st.textContent=`Carrera cargada: ${payload.eventName||payload.eventId}`};toast('Carrera completa restaurada')}catch(e){console.error(e);if(st){st.className='status err';st.textContent='No se pudo abrir: '+(e.message||e)}toast('Archivo de carrera no válido')}finally{const input=document.getElementById('militopoRaceArchiveInput');if(input)input.value=''}
+  };
+
+  const oldGoStep=goStep;
+  goStep=function(n,opts={}){const out=oldGoStep(n,opts);if(Number(currentAppStep)===5){ensureRaceAnalysisState();const sel=document.getElementById('raceSegmentCount');if(sel)sel.value=String(state.raceAnalysis.segmentCount||3);buildRaceSegmentsEditor(false);previewRaceSegmentsForRoutes()}if(Number(currentAppStep)===7)renderRaceAnalysis();return out};
+
+  const oldReset=resetStateToFreshEvent;
+  resetStateToFreshEvent=function(){const id=oldReset.apply(this,arguments);state.raceAnalysis={version:1,segments:[],segmentCount:3,segmentNames:['Tramo 1','Tramo 2','Tramo 3'],boundaries:[],trackSettings:{enabled:true,minSeconds:4,minDistanceM:4,maxAccuracyM:35}};return id};
+
+  document.addEventListener('DOMContentLoaded',()=>{ensureRaceAnalysisState();setTimeout(()=>{const sel=document.getElementById('raceSegmentCount');if(sel)sel.value=String(state.raceAnalysis.segmentCount||3);buildRaceSegmentsEditor(false)},500)});
+})();
