@@ -10029,6 +10029,7 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
     if(!state.raceAnalysis.version)state.raceAnalysis.version=1;
     if(!state.raceAnalysis.createdAt)state.raceAnalysis.createdAt=new Date().toISOString();
     if(!state.raceAnalysis.trackSettings)state.raceAnalysis.trackSettings={enabled:true,minSeconds:4,minDistanceM:4,maxAccuracyM:35};
+    if(!Number.isFinite(Number(state.raceAnalysis.discardPenaltyMinutes)))state.raceAnalysis.discardPenaltyMinutes=5;
     return state.raceAnalysis;
   }
 
@@ -10115,17 +10116,30 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   function resultRoute(r){return (state.routes||[]).find(x=>String(x.routeId||"")===String(r.routeId||"")||String(x.participantId||"")===String(r.participantId||""));}
   function correctOrSkippedScanMap(r){const m=new Map();(r.scans||[]).forEach(s=>{const st=String(s.st||s.status||"").toLowerCase();const id=String(s.id||s.controlId||s.expectedControlId||"");if(id&&(st==="correct"||st==="skipped")&&!m.has(id))m.set(id,{...s,status:st,time:s.timestamp||s.time||s.ts||null})});return m}
   function toMs(v){const n=new Date(v).getTime();return Number.isFinite(n)?n:null}
+  function discardPenaltyMs(){ensureRaceAnalysisState();return Math.max(0,Number(state.raceAnalysis.discardPenaltyMinutes)||5)*60000}
+  window.saveRaceDiscardPenalty=function(){const el=document.getElementById('raceDiscardPenaltyMinutes');ensureRaceAnalysisState();state.raceAnalysis.discardPenaltyMinutes=Math.max(0,Number(el?.value)||5);saveState();renderRaceAnalysis();toast('Penalización de descartes guardada')};
+  function skippedCount(r){return (r.scans||[]).filter(s=>String(s.st||s.status||'').toLowerCase()==='skipped').length}
+  function adjustedResultMs(r){const raw=resultMs(r);return Number.isFinite(raw)?raw+skippedCount(r)*discardPenaltyMs():null}
+  function trackPoints(r){const t=Array.isArray(r.track)?r.track:(Array.isArray(r.gpsTrack)?r.gpsTrack:[]);return t.filter(p=>Number.isFinite(Number(p.lat??p.latitude))&&Number.isFinite(Number(p.lng??p.lon??p.longitude)))}
+  function haversineM(a,b){const R=6371000,rad=x=>x*Math.PI/180;const lat1=rad(Number(a.lat??a.latitude)),lat2=rad(Number(b.lat??b.latitude));const dlat=lat2-lat1,dlon=rad(Number(b.lng??b.lon??b.longitude)-Number(a.lng??a.lon??a.longitude));const h=Math.sin(dlat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dlon/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(h)))}
+  function trackDistanceM(r){const pts=trackPoints(r);let d=0;for(let i=1;i<pts.length;i++){const x=haversineM(pts[i-1],pts[i]);if(Number.isFinite(x)&&x<500)d+=x}return pts.length>1?d:null}
+  function participantLabel(r){const name=resultParticipantName(r)||r.participantId||'--';return String(name)}
   function resultSegmentTimes(r){
     const route=resultRoute(r);if(!route)return [];
     const controls=(route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");const scanMap=correctOrSkippedScanMap(r);const defs=segmentDefinitions();
-    let previous=toMs(r.startTime);if(previous===null)return defs.map(d=>({...d,ms:null,status:"sin salida"}));
+    let previous=toMs(r.startTime);if(previous===null)return defs.map(d=>({...d,ms:null,rawMs:null,penaltyMs:0,discarded:0,status:"sin salida"}));
     return defs.map(d=>{
-      let endTime=null;let status="ok";
+      let endTime=null;let status="Correcto";
       if(d.isFinal)endTime=toMs(r.finishTime);
-      else{const id=controls[d.endControl-1];const scan=scanMap.get(id);endTime=scan?toMs(scan.time):null;if(scan&&scan.status==="skipped")status="descartado"}
-      const ms=endTime!==null&&previous!==null&&endTime>=previous?endTime-previous:null;
-      if(endTime!==null)previous=endTime;else status="incompleto";
-      return {...d,ms,status};
+      else{const id=controls[d.endControl-1];const scan=scanMap.get(id);endTime=scan?toMs(scan.time):null}
+      const rawMs=endTime!==null&&previous!==null&&endTime>=previous?endTime-previous:null;
+      const segmentControls=controls.slice(d.startControl,d.endControl);
+      const discarded=segmentControls.reduce((n,id)=>n+(scanMap.get(id)?.status==='skipped'?1:0),0);
+      const penaltyMs=discarded*discardPenaltyMs();
+      const ms=rawMs===null?null:rawMs+penaltyMs;
+      if(endTime!==null)previous=endTime;else status="Incompleto";
+      if(discarded)status=`${discarded} descartado${discarded===1?'':'s'} · +${formatDuration(penaltyMs)}`;
+      return {...d,ms,rawMs,penaltyMs,discarded,status};
     });
   }
   function formatAnalysisMs(ms){return ms==null?"--":formatDuration(ms)}
@@ -10139,20 +10153,29 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   };
 
   function renderAnalysisSummary(){
-    const rs=analysisResults();const times=rs.map(resultMs).filter(Number.isFinite);const completed=rs.filter(r=>r.completed).length;
-    const discarded=rs.reduce((n,r)=>n+(r.scans||[]).filter(s=>String(s.st||s.status).toLowerCase()==='skipped').length,0);
-    const pending=rs.reduce((n,r)=>n+(r.missingControls||[]).length,0);
-    const cards=[['Participantes con resultado',rs.length],['Finalizados OK',completed],['Mejor tiempo',times.length?formatDuration(Math.min(...times)):'--'],['Tiempo medio',times.length?formatDuration(Math.round(times.reduce((a,b)=>a+b,0)/times.length)):'--'],['Mediana',times.length?formatDuration(Math.round(median(times))):'--'],['Controles descartados',discarded],['Controles pendientes',pending],['Tramos configurados',segmentDefinitions().length]];
+    const rs=analysisResults();const rawTimes=rs.map(resultMs).filter(Number.isFinite);const completed=rs.filter(r=>r.completed).length;
+    const valid=rs.filter(r=>Number.isFinite(adjustedResultMs(r))).sort((a,b)=>adjustedResultMs(a)-adjustedResultMs(b));
+    const winner=valid[0]||null,slowest=valid.length?valid[valid.length-1]:null;
+    const distances=rs.map(trackDistanceM).filter(Number.isFinite);
+    const cards=[
+      ['Participantes con resultado',rs.length],
+      ['Finalizados OK',completed],
+      ['🏆 Ganador · menor tiempo',winner?`${participantLabel(winner)} · ${formatAnalysisMs(adjustedResultMs(winner))}`:'--'],
+      ['Tiempo medio',rawTimes.length?formatDuration(Math.round(rawTimes.reduce((a,b)=>a+b,0)/rawTimes.length)):'--'],
+      ['Tiempo central (mediana)',rawTimes.length?formatDuration(Math.round(median(rawTimes))):'--'],
+      ['Distancia real media',distances.length?`${(distances.reduce((a,b)=>a+b,0)/distances.length/1000).toFixed(2)} km`:'Sin tracks'],
+      ['Mayor tiempo',slowest?`${participantLabel(slowest)} · ${formatAnalysisMs(adjustedResultMs(slowest))}`:'--'],
+      ['Tramos configurados',segmentDefinitions().length]
+    ];
     const box=document.getElementById('raceAnalysisSummaryCards');if(box)box.innerHTML=cards.map(([a,b])=>`<div class="analysis-metric-card"><small>${escapeHtml(String(a))}</small><strong>${escapeHtml(String(b))}</strong></div>`).join('');
-    const sorted=[...rs].sort((a,b)=>(resultMs(a)??Infinity)-(resultMs(b)??Infinity));
-    const table=document.getElementById('raceAnalysisRanking');if(table)table.innerHTML=sorted.length?`<table class="results-table"><thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo</th><th>Completados</th><th>Descartados</th><th>Pendientes</th></tr></thead><tbody>${sorted.map((r,i)=>{const scans=r.scans||[];return `<tr><td>${i+1}</td><td>${escapeHtml(resultParticipantName(r)||r.participantId||'--')}</td><td>${escapeHtml(r.routeId||'--')}</td><td>${formatAnalysisMs(resultMs(r))}</td><td>${scans.filter(s=>String(s.st||s.status).toLowerCase()==='correct').length}</td><td>${scans.filter(s=>String(s.st||s.status).toLowerCase()==='skipped').length}</td><td>${(r.missingControls||[]).length}</td></tr>`}).join('')}</tbody></table>`:'<div class="status warn">Todavía no hay resultados para analizar.</div>';
+    const table=document.getElementById('raceAnalysisRanking');if(table)table.innerHTML=valid.length?`<table class="results-table"><thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo real</th><th>Penalización</th><th>Tiempo ajustado</th><th>Distancia real</th></tr></thead><tbody>${valid.map((r,i)=>{const pen=skippedCount(r)*discardPenaltyMs(),dist=trackDistanceM(r);return `<tr><td>${i+1}</td><td>${escapeHtml(participantLabel(r))}</td><td>${escapeHtml(r.routeId||'--')}</td><td>${formatAnalysisMs(resultMs(r))}</td><td>${pen?'+'+formatDuration(pen):'—'}</td><td><b>${formatAnalysisMs(adjustedResultMs(r))}</b></td><td>${Number.isFinite(dist)?(dist/1000).toFixed(2)+' km':'--'}</td></tr>`}).join('')}</tbody></table>`:'<div class="status warn">Todavía no hay resultados para analizar.</div>';
   }
 
   function renderAnalysisSegments(){
     const rs=analysisResults();const defs=segmentDefinitions();const box=document.getElementById('raceAnalysisSegments');const status=document.getElementById('raceAnalysisSegmentsStatus');
     if(!box)return;if(!rs.length){box.innerHTML='';if(status){status.className='status warn';status.textContent='Importa resultados para calcular los tramos.'}return}
     if(status){status.className='status ok';status.textContent=`${defs.length} tramos aplicados por posición a ${rs.length} participante(s).`}
-    box.innerHTML=defs.map((d,di)=>{const rows=rs.map(r=>({r,seg:resultSegmentTimes(r)[di]})).sort((a,b)=>(a.seg?.ms??Infinity)-(b.seg?.ms??Infinity));const leader=rows.find(x=>Number.isFinite(x.seg?.ms))?.seg.ms??null;return `<div class="analysis-segment-card"><h3>🧩 ${escapeHtml(d.name)}</h3><div class="table-wrap"><table class="results-table"><thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo tramo</th><th>Diferencia</th><th>Estado</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${Number.isFinite(x.seg?.ms)?i+1:'--'}</td><td>${escapeHtml(resultParticipantName(x.r)||x.r.participantId||'--')}</td><td>${escapeHtml(x.r.routeId||'--')}</td><td>${formatAnalysisMs(x.seg?.ms)}</td><td>${Number.isFinite(x.seg?.ms)&&leader!==null?(x.seg.ms===leader?'—':'+'+formatDuration(x.seg.ms-leader)):'--'}</td><td>${escapeHtml(x.seg?.status||'incompleto')}</td></tr>`).join('')}</tbody></table></div></div>`}).join('');
+    box.innerHTML=defs.map((d,di)=>{const rows=rs.map(r=>({r,seg:resultSegmentTimes(r)[di]})).sort((a,b)=>(a.seg?.ms??Infinity)-(b.seg?.ms??Infinity));const leader=rows.find(x=>Number.isFinite(x.seg?.ms))?.seg.ms??null;return `<div class="analysis-segment-card"><h3>🧩 ${escapeHtml(d.name)}</h3><div class="table-wrap"><table class="results-table"><thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo real</th><th>Penalización</th><th>Tiempo ajustado</th><th>Diferencia</th><th>Estado</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${Number.isFinite(x.seg?.ms)?i+1:'--'}</td><td>${escapeHtml(resultParticipantName(x.r)||x.r.participantId||'--')}</td><td>${escapeHtml(x.r.routeId||'--')}</td><td>${formatAnalysisMs(x.seg?.rawMs)}</td><td>${x.seg?.penaltyMs?'+'+formatDuration(x.seg.penaltyMs):'—'}</td><td><b>${formatAnalysisMs(x.seg?.ms)}</b></td><td>${Number.isFinite(x.seg?.ms)&&leader!==null?(x.seg.ms===leader?'—':'+'+formatDuration(x.seg.ms-leader)):'--'}</td><td>${escapeHtml(x.seg?.status||'incompleto')}</td></tr>`).join('')}</tbody></table></div></div>`}).join('');
   }
 
   function renderAnalysisSplits(){
@@ -10160,7 +10183,7 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
     const max=Math.max(0,...rs.map(r=>{const route=resultRoute(r);return route?(route.points||[]).filter(x=>x!=='START'&&x!=='FINISH').length:0}));
     if(!rs.length||!max){box.innerHTML='<div class="status warn">No hay parciales disponibles.</div>';return}
     const headers=Array.from({length:max+1},(_,i)=>i===max?'Último → Llegada':`${i===0?'Salida':'C'+i} → C${i+1}`);
-    box.innerHTML=`<table class="results-table"><thead><tr><th>Participante</th>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rs.map(r=>{const route=resultRoute(r);const controls=(route?.points||[]).filter(x=>x!=='START'&&x!=='FINISH');const map=correctOrSkippedScanMap(r);let prev=toMs(r.startTime);const vals=controls.map(id=>{const t=toMs(map.get(id)?.time);const ms=t!==null&&prev!==null?t-prev:null;if(t!==null)prev=t;return ms});const ft=toMs(r.finishTime);vals.push(ft!==null&&prev!==null?ft-prev:null);return `<tr><td>${escapeHtml(resultParticipantName(r)||r.participantId||'--')}</td>${headers.map((_,i)=>`<td>${formatAnalysisMs(vals[i])}</td>`).join('')}</tr>`}).join('')}</tbody></table>`;
+    box.innerHTML=`<div class="status ok" style="margin-bottom:10px;">Los controles descartados aparecen como descarte y suman ${state.raceAnalysis.discardPenaltyMinutes||5} min al tramo correspondiente.</div><table class="results-table"><thead><tr><th>Participante</th>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rs.map(r=>{const route=resultRoute(r);const controls=(route?.points||[]).filter(x=>x!=='START'&&x!=='FINISH');const map=correctOrSkippedScanMap(r);let prev=toMs(r.startTime);const vals=controls.map(id=>{const scan=map.get(id);const t=toMs(scan?.time);const raw=t!==null&&prev!==null?t-prev:null;if(t!==null)prev=t;return {raw,skipped:scan?.status==='skipped'};});const ft=toMs(r.finishTime);vals.push({raw:ft!==null&&prev!==null?ft-prev:null,skipped:false});return `<tr><td>${escapeHtml(participantLabel(r))}</td>${headers.map((_,i)=>{const v=vals[i];if(!v||v.raw==null)return '<td>--</td>';return v.skipped?`<td class="analysis-split-skipped">⏭️ Descartado<br><small>+${formatDuration(discardPenaltyMs())}</small></td>`:`<td>${formatAnalysisMs(v.raw)}</td>`}).join('')}</tr>`}).join('')}</tbody></table>`;
   }
 
   function renderAnalysisTracks(){const box=document.getElementById('raceAnalysisTracksSummary');if(!box)return;const rs=analysisResults();box.innerHTML=rs.map(r=>{const n=Array.isArray(r.track)?r.track.length:Array.isArray(r.gpsTrack)?r.gpsTrack.length:0;return `<div class="race-route-preview"><strong>${escapeHtml(resultParticipantName(r)||r.participantId||'--')}</strong> · ${n?`${n} posiciones GPS guardadas`:'Track todavía no recibido en el organizador'}</div>`}).join('')||'<div class="status warn">No hay participantes con resultado.</div>'}
@@ -10169,7 +10192,7 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
 
   function archivePayload(){
     ensureRaceAnalysisState();
-    return {format:'MILITOPO_RACE_ARCHIVE',version:1,createdAt:new Date().toISOString(),appVersion:'V13_ANALISIS_FASE1',eventId:state.eventId,eventName:state.eventName,state:JSON.parse(JSON.stringify(state)),analysis:{segments:segmentDefinitions(),generatedAt:new Date().toISOString()}};
+    return {format:'MILITOPO_RACE_ARCHIVE',version:1,createdAt:new Date().toISOString(),appVersion:'V14_ANALISIS_PENALIZACIONES',eventId:state.eventId,eventName:state.eventName,state:JSON.parse(JSON.stringify(state)),analysis:{segments:segmentDefinitions(),generatedAt:new Date().toISOString()}};
   }
   window.downloadMilitopoRaceArchive=async function(){
     try{saveState();const payload=archivePayload();const safe=(state.eventName||state.eventId||'carrera').replace(/[^a-z0-9_-]+/gi,'_');if(typeof JSZip!=='undefined'){const zip=new JSZip();zip.file('carrera.json',JSON.stringify(payload));zip.file('LEER_PRIMERO.txt','Archivo completo de carrera MILITOPO. Ábrelo desde PASO 7 > ARCHIVO.');const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`MILITOPO_CARRERA_${safe}.militopo`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}else downloadText(`MILITOPO_CARRERA_${safe}.militopo`,JSON.stringify(payload));const st=document.getElementById('raceArchiveStatus');if(st){st.className='status ok';st.textContent='Carrera completa guardada correctamente.'}toast('Archivo completo de carrera guardado')}catch(e){console.error(e);toast('No se pudo guardar la carrera: '+(e.message||e))}
@@ -10179,10 +10202,10 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   };
 
   const oldGoStep=goStep;
-  goStep=function(n,opts={}){const out=oldGoStep(n,opts);if(Number(currentAppStep)===5){ensureRaceAnalysisState();const sel=document.getElementById('raceSegmentCount');if(sel)sel.value=String(state.raceAnalysis.segmentCount||3);buildRaceSegmentsEditor(false);previewRaceSegmentsForRoutes()}if(Number(currentAppStep)===7)renderRaceAnalysis();return out};
+  goStep=function(n,opts={}){const out=oldGoStep(n,opts);if(Number(currentAppStep)===5){ensureRaceAnalysisState();const sel=document.getElementById('raceSegmentCount');if(sel)sel.value=String(state.raceAnalysis.segmentCount||3);const pen=document.getElementById('raceDiscardPenaltyMinutes');if(pen)pen.value=String(state.raceAnalysis.discardPenaltyMinutes||5);buildRaceSegmentsEditor(false);previewRaceSegmentsForRoutes()}if(Number(currentAppStep)===7)renderRaceAnalysis();return out};
 
   const oldReset=resetStateToFreshEvent;
-  resetStateToFreshEvent=function(){const id=oldReset.apply(this,arguments);state.raceAnalysis={version:1,segments:[],segmentCount:3,segmentNames:['Tramo 1','Tramo 2','Tramo 3'],boundaries:[],trackSettings:{enabled:true,minSeconds:4,minDistanceM:4,maxAccuracyM:35}};return id};
+  resetStateToFreshEvent=function(){const id=oldReset.apply(this,arguments);state.raceAnalysis={version:2,segments:[],segmentCount:3,segmentNames:['Tramo 1','Tramo 2','Tramo 3'],boundaries:[],discardPenaltyMinutes:5,trackSettings:{enabled:true,minSeconds:4,minDistanceM:4,maxAccuracyM:35}};return id};
 
-  document.addEventListener('DOMContentLoaded',()=>{ensureRaceAnalysisState();setTimeout(()=>{const sel=document.getElementById('raceSegmentCount');if(sel)sel.value=String(state.raceAnalysis.segmentCount||3);buildRaceSegmentsEditor(false)},500)});
+  document.addEventListener('DOMContentLoaded',()=>{ensureRaceAnalysisState();setTimeout(()=>{const sel=document.getElementById('raceSegmentCount');if(sel)sel.value=String(state.raceAnalysis.segmentCount||3);const pen=document.getElementById('raceDiscardPenaltyMinutes');if(pen)pen.value=String(state.raceAnalysis.discardPenaltyMinutes||5);buildRaceSegmentsEditor(false)},500)});
 })();
