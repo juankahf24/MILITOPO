@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=modern-compass-v12" />
+<link rel="stylesheet" href="css/styles.css?v=analysis-phase1-v13" />
 
 
 
@@ -118,7 +118,7 @@
 </button>
 </div>
 </div></div></header>
-<nav class="steps"><button class="step-tab active" data-step="1">PASO 1 · CONFIGURAR</button><button class="step-tab" data-step="2">PASO 2 · BALIZAS Y MAPA</button><button class="step-tab" data-step="3">PASO 3 · RECORRIDOS</button><button class="step-tab" data-step="4">PASO 4 · MATERIAL QR</button><button class="step-tab" data-step="5">PASO 5 · 🚦 SECUENCIA</button><button class="step-tab" data-step="6">PASO 6 · RESULTADOS</button></nav>
+<nav class="steps"><button class="step-tab active" data-step="1">PASO 1 · CONFIGURAR</button><button class="step-tab" data-step="2">PASO 2 · BALIZAS Y MAPA</button><button class="step-tab" data-step="3">PASO 3 · RECORRIDOS</button><button class="step-tab" data-step="4">PASO 4 · MATERIAL QR</button><button class="step-tab" data-step="5">PASO 5 · 🚦 SECUENCIA</button><button class="step-tab" data-step="6">PASO 6 · RESULTADOS</button><button class="step-tab" data-step="7">PASO 7 · ANÁLISIS</button></nav>
 <section id="step1" class="card active"><div class="card-header"><h2>⚙️ CONFIGURAR PRUEBA</h2></div><div class="grid two"><div class="block"><label>Nombre de la prueba</label><input id="eventName" value="ENTRENAMIENTO ORIENTACIÓN"><div class="help">Se usa para identificar el evento y para el ZIP.</div>
             <div class="grid-2">
                 <div>
@@ -309,6 +309,30 @@
         <button id="toggleFinishOrganizedBtn" class="btn secondary" type="button" style="width:100%;min-height:54px;" aria-expanded="false" onclick="toggleFinishOrganizedPanel()">🏁 ABRIR LLEGADA ORGANIZADA</button>
     </div>
 
+    <div class="block" id="raceSegmentsConfigBlock" style="margin-top:16px;">
+        <label>🧩 Tramos de análisis de carrera</label>
+        <div class="status warn" id="raceSegmentsStatus">Configura los tramos antes de iniciar la carrera en vivo. Se aplicarán por posición a todos los recorridos.</div>
+        <div class="grid two" style="margin-top:12px;align-items:end;">
+            <div>
+                <label for="raceSegmentCount">Número de tramos</label>
+                <select id="raceSegmentCount" onchange="buildRaceSegmentsEditor(true)">
+                    <option value="2">2 tramos</option>
+                    <option value="3" selected>3 tramos</option>
+                    <option value="4">4 tramos</option>
+                    <option value="5">5 tramos</option>
+                    <option value="6">6 tramos</option>
+                </select>
+            </div>
+            <button class="btn secondary" type="button" onclick="distributeRaceSegmentsEvenly()">⚖️ DISTRIBUIR EQUILIBRADO</button>
+        </div>
+        <div id="raceSegmentsEditor" class="race-segments-editor"></div>
+        <div class="btn-row" style="margin-top:12px;">
+            <button class="btn green" type="button" onclick="saveRaceSegmentsConfig()">💾 GUARDAR TRAMOS</button>
+            <button class="btn secondary" type="button" onclick="previewRaceSegmentsForRoutes()">👁️ VISTA PREVIA</button>
+        </div>
+        <div id="raceSegmentsPreview" class="race-segments-preview"></div>
+    </div>
+
     <div class="block" id="step5StatusBlock" style="margin-top:16px;">
         <label>Estado de salidas y participantes</label>
         <div id="startFlowStatusPanel" class="step5-status-panel">
@@ -373,7 +397,59 @@
 
   <div class="nav-row">
     <button class="btn secondary" onclick="goStep(5)">← SECUENCIA SALIDA/LLEGADA</button>
-    <button class="btn green" onclick="renderResultsControl()">ACTUALIZAR RESULTADOS</button>
+    <button class="btn secondary" onclick="renderResultsControl()">ACTUALIZAR RESULTADOS</button>
+    <button class="btn green" onclick="goStep(7)">ANÁLISIS DE CARRERA →</button>
+  </div>
+</section>
+<section id="step7" class="card">
+  <div class="card-header">
+    <h2>📊 ANÁLISIS DE CARRERA</h2>
+    <div class="mode-pill">Resumen · tramos · parciales · archivo completo</div>
+  </div>
+
+  <div class="analysis-tabs" role="tablist">
+    <button class="analysis-tab active" data-analysis-tab="summary" onclick="openRaceAnalysisTab('summary')">RESUMEN</button>
+    <button class="analysis-tab" data-analysis-tab="segments" onclick="openRaceAnalysisTab('segments')">TRAMOS</button>
+    <button class="analysis-tab" data-analysis-tab="splits" onclick="openRaceAnalysisTab('splits')">PARCIALES</button>
+    <button class="analysis-tab" data-analysis-tab="tracks" onclick="openRaceAnalysisTab('tracks')">TRACKS</button>
+    <button class="analysis-tab" data-analysis-tab="archive" onclick="openRaceAnalysisTab('archive')">ARCHIVO</button>
+  </div>
+
+  <div id="analysisPanelSummary" class="analysis-panel active">
+    <div id="raceAnalysisSummaryCards" class="analysis-metric-grid"></div>
+    <div class="block"><label>Clasificación analítica</label><div id="raceAnalysisRanking" class="table-wrap"></div></div>
+  </div>
+
+  <div id="analysisPanelSegments" class="analysis-panel">
+    <div id="raceAnalysisSegmentsStatus" class="status warn">Configura los tramos en el paso 5 e importa resultados.</div>
+    <div id="raceAnalysisSegments"></div>
+  </div>
+
+  <div id="analysisPanelSplits" class="analysis-panel">
+    <div class="block"><label>Parciales entre controles</label><div id="raceAnalysisSplits" class="table-wrap"></div></div>
+  </div>
+
+  <div id="analysisPanelTracks" class="analysis-panel">
+    <div class="status warn">🛰️ La base de tracks GPS queda preparada en esta fase. Los tracks registrados se conservarán en el archivo completo de carrera. El comparador animado se incorporará en la siguiente fase.</div>
+    <div id="raceAnalysisTracksSummary" class="analysis-track-summary"></div>
+  </div>
+
+  <div id="analysisPanelArchive" class="analysis-panel">
+    <div class="block">
+      <label>Archivo completo de carrera</label>
+      <div class="status ok">Guarda ejercicio, recorridos, tramos, resultados, parciales, incidencias y tracks disponibles en un único archivo reabrible.</div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn green" onclick="downloadMilitopoRaceArchive()">💾 GUARDAR CARRERA COMPLETA</button>
+        <button class="btn secondary" onclick="document.getElementById('militopoRaceArchiveInput').click()">📂 ABRIR CARRERA GUARDADA</button>
+        <input id="militopoRaceArchiveInput" type="file" hidden onchange="importMilitopoRaceArchive(this.files&&this.files[0])">
+      </div>
+      <div id="raceArchiveStatus" class="status warn" style="margin-top:12px;">No se ha cargado ningún archivo externo.</div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn secondary" onclick="goStep(6)">← RESULTADOS</button>
+    <button class="btn green" onclick="renderRaceAnalysis()">🔄 ACTUALIZAR ANÁLISIS</button>
   </div>
 </section>
 <div id="restoreDebugStatus" class="status warn" style="display:none;margin:12px 0;"></div><div class="footer-note">MILITOPO · Rama Orientación V1 offline · topografía cerrada</div></div><!-- ROUTE GENERATION LOADER START -->
@@ -423,7 +499,7 @@
     </div>
 </div>
 
-<script src="js/app.js?v=modern-compass-v12"></script>
+<script src="js/app.js?v=analysis-phase1-v13"></script>
 <script type="module" src="js/live/live-phase2.js?v=tabla-ordenable-v1"></script>
 <script>
 (function(){
