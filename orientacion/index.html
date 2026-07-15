@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=clasificacion-ajustada-progreso-v18" />
+<link rel="stylesheet" href="css/styles.css?v=clasificacion-ajustada-progreso-v19" />
 
 
 
@@ -258,9 +258,9 @@
                     <option value="1">1 minuto</option>
                     <option value="2">2 minutos</option>
                     <option value="3">3 minutos</option>
-                    <option value="5" selected>5 minutos</option>
+                    <option value="5">5 minutos</option>
                     <option value="10">10 minutos</option>
-                    <option value="15">15 minutos</option>
+                    <option value="15" selected>15 minutos</option>
                 </select>
             </div>
             <div class="status warn" style="margin:0;">⏭️ La penalización se suma al tramo y al tiempo analítico. El tiempo real nunca se modifica.</div>
@@ -281,9 +281,7 @@
         <div id="raceSegmentsEditor" class="race-segments-editor"></div>
         <div class="btn-row" style="margin-top:12px;">
             <button class="btn green" type="button" onclick="saveRaceSegmentsConfig()">💾 GUARDAR TRAMOS</button>
-            <button class="btn secondary" type="button" onclick="previewRaceSegmentsForRoutes()">👁️ VISTA PREVIA</button>
         </div>
-        <div id="raceSegmentsPreview" class="race-segments-preview"></div>
     </div>
 
 
@@ -515,14 +513,14 @@
     </div>
 </div>
 
-<script src="js/app.js?v=clasificacion-ajustada-progreso-v18"></script>
-<script type="module" src="js/live/live-phase2.js?v=tabla-ordenable-v1"></script>
+<script src="js/app.js?v=clasificacion-ajustada-progreso-v19"></script>
+<script type="module" src="js/live/live-phase2.js?v=penalizacion-v19"></script>
 <script>
 (function(){
   if (!("serviceWorker" in navigator) || !("caches" in window) || !/^https?:$/.test(location.protocol)) return;
   async function cacheCurrentMilitopoPage(){
     try {
-      const cache = await caches.open("militopo-page-snapshot-v80-estado-filas-es");
+      const cache = await caches.open("militopo-page-snapshot-v19-penalizacion-15");
       await cache.add(new Request(location.href, { cache: "reload" })).catch(function(){});
       await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/live/live-phase2.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js", "./maps/index.json"].map(function(url){
         return cache.add(new Request(url, { cache: "reload" }));
