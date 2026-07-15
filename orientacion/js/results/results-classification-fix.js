@@ -6,6 +6,11 @@
 
     const discardedIdsOf=r=>[...new Set((r?.scans||[]).filter(s=>String(s?.st||s?.status||"").toLowerCase()==="skipped").map(s=>String(s?.id||s?.controlId||s?.expectedControlId||"").trim()).filter(Boolean))];
     const pendingIdsOf=r=>{const d=new Set(discardedIdsOf(r));return [...new Set((Array.isArray(r?.missingControls)?r.missingControls:[]).map(x=>String(x||"").trim()).filter(Boolean).filter(x=>!d.has(x)))];};
+    const penaltyMinutes=()=>Math.max(0,Number(globalThis.state?.raceAnalysis?.discardPenaltyMinutes)||5);
+    const penaltyMsOf=r=>discardedIdsOf(r).length*penaltyMinutes()*60000;
+    const rawMsOf=r=>typeof resultMs==="function"?resultMs(r):null;
+    const adjustedMsOf=r=>{const ms=rawMsOf(r);return Number.isFinite(ms)?ms+penaltyMsOf(r):null;};
+    const rankedResults=()=>{const rows=typeof activeImportedResults==="function"?[...activeImportedResults()]:[...(state.importedResults||[])];return rows.sort((a,b)=>(adjustedMsOf(a)??Infinity)-(adjustedMsOf(b)??Infinity)||String(a.participantId||"").localeCompare(String(b.participantId||""),"es",{numeric:true}));};
     if(window.__MILITOPO_RESULTADOS_V18_REAL__)return;
     window.__MILITOPO_RESULTADOS_V18_REAL__=true;
 
@@ -72,10 +77,10 @@
 
     window.renderClassificationTable=function(){
         const box=document.getElementById("classificationTable");if(!box)return;
-        const rows=typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])];
+        const rows=rankedResults();
         if(!rows.length){box.innerHTML=`<div class="status warn">Todavía no hay resultados importados.</div>`;return;}
         let rank=0;
-        box.innerHTML=`<div class="classification-scroll-v18" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;"><table class="results-table classification-table-v18" style="width:100%;min-width:1260px;table-layout:fixed;border-collapse:separate;border-spacing:0;"><colgroup><col style="width:7%"><col style="width:18%"><col style="width:11%"><col style="width:10%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:11%"><col style="width:9%"><col style="width:9%"></colgroup><thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th><th>Controles<br>descartados</th></tr></thead><tbody>${rows.map(r=>{rank++;const ms=typeof resultMs==="function"?resultMs(r):null,time=ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--",metric=routeMetricForResult(r);const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;const missingCount=pendingIdsOf(r).length;const cls=typeof classificationRankClass==="function"?classificationRankClass(rank,r.completed):"";const name=(typeof resultParticipantName==="function"?resultParticipantName(r):"")||r.participantId||"--";return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${esc(name)}</td><td style="text-align:center">${esc(time)}</td><td style="text-align:center">${esc(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${esc(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${esc(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td style="text-align:center">${esc(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td><td style="text-align:center">${discardedIdsOf(r).length}</td></tr>`;}).join("")}</tbody></table></div>`;
+        box.innerHTML=`<div class="classification-scroll-v18" style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;"><table class="results-table classification-table-v18" style="width:100%;min-width:1540px;table-layout:fixed;border-collapse:separate;border-spacing:0;"><colgroup><col style="width:6%"><col style="width:15%"><col style="width:9%"><col style="width:9%"><col style="width:10%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:8%"><col style="width:8%"><col style="width:8%"></colgroup><thead><tr><th>Puesto</th><th>Nombre</th><th>Tiempo<br>real</th><th>Penalización</th><th>Tiempo<br>ajustado</th><th>Recorrido</th><th>Dificultad</th><th>Distancia</th><th>Desnivel +</th><th>Controles<br>completados</th><th>Controles<br>pendientes</th><th>Controles<br>descartados</th></tr></thead><tbody>${rows.map(r=>{rank++;const raw=rawMsOf(r),pen=penaltyMsOf(r),adjusted=adjustedMsOf(r),metric=routeMetricForResult(r);const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;const missingCount=pendingIdsOf(r).length;const cls=typeof classificationRankClass==="function"?classificationRankClass(rank,r.completed):"";const name=(typeof resultParticipantName==="function"?resultParticipantName(r):"")||r.participantId||"--";return `<tr class="${cls}"><td style="text-align:center">${rank}</td><td>${esc(name)}</td><td style="text-align:center">${raw!==null?esc(formatDuration(raw)):"--"}</td><td style="text-align:center">${pen?`+${esc(formatDuration(pen))}`:"—"}</td><td style="text-align:center;font-weight:900">${adjusted!==null?esc(formatDuration(adjusted)):"--"}</td><td style="text-align:center">${esc(r.routeId||"--")}</td><td style="text-align:center;font-weight:900">${esc(String(metric?.difficulty||"--"))}</td><td style="text-align:center">${esc(metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--")}</td><td style="text-align:center">${esc(metric?.positiveM!=null?`${metric.positiveM} m`:"--")}</td><td style="text-align:center">${controls}</td><td style="text-align:center">${missingCount}</td><td style="text-align:center">${discardedIdsOf(r).length}</td></tr>`;}).join("")}</tbody></table></div>`;
     };
 
     window.renderSelectedResultDetail=function(){
@@ -107,7 +112,9 @@
             <div><b>Estado:</b> ${r.completed?"✅ Completo":"⚠️ Con avisos"}</div>
             <div><b>Salida:</b> ${esc(formatDateTimeSpain(r.startTime))}</div>
             <div><b>Llegada:</b> ${esc(formatDateTimeSpain(r.finishTime))}</div>
-            <div><b>Tiempo:</b> ${esc(time)}</div>
+            <div><b>Tiempo real:</b> ${esc(time)}</div>
+            <div><b>Penalización por descartes:</b> ${penaltyMsOf(r)?`+${esc(formatDuration(penaltyMsOf(r)))}`:"—"}</div>
+            <div><b>Tiempo ajustado:</b> ${adjustedMsOf(r)!==null?esc(formatDuration(adjustedMsOf(r))):"--"}</div>
             <div><b>✅ Controles completados:</b> ${typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length}</div>
             <div><b>⏭️ Controles descartados:</b> ${esc(discardedIdsOf(r).join(", ")||"Ninguno")}</div>
             <div><b>⏳ Controles pendientes:</b> ${esc(pendingIdsOf(r).join(", ")||"Ninguno")}</div>
@@ -117,8 +124,8 @@
     };
 
     window.classificationRowsForExport=function(){
-        const rows=[["Puesto","Nombre","Tiempo","Recorrido","Dificultad","Distancia","Desnivel +","Controles\ncompletados","Controles\npendientes","Controles\ndescartados"]];let rank=0;const data=typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])];
-        data.forEach(r=>{rank++;const ms=typeof resultMs==="function"?resultMs(r):null,metric=routeMetricForResult(r);const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;rows.push([rank,(typeof resultParticipantName==="function"?resultParticipantName(r):"")||r.participantId||"",ms!==null&&typeof formatDuration==="function"?formatDuration(ms):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,pendingIdsOf(r).length,discardedIdsOf(r).length]);});return rows;
+        const rows=[["Puesto","Nombre","Tiempo\nreal","Penalización","Tiempo\najustado","Recorrido","Dificultad","Distancia","Desnivel +","Controles\ncompletados","Controles\npendientes","Controles\ndescartados"]];let rank=0;const data=rankedResults();
+        data.forEach(r=>{rank++;const raw=rawMsOf(r),pen=penaltyMsOf(r),adjusted=adjustedMsOf(r),metric=routeMetricForResult(r);const controls=typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length;rows.push([rank,(typeof resultParticipantName==="function"?resultParticipantName(r):"")||r.participantId||"",raw!==null&&typeof formatDuration==="function"?formatDuration(raw):"--",pen?`+${formatDuration(pen)}`:"—",adjusted!==null&&typeof formatDuration==="function"?formatDuration(adjusted):"--",r.routeId||"--",String(metric?.difficulty||"--"),metric?.distanceKm!=null&&Number.isFinite(Number(metric.distanceKm))?`${Number(metric.distanceKm).toFixed(2)} km`:"--",metric?.positiveM!=null?`${metric.positiveM} m`:"--",controls,pendingIdsOf(r).length,discardedIdsOf(r).length]);});return rows;
     };
 
     window.downloadClassificationExcel=async function(){
@@ -127,21 +134,21 @@
         if(typeof JSZip==="undefined")return toast("No se pudo crear XLSX: JSZip no está cargado");
         const escXml=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;");
         const colName=n=>{let s="";while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;};
-        const rankedResults=typeof sortedImportedResults==="function"?sortedImportedResults():[...(state.importedResults||[])];
+        const rankedExportResults=rankedResults();
         const sheetRows=rows.map((row,ri)=>{
             const r=ri+1;
-            const completed=ri===0?true:!!rankedResults[ri-1]?.completed;
+            const completed=ri===0?true:!!rankedExportResults[ri-1]?.completed;
             const styleId=ri===0?1:(typeof classificationXlsxStyle==="function"?classificationXlsxStyle(row[0],completed):0);
             const maxLen=Math.max(...row.map(cell=>String(cell??"").length));
             const rowHeight=ri===0?52:Math.min(125,Math.max(40,30+Math.ceil(maxLen/24)*12));
             const cells=row.map((cell,ci)=>`<c r="${colName(ci+1)+r}" t="inlineStr" s="${styleId}"><is><t>${escXml(cell)}</t></is></c>`).join("");
             return `<row r="${r}" ht="${rowHeight}" customHeight="1">${cells}</row>`;
         }).join("");
-        const widths=[8,24,14,12,14,14,14,22,22,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
+        const widths=[8,24,14,15,16,12,14,14,14,22,22,22].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("");
         const sheetXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
  <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
- <dimension ref="A1:J${rows.length}"/>
+ <dimension ref="A1:L${rows.length}"/>
  <cols>${widths}</cols>
  <sheetData>${sheetRows}</sheetData>
  <pageMargins left="0.25" right="0.25" top="0.45" bottom="0.45" header="0.15" footer="0.15"/>
