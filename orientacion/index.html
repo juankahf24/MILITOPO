@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=analysis-phase1-v13" />
+<link rel="stylesheet" href="css/styles.css?v=analysis-penalties-v14" />
 
 
 
@@ -248,6 +248,45 @@
     <h2>🚦 SECUENCIA SALIDA / LLEGADA</h2>
     <div class="mode-pill">Organizador · entrega · confirmación · control</div>
   </div>
+    <div class="block" id="raceSegmentsConfigBlock" style="margin-top:16px;">
+        <label>🧩 Tramos de análisis de carrera</label>
+        <div class="status warn" id="raceSegmentsStatus">Configura los tramos antes de iniciar la carrera en vivo. Se aplicarán por posición a todos los recorridos.</div>
+        <div class="grid two" style="margin-top:12px;align-items:end;">
+            <div>
+                <label for="raceDiscardPenaltyMinutes">Penalización por control descartado</label>
+                <select id="raceDiscardPenaltyMinutes" onchange="saveRaceDiscardPenalty()">
+                    <option value="1">1 minuto</option>
+                    <option value="2">2 minutos</option>
+                    <option value="3">3 minutos</option>
+                    <option value="5" selected>5 minutos</option>
+                    <option value="10">10 minutos</option>
+                    <option value="15">15 minutos</option>
+                </select>
+            </div>
+            <div class="status warn" style="margin:0;">⏭️ La penalización se suma al tramo y al tiempo analítico. El tiempo real nunca se modifica.</div>
+        </div>
+        <div class="grid two" style="margin-top:12px;align-items:end;">
+            <div>
+                <label for="raceSegmentCount">Número de tramos</label>
+                <select id="raceSegmentCount" onchange="buildRaceSegmentsEditor(true)">
+                    <option value="2">2 tramos</option>
+                    <option value="3" selected>3 tramos</option>
+                    <option value="4">4 tramos</option>
+                    <option value="5">5 tramos</option>
+                    <option value="6">6 tramos</option>
+                </select>
+            </div>
+            <button class="btn secondary" type="button" onclick="distributeRaceSegmentsEvenly()">⚖️ DISTRIBUIR EQUILIBRADO</button>
+        </div>
+        <div id="raceSegmentsEditor" class="race-segments-editor"></div>
+        <div class="btn-row" style="margin-top:12px;">
+            <button class="btn green" type="button" onclick="saveRaceSegmentsConfig()">💾 GUARDAR TRAMOS</button>
+            <button class="btn secondary" type="button" onclick="previewRaceSegmentsForRoutes()">👁️ VISTA PREVIA</button>
+        </div>
+        <div id="raceSegmentsPreview" class="race-segments-preview"></div>
+    </div>
+
+
   <div class="block" id="organizerQrSequenceBlock" style="margin-top:16px;">
     <h3>🚦 SALIDAS ORGANIZADAS</h3>
         <div id="organizerFlowGrid" class="organizer-flow-grid" style="grid-template-columns:1fr;">
@@ -307,30 +346,6 @@
 
     <div class="btn-row" style="margin-top:14px;">
         <button id="toggleFinishOrganizedBtn" class="btn secondary" type="button" style="width:100%;min-height:54px;" aria-expanded="false" onclick="toggleFinishOrganizedPanel()">🏁 ABRIR LLEGADA ORGANIZADA</button>
-    </div>
-
-    <div class="block" id="raceSegmentsConfigBlock" style="margin-top:16px;">
-        <label>🧩 Tramos de análisis de carrera</label>
-        <div class="status warn" id="raceSegmentsStatus">Configura los tramos antes de iniciar la carrera en vivo. Se aplicarán por posición a todos los recorridos.</div>
-        <div class="grid two" style="margin-top:12px;align-items:end;">
-            <div>
-                <label for="raceSegmentCount">Número de tramos</label>
-                <select id="raceSegmentCount" onchange="buildRaceSegmentsEditor(true)">
-                    <option value="2">2 tramos</option>
-                    <option value="3" selected>3 tramos</option>
-                    <option value="4">4 tramos</option>
-                    <option value="5">5 tramos</option>
-                    <option value="6">6 tramos</option>
-                </select>
-            </div>
-            <button class="btn secondary" type="button" onclick="distributeRaceSegmentsEvenly()">⚖️ DISTRIBUIR EQUILIBRADO</button>
-        </div>
-        <div id="raceSegmentsEditor" class="race-segments-editor"></div>
-        <div class="btn-row" style="margin-top:12px;">
-            <button class="btn green" type="button" onclick="saveRaceSegmentsConfig()">💾 GUARDAR TRAMOS</button>
-            <button class="btn secondary" type="button" onclick="previewRaceSegmentsForRoutes()">👁️ VISTA PREVIA</button>
-        </div>
-        <div id="raceSegmentsPreview" class="race-segments-preview"></div>
     </div>
 
     <div class="block" id="step5StatusBlock" style="margin-top:16px;">
@@ -416,8 +431,9 @@
   </div>
 
   <div id="analysisPanelSummary" class="analysis-panel active">
+    <div class="status ok" style="margin-bottom:12px;">La <b>mediana</b> es el tiempo central: la mitad de los participantes queda por debajo y la otra mitad por encima. Es menos sensible que la media a un tiempo excepcionalmente alto.</div>
     <div id="raceAnalysisSummaryCards" class="analysis-metric-grid"></div>
-    <div class="block"><label>Clasificación analítica</label><div id="raceAnalysisRanking" class="table-wrap"></div></div>
+    <div class="block"><label>Clasificación general de análisis</label><div class="help">Ordena por tiempo ajustado: tiempo real más la penalización de los controles descartados. No altera el resultado original.</div><div id="raceAnalysisRanking" class="table-wrap"></div></div>
   </div>
 
   <div id="analysisPanelSegments" class="analysis-panel">
@@ -499,7 +515,7 @@
     </div>
 </div>
 
-<script src="js/app.js?v=analysis-phase1-v13"></script>
+<script src="js/app.js?v=analysis-penalties-v14"></script>
 <script type="module" src="js/live/live-phase2.js?v=tabla-ordenable-v1"></script>
 <script>
 (function(){
