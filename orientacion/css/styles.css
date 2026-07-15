@@ -2147,3 +2147,4 @@ th,td{
 .analysis-segment-card{margin:12px 0;padding:14px;border-radius:16px;background:rgba(20,34,17,.72);border:1px solid rgba(155,190,105,.3)}
 .analysis-segment-card h3{margin:0 0 8px}.analysis-track-summary{display:grid;gap:8px;margin-top:12px}
 @media (min-width:760px){.analysis-metric-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.race-segment-row{grid-template-columns:minmax(170px,1.4fr) minmax(170px,1fr)}}
+.analysis-sort-th{appearance:none;border:0;background:transparent;color:inherit;font:inherit;font-weight:900;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:0;white-space:nowrap}.analysis-sort-th span{opacity:.8;font-size:.85em}.analysis-sort-th:focus-visible{outline:2px solid #f0c16a;outline-offset:3px;border-radius:4px}
