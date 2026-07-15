@@ -2131,24 +2131,19 @@ th,td{
 /* MILITOPO Participante · entrega profesional del QR de instalación */
 .militopo-participant-install-view{display:none;text-align:center}.militopo-participant-install-view.is-visible{display:block}.militopo-install-platform-icon{font-size:2.6rem;line-height:1;margin-top:4px}.militopo-participant-install-view h4{margin:8px 0 6px;color:#f0c16a;font-size:1.12rem}.militopo-participant-install-view p{margin:0 auto 12px;max-width:460px;color:rgba(255,247,232,.78);font-size:.78rem;line-height:1.42}.militopo-participant-install-qr{width:min(100%,430px);margin:0 auto;padding:13px;border-radius:22px;background:#fff;color:#17220f;display:grid;place-items:center;min-height:230px}.militopo-participant-install-qr img{display:block;width:min(100%,390px);height:auto;image-rendering:pixelated}.militopo-participant-install-qr small{display:block;margin-top:8px;color:#28371f;font-weight:900;font-size:.7rem}.militopo-install-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.militopo-copy-install-link,.militopo-install-actions .militopo-platform-back{min-height:46px;border-radius:15px;font-family:inherit;font-weight:900}.militopo-copy-install-link{border:0;background:linear-gradient(180deg,#9dce6b,#6c9f45);color:#17220f}@media(max-width:560px){.militopo-install-actions{grid-template-columns:1fr}.militopo-participant-install-qr{padding:9px;border-radius:18px}}
 
-/* MILITOPO · GESTOR GEOTIFF ORIENTACIÓN */
-.geotiff-map-manager{margin:10px 0 14px;padding:14px;border-radius:20px;border:1px solid rgba(230,188,122,.3);background:rgba(0,0,0,.16)}
-.geotiff-map-head{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.geotiff-map-head .btn{margin-left:auto}
-.geotiff-map-controls{display:grid;grid-template-columns:minmax(220px,1fr) auto auto;gap:10px;align-items:end;margin-top:12px}.geotiff-opacity-label{margin:0}.geotiff-opacity-label input[type=range]{min-height:38px;padding:4px 0;background:transparent;border:0;box-shadow:none}
-@media(max-width:700px){.geotiff-map-controls{grid-template-columns:1fr 1fr}.geotiff-opacity-label{grid-column:1/-1}.geotiff-map-controls .btn{width:100%;padding-left:10px;padding-right:10px;font-size:.72rem}}
-
-/* MILITOPO · BIBLIOTECA GEOTIFF / KMZ V2 */
-.layer-pills .layer-btn[data-layer="custom"]{min-width:210px;min-height:58px;padding:12px 18px;white-space:normal;line-height:1.2}
-.geotiff-import-main{min-width:205px;min-height:62px;line-height:1.08;text-align:center}.geotiff-import-main small{font-size:.68em;opacity:.85}
-.geotiff-library-row{margin-top:12px}.geotiff-library-row label{margin:0}.geotiff-library-row select{width:100%;min-height:52px}
-@media(max-width:700px){.layer-pills .layer-btn[data-layer="custom"]{width:100%;min-width:0;font-size:.86rem}.geotiff-map-head{display:grid;grid-template-columns:1fr}.geotiff-map-head .btn{margin-left:0;width:100%}.geotiff-import-main{min-width:0}}
-
-/* MILITOPO custom maps v3: botones de capas equilibrados en móvil */
-.layer-pills{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:stretch}
-.layer-pills .layer-btn{width:100%;min-width:0;min-height:58px;padding:11px 10px;display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal;line-height:1.15}
-.layer-pills .layer-btn[data-layer="custom"]{min-width:0;min-height:58px;padding:11px 10px}
-@media(max-width:700px){
-  .layer-pills{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  .layer-pills .layer-btn{font-size:.82rem;letter-spacing:.35px}
-  .layer-pills .layer-btn[data-layer="custom"]{grid-column:1 / -1;width:100%;min-height:64px;font-size:.94rem;letter-spacing:.8px}
-}
+/* MILITOPO V13 · Paso 7 análisis y configuración de tramos */
+.race-segments-editor{display:grid;gap:10px;margin-top:12px}
+.race-segment-row{display:grid;grid-template-columns:minmax(120px,1.2fr) minmax(120px,.9fr);gap:10px;align-items:end;padding:12px;border:1px solid rgba(132,166,91,.35);border-radius:14px;background:rgba(18,31,15,.55)}
+.race-segment-row label{margin:0 0 6px;font-size:.78rem}
+.race-segments-preview{display:grid;gap:8px;margin-top:12px}
+.race-route-preview{padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.22);border-left:4px solid #9fc56d;font-size:.86rem;line-height:1.45}
+.analysis-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;-webkit-overflow-scrolling:touch}
+.analysis-tab{flex:0 0 auto;border:1px solid rgba(155,190,105,.35);background:rgba(16,28,13,.78);color:#f4ead1;border-radius:999px;padding:10px 14px;font-weight:800;letter-spacing:.03em}
+.analysis-tab.active{background:linear-gradient(135deg,#5f7d39,#92b65d);color:#10180c;border-color:transparent}
+.analysis-panel{display:none}.analysis-panel.active{display:block}
+.analysis-metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.analysis-metric-card{padding:14px;border-radius:15px;background:linear-gradient(145deg,rgba(31,50,25,.96),rgba(13,23,12,.96));border:1px solid rgba(155,190,105,.28);min-height:88px}
+.analysis-metric-card small{display:block;color:#c7d9aa;font-weight:700;margin-bottom:8px}.analysis-metric-card strong{font-size:1.35rem;color:#fff3d8}
+.analysis-segment-card{margin:12px 0;padding:14px;border-radius:16px;background:rgba(20,34,17,.72);border:1px solid rgba(155,190,105,.3)}
+.analysis-segment-card h3{margin:0 0 8px}.analysis-track-summary{display:grid;gap:8px;margin-top:12px}
+@media (min-width:760px){.analysis-metric-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.race-segment-row{grid-template-columns:minmax(170px,1.4fr) minmax(170px,1fr)}}
