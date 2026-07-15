@@ -4,9 +4,11 @@
    ========================================================= */
 (function(){
 
+    const getConfiguredPenaltyMinutes=()=>{try{return Math.max(0,Number(globalThis.MILITOPO_GET_DISCARD_PENALTY_MINUTES?.())||15)}catch(_){return 15}};
+
     const discardedIdsOf=r=>[...new Set((r?.scans||[]).filter(s=>String(s?.st||s?.status||"").toLowerCase()==="skipped").map(s=>String(s?.id||s?.controlId||s?.expectedControlId||"").trim()).filter(Boolean))];
     const pendingIdsOf=r=>{const d=new Set(discardedIdsOf(r));return [...new Set((Array.isArray(r?.missingControls)?r.missingControls:[]).map(x=>String(x||"").trim()).filter(Boolean).filter(x=>!d.has(x)))];};
-    const penaltyMinutes=()=>Math.max(0,Number(globalThis.state?.raceAnalysis?.discardPenaltyMinutes)||5);
+    const penaltyMinutes=()=>getConfiguredPenaltyMinutes();
     const penaltyMsOf=r=>discardedIdsOf(r).length*penaltyMinutes()*60000;
     const rawMsOf=r=>typeof resultMs==="function"?resultMs(r):null;
     const adjustedMsOf=r=>{const ms=rawMsOf(r);return Number.isFinite(ms)?ms+penaltyMsOf(r):null;};
