@@ -175,10 +175,13 @@ function buildOrganizerPanel() {
     <div id="live2RunText" class="militopo-live2-run">Sin carrera en vivo activa para este ejercicio.</div>
     <div id="live2Message" class="militopo-live2-message">Inicializando Firebase…</div>
     <div class="militopo-live2-table-wrap">
-      <table class="militopo-live2-table"><colgroup><col style="width:20%"><col style="width:12%"><col style="width:10%"><col style="width:12%"><col style="width:13%"><col style="width:13%"><col style="width:7%"><col style="width:7%"><col style="width:6%"></colgroup><thead><tr><th class="militopo-live2-sortable" data-sort-key="participant" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Participante <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="status" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Estado <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-th-nowrap militopo-live2-sortable" data-sort-key="progress" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Progreso <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-th-two-lines militopo-live2-sortable" data-sort-key="pending" tabindex="0" role="button" aria-sort="none"><span>Puntos</span><span class="militopo-live2-sort-label">pendientes <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-th-two-lines militopo-live2-sortable" data-sort-key="discarded" tabindex="0" role="button" aria-sort="none"><span>Puntos</span><span class="militopo-live2-sort-label">descartados <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="lastSync" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Última sincronización <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="start" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Salida <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="finish" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Llegada <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="totalTime" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Tiempo total <span class="militopo-live2-sort-arrow">↕</span></span></th></tr></thead><tbody id="live2ParticipantsBody"><tr><td colspan="9" class="militopo-live2-empty">Inicia la carrera en vivo para preparar los participantes.</td></tr></tbody></table>
+      <table class="militopo-live2-table"><colgroup><col style="width:18%"><col style="width:11%"><col style="width:9%"><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:11%"><col style="width:10%"><col style="width:8%"><col style="width:8%"></colgroup><thead><tr><th class="militopo-live2-sortable" data-sort-key="participant" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Participante <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="status" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Estado <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-th-nowrap militopo-live2-sortable" data-sort-key="progress" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Progreso <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-th-two-lines militopo-live2-sortable" data-sort-key="pending" tabindex="0" role="button" aria-sort="none"><span>Puntos</span><span class="militopo-live2-sort-label">pendientes <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-th-two-lines militopo-live2-sortable" data-sort-key="discarded" tabindex="0" role="button" aria-sort="none"><span>Puntos</span><span class="militopo-live2-sort-label">descartados <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-th-two-lines militopo-live2-sortable" data-sort-key="penalty" tabindex="0" role="button" aria-sort="none"><span>Penalización</span><span class="militopo-live2-sort-label">descartes <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="totalTime" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Tiempo real <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="adjustedTime" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Tiempo ajustado <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="lastSync" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Última sincronización <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="start" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Salida <span class="militopo-live2-sort-arrow">↕</span></span></th><th class="militopo-live2-sortable" data-sort-key="finish" tabindex="0" role="button" aria-sort="none"><span class="militopo-live2-sort-label">Llegada <span class="militopo-live2-sort-arrow">↕</span></span></th></tr></thead><tbody id="live2ParticipantsBody"><tr><td colspan="11" class="militopo-live2-empty">Inicia la carrera en vivo para preparar los participantes.</td></tr></tbody></table>
     </div>`;
   const header = step5.querySelector(":scope > .card-header");
-  if (header) header.insertAdjacentElement("afterend", panel); else step5.prepend(panel);
+  const segments = step5.querySelector("#raceSegmentsConfigBlock");
+  if (segments) segments.insertAdjacentElement("afterend", panel);
+  else if (header) header.insertAdjacentElement("afterend", panel);
+  else step5.prepend(panel);
   $("live2StartRunBtn")?.addEventListener("click", startOrganizerRun);
   $("live2StopRunBtn")?.addEventListener("click", stopOrganizerRun);
   bindOrganizerSortHeaders(panel);
@@ -224,7 +227,10 @@ function refreshOrganizerTimeCells() {
       return;
     }
     const end = finish || new Date();
-    cell.textContent = formatLiveDuration(end.getTime() - start.getTime());
+    const raw = Math.max(0,end.getTime() - start.getTime());
+    const penalty = Math.max(0,Number(cell.dataset.penaltyMs)||0);
+    const adjusted = cell.classList.contains("militopo-live2-adjusted-time");
+    cell.textContent = formatLiveDuration(raw + (adjusted ? penalty : 0));
     cell.classList.toggle("is-running", !finish);
     cell.classList.toggle("is-finished", !!finish);
   });
@@ -384,6 +390,14 @@ function organizerSortValue(p, key) {
     case "progress": return completed;
     case "pending": return pending;
     case "discarded": return discarded;
+    case "penalty": return discarded * Math.max(0,Number(globalThis.state?.raceAnalysis?.discardPenaltyMinutes)||5) * 60000;
+    case "adjustedTime": {
+      const start = liveSortTime(p?.startTime);
+      if (start < 0) return -1;
+      const finish = liveSortTime(p?.finishTime);
+      const raw = (finish >= 0 ? finish : Date.now()) - start;
+      return raw + discarded * Math.max(0,Number(globalThis.state?.raceAnalysis?.discardPenaltyMinutes)||5) * 60000;
+    }
     case "lastSync": return liveSortTime(p?.lastSeenClient || p?.lastSeen);
     case "start": return liveSortTime(p?.startTime);
     case "finish": return liveSortTime(p?.finishTime);
@@ -454,7 +468,7 @@ function renderOrganizerParticipants(participantsValue) {
   const body = $("live2ParticipantsBody");
   if (!body) return;
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="9" class="militopo-live2-empty">Todavía no hay participantes preparados.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="11" class="militopo-live2-empty">Todavía no hay participantes preparados.</td></tr>`;
     return;
   }
   body.innerHTML = rows.map(p => {
@@ -468,16 +482,20 @@ function renderOrganizerParticipants(participantsValue) {
     const routeId = String(p.routeId || "—");
     const startRaw = p.startTime || "";
     const finishRaw = p.finishTime || "";
+    const penaltyMinutes = Math.max(0,Number(globalThis.state?.raceAnalysis?.discardPenaltyMinutes)||5);
+    const penaltyMs = discarded * penaltyMinutes * 60000;
     return `<tr>
       <td class="militopo-live2-name"><b>${safeText(name || pid)}</b><small><span>${safeText(name ? pid : "Sin nombre asignado")}</span><span class="militopo-live2-route-tag">${safeText(routeId)}</span></small></td>
       <td><span class="militopo-live2-state ${st.cls}">${st.label}</span></td>
       <td class="militopo-live2-progress">${completed} / ${total}</td>
       <td class="militopo-live2-progress">${pending}</td>
       <td class="militopo-live2-progress">${discarded}</td>
+      <td class="militopo-live2-time">${penaltyMs ? "+"+formatLiveDuration(penaltyMs) : "—"}</td>
+      <td class="militopo-live2-time militopo-live2-total-time" data-start="${safeText(startRaw)}" data-finish="${safeText(finishRaw)}" data-penalty-ms="${penaltyMs}">—</td>
+      <td class="militopo-live2-time militopo-live2-total-time militopo-live2-adjusted-time" data-start="${safeText(startRaw)}" data-finish="${safeText(finishRaw)}" data-penalty-ms="${penaltyMs}">—</td>
       <td class="militopo-live2-time">${safeText(formatLastSeen(p.lastSeenClient || p.lastSeen))}</td>
       <td class="militopo-live2-time">${safeText(formatLiveClock(startRaw))}</td>
       <td class="militopo-live2-time">${safeText(formatLiveClock(finishRaw))}</td>
-      <td class="militopo-live2-time militopo-live2-total-time" data-start="${safeText(startRaw)}" data-finish="${safeText(finishRaw)}">—</td>
     </tr>`;
   }).join("");
   refreshOrganizerTimeCells();
