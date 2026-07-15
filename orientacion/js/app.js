@@ -1,7 +1,7 @@
 /* MILITOPO Orientación · cargador modular seguro fase 2
    No contiene lógica de la app: carga los bloques en orden clásico para mantener compatibilidad. */
 (function(){
-  var VERSION = "penalizacion-global-v16";
+  var VERSION = "plano-valle-perdido-v2-v17";
   var files = [
     "js/core/app-main.js",
     "js/pdf/pdf-professional.js",
