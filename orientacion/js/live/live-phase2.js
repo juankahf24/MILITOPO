@@ -289,7 +289,9 @@ async function processFinishedResults(rows){
     try{
       const result=window.MILITOPO_LIVE_IMPORT_RESULT(resultCode,{
         runId:organizerRunId,
-        receivedAt:participant?.finishTime||nowIso()
+        receivedAt:participant?.finishTime||nowIso(),
+        track:Array.isArray(participant?.track)?participant.track:[],
+        trackPointCount:Number(participant?.trackPointCount)||0
       });
       if(result?.ok){
         importedMap[pid]=fingerprint;
@@ -514,6 +516,7 @@ function renderOrganizerParticipants(participantsValue) {
     </tr>`;
   }).join("");
   refreshOrganizerTimeCells();
+  if(typeof window.MILITOPO_LIVE_ATTACH_TRACK==="function") rows.forEach(p=>{if(Array.isArray(p?.track)&&p.track.length)window.MILITOPO_LIVE_ATTACH_TRACK(p.participantId,p.track,{trackPointCount:p.trackPointCount,live:true})});
   processFinishedResults(rows).catch(error=>console.warn("MILITOPO LIVE · procesar resultados",error));
 }
 
@@ -898,6 +901,11 @@ async function applyParticipantEvent(event) {
   };
   const liveName = String(payload.participantName || participantContext.participantName || "").trim();
   if (liveName) common.participantName = liveName;
+  if (Array.isArray(payload.trackSnapshot) && payload.trackSnapshot.length) {
+    common.track = payload.trackSnapshot.slice(-1800);
+    common.trackPointCount = Math.max(Number(payload.trackPointCount)||0, common.track.length);
+    common.trackUpdatedClient = payload.clientTime || nowIso();
+  }
   if (event.kind === "START") {
     Object.assign(common, { status:"racing", startTime:payload.startTime || payload.clientTime || nowIso(), finishTime:null, completed:false });
   } else if (event.kind === "CONTROL") {
