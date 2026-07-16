@@ -10120,7 +10120,10 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   window.MILITOPO_GET_DISCARD_PENALTY_MINUTES=function(){ensureRaceAnalysisState();return Math.max(0,Number(state.raceAnalysis.discardPenaltyMinutes)||15)};
   window.saveRaceDiscardPenalty=function(){const el=document.getElementById('raceDiscardPenaltyMinutes');ensureRaceAnalysisState();state.raceAnalysis.discardPenaltyMinutes=Math.max(0,Number(el?.value)||15);saveState();renderRaceAnalysis();toast('Penalización de descartes guardada')};
   function skippedCount(r){return (r.scans||[]).filter(s=>String(s.st||s.status||'').toLowerCase()==='skipped').length}
-  function adjustedResultMs(r){const raw=resultMs(r);return Number.isFinite(raw)?raw+skippedCount(r)*discardPenaltyMs():null}
+  function discardedControlIds(r){return [...new Set((r.scans||[]).filter(s=>String(s.st||s.status||'').toLowerCase()==='skipped').map(s=>String(s.id||s.controlId||s.expectedControlId||'').trim()).filter(Boolean))]}
+  function pendingControlIds(r){const discarded=new Set(discardedControlIds(r));return [...new Set((Array.isArray(r.missingControls)?r.missingControls:[]).map(x=>String(x||'').trim()).filter(Boolean).filter(id=>!discarded.has(id)))]}
+  function penalizedControlsCount(r){return discardedControlIds(r).length+pendingControlIds(r).length}
+  function adjustedResultMs(r){const raw=resultMs(r);return Number.isFinite(raw)?raw+penalizedControlsCount(r)*discardPenaltyMs():null}
   function trackPoints(r){const t=Array.isArray(r.track)?r.track:(Array.isArray(r.gpsTrack)?r.gpsTrack:[]);return t.filter(p=>Number.isFinite(Number(p.lat??p.latitude))&&Number.isFinite(Number(p.lng??p.lon??p.longitude)))}
   function haversineM(a,b){const R=6371000,rad=x=>x*Math.PI/180;const lat1=rad(Number(a.lat??a.latitude)),lat2=rad(Number(b.lat??b.latitude));const dlat=lat2-lat1,dlon=rad(Number(b.lng??b.lon??b.longitude)-Number(a.lng??a.lon??a.longitude));const h=Math.sin(dlat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dlon/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(h)))}
   function trackDistanceM(r){const pts=trackPoints(r);let d=0;for(let i=1;i<pts.length;i++){const x=haversineM(pts[i-1],pts[i]);if(Number.isFinite(x)&&x<500)d+=x}return pts.length>1?d:null}
@@ -10142,20 +10145,35 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   function participantLabel(r){const name=resultParticipantName(r)||r.participantId||'--';return String(name)}
   function resultSegmentTimes(r){
     const route=resultRoute(r);if(!route)return [];
-    const controls=(route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");const scanMap=correctOrSkippedScanMap(r);const defs=segmentDefinitions();
-    let previous=toMs(r.startTime);if(previous===null)return defs.map(d=>({...d,ms:null,rawMs:null,penaltyMs:0,discarded:0,status:"sin salida"}));
+    const controls=(route.points||[]).filter(id=>id!=="START"&&id!=="FINISH");
+    const scanMap=correctOrSkippedScanMap(r),pendingSet=new Set(pendingControlIds(r)),defs=segmentDefinitions();
+    let previous=toMs(r.startTime);if(previous===null)return defs.map(d=>({...d,ms:null,rawMs:null,penaltyMs:0,discarded:0,pending:0,status:"Sin salida"}));
     return defs.map(d=>{
-      let endTime=null;let status="Correcto";
+      let endTime=null;
       if(d.isFinal)endTime=toMs(r.finishTime);
-      else{const id=controls[d.endControl-1];const scan=scanMap.get(id);endTime=scan?toMs(scan.time):null}
+      else{
+        const boundaryId=controls[d.endControl-1];
+        const exact=scanMap.get(boundaryId);endTime=exact?toMs(exact.time):null;
+        if(endTime===null){
+          for(let pos=d.endControl;pos<controls.length;pos++){
+            const later=scanMap.get(controls[pos]);const t=later?toMs(later.time):null;
+            if(t!==null){endTime=t;break}
+          }
+        }
+        if(endTime===null)endTime=toMs(r.finishTime);
+      }
       const rawMs=endTime!==null&&previous!==null&&endTime>=previous?endTime-previous:null;
       const segmentControls=controls.slice(d.startControl,d.endControl);
       const discarded=segmentControls.reduce((n,id)=>n+(scanMap.get(id)?.status==='skipped'?1:0),0);
-      const penaltyMs=discarded*discardPenaltyMs();
+      const pending=segmentControls.reduce((n,id)=>n+(pendingSet.has(id)?1:0),0);
+      const penalized=discarded+pending,penaltyMs=penalized*discardPenaltyMs();
       const ms=rawMs===null?null:rawMs+penaltyMs;
-      if(endTime!==null)previous=endTime;else status="Incompleto";
-      if(discarded)status=`${discarded} descartado${discarded===1?'':'s'} · +${formatDuration(penaltyMs)}`;
-      return {...d,ms,rawMs,penaltyMs,discarded,status};
+      if(endTime!==null)previous=endTime;
+      const parts=[];
+      if(discarded)parts.push(`${discarded} descartado${discarded===1?'':'s'}`);
+      if(pending)parts.push(`${pending} pendiente${pending===1?'':'s'}`);
+      const status=parts.length?`${parts.join(' · ')} · +${formatDuration(penaltyMs)}`:(rawMs===null?'Incompleto':'Correcto');
+      return {...d,ms,rawMs,penaltyMs,discarded,pending,status};
     });
   }
   function formatAnalysisMs(ms){return ms==null?"--":formatDuration(ms)}
@@ -10187,14 +10205,14 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
       ['Tramos configurados',segmentDefinitions().length]
     ];
     const box=document.getElementById('raceAnalysisSummaryCards');if(box)box.innerHTML=cards.map(([a,b])=>`<div class="analysis-metric-card"><small>${escapeHtml(String(a))}</small><strong>${escapeHtml(String(b))}</strong></div>`).join('');
-    const table=document.getElementById('raceAnalysisRanking');if(table)table.innerHTML=valid.length?`<table class="results-table"><thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo ajustado</th><th>Penalización</th><th>Tiempo real</th><th>Distancia real</th></tr></thead><tbody>${valid.map((r,i)=>{const pen=skippedCount(r)*discardPenaltyMs(),dist=trackDistanceM(r);return `<tr><td>${i+1}</td><td>${escapeHtml(participantLabel(r))}</td><td>${escapeHtml(r.routeId||'--')}</td><td><b>${formatAnalysisMs(adjustedResultMs(r))}</b></td><td>${pen?'+'+formatDuration(pen):'—'}</td><td>${formatAnalysisMs(resultMs(r))}</td><td>${Number.isFinite(dist)?(dist/1000).toFixed(2)+' km':'--'}</td></tr>`}).join('')}</tbody></table>`:'<div class="status warn">Todavía no hay resultados para analizar.</div>';
+    const table=document.getElementById('raceAnalysisRanking');if(table)table.innerHTML=valid.length?`<table class="results-table"><thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo ajustado</th><th>Penalización</th><th>Tiempo real</th><th>Distancia real</th></tr></thead><tbody>${valid.map((r,i)=>{const pen=penalizedControlsCount(r)*discardPenaltyMs(),dist=trackDistanceM(r);return `<tr><td>${i+1}</td><td>${escapeHtml(participantLabel(r))}</td><td>${escapeHtml(r.routeId||'--')}</td><td><b>${formatAnalysisMs(adjustedResultMs(r))}</b></td><td>${pen?'+'+formatDuration(pen):'—'}</td><td>${formatAnalysisMs(resultMs(r))}</td><td>${Number.isFinite(dist)?(dist/1000).toFixed(2)+' km':'--'}</td></tr>`}).join('')}</tbody></table>`:'<div class="status warn">Todavía no hay resultados para analizar.</div>';
   }
 
   function renderAnalysisSegments(){
     const rs=analysisResults();const defs=segmentDefinitions();const box=document.getElementById('raceAnalysisSegments');const status=document.getElementById('raceAnalysisSegmentsStatus');
     if(!box)return;if(!rs.length){box.innerHTML='';if(status){status.className='status warn';status.textContent='Importa resultados para calcular los tramos.'}return}
     if(status){status.className='status ok';status.textContent=`${defs.length} tramos aplicados por posición a ${rs.length} participante(s).`}
-    box.innerHTML=defs.map((d,di)=>{const rows=rs.map(r=>({r,seg:resultSegmentTimes(r)[di]})).sort((a,b)=>(a.seg?.ms??Infinity)-(b.seg?.ms??Infinity));const leader=rows.find(x=>Number.isFinite(x.seg?.ms))?.seg.ms??null;return `<div class="analysis-segment-card"><h3>🧩 ${escapeHtml(d.name)}</h3><div class="table-wrap"><table class="results-table"><thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo ajustado</th><th>Penalización</th><th>Tiempo real</th><th>Diferencia</th><th>Estado</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${Number.isFinite(x.seg?.ms)?i+1:'--'}</td><td>${escapeHtml(resultParticipantName(x.r)||x.r.participantId||'--')}</td><td>${escapeHtml(x.r.routeId||'--')}</td><td><b>${formatAnalysisMs(x.seg?.ms)}</b></td><td>${x.seg?.penaltyMs?'+'+formatDuration(x.seg.penaltyMs):'—'}</td><td>${formatAnalysisMs(x.seg?.rawMs)}</td><td>${Number.isFinite(x.seg?.ms)&&leader!==null?(x.seg.ms===leader?'—':'+'+formatDuration(x.seg.ms-leader)):'--'}</td><td>${escapeHtml(x.seg?.status||'incompleto')}</td></tr>`).join('')}</tbody></table></div></div>`}).join('');
+    box.innerHTML=defs.map((d,di)=>{const rows=rs.map(r=>({r,seg:resultSegmentTimes(r)[di]})).sort((a,b)=>(a.seg?.ms??Infinity)-(b.seg?.ms??Infinity));const leader=rows.find(x=>Number.isFinite(x.seg?.ms))?.seg.ms??null;const rangeLabel=`${d.startControl===0?'Salida':'Control '+d.startControl} → ${d.isFinal?'Llegada':'Control '+d.endControl}`;return `<div class="analysis-segment-card"><h3>🧩 ${escapeHtml(d.name)} <small style="display:block;margin-top:4px;font-size:.78em;font-weight:700;opacity:.78">${escapeHtml(rangeLabel)}</small></h3><div class="table-wrap"><table class="results-table"><thead><tr><th>Puesto</th><th>Participante</th><th>Recorrido</th><th>Tiempo ajustado</th><th>Penalización</th><th>Tiempo real</th><th>Diferencia</th><th>Estado</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td>${Number.isFinite(x.seg?.ms)?i+1:'--'}</td><td>${escapeHtml(resultParticipantName(x.r)||x.r.participantId||'--')}</td><td>${escapeHtml(x.r.routeId||'--')}</td><td><b>${formatAnalysisMs(x.seg?.ms)}</b></td><td>${x.seg?.penaltyMs?'+'+formatDuration(x.seg.penaltyMs):'—'}</td><td>${formatAnalysisMs(x.seg?.rawMs)}</td><td>${Number.isFinite(x.seg?.ms)&&leader!==null?(x.seg.ms===leader?'—':'+'+formatDuration(x.seg.ms-leader)):'--'}</td><td>${escapeHtml(x.seg?.status||'incompleto')}</td></tr>`).join('')}</tbody></table></div></div>`}).join('');
   }
 
   let analysisSplitSort={index:-1,direction:'asc'};
@@ -10209,10 +10227,10 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
     const max=Math.max(0,...rs.map(r=>{const route=resultRoute(r);return route?(route.points||[]).filter(x=>x!=='START'&&x!=='FINISH').length:0}));
     if(!rs.length||!max){box.innerHTML='<div class="status warn">No hay parciales disponibles.</div>';return}
     const headers=Array.from({length:max+1},(_,i)=>i===max?'Último → Llegada':`${i===0?'Salida':'C'+i} → C${i+1}`);
-    const prepared=rs.map(r=>{const route=resultRoute(r);const controls=(route?.points||[]).filter(x=>x!=='START'&&x!=='FINISH');const map=correctOrSkippedScanMap(r);let prev=toMs(r.startTime);const vals=controls.map(id=>{const scan=map.get(id);const t=toMs(scan?.time);const raw=t!==null&&prev!==null?t-prev:null;if(t!==null)prev=t;return {raw,skipped:scan?.status==='skipped'};});const ft=toMs(r.finishTime);vals.push({raw:ft!==null&&prev!==null?ft-prev:null,skipped:false});return {r,vals}});
-    if(analysisSplitSort.index>=0){const factor=analysisSplitSort.direction==='desc'?-1:1;prepared.sort((a,b)=>{const av=a.vals[analysisSplitSort.index],bv=b.vals[analysisSplitSort.index];const am=av?.raw==null?Infinity:av.raw+(av.skipped?discardPenaltyMs():0),bm=bv?.raw==null?Infinity:bv.raw+(bv.skipped?discardPenaltyMs():0);return (am-bm)*factor||participantLabel(a.r).localeCompare(participantLabel(b.r),'es',{numeric:true})})}
+    const prepared=rs.map(r=>{const route=resultRoute(r);const controls=(route?.points||[]).filter(x=>x!=='START'&&x!=='FINISH');const map=correctOrSkippedScanMap(r),pending=new Set(pendingControlIds(r));let prev=toMs(r.startTime);const vals=controls.map(id=>{const scan=map.get(id);const t=toMs(scan?.time);const raw=t!==null&&prev!==null?t-prev:null;if(t!==null)prev=t;return {raw,skipped:scan?.status==='skipped',pending:pending.has(id)};});const ft=toMs(r.finishTime);vals.push({raw:ft!==null&&prev!==null?ft-prev:null,skipped:false,pending:false});return {r,vals}});
+    if(analysisSplitSort.index>=0){const factor=analysisSplitSort.direction==='desc'?-1:1;prepared.sort((a,b)=>{const av=a.vals[analysisSplitSort.index],bv=b.vals[analysisSplitSort.index];const am=av?.raw==null?Infinity:av.raw+((av.skipped||av.pending)?discardPenaltyMs():0),bm=bv?.raw==null?Infinity:bv.raw+((bv.skipped||bv.pending)?discardPenaltyMs():0);return (am-bm)*factor||participantLabel(a.r).localeCompare(participantLabel(b.r),'es',{numeric:true})})}
     const arrow=i=>analysisSplitSort.index===i?(analysisSplitSort.direction==='desc'?'▼':'▲'):'↕';
-    box.innerHTML=`<div class="status ok" style="margin-bottom:10px;">Los controles descartados aparecen como descarte y suman ${state.raceAnalysis.discardPenaltyMinutes||15} min al tramo correspondiente.</div><table class="results-table"><thead><tr><th><button type="button" class="analysis-sort-th" onclick="setAnalysisSplitSort(-1)">Participante</button></th>${headers.map((h,i)=>`<th><button type="button" class="analysis-sort-th" onclick="setAnalysisSplitSort(${i})">${escapeHtml(h)} <span>${arrow(i)}</span></button></th>`).join('')}</tr></thead><tbody>${prepared.map(({r,vals})=>`<tr><td>${escapeHtml(participantLabel(r))}</td>${headers.map((_,i)=>{const v=vals[i];if(!v||v.raw==null)return '<td>--</td>';return v.skipped?`<td class="analysis-split-skipped">⏭️ Descartado<br><small>+${formatDuration(discardPenaltyMs())}</small></td>`:`<td>${formatAnalysisMs(v.raw)}</td>`}).join('')}</tr>`).join('')}</tbody></table>`;
+    box.innerHTML=`<div class="status ok" style="margin-bottom:10px;">Los controles descartados y pendientes se penalizan y suman ${state.raceAnalysis.discardPenaltyMinutes||15} min al tramo correspondiente.</div><table class="results-table"><thead><tr><th><button type="button" class="analysis-sort-th" onclick="setAnalysisSplitSort(-1)">Participante</button></th>${headers.map((h,i)=>`<th><button type="button" class="analysis-sort-th" onclick="setAnalysisSplitSort(${i})">${escapeHtml(h)} <span>${arrow(i)}</span></button></th>`).join('')}</tr></thead><tbody>${prepared.map(({r,vals})=>`<tr><td>${escapeHtml(participantLabel(r))}</td>${headers.map((_,i)=>{const v=vals[i];if(!v||v.raw==null)return '<td>--</td>';return v.skipped?`<td class="analysis-split-skipped">⏭️ Descartado<br><small>+${formatDuration(discardPenaltyMs())}</small></td>`:v.pending?`<td class="analysis-split-skipped">⏳ Pendiente<br><small>+${formatDuration(discardPenaltyMs())}</small></td>`:`<td>${formatAnalysisMs(v.raw)}</td>`}).join('')}</tr>`).join('')}</tbody></table>`;
   }
 
   function renderAnalysisTracks(){const box=document.getElementById('raceAnalysisTracksSummary');if(!box)return;const rs=analysisResults();box.innerHTML=rs.map(r=>{const n=Array.isArray(r.track)?r.track.length:Array.isArray(r.gpsTrack)?r.gpsTrack.length:0;return `<div class="race-route-preview"><strong>${escapeHtml(resultParticipantName(r)||r.participantId||'--')}</strong> · ${n?`${n} posiciones GPS guardadas`:'Track todavía no recibido en el organizador'}</div>`}).join('')||'<div class="status warn">No hay participantes con resultado.</div>'}
