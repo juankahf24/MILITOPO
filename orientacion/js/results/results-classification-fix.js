@@ -1,5 +1,5 @@
 /* =========================================================
-   MILITOPO · RESULTADOS CLASIFICACION V18 REAL
+   MILITOPO · RESULTADOS CLASIFICACION V21 TIEMPO AJUSTADO
    Forzado final: dificultad en tabla/Excel y estados ES.
    ========================================================= */
 (function(){
@@ -9,7 +9,7 @@
     const discardedIdsOf=r=>[...new Set((r?.scans||[]).filter(s=>String(s?.st||s?.status||"").toLowerCase()==="skipped").map(s=>String(s?.id||s?.controlId||s?.expectedControlId||"").trim()).filter(Boolean))];
     const pendingIdsOf=r=>{const d=new Set(discardedIdsOf(r));return [...new Set((Array.isArray(r?.missingControls)?r.missingControls:[]).map(x=>String(x||"").trim()).filter(Boolean).filter(x=>!d.has(x)))];};
     const penaltyMinutes=()=>getConfiguredPenaltyMinutes();
-    const penaltyMsOf=r=>discardedIdsOf(r).length*penaltyMinutes()*60000;
+    const penaltyMsOf=r=>(discardedIdsOf(r).length+pendingIdsOf(r).length)*penaltyMinutes()*60000;
     const rawMsOf=r=>typeof resultMs==="function"?resultMs(r):null;
     const adjustedMsOf=r=>{const ms=rawMsOf(r);return Number.isFinite(ms)?ms+penaltyMsOf(r):null;};
     const trackPointsOf=r=>{const t=Array.isArray(r?.track)?r.track:(Array.isArray(r?.gpsTrack)?r.gpsTrack:[]);return t.filter(p=>Number.isFinite(Number(p?.lat??p?.latitude))&&Number.isFinite(Number(p?.lng??p?.lon??p?.longitude)));};
@@ -17,14 +17,12 @@
     const trackDistanceLabel=r=>{const m=trackDistanceMOf(r);return Number.isFinite(m)?`${(m/1000).toFixed(2)} km`:"--";};
     const completedCountOf=r=>typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r?.scans||[]).filter(s=>String(s?.st||s?.status||"").toLowerCase()==="correct").length;
     const rankedResults=()=>{const rows=typeof activeImportedResults==="function"?[...activeImportedResults()]:[...(state.importedResults||[])];return rows.sort((a,b)=>{
-        const completedDiff=completedCountOf(b)-completedCountOf(a);
-        if(completedDiff)return completedDiff;
         const adjustedDiff=(adjustedMsOf(a)??Infinity)-(adjustedMsOf(b)??Infinity);
         if(adjustedDiff)return adjustedDiff;
         const rawDiff=(rawMsOf(a)??Infinity)-(rawMsOf(b)??Infinity);
         if(rawDiff)return rawDiff;
-        const discardedDiff=discardedIdsOf(a).length-discardedIdsOf(b).length;
-        if(discardedDiff)return discardedDiff;
+        const penalizedDiff=(discardedIdsOf(a).length+pendingIdsOf(a).length)-(discardedIdsOf(b).length+pendingIdsOf(b).length);
+        if(penalizedDiff)return penalizedDiff;
         return String(a.participantId||"").localeCompare(String(b.participantId||""),"es",{numeric:true});
     });};
     if(window.__MILITOPO_RESULTADOS_V18_REAL__)return;
@@ -129,7 +127,7 @@
             <div><b>Salida:</b> ${esc(formatDateTimeSpain(r.startTime))}</div>
             <div><b>Llegada:</b> ${esc(formatDateTimeSpain(r.finishTime))}</div>
             <div><b>Tiempo real:</b> ${esc(time)}</div>
-            <div><b>Penalización por descartes:</b> ${penaltyMsOf(r)?`+${esc(formatDuration(penaltyMsOf(r)))}`:"—"}</div>
+            <div><b>Penalización total:</b> ${penaltyMsOf(r)?`+${esc(formatDuration(penaltyMsOf(r)))}`:"—"}</div>
             <div><b>Tiempo ajustado:</b> ${adjustedMsOf(r)!==null?esc(formatDuration(adjustedMsOf(r))):"--"}</div>
             <div><b>✅ Controles completados:</b> ${typeof resultCompletedControlsCount==="function"?resultCompletedControlsCount(r):(r.scans||[]).filter(s=>(s.st||s.status)==="correct").length}</div>
             <div><b>⏭️ Controles descartados:</b> ${esc(discardedIdsOf(r).join(", ")||"Ninguno")}</div>
