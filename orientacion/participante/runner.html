@@ -2554,26 +2554,47 @@ function gpsRefreshState(){
 }
 let militopoTrackLastSavedAt=0;
 let militopoTrackLastPoint=null;
-function recordRaceTrackPoint(pos){
+let militopoTrackLastHeading=null;
+function trackAngleDiff(a,b){if(!Number.isFinite(a)||!Number.isFinite(b))return 0;let d=Math.abs(a-b)%360;return d>180?360-d:d}
+function recordRaceTrackPoint(pos,force=false,eventType="gps"){
     try{
-        if(!log||!log.startTime||log.finishTime||!pos||!pos.coords)return;
+        if(!log||!log.startTime||(!force&&log.finishTime)||!pos||!pos.coords)return;
         const c=pos.coords,acc=Number(c.accuracy)||9999;
-        if(acc>45)return;
+        if(!force&&acc>30)return;
         const now=Number(pos.timestamp)||Date.now();
         const lat=Number(c.latitude),lon=Number(c.longitude);
         if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
         const elapsed=now-militopoTrackLastSavedAt;
-        let moved=999;
-        if(militopoTrackLastPoint)moved=gpsDistanceM(militopoTrackLastPoint.lat,militopoTrackLastPoint.lon,lat,lon);
-        if(militopoTrackLastPoint&&elapsed<4000&&moved<4)return;
+        let moved=999,computedSpeed=null;
+        if(militopoTrackLastPoint){
+            moved=gpsDistanceM(militopoTrackLastPoint.lat,militopoTrackLastPoint.lon,lat,lon);
+            if(elapsed>0)computedSpeed=moved/(elapsed/1000);
+            // Rechaza saltos imposibles del GPS, salvo puntos forzados de evento.
+            if(!force&&((computedSpeed>13&&moved>35)||(moved>120&&elapsed<10000)))return;
+        }
+        const nativeSpeed=Number(c.speed),speed=Number.isFinite(nativeSpeed)&&nativeSpeed>=0?nativeSpeed:computedSpeed;
+        const heading=Number(c.heading);
+        const headingChange=trackAngleDiff(Number.isFinite(heading)?heading:null,militopoTrackLastHeading);
+        // Captura adaptativa: mayor frecuencia con buena precisión, movimiento o giro.
+        let minMs=4000,minMove=5;
+        if(acc<=8){minMs=1400;minMove=1.8}
+        else if(acc<=15){minMs=2200;minMove=2.8}
+        else if(acc<=22){minMs=3200;minMove=4}
+        else {minMs=6500;minMove=7}
+        const significantTurn=headingChange>=18&&moved>=1.5;
+        if(!force&&militopoTrackLastPoint&&elapsed<minMs&&moved<minMove&&!significantTurn)return;
+        // Si está prácticamente quieto, evita el serrucho pero conserva una muestra periódica.
+        if(!force&&militopoTrackLastPoint&&moved<1.2&&elapsed<12000)return;
         if(!Array.isArray(log.track))log.track=[];
-        log.track.push({timestamp:new Date(now).toISOString(),lat,lon,accuracy:Math.round(acc*10)/10,altitude:Number.isFinite(Number(c.altitude))?Number(c.altitude):null,speed:Number.isFinite(Number(c.speed))?Number(c.speed):null,heading:Number.isFinite(Number(c.heading))?Number(c.heading):null});
-        if(log.track.length>12000)log.track.splice(0,log.track.length-12000);
-        militopoTrackLastSavedAt=now;militopoTrackLastPoint={lat,lon};
-        if(log.track.length%5===0)save();
-        if(log.startTime&&!log.finishTime&&log.track.length>=2&&(now-lastTrackLiveSyncAt>=30000||log.track.length%25===0)){lastTrackLiveSyncAt=now;notifyMilitopoLive("TRACK")}
+        const point={timestamp:new Date(now).toISOString(),lat:+lat.toFixed(7),lon:+lon.toFixed(7),accuracy:Math.round(acc*10)/10,altitude:Number.isFinite(Number(c.altitude))?Math.round(Number(c.altitude)*10)/10:null,speed:Number.isFinite(speed)?Math.round(speed*100)/100:null,heading:Number.isFinite(heading)?Math.round(heading):null,event:eventType||"gps"};
+        log.track.push(point);
+        if(log.track.length>18000)log.track.splice(0,log.track.length-18000);
+        militopoTrackLastSavedAt=now;militopoTrackLastPoint={lat,lon};if(Number.isFinite(heading))militopoTrackLastHeading=heading;
+        if(force||log.track.length%4===0)save();
+        if(log.startTime&&log.track.length>=2&&(force||now-lastTrackLiveSyncAt>=20000||log.track.length%20===0)){lastTrackLiveSyncAt=now;notifyMilitopoLive("TRACK")}
     }catch(e){console.warn('No se pudo guardar punto de track',e)}
 }
+function recordTrackEvent(eventType){try{if(gpsLastPosition)recordRaceTrackPoint(gpsLastPosition,true,eventType)}catch(e){}}
 function processGpsPosition(pos){
     gpsLastPosition=pos;
     const acc=Number(pos&&pos.coords&&pos.coords.accuracy)||9999;
@@ -2663,7 +2684,7 @@ function processGpsPosition(pos){
     updateGpsMetrics(dist,acc,label);
 }
 function gpsError(err){const denied=err&&err.code===1,msg=denied?"Permiso de ubicación denegado. Activa ubicación precisa.":err&&err.code===2?"No se puede obtener la ubicación. Revisa el GPS.":"El GPS tarda demasiado. Mantén MILITOPO abierta.";if(denied){if(gpsWatchId!==null){try{navigator.geolocation.clearWatch(gpsWatchId)}catch(e){}gpsWatchId=null}gpsWritePref(GPS_PREF_PREFIX,false);gpsSetButton(false)}setGpsStatus(msg,"err")}
-async function startProximityGps(remember=true){primeParticipantAudio();if(!route)return toast("Carga primero tu recorrido");if(!navigator.geolocation){gpsWritePref(GPS_PREF_PREFIX,false);gpsSetButton(false);setGpsStatus("Este dispositivo no permite geolocalización.","err");return}if(remember)gpsWritePref(GPS_PREF_PREFIX,true);if(gpsWatchId!==null){gpsSetButton(true);gpsRefreshState();return}setGpsStatus("Solicitando permiso de ubicación precisa...","");await requestGpsWakeLock();try{gpsWatchId=navigator.geolocation.watchPosition(processGpsPosition,gpsError,{enableHighAccuracy:true,maximumAge:700,timeout:12000});gpsSetButton(true);updateGpsMetrics();gpsRefreshState()}catch(e){gpsWatchId=null;gpsWritePref(GPS_PREF_PREFIX,false);gpsSetButton(false);setGpsStatus("No se pudo reactivar el GPS. Pulsa ACTIVAR GPS.","err")}}
+async function startProximityGps(remember=true){primeParticipantAudio();if(!route)return toast("Carga primero tu recorrido");if(!navigator.geolocation){gpsWritePref(GPS_PREF_PREFIX,false);gpsSetButton(false);setGpsStatus("Este dispositivo no permite geolocalización.","err");return}if(remember)gpsWritePref(GPS_PREF_PREFIX,true);if(gpsWatchId!==null){gpsSetButton(true);gpsRefreshState();return}setGpsStatus("Solicitando permiso de ubicación precisa...","");await requestGpsWakeLock();try{gpsWatchId=navigator.geolocation.watchPosition(processGpsPosition,gpsError,{enableHighAccuracy:true,maximumAge:0,timeout:15000});gpsSetButton(true);updateGpsMetrics();gpsRefreshState()}catch(e){gpsWatchId=null;gpsWritePref(GPS_PREF_PREFIX,false);gpsSetButton(false);setGpsStatus("No se pudo reactivar el GPS. Pulsa ACTIVAR GPS.","err")}}
 function stopProximityGps(show,remember=true){if(gpsWatchId!==null){navigator.geolocation.clearWatch(gpsWatchId);gpsWatchId=null}if(remember)gpsWritePref(GPS_PREF_PREFIX,false);gpsInsideHits=0;gpsLastTarget="";releaseGpsWakeLock();gpsSetButton(false);if(show)setGpsStatus("GPS detenido. El escaneo QR sigue disponible.","");updateGpsMetrics()}
 let gpsLockedScrollY=0;
 function ensureGpsLockOverlayAtBody(){const overlay=gpsEl("gpsLockOverlay");if(overlay&&overlay.parentElement!==document.body)document.body.appendChild(overlay);return overlay}
@@ -2775,7 +2796,7 @@ function restoreBestSavedRun(silent){
 }
 
 function renderLoaded(){document.body.classList.add("route-loaded");document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();refreshSkipHoldVisibility();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences();setTimeout(resizeParticipantFrameFromInside,80)}
-function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=routeAdvancedCount();const expected=exp[done]||"FINISH";const alreadyCorrect=log.scans.some(s=>s.controlId===id&&s.status==="correct");let status=id===expected?"correct":alreadyCorrect?"duplicate":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});save();renderNext();refreshSkipHoldVisibility();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
+function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=routeAdvancedCount();const expected=exp[done]||"FINISH";const alreadyCorrect=log.scans.some(s=>s.controlId===id&&s.status==="correct");let status=id===expected?"correct":alreadyCorrect?"duplicate":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});if(status==="correct")recordTrackEvent("control:"+id);save();renderNext();refreshSkipHoldVisibility();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
 function scanStatusLabel(status){return {correct:"Correcto",out_of_order:"Fuera de orden",wrong:"Incorrecto",duplicate:"Duplicado",skipped:"Descartado"}[String(status||"")]||"Estado desconocido"}
 function scanStatusMessage(status,expected){return {correct:"Baliza correcta",out_of_order:"Fuera de orden. Tocaba "+expected,wrong:"Baliza incorrecta: no pertenece a tu recorrido",duplicate:"Baliza ya registrada correctamente",skipped:"Punto descartado. No se contará como pendiente; continúa con la siguiente baliza"}[String(status||"")]||"Baliza registrada"}
 function skipCurrentControl(skipConfirm=false){
@@ -2788,6 +2809,7 @@ function skipCurrentControl(skipConfirm=false){
     if(!expected)return toast("No quedan balizas pendientes. Dirígete a LLEGADA");
     if(!skipConfirm){const ok=window.confirm("¿CONFIRMAR DESCARTE DEL PUNTO?\n\nVas a marcar la baliza "+expected+" como pendiente y avanzar a la siguiente. Este punto contará como no completado en el resultado final.\n\nEsta acción no se puede deshacer durante la carrera.");if(!ok)return;}
     log.scans.push({controlId:expected,timestamp:new Date().toISOString(),expectedControlId:expected,status:"skipped",skipped:true});
+    recordTrackEvent("skipped:"+expected);
     save();renderNext();refreshSkipHoldVisibility();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:"skipped",controlId:expected});gpsRefreshState();toast("Punto "+expected+" descartado. Continúa con la siguiente baliza");
 }
 function startRace(){
@@ -2795,6 +2817,7 @@ function startRace(){
     if(!route)return toast("Primero QR participante");
     if(log.startTime)return toast("Salida ya registrada");
     log.startTime=new Date().toISOString();
+    militopoTrackLastSavedAt=0;militopoTrackLastPoint=null;militopoTrackLastHeading=null;recordTrackEvent("start");
     save();renderNext();refreshSkipHoldVisibility();renderScans();notifyMilitopoLive("START");gpsRefreshState();toast("Salida registrada");
     if(gpsWatchId===null)setTimeout(showGpsStartReminder,180);
     else setTimeout(()=>restoreParticipantScroll("gpsProximity","smooth"),220);
@@ -2809,6 +2832,7 @@ async function finishRace(source="qr"){
     const done=new Set(log.scans.filter(s=>s.status==="correct").map(s=>String(s.controlId)));
     const discarded=new Set(log.scans.filter(s=>s.status==="skipped").map(s=>String(s.controlId)));
     log.missingControls=exp.filter(x=>!done.has(String(x))&&!discarded.has(String(x)));
+    recordTrackEvent("finish");
     log.finishTime=new Date().toISOString();
     log.completed=log.missingControls.length===0&&discarded.size===0;
     log.resultPayload=resultPayload();
