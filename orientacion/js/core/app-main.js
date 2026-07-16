@@ -7,7 +7,7 @@ const state={eventId:"",eventName:"ENTRENAMIENTO ORIENTACIÓN",
     selectedMapLayer:"mapant",
     customGeoTiffMeta:null,
     customGeoTiffOpacity:1,
-    planEquidistanceM:5,participantCount:10,controlCount:25,controlsPerRoute:8,maxControlReuse:6,points:{},routes:[],metrics:[],elevations:{},participantLogs:{},participantNames:{},skippedRoutes:{},importedResults:[]};let map=null,layers={},currentLayer=null,markersLayer=null,routeLayer=null,pdfPlanPreviewLayer=null,pdfPlanPreviewRectangle=null,pdfPlanPreviewLabelMarker=null,pdfPlanCenterMarker=null,pdfPlanAdjustMode=false,pdfPlanDragFrame=null,userLocationMarker=null,userAccuracyCircle=null,selectedPointId="START";let currentAppStep=1;let __autoSaveTimer=null;let selectedIofPointId="START";
+    planEquidistanceM:5,participantCount:10,maxUniqueRoutes:15,controlCount:25,controlsPerRoute:8,maxControlReuse:6,points:{},routes:[],metrics:[],elevations:{},participantLogs:{},participantNames:{},skippedRoutes:{},importedResults:[]};let map=null,layers={},currentLayer=null,markersLayer=null,routeLayer=null,pdfPlanPreviewLayer=null,pdfPlanPreviewRectangle=null,pdfPlanPreviewLabelMarker=null,pdfPlanCenterMarker=null,pdfPlanAdjustMode=false,pdfPlanDragFrame=null,userLocationMarker=null,userAccuracyCircle=null,selectedPointId="START";let currentAppStep=1;let __autoSaveTimer=null;let selectedIofPointId="START";
 
 function createFreshEventId(){
     return "ORI_"+new Date().toISOString().slice(0,10).replaceAll("-","")+"_"+Math.random().toString(36).slice(2,7).toUpperCase();
@@ -24,6 +24,7 @@ function resetStateToFreshEvent(){
     state.customGeoTiffOpacity=1;
     state.planEquidistanceM=5;
     state.participantCount=10;
+    state.maxUniqueRoutes=15;
     state.controlCount=25;
     state.controlsPerRoute=8;
     state.maxControlReuse=6;
@@ -49,6 +50,7 @@ function resetStateToFreshEvent(){
 function init(){
     setupReusableExerciseImporter();
     fillSelect("participantCount",1,100,10,n=>`${n} participantes`);
+    fillSelect("maxUniqueRoutes",1,30,15,n=>`${n} recorridos únicos máx.`);
     fillSelect("controlCount",3,80,25,n=>`${n} balizas`);
     fillSelect("controlsPerRoute",2,30,8,n=>`${n} balizas`);
     fillSelect("maxControlReuse",1,100,6,n=>`${n} usos máx.`);
@@ -87,7 +89,7 @@ function init(){
     },250);
 }
 function fillSelect(id,min,max,selected,labelFn){const sel=document.getElementById(id);sel.innerHTML="";for(let i=min;i<=max;i++){const opt=document.createElement("option");opt.value=i;opt.textContent=labelFn?labelFn(i):i;if(i===selected)opt.selected=true;sel.appendChild(opt)}}
-function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
+function syncConfigFromUi(){state.eventName=document.getElementById("eventName").value.trim()||"ENTRENAMIENTO ORIENTACIÓN";state.participantCount=parseInt(document.getElementById("participantCount").value,10);const uniqueSel=document.getElementById("maxUniqueRoutes");state.maxUniqueRoutes=Math.max(1,parseInt(uniqueSel?uniqueSel.value:state.maxUniqueRoutes||15,10)||15);state.controlCount=parseInt(document.getElementById("controlCount").value,10);state.controlsPerRoute=parseInt(document.getElementById("controlsPerRoute").value,10);state.maxControlReuse=parseInt(document.getElementById("maxControlReuse").value,10)}function syncConfigToUi(){document.getElementById("eventName").value=state.eventName;document.getElementById("eventId").value=state.eventId;document.getElementById("participantCount").value=state.participantCount;const uniqueSel=document.getElementById("maxUniqueRoutes");if(uniqueSel)uniqueSel.value=Math.min(30,Math.max(1,state.maxUniqueRoutes||15));document.getElementById("controlCount").value=state.controlCount;document.getElementById("controlsPerRoute").value=state.controlsPerRoute;document.getElementById("maxControlReuse").value=state.maxControlReuse}
 function rebuildPointsFromConfig(preserve=true){syncConfigFromUi();const next={};next.START=preserve&&state.points.START?state.points.START:makePoint("START","SALIDA");next.FINISH=preserve&&state.points.FINISH?state.points.FINISH:makePoint("FINISH","LLEGADA");for(let i=1;i<=state.controlCount;i++){const id="B"+String(i).padStart(2,"0");next[id]=preserve&&state.points[id]?state.points[id]:makePoint(id,"BALIZA")}state.points=next}function makePoint(id,type){return{id,type,utm:"",desc:type==="BALIZA"?id:type,lat:null,lon:null,elevation:null}}
 function bindStepTabs(){document.querySelectorAll(".step-tab").forEach(btn=>btn.addEventListener("click",()=>goStep(Number(btn.dataset.step))))}function goStep(n,opts={}){
     if(typeof hideZipProgress==='function')hideZipProgress();
@@ -1468,7 +1470,8 @@ async function generateRoutes(silent=false){
 
     const context=buildProfessionalRouteContext(start,controls,finish);
     const targetCount=Math.min(state.controlsPerRoute,controls.length);
-    const attempts=Math.max(2600,Math.min(9500,state.participantCount*520+controls.length*130+targetCount*360));
+    const uniqueRouteCount=Math.max(1,Math.min(state.participantCount,Number(state.maxUniqueRoutes)||15));
+    const attempts=Math.max(3200,Math.min(12000,uniqueRouteCount*620+controls.length*150+targetCount*420));
 
     function generationShuffle(list, seed){
         const arr=[...list];
@@ -1504,9 +1507,9 @@ async function generateRoutes(silent=false){
         return selected;
     }
 
-    for(let r=0;routes.length<state.participantCount && r<state.participantCount*5;r++){
+    for(let r=0;routes.length<uniqueRouteCount && r<uniqueRouteCount*7;r++){
         const routeSlot=routes.length;
-        updateRouteGenerationLoader(`Diseñando recorrido ${routeSlot+1} de ${state.participantCount}...`,24+((routeSlot/Math.max(1,state.participantCount))*66));
+        updateRouteGenerationLoader(`Diseñando recorrido único ${routeSlot+1} de ${uniqueRouteCount}...`,24+((routeSlot/Math.max(1,uniqueRouteCount))*66));
         await routeSleep(10);
 
         let best=null;
@@ -1629,7 +1632,7 @@ async function generateRoutes(silent=false){
 
         // Prioridad alta: si un recorrido sale limpio/perfecto, se crea también su inverso.
         // Así se obtienen dos recorridos muy buenos con la misma calidad de trazado.
-        const canAddInverse=routes.length<state.participantCount && best.quality.code==="clean" && Number(best.quality.shortControlLegs||0)===0;
+        const canAddInverse=routes.length<uniqueRouteCount && best.quality.code==="clean" && Number(best.quality.shortControlLegs||0)===0;
         if(canAddInverse){
             const inverseControls=[...best.controls].reverse();
             const inverseRoute=[start,...inverseControls,finish];
@@ -1661,13 +1664,30 @@ async function generateRoutes(silent=false){
         qualityWarnings.unshift("Desnivel real parcial/no disponible. Se usó estimación conservadora para evitar desniveles falsos.");
     }
 
-    const finalRoutes=routes.slice(0,state.participantCount);
-    state.routes=finalRoutes.map((x,i)=>({
-        participantId:"P"+String(i+1).padStart(2,"0"),
-        routeId:"R"+String(i+1).padStart(2,"0"),
-        points:x.route.map(p=>p.id)
-    }));
-    state.metrics=finalRoutes.map(x=>x.metrics);
+    const uniqueRoutes=routes.slice(0,uniqueRouteCount);
+    if(!uniqueRoutes.length){
+        summary.className="status err";
+        summary.textContent="No se pudo generar ningún recorrido válido.";
+        if(!silent)hideRouteGenerationLoader();
+        return false;
+    }
+    // Se generan pocos diseños de alta calidad y se reparten cíclicamente.
+    // Ejemplo con 15 diseños: P01/P16/P31 usan R01.
+    state.routes=Array.from({length:state.participantCount},(_,i)=>{
+        const designIndex=i%uniqueRoutes.length;
+        const design=uniqueRoutes[designIndex];
+        return {
+            participantId:"P"+String(i+1).padStart(2,"0"),
+            routeId:"R"+String(designIndex+1).padStart(2,"0"),
+            routeDesignIndex:designIndex,
+            points:design.route.map(p=>p.id)
+        };
+    });
+    state.metrics=state.routes.map((r,i)=>{
+        const src=uniqueRoutes[i%uniqueRoutes.length].metrics||{};
+        return JSON.parse(JSON.stringify(src));
+    });
+    state.uniqueRouteCount=uniqueRoutes.length;
     state.skippedRoutes={};
     assignBalancedDifficulties(state.metrics);
     state.routeQualitySummary=buildRouteQualitySummary(state.metrics);
@@ -2780,7 +2800,7 @@ function drawRoute(idx){
     L.polyline(latlngs,{color:"#ff3ecf",weight:4,opacity:.85}).addTo(routeLayer);
     map.fitBounds(latlngs,{padding:[40,40]});
 }
-function updateRouteCountInfo(){document.getElementById("routeCountInfo").textContent=`${state.participantCount} recorridos`}
+function updateRouteCountInfo(){const el=document.getElementById("routeCountInfo");if(!el)return;const unique=Math.max(1,Math.min(state.participantCount||1,state.uniqueRouteCount||state.maxUniqueRoutes||15));el.textContent=`${state.participantCount} participantes · hasta ${unique} recorridos únicos`}
 function importTextPoints(){const raw=document.getElementById("importText").value.trim();if(!raw)return;const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);let count=0;lines.forEach(line=>{const parts=line.split(/[,;]/).map(x=>x.trim());if(parts.length<2)return;const id=parts[0].toUpperCase(),utm=parts[1].toUpperCase(),desc=parts.slice(2).join(" ")||id;if(!state.points[id])return;const ll=utmToLatLon(utm);if(!ll)return;Object.assign(state.points[id],{utm:normalizeUtm(utm),lat:ll.lat,lon:ll.lon,desc});count++});renderPointsTable();renderMapMarkers();saveState();toast(`${count} puntos importados`)}function exportPointsCsv(){const rows=[["ID","TIPO","UTM"]];Object.values(state.points).forEach(p=>rows.push([p.id,p.type,p.utm||""]));downloadText("balizas_orientacion.csv",rows.map(r=>r.map(csvEscape).join(",")).join("\n"))}
 function normalizeImportPointId(value){
     let s=String(value||"").trim().toUpperCase();
@@ -8691,6 +8711,7 @@ function hardResetStateForReusableExerciseImport(){
         selectedMapLayer:"mapant",
         planEquidistanceM:5,
         participantCount:10,
+        maxUniqueRoutes:15,
         controlCount:25,
         controlsPerRoute:8,
         maxControlReuse:6,
