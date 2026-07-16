@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=penalizacion-pendientes-tiempo-ajustado-v21" />
+<link rel="stylesheet" href="css/styles.css?v=penalizacion-pendientes-tiempo-ajustado-v22" />
 
 
 
@@ -444,8 +444,31 @@
   </div>
 
   <div id="analysisPanelTracks" class="analysis-panel">
-    <div class="status warn">🛰️ La base de tracks GPS queda preparada en esta fase. Los tracks registrados se conservarán en el archivo completo de carrera. El comparador animado se incorporará en la siguiente fase.</div>
-    <div id="raceAnalysisTracksSummary" class="analysis-track-summary"></div>
+    <div class="status ok">🛰️ Selecciona hasta cinco participantes para comparar sus tracks GPS sobre el mapa. La reproducción animada se incorporará en la siguiente fase.</div>
+    <div class="analysis-tracks-layout">
+      <aside class="analysis-tracks-sidebar">
+        <div class="block analysis-track-controls">
+          <label>Participantes</label>
+          <div class="help">Máximo 5 tracks simultáneos.</div>
+          <div id="raceAnalysisTrackParticipants" class="analysis-track-participants"></div>
+          <div class="btn-row">
+            <button class="btn secondary" type="button" onclick="selectAllAnalysisTracks(false)">LIMPIAR</button>
+            <button class="btn secondary" type="button" onclick="fitAnalysisTracks()">CENTRAR TRACKS</button>
+          </div>
+        </div>
+        <div id="raceAnalysisTracksSummary" class="analysis-track-summary"></div>
+      </aside>
+      <div class="analysis-track-map-card">
+        <div class="analysis-track-layerbar" aria-label="Capas del mapa">
+          <button type="button" data-track-layer="custom" onclick="setAnalysisTrackLayer('custom')">🗺️ MI PLANO</button>
+          <button type="button" data-track-layer="mapant" onclick="setAnalysisTrackLayer('mapant')">MAPANT</button>
+          <button type="button" data-track-layer="ign" onclick="setAnalysisTrackLayer('ign')">IGN</button>
+          <button type="button" data-track-layer="pnoa" onclick="setAnalysisTrackLayer('pnoa')">AÉREO</button>
+        </div>
+        <div id="raceAnalysisTrackMap" class="analysis-track-map"></div>
+        <div id="raceAnalysisTrackMapStatus" class="status warn">Selecciona participantes con track GPS.</div>
+      </div>
+    </div>
   </div>
 
   <div id="analysisPanelArchive" class="analysis-panel">
@@ -513,14 +536,14 @@
     </div>
 </div>
 
-<script src="js/app.js?v=penalizacion-pendientes-tiempo-ajustado-v21"></script>
-<script type="module" src="js/live/live-phase2.js?v=penalizacion-pendientes-v21"></script>
+<script src="js/app.js?v=penalizacion-pendientes-tiempo-ajustado-v22"></script>
+<script type="module" src="js/live/live-phase2.js?v=penalizacion-pendientes-v22"></script>
 <script>
 (function(){
   if (!("serviceWorker" in navigator) || !("caches" in window) || !/^https?:$/.test(location.protocol)) return;
   async function cacheCurrentMilitopoPage(){
     try {
-      const cache = await caches.open("militopo-page-snapshot-v21-penalizacion-pendientes");
+      const cache = await caches.open("militopo-page-snapshot-v22-penalizacion-pendientes");
       await cache.add(new Request(location.href, { cache: "reload" })).catch(function(){});
       await Promise.allSettled(["./", "./index.html", "./js/app.js", "./js/live/live-phase2.js", "./js/core/app-main.js", "./js/pdf/pdf-professional.js", "./js/results/results-v16.js", "./js/results/results-classification-fix.js", "./css/styles.css", "./js/vendor/qr.js", "./maps/index.json"].map(function(url){
         return cache.add(new Request(url, { cache: "reload" }));
