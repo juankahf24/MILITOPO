@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=penalizacion-pendientes-tiempo-ajustado-v22" />
+<link rel="stylesheet" href="css/styles.css?v=tracks-reproduccion-v24" />
 
 
 
@@ -444,7 +444,7 @@
   </div>
 
   <div id="analysisPanelTracks" class="analysis-panel">
-    <div class="status ok">🛰️ Selecciona hasta cinco participantes para comparar sus tracks GPS sobre el mapa. La reproducción animada se incorporará en la siguiente fase.</div>
+    <div class="status ok">🎬 Selecciona hasta cinco participantes y reproduce sus carreras de forma sincronizada. Puedes comparar desde 00:00 o respetar las horas reales de salida.</div>
     <div class="analysis-tracks-layout">
       <aside class="analysis-tracks-sidebar">
         <div class="block analysis-track-controls">
@@ -464,6 +464,33 @@
           <button type="button" data-track-layer="mapant" onclick="setAnalysisTrackLayer('mapant')">MAPANT</button>
           <button type="button" data-track-layer="ign" onclick="setAnalysisTrackLayer('ign')">IGN</button>
           <button type="button" data-track-layer="pnoa" onclick="setAnalysisTrackLayer('pnoa')">AÉREO</button>
+        </div>
+        <div class="analysis-playback-panel" aria-label="Reproductor de tracks">
+          <div class="analysis-playback-row">
+            <label class="analysis-playback-mode">Modo
+              <select id="analysisPlaybackMode" onchange="setAnalysisPlaybackMode(this.value)">
+                <option value="relative">Comparación desde 00:00</option>
+                <option value="real">Hora real de carrera</option>
+              </select>
+            </label>
+            <div class="analysis-playback-buttons">
+              <button type="button" onclick="jumpAnalysisPlayback(-10000)" title="Retroceder 10 segundos">−10 s</button>
+              <button id="analysisPlaybackPlay" type="button" onclick="toggleAnalysisPlayback()" title="Reproducir o pausar">▶</button>
+              <button type="button" onclick="jumpAnalysisPlayback(10000)" title="Avanzar 10 segundos">+10 s</button>
+              <button type="button" onclick="resetAnalysisPlayback()" title="Volver al inicio">⏮</button>
+            </div>
+            <label class="analysis-playback-speed">Velocidad
+              <select id="analysisPlaybackSpeed" onchange="setAnalysisPlaybackSpeed(this.value)">
+                <option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option>
+              </select>
+            </label>
+          </div>
+          <div class="analysis-playback-timeline">
+            <span id="analysisPlaybackCurrent">00:00</span>
+            <input id="analysisPlaybackRange" type="range" min="0" max="1000" value="0" step="1" oninput="seekAnalysisPlayback(this.value)">
+            <span id="analysisPlaybackTotal">00:00</span>
+          </div>
+          <div id="analysisPlaybackLegend" class="analysis-playback-legend"></div>
         </div>
         <div id="raceAnalysisTrackMap" class="analysis-track-map"></div>
         <div id="raceAnalysisTrackMapStatus" class="status warn">Selecciona participantes con track GPS.</div>
@@ -536,7 +563,7 @@
     </div>
 </div>
 
-<script src="js/app.js?v=penalizacion-pendientes-tiempo-ajustado-v22"></script>
+<script src="js/app.js?v=tracks-reproduccion-v24"></script>
 <script type="module" src="js/live/live-phase2.js?v=penalizacion-pendientes-v22"></script>
 <script>
 (function(){
