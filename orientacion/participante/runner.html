@@ -1830,6 +1830,22 @@ async function restoreParticipantFromIndexedDb(silent=true){
     }catch(e){}
     return false;
 }
+function compactTrackForSync(points,maxPoints=1600){
+    const src=Array.isArray(points)?points:[];
+    if(!src.length)return [];
+    const step=Math.max(1,Math.ceil(src.length/maxPoints));
+    const out=[];
+    for(let i=0;i<src.length;i+=step){
+        const p=src[i]||{};
+        const lat=Number(p.lat??p.latitude),lon=Number(p.lon??p.lng??p.longitude);
+        if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+        out.push({timestamp:p.timestamp||p.time||null,lat:+lat.toFixed(7),lon:+lon.toFixed(7),accuracy:Number.isFinite(Number(p.accuracy))?Math.round(Number(p.accuracy)*10)/10:null,altitude:Number.isFinite(Number(p.altitude))?Math.round(Number(p.altitude)*10)/10:null,speed:Number.isFinite(Number(p.speed))?Math.round(Number(p.speed)*100)/100:null,heading:Number.isFinite(Number(p.heading))?Math.round(Number(p.heading)):null});
+    }
+    const last=src[src.length-1];
+    if(last&&out.length&&String(out[out.length-1].timestamp||'')!==String(last.timestamp||last.time||'')){const lat=Number(last.lat??last.latitude),lon=Number(last.lon??last.lng??last.longitude);if(Number.isFinite(lat)&&Number.isFinite(lon))out.push({timestamp:last.timestamp||last.time||null,lat:+lat.toFixed(7),lon:+lon.toFixed(7),accuracy:Number.isFinite(Number(last.accuracy))?Math.round(Number(last.accuracy)*10)/10:null,altitude:Number.isFinite(Number(last.altitude))?Math.round(Number(last.altitude)*10)/10:null,speed:Number.isFinite(Number(last.speed))?Math.round(Number(last.speed)*100)/100:null,heading:Number.isFinite(Number(last.heading))?Math.round(Number(last.heading)):null})}
+    return out;
+}
+let lastTrackLiveSyncAt=0;
 function notifyMilitopoLive(kind,extra={}){
     try{
         if(!route||!pid)return;
@@ -1862,6 +1878,8 @@ function notifyMilitopoLive(kind,extra={}){
                 finishTime:log&&log.finishTime?log.finishTime:null,
                 completed:!!(log&&log.completed),
                 missingControls:log&&Array.isArray(log.missingControls)?log.missingControls:[],
+                trackSnapshot:(kind==="FINISH"||kind==="TRACK")?compactTrackForSync(log&&log.track):undefined,
+                trackPointCount:log&&Array.isArray(log.track)?log.track.length:0,
                 resultCode,
                 clientTime:new Date().toISOString(),
                 ...extra
@@ -2553,6 +2571,7 @@ function recordRaceTrackPoint(pos){
         if(log.track.length>12000)log.track.splice(0,log.track.length-12000);
         militopoTrackLastSavedAt=now;militopoTrackLastPoint={lat,lon};
         if(log.track.length%5===0)save();
+        if(log.startTime&&!log.finishTime&&log.track.length>=2&&(now-lastTrackLiveSyncAt>=30000||log.track.length%25===0)){lastTrackLiveSyncAt=now;notifyMilitopoLive("TRACK")}
     }catch(e){console.warn('No se pudo guardar punto de track',e)}
 }
 function processGpsPosition(pos){
