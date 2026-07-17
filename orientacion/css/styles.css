@@ -2173,3 +2173,43 @@ th,td{
 .analysis-active-event{position:absolute;z-index:800;left:50%;top:150px;transform:translate(-50%,-12px);opacity:0;pointer-events:none;background:#111827e8;color:#fff;border-radius:12px;padding:9px 14px;display:flex;flex-direction:column;align-items:center;transition:.2s;box-shadow:0 8px 28px #0005}.analysis-active-event.show{opacity:1;transform:translate(-50%,0)}.analysis-active-event strong{font-size:.92rem}.analysis-active-event span{font-size:.76rem}
 .analysis-track-map-card{position:relative}
 @media(max-width:700px){.analysis-playback-participant-status{grid-template-columns:1fr 1fr}.analysis-active-event{top:210px;max-width:85%;text-align:center}}
+
+
+/* V31 · Visor profesional de tracks: contraste, overlays y salida/llegada */
+.analysis-track-map-stage{position:relative;min-width:0;border-radius:16px;overflow:hidden}
+.analysis-track-map-stage .analysis-track-map{position:relative;z-index:1}
+.analysis-map-status-overlay{position:absolute;z-index:650;left:10px;right:10px;top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:7px;pointer-events:none;margin:0;max-height:38%;overflow:auto;scrollbar-width:none}
+.analysis-map-status-overlay::-webkit-scrollbar{display:none}
+.analysis-map-status-overlay:not(.has-items){display:none}
+.analysis-live-card{border:2px solid var(--runner-color,#64748b);border-left-width:6px;background:rgba(10,17,12,.92);color:#fff;border-radius:12px;padding:8px 10px;box-shadow:0 5px 18px rgba(0,0,0,.48),inset 0 0 0 1px rgba(255,255,255,.08);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.analysis-live-card-head{display:grid;grid-template-columns:10px minmax(0,1fr) auto;align-items:center;gap:6px}
+.analysis-live-card-head i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+.analysis-live-card strong{font-size:.8rem;color:#fff;text-shadow:0 1px 2px #000}
+.analysis-live-card-head span{font-size:.66rem;color:#fff;background:rgba(255,255,255,.13);padding:2px 6px;border-radius:999px;font-weight:900}
+.analysis-live-card b{font-size:.74rem;margin-top:4px;color:#fff;text-shadow:0 1px 2px #000}
+.analysis-live-card small{font-size:.68rem;color:#f8e7a8;margin-top:2px}
+.analysis-active-event{z-index:760;left:50%;top:50%;transform:translate(-50%,-58%);min-width:min(300px,78%);max-width:88%;opacity:0;background:rgba(7,12,9,.96);color:#fff;border:2px solid rgba(255,255,255,.72);border-radius:16px;padding:12px 18px;box-shadow:0 12px 36px rgba(0,0,0,.62),0 0 0 4px rgba(0,0,0,.18);text-align:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.analysis-active-event.show{opacity:1;transform:translate(-50%,-50%)}
+.analysis-active-event strong{font-size:1rem;color:#fff}.analysis-active-event span{font-size:.8rem;color:#f7e7a6;margin-top:3px}.analysis-active-event small{font-size:.68rem;color:#d9e4d4;margin-top:3px}
+.analysis-runner-icon{width:30px;height:30px;border:3px solid #fff;background:var(--runner-color);box-shadow:0 3px 12px rgba(0,0,0,.65),0 0 0 2px var(--runner-color)}
+.analysis-runner-icon span{color:#fff;font-size:17px;text-shadow:0 1px 2px #000}
+.analysis-runner-name{left:35px;top:6px;max-width:145px;padding:5px 9px;border:2px solid #fff!important;border-radius:999px;color:#fff;font-size:11px;font-weight:950;box-shadow:0 3px 12px rgba(0,0,0,.62);text-shadow:0 1px 2px #000}
+.analysis-objective-wrap{filter:drop-shadow(0 4px 5px rgba(0,0,0,.45))}
+.analysis-objective-pulse{left:8px;top:8px;width:48px;height:48px;border-width:4px;box-shadow:0 0 0 2px rgba(255,255,255,.9)}
+.analysis-objective-core{position:absolute;left:20px;top:20px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#101827;border:2px solid #fff;font-size:12px;z-index:2}
+.analysis-objective-label{left:50%;top:59px;transform:translateX(-50%);background:#101827;color:#fff;border-width:2px;padding:4px 8px;font:bold 11px/1 system-ui;box-shadow:0 3px 10px rgba(0,0,0,.55);text-shadow:0 1px 2px #000}
+.analysis-track-map .leaflet-tooltip.analysis-track-label,.analysis-track-map .leaflet-tooltip.analysis-track-label-strong{background:rgba(8,13,10,.96);border:2px solid #fff;color:#fff;font-weight:950;box-shadow:0 4px 14px rgba(0,0,0,.58);padding:5px 8px;border-radius:9px;text-shadow:0 1px 2px #000}
+.analysis-track-map .leaflet-tooltip-top.analysis-track-label:before,.analysis-track-map .leaflet-tooltip-top.analysis-track-label-strong:before{border-top-color:#fff}
+.analysis-endpoint-wrap{background:transparent!important;border:none!important}
+.analysis-endpoint-marker{position:absolute;left:0;top:0;transform:translate(-50%,-50%);min-width:92px;display:grid;grid-template-columns:30px minmax(48px,1fr);grid-template-rows:auto auto;align-items:center;padding:5px 8px;border-radius:13px;border:2px solid #fff;color:#fff;background:rgba(9,16,11,.95);box-shadow:0 5px 18px rgba(0,0,0,.62),0 0 0 3px var(--runner-color);text-shadow:0 1px 2px #000}
+.analysis-endpoint-marker span{grid-row:1/3;font-size:25px;line-height:1}.analysis-endpoint-marker b{font-size:10px;letter-spacing:.04em}.analysis-endpoint-marker small{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px}
+.analysis-endpoint-marker.start{background:rgba(16,77,38,.96)}.analysis-endpoint-marker.finish{background:rgba(126,24,24,.96)}
+@media(max-width:700px){
+  .analysis-map-status-overlay{grid-template-columns:1fr 1fr;top:8px;left:8px;right:8px;max-height:34%}
+  .analysis-live-card{padding:6px 8px}.analysis-live-card strong{font-size:.72rem}.analysis-live-card b{font-size:.66rem}.analysis-live-card small{font-size:.62rem}
+  .analysis-active-event{top:54%;min-width:72%;padding:10px 12px}
+}
+@media(max-width:460px){
+  .analysis-map-status-overlay{grid-template-columns:1fr;max-height:28%}
+  .analysis-runner-name{max-width:108px;font-size:9px;padding:4px 7px}
+}
