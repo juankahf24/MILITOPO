@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=tracks-visual-profesional-v31" />
+<link rel="stylesheet" href="css/styles.css?v=tracks-layout-profesional-v32" />
 
 
 
@@ -450,7 +450,10 @@
         <div class="block analysis-track-controls">
           <label>Participantes</label>
           <div class="help">Máximo 5 tracks simultáneos.</div>
-          <div id="raceAnalysisTrackParticipants" class="analysis-track-participants"></div>
+          <details class="analysis-track-dropdown" open>
+            <summary><span>SELECCIONAR PARTICIPANTES</span><small id="analysisTrackSelectionCount">0 seleccionados</small></summary>
+            <div id="raceAnalysisTrackParticipants" class="analysis-track-participants"></div>
+          </details>
           <div class="btn-row">
             <button class="btn secondary" type="button" onclick="selectAllAnalysisTracks(false)">LIMPIAR</button>
             <button class="btn secondary" type="button" onclick="fitAnalysisTracks()">CENTRAR TRACKS</button>
@@ -491,14 +494,14 @@
             <span id="analysisPlaybackTotal">00:00</span>
           </div>
           <div id="analysisPlaybackLegend" class="analysis-playback-legend"></div>
-          <div class="analysis-event-title">Eventos y controles · pulsa para saltar al momento exacto</div>
+          <div class="analysis-event-title">EVENTOS Y CONTROLES · PULSA PARA SALTAR AL MOMENTO EXACTO</div>
           <div id="analysisPlaybackEvents" class="analysis-playback-events"></div>
         </div>
         <div class="analysis-track-map-stage">
           <div id="raceAnalysisTrackMap" class="analysis-track-map"></div>
-          <div id="analysisPlaybackParticipantStatus" class="analysis-playback-participant-status analysis-map-status-overlay"></div>
-          <div id="analysisPlaybackActiveEvent" class="analysis-active-event"></div>
+          <div id="analysisPlaybackActiveEvent" class="analysis-active-event analysis-active-event-top"></div>
         </div>
+        <div id="analysisPlaybackParticipantStatus" class="analysis-playback-participant-status analysis-status-below-map"></div>
         <div id="raceAnalysisTrackMapStatus" class="status warn">Selecciona participantes con track GPS.</div>
       </div>
     </div>
@@ -569,7 +572,7 @@
     </div>
 </div>
 
-<script src="js/app.js?v=tracks-visual-profesional-v31"></script>
+<script src="js/app.js?v=tracks-layout-profesional-v32"></script>
 <script type="module" src="js/live/live-phase2.js?v=penalizacion-pendientes-v22"></script>
 <script>
 (function(){
