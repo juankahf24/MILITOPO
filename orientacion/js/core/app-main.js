@@ -3060,7 +3060,15 @@ function cleanupStartFlowStatusStore(){
 
 function routeHasImportedResult(route){
     ensureImportedResultsStore();
-    return (state.importedResults||[]).some(r=>!isResultForSkippedRoute(r)&&(String(r.participantId||"")===String(route.participantId||"") || String(r.routeId||"")===String(route.routeId||"")));
+    const participantId=String(route?.participantId||"");
+    if(!participantId)return false;
+    // Con recorridos compartidos (R01, R02, etc.), el estado debe pertenecer
+    // siempre al participante concreto. Usar routeId aquí hacía que el resultado
+    // de P01 marcara también como finalizados a P16, P31... con el mismo recorrido.
+    return (state.importedResults||[]).some(result=>
+        !isResultForSkippedRoute(result) &&
+        String(result?.participantId||"")===participantId
+    );
 }
 
 function startFlowStatusForRoute(route){
@@ -3243,7 +3251,17 @@ function skippedRoutesList(){
 
 function isResultForSkippedRoute(result){
     if(!result)return false;
-    const route=(state.routes||[]).find(r=>String(r.participantId||"")===String(result.participantId||"") || String(r.routeId||"")===String(result.routeId||""));
+    const participantId=String(result.participantId||"");
+    let route=null;
+    if(participantId){
+        route=(state.routes||[]).find(r=>String(r.participantId||"")===participantId)||null;
+    }else{
+        // Compatibilidad con resultados antiguos sin participantId: solo se usa
+        // routeId si identifica de forma inequívoca un único participante.
+        const routeId=String(result.routeId||"");
+        const matches=(state.routes||[]).filter(r=>String(r.routeId||"")===routeId);
+        if(matches.length===1)route=matches[0];
+    }
     return route?isRouteSkipped(route):false;
 }
 
