@@ -2238,3 +2238,13 @@ th,td{
  .analysis-active-event-top{top:8px!important;left:8px!important;right:8px!important;padding:9px 11px!important}
  .analysis-status-below-map{grid-template-columns:1fr}
 }
+
+
+/* V33 · correcciones finales del comparador de tracks */
+.analysis-track-choice-info{display:grid;gap:2px;min-width:0}
+.analysis-track-choice-info strong,.analysis-track-choice-info em,.analysis-track-choice-info small{display:block;margin:0;line-height:1.25}
+.analysis-track-choice-info small{white-space:normal}
+.analysis-track-summary{display:none!important}
+.analysis-active-event-top{position:absolute!important;top:8px!important;left:8px!important;right:8px!important;bottom:auto!important;transform:translateY(-8px)!important;z-index:900!important}
+.analysis-active-event-top.show{transform:translateY(0)!important}
+@media(max-width:700px){.analysis-active-event-top{top:6px!important;left:6px!important;right:6px!important}}
