@@ -4204,7 +4204,6 @@ function openMapModal() {
     }
 
     function enterStartupMode(mode) {
-        try { sessionStorage.setItem("militopo_main_menu_seen_session_v1", "1"); } catch (e) {}
         if (mode === "orientacion") {
             window.location.href = "orientacion/";
             return;
@@ -4262,33 +4261,17 @@ function openMapModal() {
         restaurarSeleccionNumRecorridos();
 
         const startupParams = new URLSearchParams(window.location.search || "");
-        const forceMainMenu = startupParams.has("militopo_menu") || startupParams.get("modo") === "menu";
-        let firstWebEntryThisSession = true;
+        const overlay = document.getElementById("startupModeOverlay");
+        // La raíz de MILITOPO siempre abre el selector Topografía / Orientación.
+        // No se usa la sesión anterior para entrar automáticamente en Topografía.
+        if (overlay) overlay.style.display = "flex";
         try {
-            firstWebEntryThisSession = sessionStorage.getItem("militopo_main_menu_seen_session_v1") !== "1";
+            if (startupParams.has("militopo_menu") || startupParams.get("modo") === "menu") {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
         } catch (e) {}
-
-        if (forceMainMenu || firstWebEntryThisSession) {
-            const overlay = document.getElementById("startupModeOverlay");
-            if (overlay) overlay.style.display = "flex";
-            try { sessionStorage.setItem("militopo_main_menu_seen_session_v1", "1"); } catch (e) {}
-            try {
-                if (forceMainMenu) {
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                }
-            } catch (e) {}
-            goToStep(getSavedTopografiaStep());
-        } else if (hasTopografiaSavedSession()) {
-            appMode = "topografica";
-            const overlay = document.getElementById("startupModeOverlay");
-            if (overlay) overlay.style.display = "none";
-            try { localStorage.setItem("milimoto_app_mode", "topografica"); } catch (e) {}
-            showTopograficaMode(getSavedTopografiaStep());
-        } else {
-            const overlay = document.getElementById("startupModeOverlay");
-            if (overlay) overlay.style.display = "flex";
-            goToStep(1);
-        }
+        // Prepara Topografía detrás del selector, sin mostrarla hasta que el usuario pulse su botón.
+        goToStep(getSavedTopografiaStep());
 
         document.getElementById("startupTopoBtn")?.addEventListener("click", () => enterStartupMode("topografica"));
         document.getElementById("startupOriBtn")?.addEventListener("click", () => enterStartupMode("orientacion"));
@@ -5043,32 +5026,3 @@ document.addEventListener("DOMContentLoaded", setupTopoVisualEnhancements);
 })();
 
 
-/* MILITOPO · splash moderno de acceso */
-function setupMilitopoOpeningSplash() {
-    const splash = document.getElementById('militopoSplash');
-    const enterBtn = document.getElementById('mtSplashEnter');
-    if (!splash || !enterBtn) return;
-
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const MIN_READY_DELAY = reducedMotion ? 250 : 1100;
-    const AUTO_HIDE_DELAY = reducedMotion ? 900 : 2500;
-    let hidden = false;
-
-    const hideSplash = () => {
-        if (hidden) return;
-        hidden = true;
-        splash.classList.add('is-hidden');
-        window.setTimeout(() => splash.remove(), 520);
-    };
-
-    window.setTimeout(() => splash.classList.add('is-ready'), MIN_READY_DELAY);
-    window.setTimeout(hideSplash, AUTO_HIDE_DELAY);
-
-    enterBtn.addEventListener('click', hideSplash);
-    splash.addEventListener('click', event => {
-        if (event.target === splash || event.target.classList.contains('mt-splash-backdrop')) hideSplash();
-    });
-    document.addEventListener('keydown', hideSplash, { once: true });
-}
-
-document.addEventListener('DOMContentLoaded', setupMilitopoOpeningSplash);

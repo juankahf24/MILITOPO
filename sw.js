@@ -1,5 +1,5 @@
-/* MILITOPO PWA · instalación Android · v4 · icono borde negro */
-const CACHE_NAME = "militopo-pwa-v4-icono-borde-negro";
+/* MILITOPO PWA · v35 · selector de rama estable */
+const CACHE_NAME = "militopo-pwa-v35-inicio-estable";
 const APP_SHELL = [
   "./",
   "./index.html",
