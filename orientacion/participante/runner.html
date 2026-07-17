@@ -1839,10 +1839,10 @@ function compactTrackForSync(points,maxPoints=1600){
         const p=src[i]||{};
         const lat=Number(p.lat??p.latitude),lon=Number(p.lon??p.lng??p.longitude);
         if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
-        out.push({timestamp:p.timestamp||p.time||null,lat:+lat.toFixed(7),lon:+lon.toFixed(7),accuracy:Number.isFinite(Number(p.accuracy))?Math.round(Number(p.accuracy)*10)/10:null,altitude:Number.isFinite(Number(p.altitude))?Math.round(Number(p.altitude)*10)/10:null,speed:Number.isFinite(Number(p.speed))?Math.round(Number(p.speed)*100)/100:null,heading:Number.isFinite(Number(p.heading))?Math.round(Number(p.heading)):null});
+        out.push({timestamp:p.timestamp||p.time||null,lat:+lat.toFixed(7),lon:+lon.toFixed(7),accuracy:Number.isFinite(Number(p.accuracy))?Math.round(Number(p.accuracy)*10)/10:null,altitude:Number.isFinite(Number(p.altitude))?Math.round(Number(p.altitude)*10)/10:null,speed:Number.isFinite(Number(p.speed))?Math.round(Number(p.speed)*100)/100:null,heading:Number.isFinite(Number(p.heading))?Math.round(Number(p.heading)):null,event:p.event||null});
     }
     const last=src[src.length-1];
-    if(last&&out.length&&String(out[out.length-1].timestamp||'')!==String(last.timestamp||last.time||'')){const lat=Number(last.lat??last.latitude),lon=Number(last.lon??last.lng??last.longitude);if(Number.isFinite(lat)&&Number.isFinite(lon))out.push({timestamp:last.timestamp||last.time||null,lat:+lat.toFixed(7),lon:+lon.toFixed(7),accuracy:Number.isFinite(Number(last.accuracy))?Math.round(Number(last.accuracy)*10)/10:null,altitude:Number.isFinite(Number(last.altitude))?Math.round(Number(last.altitude)*10)/10:null,speed:Number.isFinite(Number(last.speed))?Math.round(Number(last.speed)*100)/100:null,heading:Number.isFinite(Number(last.heading))?Math.round(Number(last.heading)):null})}
+    if(last&&out.length&&String(out[out.length-1].timestamp||'')!==String(last.timestamp||last.time||'')){const lat=Number(last.lat??last.latitude),lon=Number(last.lon??last.lng??last.longitude);if(Number.isFinite(lat)&&Number.isFinite(lon))out.push({timestamp:last.timestamp||last.time||null,lat:+lat.toFixed(7),lon:+lon.toFixed(7),accuracy:Number.isFinite(Number(last.accuracy))?Math.round(Number(last.accuracy)*10)/10:null,altitude:Number.isFinite(Number(last.altitude))?Math.round(Number(last.altitude)*10)/10:null,speed:Number.isFinite(Number(last.speed))?Math.round(Number(last.speed)*100)/100:null,heading:Number.isFinite(Number(last.heading))?Math.round(Number(last.heading)):null,event:last.event||null})}
     return out;
 }
 let lastTrackLiveSyncAt=0;
@@ -2799,6 +2799,15 @@ function renderLoaded(){document.body.classList.add("route-loaded");document.get
 function scanControl(id){if(!route)return toast("Primero QR participante");if(id==="START")return startRace();if(id==="FINISH")return finishRace();if(!log.startTime)return toast("Primero SALIDA");if(log.finishTime)return toast("Ya finalizado");const exp=route.points.filter(x=>x!=="START"&&x!=="FINISH");const done=routeAdvancedCount();const expected=exp[done]||"FINISH";const alreadyCorrect=log.scans.some(s=>s.controlId===id&&s.status==="correct");let status=id===expected?"correct":alreadyCorrect?"duplicate":exp.includes(id)?"out_of_order":"wrong";log.scans.push({controlId:id,timestamp:new Date().toISOString(),expectedControlId:expected,status});if(status==="correct")recordTrackEvent("control:"+id);save();renderNext();refreshSkipHoldVisibility();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:status});gpsRefreshState();toast(scanStatusMessage(status,expected))}
 function scanStatusLabel(status){return {correct:"Correcto",out_of_order:"Fuera de orden",wrong:"Incorrecto",duplicate:"Duplicado",skipped:"Descartado"}[String(status||"")]||"Estado desconocido"}
 function scanStatusMessage(status,expected){return {correct:"Baliza correcta",out_of_order:"Fuera de orden. Tocaba "+expected,wrong:"Baliza incorrecta: no pertenece a tu recorrido",duplicate:"Baliza ya registrada correctamente",skipped:"Punto descartado. No se contará como pendiente; continúa con la siguiente baliza"}[String(status||"")]||"Baliza registrada"}
+function currentGpsEventLocation(){
+    try{
+        const c=gpsLastPosition&&gpsLastPosition.coords;
+        if(!c)return {};
+        const lat=Number(c.latitude),lon=Number(c.longitude),accuracy=Number(c.accuracy);
+        if(!Number.isFinite(lat)||!Number.isFinite(lon))return {};
+        return {lat:+lat.toFixed(7),lon:+lon.toFixed(7),accuracy:Number.isFinite(accuracy)?Math.round(accuracy*10)/10:null};
+    }catch(e){return {}}
+}
 function skipCurrentControl(skipConfirm=false){
     if(!route)return toast("Primero carga tu recorrido");
     if(!log||!log.startTime)return toast("Primero registra la SALIDA");
@@ -2808,7 +2817,7 @@ function skipCurrentControl(skipConfirm=false){
     const expected=exp[index];
     if(!expected)return toast("No quedan balizas pendientes. Dirígete a LLEGADA");
     if(!skipConfirm){const ok=window.confirm("¿CONFIRMAR DESCARTE DEL PUNTO?\n\nVas a marcar la baliza "+expected+" como pendiente y avanzar a la siguiente. Este punto contará como no completado en el resultado final.\n\nEsta acción no se puede deshacer durante la carrera.");if(!ok)return;}
-    log.scans.push({controlId:expected,timestamp:new Date().toISOString(),expectedControlId:expected,status:"skipped",skipped:true});
+    log.scans.push({controlId:expected,timestamp:new Date().toISOString(),expectedControlId:expected,status:"skipped",skipped:true,...currentGpsEventLocation()});
     recordTrackEvent("skipped:"+expected);
     save();renderNext();refreshSkipHoldVisibility();renderScans();notifyMilitopoLive("CONTROL",{scanStatus:"skipped",controlId:expected});gpsRefreshState();toast("Punto "+expected+" descartado. Continúa con la siguiente baliza");
 }
@@ -2895,7 +2904,7 @@ function compactResultObject(partial=false){
         ft:encResultTime(log.finishTime),
         c:!!log.completed,
         ptl:!!partial,
-        x:(log.scans||[]).map(s=>[s.controlId,encResultTime(s.timestamp),encResultStatus(s.status)]),
+        x:(log.scans||[]).map(s=>[s.controlId,encResultTime(s.timestamp),encResultStatus(s.status),Number.isFinite(Number(s.lat))?+Number(s.lat).toFixed(7):null,Number.isFinite(Number(s.lon))?+Number(s.lon).toFixed(7):null,Number.isFinite(Number(s.accuracy))?Math.round(Number(s.accuracy)*10)/10:null]),
         m:log.missingControls||[],
         ls:encResultTime(log.lastSavedAt||safeNow())
     };
