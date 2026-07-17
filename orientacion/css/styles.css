@@ -2213,3 +2213,28 @@ th,td{
   .analysis-map-status-overlay{grid-template-columns:1fr;max-height:28%}
   .analysis-runner-name{max-width:108px;font-size:9px;padding:4px 7px}
 }
+
+
+/* V32 · organización profesional del comparador de tracks */
+.analysis-track-dropdown{margin-top:10px;border:1px solid rgba(237,214,145,.24);border-radius:16px;background:rgba(24,38,19,.28);overflow:hidden}
+.analysis-track-dropdown>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;font-weight:950;color:#f6e3a0;background:rgba(77,48,27,.58)}
+.analysis-track-dropdown>summary::-webkit-details-marker{display:none}
+.analysis-track-dropdown>summary:after{content:'▾';font-size:1rem;transition:transform .18s ease}
+.analysis-track-dropdown:not([open])>summary:after{transform:rotate(-90deg)}
+.analysis-track-dropdown>summary small{margin-left:auto;color:#fff;font-size:.7rem;opacity:.82;white-space:nowrap}
+.analysis-track-dropdown .analysis-track-participants{max-height:360px;margin:0;padding:10px;overflow:auto;background:rgba(13,24,12,.26)}
+.analysis-track-choice{grid-template-columns:auto 12px minmax(0,1fr);padding:10px 11px}
+.analysis-track-choice strong{font-size:.86rem}
+.analysis-track-choice em{font-size:.72rem}
+.analysis-track-choice small{font-size:.7rem;color:#f1f3e8;opacity:.88}
+.analysis-event-title{color:#fff4bf!important;background:rgba(7,15,10,.86);border:1px solid rgba(244,219,133,.45);border-radius:10px;padding:8px 10px;text-shadow:0 1px 2px #000;letter-spacing:.02em}
+.analysis-active-event-top{top:12px!important;left:12px!important;right:12px!important;transform:translateY(-8px)!important;min-width:0!important;max-width:none!important;width:auto!important;border-radius:14px!important;padding:10px 14px!important}
+.analysis-active-event-top.show{transform:translateY(0)!important}
+.analysis-status-below-map{margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;max-height:none;overflow:visible}
+.analysis-status-below-map:not(.has-items){display:none}
+.analysis-status-below-map .analysis-live-card{box-shadow:0 6px 18px rgba(0,0,0,.24)}
+@media(max-width:700px){
+ .analysis-track-dropdown .analysis-track-participants{max-height:300px}
+ .analysis-active-event-top{top:8px!important;left:8px!important;right:8px!important;padding:9px 11px!important}
+ .analysis-status-below-map{grid-template-columns:1fr}
+}
