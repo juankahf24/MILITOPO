@@ -7612,3 +7612,22 @@ body {
         font-size: 1.42rem !important;
     }
 }
+
+
+/* ===== V36 · logos locales completos y sin recorte ===== */
+.startup-minimal-logo,
+.logo-imagen-clean,
+.logo-imagen {
+    object-fit: contain !important;
+    object-position: center center !important;
+    background: #050705 !important;
+}
+.startup-minimal-logo {
+    width: 78% !important;
+    height: 78% !important;
+    border-radius: 28% !important;
+}
+.logo-imagen-clean,
+.logo-imagen {
+    border-radius: 24% !important;
+}

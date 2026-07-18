@@ -1,5 +1,5 @@
-/* MILITOPO PWA · v35 · selector de rama estable */
-const CACHE_NAME = "militopo-pwa-v35-inicio-estable";
+/* MILITOPO PWA · v36 · selector y Topografía con URL estable */
+const CACHE_NAME = "militopo-pwa-v36-inicio-topografia-estable";
 const APP_SHELL = [
   "./",
   "./index.html",

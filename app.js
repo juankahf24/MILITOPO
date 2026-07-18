@@ -4203,6 +4203,15 @@ function openMapModal() {
         try { localStorage.setItem("milimoto_ori_participants", txt.value || ""); } catch (e) {}
     }
 
+    function setTopografiaUrlState() {
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.set("modo", "topografia");
+            url.searchParams.delete("militopo_menu");
+            window.history.replaceState({ modo: "topografia" }, document.title, url.pathname + "?" + url.searchParams.toString() + url.hash);
+        } catch (e) {}
+    }
+
     function enterStartupMode(mode) {
         if (mode === "orientacion") {
             window.location.href = "orientacion/";
@@ -4212,13 +4221,14 @@ function openMapModal() {
         appMode = "topografica";
         const overlay = document.getElementById("startupModeOverlay");
         if (overlay) overlay.style.display = "none";
+        setTopografiaUrlState();
         try {
             localStorage.setItem("milimoto_app_mode", appMode);
             localStorage.setItem("milimoto_topografia_started", "1");
-            localStorage.setItem("milimoto_topografia_current_step", "1");
         } catch (e) {}
 
-        showTopograficaMode(1);
+        // Conserva el paso en el que estaba el usuario. Solo una sesión nueva empieza en el paso 1.
+        showTopograficaMode(getSavedTopografiaStep());
         setTimeout(() => {
             let hideGuide = false;
             try { hideGuide = localStorage.getItem("militopo_topografia_guide_hidden") === "1"; } catch (e) {}
@@ -4262,16 +4272,20 @@ function openMapModal() {
 
         const startupParams = new URLSearchParams(window.location.search || "");
         const overlay = document.getElementById("startupModeOverlay");
-        // La raíz de MILITOPO siempre abre el selector Topografía / Orientación.
-        // No se usa la sesión anterior para entrar automáticamente en Topografía.
-        if (overlay) overlay.style.display = "flex";
-        try {
-            if (startupParams.has("militopo_menu") || startupParams.get("modo") === "menu") {
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        } catch (e) {}
-        // Prepara Topografía detrás del selector, sin mostrarla hasta que el usuario pulse su botón.
-        goToStep(getSavedTopografiaStep());
+        const requestedMode = (startupParams.get("modo") || "").toLowerCase();
+        const openTopografia = requestedMode === "topografia" || requestedMode === "topografica";
+
+        // La URL diferencia claramente el selector general de la rama Topografía:
+        //   /MILITOPO/                  -> selector inicial
+        //   /MILITOPO/?modo=topografia -> Topografía y recarga estable dentro de la rama
+        if (overlay) overlay.style.display = openTopografia ? "none" : "flex";
+        if (openTopografia) {
+            appMode = "topografica";
+            showTopograficaMode(getSavedTopografiaStep());
+        } else {
+            // Prepara Topografía detrás del selector sin alterar la pantalla inicial.
+            goToStep(getSavedTopografiaStep());
+        }
 
         document.getElementById("startupTopoBtn")?.addEventListener("click", () => enterStartupMode("topografica"));
         document.getElementById("startupOriBtn")?.addEventListener("click", () => enterStartupMode("orientacion"));
