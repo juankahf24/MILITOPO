@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · QR salida/llegada compacto */
-const MILITOPO_CACHE = "militopo-orientacion-v35-descartes-gps";
+const MILITOPO_CACHE = "militopo-orientacion-v37-fase3b-inteligencia";
 const CORE_ASSETS = [
   "./",
   "./index.html",
