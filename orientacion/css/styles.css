@@ -2303,3 +2303,10 @@ th,td{
 .analysis-smart-endpoint b{font-size:1rem}.analysis-smart-inspection-badge{display:grid;grid-template-columns:auto auto;align-items:center;justify-content:center;column-gap:7px;row-gap:1px;width:max-content;max-width:185px;min-height:0;padding:5px 8px;border:2px solid var(--inspection-color,#f59e0b);border-radius:10px;background:rgba(7,16,12,.94);color:#fff;box-shadow:0 5px 14px rgba(0,0,0,.48);text-align:left;font-size:.72rem;line-height:1.05}
 .analysis-smart-inspection-badge strong{color:#fff6d7;white-space:nowrap}.analysis-smart-inspection-badge span{font-weight:900;white-space:nowrap}.analysis-smart-inspection-badge small{grid-column:1/-1;color:#e3e9df;line-height:1.1;white-space:normal;max-width:170px}
 @media(max-width:700px){.analysis-smart-inspection-status{align-items:stretch;flex-direction:column}.analysis-smart-inspection-status button{width:100%}.analysis-smart-table table{min-width:980px}}
+
+/* V42 · controles compactos y liderazgo por tiempo ajustado */
+.analysis-smart-endpoint-wrap{width:38px!important;height:38px!important}
+.analysis-smart-endpoint{width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;border-radius:50%!important;display:grid!important;place-items:center!important;border:2px solid #fff!important;background:var(--endpoint-bg,#1d4ed8)!important;box-shadow:0 3px 10px rgba(0,0,0,.48)!important}
+.analysis-smart-endpoint span{font:900 11px/1 system-ui;color:#fff;letter-spacing:0!important}
+.analysis-live-leader-row>em{display:grid;text-align:right;line-height:1.05}
+.analysis-live-leader-row>em small{font-size:.62rem;color:#f2c977;margin-top:2px}
