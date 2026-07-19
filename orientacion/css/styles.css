@@ -2291,3 +2291,15 @@ th,td{
 .analysis-live-leader-row>em{font-style:normal;font-size:.7rem;color:#ffe4a0;white-space:nowrap}
 .analysis-live-leader-panel p{margin:9px 2px 0;color:#c6d7ca;font-size:.68rem;line-height:1.35}
 @media(max-width:680px){.analysis-live-leader-row{grid-template-columns:24px 8px minmax(0,1fr)}.analysis-live-leader-row>em{grid-column:3;font-size:.66rem}.analysis-live-leader-head{align-items:flex-start}.analysis-live-leader-head>b{font-size:.86rem}}
+
+/* ===== V39 · Inspección clara de tramos de análisis ===== */
+.analysis-smart-table tbody tr{cursor:pointer;transition:filter .16s ease,outline-color .16s ease,transform .16s ease}
+.analysis-smart-table tbody tr:hover{filter:brightness(1.12)}
+.analysis-smart-table tbody tr.is-focused{outline:3px solid #f5d26f;outline-offset:-3px;filter:brightness(1.18)}
+.analysis-smart-inspection-status{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:11px 12px;border:1px solid rgba(245,210,111,.65);border-radius:14px;background:linear-gradient(135deg,rgba(11,25,18,.98),rgba(41,55,31,.96));box-shadow:0 10px 24px rgba(0,0,0,.26)}
+.analysis-smart-inspection-status[hidden]{display:none!important}.analysis-smart-inspection-status div{min-width:0}.analysis-smart-inspection-status b{display:block;color:#fff6d7}.analysis-smart-inspection-status span{display:block;margin-top:3px;color:#dce5d8;white-space:normal}.analysis-smart-inspection-status button{flex:0 0 auto;padding:8px 10px;border-radius:10px;border:1px solid rgba(245,210,111,.65);background:#5b3a20;color:#fff7df;font-weight:800}
+.analysis-smart-endpoint-wrap,.analysis-smart-inspection-badge-wrap{background:transparent!important;border:0!important;overflow:visible!important}
+.analysis-smart-endpoint{display:flex;align-items:center;justify-content:center;gap:6px;min-width:92px;padding:6px 10px;border:2px solid #fff;border-radius:999px;background:var(--endpoint-bg,#1d4ed8);color:#fff;font-weight:900;box-shadow:0 5px 16px rgba(0,0,0,.5);white-space:nowrap}
+.analysis-smart-endpoint b{font-size:1rem}.analysis-smart-inspection-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;width:230px;min-height:66px;padding:8px 11px;border:3px solid var(--inspection-color,#f59e0b);border-radius:14px;background:rgba(7,16,12,.96);color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.55);text-align:center}
+.analysis-smart-inspection-badge strong{color:#fff6d7}.analysis-smart-inspection-badge span{font-weight:900;margin-top:2px}.analysis-smart-inspection-badge small{margin-top:3px;color:#e3e9df;line-height:1.15}
+@media(max-width:700px){.analysis-smart-inspection-status{align-items:stretch;flex-direction:column}.analysis-smart-inspection-status button{width:100%}.analysis-smart-table table{min-width:980px}}
