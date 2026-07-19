@@ -10416,7 +10416,7 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
     L.polyline(latlngs,{color:'#0f172a',weight:11,opacity:.88,lineCap:'round',lineJoin:'round',interactive:false}).addTo(analysisSmartInspectionGroup);
     L.polyline(latlngs,{color,weight:6,opacity:1,lineCap:'round',lineJoin:'round',dashArray:leg.severity==='medium'?'12 7':null}).addTo(analysisSmartInspectionGroup);
     const start=leg.points[0],end=leg.points[leg.points.length-1];
-    const endpoint=(label,glyph,bg)=>{const short=label==='START'?'S':label==='FINISH'?'M':String(label).replace(/^B/i,'');return L.divIcon({className:'analysis-smart-endpoint-wrap',html:`<div class="analysis-smart-endpoint" style="--endpoint-bg:${bg}" title="${escapeHtml(label)}"><span>${escapeHtml(short)}</span></div>`,iconSize:[38,38],iconAnchor:[19,19]})};
+    const endpoint=(label,glyph,bg)=>{const value=label==='START'?'🚩':label==='FINISH'?'🏁':String(label).toUpperCase();const cls=(label==='START'||label==='FINISH')?' is-event':'';return L.divIcon({className:'analysis-smart-endpoint-wrap',html:`<div class="analysis-smart-endpoint${cls}" style="--endpoint-bg:${bg}" title="${escapeHtml(label)}"><span>${escapeHtml(value)}</span></div>`,iconSize:[26,26],iconAnchor:[13,13]})};
     L.marker([start.lat,start.lng],{icon:endpoint(leg.from.id,'●','#1d4ed8'),zIndexOffset:900}).addTo(analysisSmartInspectionGroup);
     L.marker([end.lat,end.lng],{icon:endpoint(leg.to.id,'◎',color),zIndexOffset:910}).addTo(analysisSmartInspectionGroup);
     const mid=leg.points[Math.floor(leg.points.length/2)];
@@ -10461,13 +10461,16 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
     const finished=!!finishEvent&&finishEvent.playMs<=now;
     const elapsedMs=Math.max(0,Math.min(now,finished?finishEvent.playMs:now)-startMs);
     const pending=Math.max(0,controls.length-correct-skipped);
-    const penaltyCount=skipped+pending;
+    // Durante la carrera solo penalizan los descartes ya realizados.
+    // Los pendientes se penalizan únicamente cuando el participante ha registrado la llegada.
+    const penalizedPending=finished?pending:0;
+    const penaltyCount=skipped+penalizedPending;
     const penaltyMs=penaltyCount*discardPenaltyMs();
     const adjustedMs=elapsedMs+penaltyMs;
     const reachedIds=new Set(controlEvents.map(e=>e.id));
     const nextIndex=controls.findIndex(id=>!reachedIds.has(id));
     const targetId=finished?'FINISH':(nextIndex<0?'FINISH':controls[nextIndex]);
-    return {x,finished,elapsedMs,adjustedMs,penaltyMs,skipped,pending,correct,targetId,label:finished?'Finalizado':(targetId==='FINISH'?'Hacia llegada':'Buscando '+targetId)};
+    return {x,finished,elapsedMs,adjustedMs,penaltyMs,skipped,pending,penalizedPending,correct,targetId,label:finished?'Finalizado':(targetId==='FINISH'?'Hacia llegada':'Buscando '+targetId)};
   }
   function liveLeaderRows(){
     return (analysisPlayback.prepared||[]).map(x=>liveLeaderPosition(x,analysisPlayback.currentMs)).filter(Boolean).sort((a,b)=>(a.adjustedMs-b.adjustedMs)||(a.elapsedMs-b.elapsedMs)||((a.skipped+a.pending)-(b.skipped+b.pending))||participantLabel(a.x.r).localeCompare(participantLabel(b.x.r),'es',{numeric:true})).slice(0,5);
@@ -10475,14 +10478,14 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   window.renderLiveRaceLeader=function(){
     const box=document.getElementById('analysisLiveLeader');if(!box)return;const rows=liveLeaderRows();
     if(!rows.length){box.innerHTML='<div class="status warn">Selecciona participantes y reproduce desde 00:00 para calcular el liderazgo por tiempo ajustado.</div>';return}
-    const leader=rows[0];box.innerHTML=`<div class="analysis-live-leader-head"><div><small>LÍDER POR TIEMPO AJUSTADO</small><strong>🥇 ${escapeHtml(participantLabel(leader.x.r))}</strong><span>${escapeHtml(String(leader.x.r.routeId||leader.x.r.routeCode||'--'))} · ${escapeHtml(leader.label)}</span></div><b>${formatPlayback(leader.adjustedMs)}</b></div><div class="analysis-live-leader-list">${rows.map((z,i)=>`<div class="analysis-live-leader-row ${i===0?'leader':''}"><b>${i+1}</b><i style="background:${z.x.color}"></i><span><strong>${escapeHtml(participantLabel(z.x.r))}</strong><small>${escapeHtml(z.label)} · ⏭ ${z.skipped} · ⏳ ${z.pending}</small></span><em>${formatPlayback(z.adjustedMs)}<small> +${formatPlayback(z.penaltyMs)}</small></em></div>`).join('')}</div>`;
+    const leader=rows[0];box.innerHTML=`<div class="analysis-live-leader-head"><div><small>LÍDER POR TIEMPO AJUSTADO</small><strong>🥇 ${escapeHtml(participantLabel(leader.x.r))}</strong><span>${escapeHtml(String(leader.x.r.routeId||leader.x.r.routeCode||'--'))} · ${escapeHtml(leader.label)}</span></div><b>${formatPlayback(leader.adjustedMs)}</b></div><div class="analysis-live-leader-list">${rows.map((z,i)=>`<div class="analysis-live-leader-row ${i===0?'leader':''}"><b>${i+1}</b><i style="background:${z.x.color}"></i><span><strong>${escapeHtml(participantLabel(z.x.r))}</strong><small>${escapeHtml(z.label)} · ⏭ ${z.skipped} · ⏳ ${z.pending}${z.finished?' (penalizados)':''}</small></span><em>${formatPlayback(z.adjustedMs)}<small> +${formatPlayback(z.penaltyMs)}</small></em></div>`).join('')}</div>`;
   };
 
   window.renderRaceAnalysis=function(){ensureRaceAnalysisState();renderAnalysisSummary();renderAnalysisSegments();renderAnalysisSplits();renderAnalysisTracks();renderSmartNavigationAnalysis();renderLiveRaceLeader();};
 
   function archivePayload(){
     ensureRaceAnalysisState();
-    return {format:'MILITOPO_RACE_ARCHIVE',version:1,createdAt:new Date().toISOString(),appVersion:'V42_TRACKS_AJUSTES_Y_LIDER_AJUSTADO',eventId:state.eventId,eventName:state.eventName,state:JSON.parse(JSON.stringify(state)),analysis:{segments:segmentDefinitions(),generatedAt:new Date().toISOString()}};
+    return {format:'MILITOPO_RACE_ARCHIVE',version:1,createdAt:new Date().toISOString(),appVersion:'V43_MARCADORES_COMPACTOS_Y_PENALIZACION_EN_LLEGADA',eventId:state.eventId,eventName:state.eventName,state:JSON.parse(JSON.stringify(state)),analysis:{segments:segmentDefinitions(),generatedAt:new Date().toISOString()}};
   }
   window.downloadMilitopoRaceArchive=async function(){
     try{saveState();const payload=archivePayload();const safe=(state.eventName||state.eventId||'carrera').replace(/[^a-z0-9_-]+/gi,'_');if(typeof JSZip!=='undefined'){const zip=new JSZip();zip.file('carrera.json',JSON.stringify(payload));zip.file('LEER_PRIMERO.txt','Archivo completo de carrera MILITOPO. Ábrelo desde PASO 7 > ARCHIVO.');const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`MILITOPO_CARRERA_${safe}.militopo`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}else downloadText(`MILITOPO_CARRERA_${safe}.militopo`,JSON.stringify(payload));const st=document.getElementById('raceArchiveStatus');if(st){st.className='status ok';st.textContent='Carrera completa guardada correctamente.'}toast('Archivo completo de carrera guardado')}catch(e){console.error(e);toast('No se pudo guardar la carrera: '+(e.message||e))}
