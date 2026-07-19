@@ -2264,3 +2264,30 @@ th,td{
 .analysis-smart-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin-bottom:12px}.analysis-smart-card{padding:11px;border-radius:14px;background:rgba(255,255,255,.075);border-left:5px solid var(--smart-color,#94a3b8);min-width:0}.analysis-smart-card b{display:block;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.analysis-smart-card span{display:block;color:#f7e2a0;font-weight:700;margin-top:4px}.analysis-smart-card small{display:block;color:#d5ddcf;margin-top:3px;line-height:1.25}
 .analysis-smart-table table{min-width:920px}.analysis-smart-table th{white-space:normal;word-break:normal;line-height:1.15}.analysis-smart-table tr.smart-severity-high td{background:rgba(185,28,28,.16)}.analysis-smart-table tr.smart-severity-medium td{background:rgba(217,119,6,.13)}.analysis-smart-table tr.smart-severity-ok td{background:rgba(22,101,52,.08)}.analysis-smart-focus{cursor:pointer;text-decoration:underline;text-underline-offset:3px}.analysis-smart-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;font-weight:800;font-size:.74rem;white-space:nowrap}.analysis-smart-badge.high{background:#7f1d1d;color:#fff}.analysis-smart-badge.medium{background:#92400e;color:#fff}.analysis-smart-badge.ok{background:#14532d;color:#fff}.analysis-smart-help{margin-top:10px;color:#cfd8cb}.analysis-smart-error-label{background:#161b18!important;color:#fff!important;border:2px solid #f59e0b!important;border-radius:8px!important;box-shadow:0 4px 16px rgba(0,0,0,.38)!important;font-weight:800!important}.analysis-smart-error-label:before{border-top-color:#f59e0b!important}
 @media(max-width:700px){.analysis-smart-panel{padding:10px}.analysis-smart-header{align-items:stretch}.analysis-smart-header label{width:100%}.analysis-smart-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.analysis-smart-card{padding:9px}.analysis-smart-table table{min-width:820px}}
+
+/* V38 · Fase 3B corregida + liderazgo provisional */
+.analysis-smart-map-warning-wrap{background:transparent!important;border:0!important;overflow:visible!important}
+.analysis-smart-map-warning{display:flex;align-items:center;justify-content:center;gap:6px;min-width:112px;max-width:150px;padding:6px 9px;border:2px solid #fff;border-radius:12px;background:#f59e0b;color:#111827;font-weight:900;font-size:.72rem;line-height:1.05;box-shadow:0 4px 14px rgba(0,0,0,.55);white-space:nowrap}
+.analysis-smart-map-warning.high{background:#ef4444;color:#fff}
+.analysis-smart-map-warning span{overflow:hidden;text-overflow:ellipsis}
+.analysis-live-leader-panel{margin-top:14px;padding:14px;border:1px solid rgba(239,203,115,.48);border-radius:20px;background:linear-gradient(145deg,rgba(7,34,20,.96),rgba(15,53,31,.94));box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.analysis-live-leader-title{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:6px 14px;margin-bottom:10px}
+.analysis-live-leader-title strong{font-size:.94rem;letter-spacing:.045em;color:#ffe6a3}
+.analysis-live-leader-title small{font-size:.76rem;color:#dceadf}
+.analysis-live-leader-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.28);border-left:5px solid #f4c85e}
+.analysis-live-leader-head>div{display:grid;gap:2px}
+.analysis-live-leader-head small{color:#cad9ce;font-size:.68rem;letter-spacing:.04em}
+.analysis-live-leader-head strong{font-size:1.05rem;color:#fff}
+.analysis-live-leader-head span{font-size:.75rem;color:#e9f1eb}
+.analysis-live-leader-head>b{font-size:1rem;color:#ffe6a3;white-space:nowrap}
+.analysis-live-leader-list{display:grid;gap:6px;margin-top:9px}
+.analysis-live-leader-row{display:grid;grid-template-columns:24px 10px minmax(0,1fr) auto;align-items:center;gap:8px;padding:7px 9px;border-radius:11px;background:rgba(255,255,255,.055);color:#fff}
+.analysis-live-leader-row.leader{background:rgba(244,200,94,.15);box-shadow:inset 0 0 0 1px rgba(244,200,94,.38)}
+.analysis-live-leader-row>b{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.32);font-size:.75rem}
+.analysis-live-leader-row>i{width:10px;height:28px;border-radius:6px}
+.analysis-live-leader-row>span{display:grid;min-width:0}
+.analysis-live-leader-row>span strong{font-size:.84rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.analysis-live-leader-row>span small{font-size:.68rem;color:#d6e3d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.analysis-live-leader-row>em{font-style:normal;font-size:.7rem;color:#ffe4a0;white-space:nowrap}
+.analysis-live-leader-panel p{margin:9px 2px 0;color:#c6d7ca;font-size:.68rem;line-height:1.35}
+@media(max-width:680px){.analysis-live-leader-row{grid-template-columns:24px 8px minmax(0,1fr)}.analysis-live-leader-row>em{grid-column:3;font-size:.66rem}.analysis-live-leader-head{align-items:flex-start}.analysis-live-leader-head>b{font-size:.86rem}}
