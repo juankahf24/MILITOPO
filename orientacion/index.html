@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=inspeccion-tramos-analisis-v39" />
+<link rel="stylesheet" href="css/styles.css?v=analisis-secuencial-limpio-v40" />
 
 
 
@@ -504,7 +504,7 @@
         <div id="analysisPlaybackParticipantStatus" class="analysis-playback-participant-status analysis-status-below-map"></div>
         <div id="raceAnalysisTrackMapStatus" class="status warn">Selecciona participantes con track GPS.</div>
         <section class="analysis-live-leader-panel" aria-label="Liderazgo provisional de la carrera">
-          <div class="analysis-live-leader-title"><strong>🏆 LIDERAZGO PROVISIONAL DESDE 00:00</strong><small>Se actualiza al mover o reproducir la línea temporal.</small></div>
+          <div class="analysis-live-leader-title"><strong>🏆 LIDERAZGO PROVISIONAL DESDE 00:00</strong></div>
           <div id="analysisLiveLeader"></div>
         </section>
         <section class="analysis-smart-panel" aria-label="Análisis inteligente de navegación">
@@ -517,10 +517,8 @@
               </select>
             </label>
           </div>
-          <div id="analysisSmartSummary" class="analysis-smart-summary"></div>
           <div id="analysisSmartTable" class="table-wrap analysis-smart-table"></div>
           <div id="analysisSmartInspectionStatus" class="analysis-smart-inspection-status" hidden></div>
-          <div class="help analysis-smart-help">La detección es una estimación técnica basada en el track GPS, la línea directa entre controles, las paradas y el ritmo del participante. Sirve para localizar zonas que merece la pena revisar en el mapa.</div>
         </section>
       </div>
     </div>

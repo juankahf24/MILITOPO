@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · QR salida/llegada compacto */
-const MILITOPO_CACHE = "militopo-orientacion-v39-inspeccion-tramos-analisis";
+const MILITOPO_CACHE = "militopo-orientacion-v40-analisis-secuencial-limpio";
 const CORE_ASSETS = [
   "./",
   "./index.html",
