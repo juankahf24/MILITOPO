@@ -2310,3 +2310,10 @@ th,td{
 .analysis-smart-endpoint span{font:900 11px/1 system-ui;color:#fff;letter-spacing:0!important}
 .analysis-live-leader-row>em{display:grid;text-align:right;line-height:1.05}
 .analysis-live-leader-row>em small{font-size:.62rem;color:#f2c977;margin-top:2px}
+
+/* V43 · Marcadores de inspección más compactos */
+.analysis-smart-endpoint-wrap{width:26px!important;height:26px!important}
+.analysis-smart-endpoint{width:22px!important;height:22px!important;min-width:22px!important;padding:0!important;border-radius:50%!important;border:1.5px solid #fff!important;box-shadow:0 2px 7px rgba(0,0,0,.48)!important}
+.analysis-smart-endpoint span{font:900 8.5px/1 system-ui!important;letter-spacing:-.02em!important}
+.analysis-smart-endpoint.is-event{background:rgba(8,18,13,.94)!important}
+.analysis-smart-endpoint.is-event span{font-size:12px!important}
