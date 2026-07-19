@@ -2317,3 +2317,33 @@ th,td{
 .analysis-smart-endpoint span{font:900 8.5px/1 system-ui!important;letter-spacing:-.02em!important}
 .analysis-smart-endpoint.is-event{background:rgba(8,18,13,.94)!important}
 .analysis-smart-endpoint.is-event span{font-size:12px!important}
+
+/* V44 · centrado al participante y liderazgo compacto */
+.analysis-live-leader-head{align-items:center!important}
+.analysis-live-leader-head .analysis-adjusted-time-main{
+  display:inline-flex!important;align-items:center;justify-content:center;
+  min-width:88px;padding:8px 11px;border-radius:12px;
+  background:linear-gradient(135deg,#ffe08a,#f4b93e);
+  color:#132019!important;font-size:1.12rem!important;font-weight:950!important;
+  letter-spacing:.035em;box-shadow:0 4px 14px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.55)
+}
+.analysis-live-leader-row{
+  grid-template-columns:24px 10px minmax(0,1fr) 76px!important;
+  align-items:center!important;gap:8px!important
+}
+.analysis-live-leader-row>em.analysis-adjusted-time{
+  grid-column:auto!important;display:flex!important;align-items:center;justify-content:center;
+  align-self:center;min-width:72px;padding:6px 7px;border-radius:9px;
+  background:rgba(244,200,94,.16);border:1px solid rgba(244,200,94,.4);
+  color:#ffe5a1!important;font-size:.84rem!important;font-weight:900!important;
+  text-align:center!important;line-height:1!important;white-space:nowrap!important
+}
+.analysis-live-leader-row.leader>em.analysis-adjusted-time{
+  background:#f4c85e;color:#132019!important;border-color:#ffe8a8;box-shadow:0 2px 8px rgba(0,0,0,.25)
+}
+.analysis-live-leader-row>span small{white-space:nowrap!important;text-overflow:ellipsis!important;overflow:hidden!important}
+@media(max-width:680px){
+  .analysis-live-leader-row{grid-template-columns:22px 8px minmax(0,1fr) 70px!important;padding:7px 8px!important}
+  .analysis-live-leader-row>em.analysis-adjusted-time{grid-column:auto!important;font-size:.78rem!important;min-width:66px!important;padding:6px 5px!important}
+  .analysis-live-leader-head .analysis-adjusted-time-main{min-width:78px;font-size:.98rem!important;padding:7px 9px}
+}
