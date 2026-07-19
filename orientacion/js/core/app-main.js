@@ -10280,7 +10280,7 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   const analysisTrackColors=['#e53935','#1565c0','#43a047','#8e24aa','#fb8c00'];
   let analysisTrackMap=null,analysisTrackBase=null,analysisTrackBaseKey='mapant',analysisTrackGroup=null,analysisTrackAnimationGroup=null,analysisSmartInspectionGroup=null,analysisTrackSelected=new Set();
   let analysisSmartFocusedLeg=null;
-  const analysisPlayback={mode:'relative',speed:1,currentMs:0,durationMs:0,playing:false,lastFrame:0,raf:0,prepared:[]};
+  const analysisPlayback={mode:'relative',speed:1,currentMs:0,durationMs:0,playing:false,lastFrame:0,raf:0,prepared:[],inspectionEndMs:null};
   function trackTimeMs(v){if(v==null)return null;if(typeof v==='number'&&Number.isFinite(v))return v<1e12?v*1000:v;const n=new Date(v).getTime();return Number.isFinite(n)?n:null}
   function normalizedTrack(r){
     const raw=trackPoints(r),fallbackStart=toMs(r.startTime)||Date.now();
@@ -10321,10 +10321,13 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   function renderPlaybackPanels(statuses){const box=document.getElementById('analysisPlaybackParticipantStatus');if(box){box.classList.toggle('has-items',!!statuses.length);box.innerHTML=statuses.map(z=>`<div class="analysis-live-card" style="--runner-color:${z.x.color};border-color:${z.x.color}"><div class="analysis-live-card-head"><i style="background:${z.x.color}"></i><strong>${escapeHtml(participantLabel(z.x.r))}</strong><span>${escapeHtml(String(z.x.r.routeId||z.x.r.routeCode||'--'))}</span></div><b>${z.st.icon} ${escapeHtml(z.st.stateLabel)}</b><small>🎯 Objetivo: <strong>${escapeHtml(z.st.objective)}</strong></small></div>`).join('')}const active=document.getElementById('analysisPlaybackActiveEvent');if(active){const recent=statuses.map(z=>({z,e:z.st.last})).filter(q=>q.e&&Math.abs(analysisPlayback.currentMs-q.e.playMs)<6500).sort((a,b)=>Math.abs(analysisPlayback.currentMs-a.e.playMs)-Math.abs(analysisPlayback.currentMs-b.e.playMs))[0];active.className='analysis-active-event analysis-active-event-top '+(recent?'show':'');active.innerHTML=recent?`<strong>${recent.z.st.icon} ${escapeHtml(participantLabel(recent.z.x.r))}</strong><span>${escapeHtml(recent.z.st.stateLabel)}</span><small>${escapeHtml(String(recent.z.x.r.routeId||recent.z.x.r.routeCode||''))}</small>`:''}}
   function renderPlaybackEventTimeline(){const box=document.getElementById('analysisPlaybackEvents');if(!box)return;const marks=[];analysisPlayback.prepared.forEach(x=>(x.events||[]).forEach(e=>{if(e.playMs>=0&&e.playMs<=analysisPlayback.durationMs)marks.push({x,e})}));marks.sort((a,b)=>a.e.playMs-b.e.playMs);box.innerHTML=marks.map(({x,e})=>`<button type="button" style="--event-color:${x.color}" onclick="seekAnalysisPlaybackMs(${Math.max(0,Math.round(e.playMs))})" title="${escapeHtml(participantLabel(x.r))} · ${escapeHtml(e.id)}"><span>${e.type==='start'?'🚩':e.type==='finish'?'🏁':e.status==='skipped'?'⏭️':e.status==='correct'?'✅':'⚠️'}</span><b>${escapeHtml(e.id)}</b><small>${formatPlayback(e.playMs)}</small></button>`).join('')}
   window.seekAnalysisPlaybackMs=function(ms){stopAnalysisPlayback(false);analysisPlayback.currentMs=Math.max(0,Math.min(analysisPlayback.durationMs,Number(ms)||0));drawAnalysisPlaybackFrame()};
-  function drawAnalysisPlaybackFrame(){const m=ensureAnalysisTrackMap();if(!m||!analysisTrackAnimationGroup)return;analysisTrackAnimationGroup.clearLayers();const statuses=[];analysisPlayback.prepared.forEach(x=>{const first=x.points[0],last=x.points[x.points.length-1];if(analysisPlayback.currentMs<first.playMs||analysisPlayback.currentMs>last.playMs)return;const p=interpolateTrackPoint(x.points,analysisPlayback.currentMs);if(!p)return;const st=playbackStatusFor(x,analysisPlayback.currentMs);statuses.push({x,st});L.marker([p.lat,p.lng],{icon:playbackIcon(x.color,participantLabel(x.r),p.bearing),zIndexOffset:1000}).addTo(analysisTrackAnimationGroup);if(st.objective!=='LLEGADA'){const op=playbackControlPoint(st.objective);if(op)L.marker([op.lat,op.lng],{icon:objectiveIcon(x.color,st.objective),zIndexOffset:900}).addTo(analysisTrackAnimationGroup)}});renderPlaybackPanels(statuses);updateAnalysisPlaybackUi();renderLiveRaceLeader()}
-  function playbackLoop(now){if(!analysisPlayback.playing)return;if(!analysisPlayback.lastFrame)analysisPlayback.lastFrame=now;const delta=Math.min(250,now-analysisPlayback.lastFrame);analysisPlayback.lastFrame=now;analysisPlayback.currentMs+=delta*analysisPlayback.speed;if(analysisPlayback.currentMs>=analysisPlayback.durationMs){analysisPlayback.currentMs=analysisPlayback.durationMs;stopAnalysisPlayback(false)}drawAnalysisPlaybackFrame();if(analysisPlayback.playing)analysisPlayback.raf=requestAnimationFrame(playbackLoop)}
+  function drawAnalysisPlaybackFrame(){const m=ensureAnalysisTrackMap();if(!m||!analysisTrackAnimationGroup)return;analysisTrackAnimationGroup.clearLayers();const statuses=[];analysisPlayback.prepared.forEach(x=>{if(analysisSmartFocusedLeg&&String(x.r.participantId||'')!==String(analysisSmartFocusedLeg.pid))return;const first=x.points[0],last=x.points[x.points.length-1];if(analysisPlayback.currentMs<first.playMs||analysisPlayback.currentMs>last.playMs)return;const p=interpolateTrackPoint(x.points,analysisPlayback.currentMs);if(!p)return;const st=playbackStatusFor(x,analysisPlayback.currentMs);statuses.push({x,st});L.marker([p.lat,p.lng],{icon:playbackIcon(x.color,participantLabel(x.r),p.bearing),zIndexOffset:1000}).addTo(analysisTrackAnimationGroup);if(!analysisSmartFocusedLeg&&st.objective!=='LLEGADA'){const op=playbackControlPoint(st.objective);if(op)L.marker([op.lat,op.lng],{icon:objectiveIcon(x.color,st.objective),zIndexOffset:900}).addTo(analysisTrackAnimationGroup)}});renderPlaybackPanels(statuses);updateAnalysisPlaybackUi();renderLiveRaceLeader()}
+  function playbackLoop(now){if(!analysisPlayback.playing)return;if(!analysisPlayback.lastFrame)analysisPlayback.lastFrame=now;const delta=Math.min(250,now-analysisPlayback.lastFrame);analysisPlayback.lastFrame=now;analysisPlayback.currentMs+=delta*analysisPlayback.speed;
+    if(analysisSmartFocusedLeg&&Number.isFinite(analysisPlayback.inspectionEndMs)&&analysisPlayback.currentMs>=analysisPlayback.inspectionEndMs){const next=nextSmartInspectionContext();if(next){renderSmartInspection(next,{setTime:true,fit:true});analysisPlayback.playing=true;analysisPlayback.lastFrame=now}else{analysisPlayback.currentMs=analysisPlayback.inspectionEndMs;stopAnalysisPlayback(false);drawAnalysisPlaybackFrame();return}}
+    else if(analysisPlayback.currentMs>=analysisPlayback.durationMs){analysisPlayback.currentMs=analysisPlayback.durationMs;stopAnalysisPlayback(false);drawAnalysisPlaybackFrame();return}
+    drawAnalysisPlaybackFrame();if(analysisPlayback.playing)analysisPlayback.raf=requestAnimationFrame(playbackLoop)}
   function stopAnalysisPlayback(reset){analysisPlayback.playing=false;analysisPlayback.lastFrame=0;if(analysisPlayback.raf)cancelAnimationFrame(analysisPlayback.raf);analysisPlayback.raf=0;if(reset)analysisPlayback.currentMs=0;drawAnalysisPlaybackFrame()}
-  window.toggleAnalysisPlayback=function(){if(!analysisPlayback.prepared.length){toast('Selecciona al menos un participante con track');return}if(analysisPlayback.currentMs>=analysisPlayback.durationMs)analysisPlayback.currentMs=0;analysisPlayback.playing=!analysisPlayback.playing;analysisPlayback.lastFrame=0;updateAnalysisPlaybackUi();if(analysisPlayback.playing)analysisPlayback.raf=requestAnimationFrame(playbackLoop)};
+  window.toggleAnalysisPlayback=function(){if(!analysisPlayback.prepared.length){toast('Selecciona al menos un participante con track');return}if(analysisSmartFocusedLeg&&Number.isFinite(analysisPlayback.inspectionEndMs)&&analysisPlayback.currentMs>=analysisPlayback.inspectionEndMs){const ctx=smartInspectionContext(analysisSmartFocusedLeg.pid,analysisSmartFocusedLeg.index);if(ctx)analysisPlayback.currentMs=ctx.startMs}else if(analysisPlayback.currentMs>=analysisPlayback.durationMs)analysisPlayback.currentMs=0;analysisPlayback.playing=!analysisPlayback.playing;analysisPlayback.lastFrame=0;updateAnalysisPlaybackUi();if(analysisPlayback.playing)analysisPlayback.raf=requestAnimationFrame(playbackLoop)};
   window.resetAnalysisPlayback=function(){stopAnalysisPlayback(true)};
   window.jumpAnalysisPlayback=function(delta){stopAnalysisPlayback(false);analysisPlayback.currentMs=Math.max(0,Math.min(analysisPlayback.durationMs,analysisPlayback.currentMs+Number(delta||0)));drawAnalysisPlaybackFrame()};
   window.seekAnalysisPlayback=function(value){stopAnalysisPlayback(false);analysisPlayback.currentMs=analysisPlayback.durationMs*Math.max(0,Math.min(1000,Number(value)||0))/1000;drawAnalysisPlaybackFrame()};
@@ -10369,8 +10372,46 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   function smartSeverityBadge(x){const cls=x.severity,label=x.severity==='high'?'⚠ Revisar':x.severity==='medium'?'△ Atención':'✓ Correcto';return `<span class="analysis-smart-badge ${cls}">${label}</span>`}
   function smartSelectedAnalyses(){return selectedTrackResults().map(smartAnalyzeResult)}
   function smartLegColor(leg){return leg.severity==='high'?'#ef4444':leg.severity==='medium'?'#f59e0b':'#22c55e'}
+  function smartInspectionContext(pid,index){
+    const a=smartSelectedAnalyses().find(x=>String(x.r.participantId||'')===String(pid));
+    const leg=a?.legs.find(x=>x.index===Number(index));
+    if(!a||!leg)return null;
+    const prepared=analysisPlayback.prepared.find(x=>String(x.r.participantId||'')===String(pid));
+    const globalBase=analysisPlayback.mode==='relative'?(normalizedTrack(a.r)[0]?.timestamp||leg.from.time):Math.min(...analysisPlayback.prepared.map(x=>x.points[0].timestamp));
+    return {a,leg,prepared,startMs:Math.max(0,leg.from.time-globalBase),endMs:Math.max(0,leg.to.time-globalBase)};
+  }
+  function nextSmartInspectionContext(){
+    if(!analysisSmartFocusedLeg)return null;
+    const analyses=smartSelectedAnalyses();
+    const ai=analyses.findIndex(x=>String(x.r.participantId||'')===String(analysisSmartFocusedLeg.pid));
+    if(ai<0)return null;
+    const current=analyses[ai],nextLeg=current.legs.find(x=>x.index>Number(analysisSmartFocusedLeg.index));
+    if(nextLeg)return smartInspectionContext(current.r.participantId,nextLeg.index);
+    const nextAnalysis=analyses[ai+1];
+    return nextAnalysis?.legs?.length?smartInspectionContext(nextAnalysis.r.participantId,nextAnalysis.legs[0].index):null;
+  }
+  function renderSmartInspection(ctx,{setTime=true,fit=true}={}){
+    if(!ctx)return false;const {a,leg}=ctx,m=ensureAnalysisTrackMap();if(!m||!analysisSmartInspectionGroup)return false;
+    analysisSmartFocusedLeg={pid:String(a.r.participantId||''),index:Number(leg.index)};analysisPlayback.inspectionEndMs=ctx.endMs;
+    analysisSmartInspectionGroup.clearLayers();if(analysisTrackGroup&&m.hasLayer(analysisTrackGroup))m.removeLayer(analysisTrackGroup);if(analysisTrackAnimationGroup)analysisTrackAnimationGroup.clearLayers();
+    const color=smartLegColor(leg),latlngs=leg.points.map(p=>[p.lat,p.lng]);if(latlngs.length<2)return false;
+    L.polyline(latlngs,{color:'#0f172a',weight:11,opacity:.88,lineCap:'round',lineJoin:'round',interactive:false}).addTo(analysisSmartInspectionGroup);
+    L.polyline(latlngs,{color,weight:6,opacity:1,lineCap:'round',lineJoin:'round',dashArray:leg.severity==='medium'?'12 7':null}).addTo(analysisSmartInspectionGroup);
+    const start=leg.points[0],end=leg.points[leg.points.length-1];
+    const endpoint=(label,glyph,bg)=>L.divIcon({className:'analysis-smart-endpoint-wrap',html:`<div class="analysis-smart-endpoint" style="--endpoint-bg:${bg}"><b>${glyph}</b><span>${escapeHtml(label)}</span></div>`,iconSize:[105,38],iconAnchor:[52,19]});
+    L.marker([start.lat,start.lng],{icon:endpoint(leg.from.id,'●','#1d4ed8'),zIndexOffset:900}).addTo(analysisSmartInspectionGroup);
+    L.marker([end.lat,end.lng],{icon:endpoint(leg.to.id,'◎',color),zIndexOffset:910}).addTo(analysisSmartInspectionGroup);
+    const mid=leg.points[Math.floor(leg.points.length/2)];
+    L.marker([mid.lat,mid.lng],{icon:L.divIcon({className:'analysis-smart-inspection-badge-wrap',html:`<div class="analysis-smart-inspection-badge" style="--inspection-color:${color}"><strong>${escapeHtml(participantLabel(a.r))}</strong><span>${escapeHtml(leg.from.id)} → ${escapeHtml(leg.to.id)}</span><small>${escapeHtml(leg.reason)} · +${Math.round(leg.extra)} m · ${Number.isFinite(leg.efficiency)?leg.efficiency.toFixed(1):'--'} %</small></div>`,iconSize:[190,50],iconAnchor:[95,25]}),zIndexOffset:950}).addTo(analysisSmartInspectionGroup);
+    if(fit){const b=L.latLngBounds(latlngs);if(b.isValid())m.fitBounds(b.pad(.22),{maxZoom:19,animate:true})}
+    if(setTime)analysisPlayback.currentMs=ctx.startMs;
+    document.querySelectorAll('.analysis-smart-table tr').forEach(el=>el.classList.toggle('is-focused',el.dataset.pid===String(a.r.participantId||'')&&Number(el.dataset.legIndex)===Number(leg.index)));
+    const row=document.querySelector(`.analysis-smart-table tr[data-pid="${CSS.escape(String(a.r.participantId||''))}"][data-leg-index="${Number(leg.index)}"]`);if(row)row.scrollIntoView({block:'nearest',behavior:'smooth'});
+    const box=document.getElementById('analysisSmartInspectionStatus');if(box){box.hidden=false;box.innerHTML=`<div><b>Inspeccionando ${escapeHtml(participantLabel(a.r))}</b><span>${escapeHtml(leg.from.id)} → ${escapeHtml(leg.to.id)} · ${escapeHtml(leg.reason)}</span></div><button type="button" onclick="clearSmartLegInspection()">Volver a todos los tracks</button>`}
+    updateAnalysisPlaybackUi();drawAnalysisPlaybackFrame();return true;
+  }
   function clearSmartLegInspection(redraw=true){
-    analysisSmartFocusedLeg=null;
+    analysisSmartFocusedLeg=null;analysisPlayback.inspectionEndMs=null;
     if(analysisSmartInspectionGroup)analysisSmartInspectionGroup.clearLayers();
     const m=ensureAnalysisTrackMap();
     if(m&&analysisTrackGroup&&!m.hasLayer(analysisTrackGroup))analysisTrackGroup.addTo(m);
@@ -10380,33 +10421,11 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   }
   window.clearSmartLegInspection=function(){clearSmartLegInspection(true);fitAnalysisTracks()};
   window.focusSmartLeg=function(pid,index){
-    const a=smartSelectedAnalyses().find(x=>String(x.r.participantId||'')===String(pid));
-    const leg=a?.legs.find(x=>x.index===Number(index));const m=ensureAnalysisTrackMap();
-    if(!leg||!m||!analysisSmartInspectionGroup)return;
-    analysisSmartFocusedLeg={pid:String(pid),index:Number(index)};
-    stopAnalysisPlayback(false);
-    analysisSmartInspectionGroup.clearLayers();
-    if(analysisTrackGroup&&m.hasLayer(analysisTrackGroup))m.removeLayer(analysisTrackGroup);
-    if(analysisTrackAnimationGroup)analysisTrackAnimationGroup.clearLayers();
-    const color=smartLegColor(leg),latlngs=leg.points.map(p=>[p.lat,p.lng]);
-    if(latlngs.length<2)return;
-    L.polyline(latlngs,{color:'#0f172a',weight:13,opacity:.9,lineCap:'round',lineJoin:'round',interactive:false}).addTo(analysisSmartInspectionGroup);
-    L.polyline(latlngs,{color,weight:8,opacity:1,lineCap:'round',lineJoin:'round',dashArray:leg.severity==='medium'?'14 8':null}).addTo(analysisSmartInspectionGroup);
-    const start=leg.points[0],end=leg.points[leg.points.length-1];
-    const endpoint=(label,glyph,bg)=>L.divIcon({className:'analysis-smart-endpoint-wrap',html:`<div class="analysis-smart-endpoint" style="--endpoint-bg:${bg}"><b>${glyph}</b><span>${escapeHtml(label)}</span></div>`,iconSize:[120,42],iconAnchor:[60,21]});
-    L.marker([start.lat,start.lng],{icon:endpoint(leg.from.id,'●','#1d4ed8'),zIndexOffset:900}).addTo(analysisSmartInspectionGroup);
-    L.marker([end.lat,end.lng],{icon:endpoint(leg.to.id,'◎',color),zIndexOffset:910}).addTo(analysisSmartInspectionGroup);
-    const mid=leg.points[Math.floor(leg.points.length/2)];
-    L.marker([mid.lat,mid.lng],{icon:L.divIcon({className:'analysis-smart-inspection-badge-wrap',html:`<div class="analysis-smart-inspection-badge" style="--inspection-color:${color}"><strong>${escapeHtml(participantLabel(a.r))}</strong><span>${escapeHtml(leg.from.id)} → ${escapeHtml(leg.to.id)}</span><small>${escapeHtml(leg.reason)} · Extra ${Math.round(leg.extra)} m · Eficiencia ${Number.isFinite(leg.efficiency)?leg.efficiency.toFixed(1):'--'} %</small></div>`,iconSize:[240,76],iconAnchor:[120,38]}),zIndexOffset:950}).addTo(analysisSmartInspectionGroup);
-    const b=L.latLngBounds(latlngs);if(b.isValid())m.fitBounds(b.pad(.28),{maxZoom:19,animate:true});
-    analysisPlayback.currentMs=Math.max(0,leg.from.time-(analysisPlayback.mode==='relative'?(normalizedTrack(a.r)[0]?.timestamp||leg.from.time):Math.min(...analysisPlayback.prepared.map(x=>x.points[0].timestamp))));
-    updateAnalysisPlaybackUi();
-    document.querySelectorAll('.analysis-smart-table tr').forEach(el=>el.classList.toggle('is-focused',el.dataset.pid===String(pid)&&Number(el.dataset.legIndex)===Number(index)));
-    const box=document.getElementById('analysisSmartInspectionStatus');if(box){box.hidden=false;box.innerHTML=`<div><b>Inspeccionando ${escapeHtml(participantLabel(a.r))}</b><span>${escapeHtml(leg.from.id)} → ${escapeHtml(leg.to.id)} · ${escapeHtml(leg.reason)}</span></div><button type="button" onclick="clearSmartLegInspection()">Volver a todos los tracks</button>`}
+    const ctx=smartInspectionContext(pid,index);if(!ctx)return;
+    stopAnalysisPlayback(false);renderSmartInspection(ctx,{setTime:true,fit:true});
   };
   window.renderSmartNavigationAnalysis=function(){
-    const summary=document.getElementById('analysisSmartSummary'),table=document.getElementById('analysisSmartTable');if(!summary||!table)return;const analyses=smartSelectedAnalyses();if(!analyses.length){summary.innerHTML='<div class="status warn">Selecciona participantes para analizar su navegación.</div>';table.innerHTML='';return}
-    summary.innerHTML=analyses.map((a,i)=>`<article class="analysis-smart-card" style="--smart-color:${analysisTrackColors[i%analysisTrackColors.length]}"><b>${escapeHtml(participantLabel(a.r))} · ${escapeHtml(a.r.routeId||'--')}</b><span>${a.issues} zona${a.issues===1?'':'s'} a revisar</span><small>Distancia extra: ${Math.round(a.totalExtra)} m</small><small>Pérdida estimada: ${formatPlayback(a.totalLost)}</small><small>Eficiencia: ${Number.isFinite(a.score)?a.score.toFixed(1)+' %':'--'}</small></article>`).join('');
+    const table=document.getElementById('analysisSmartTable');if(!table)return;const analyses=smartSelectedAnalyses();if(!analyses.length){table.innerHTML='<div class="status warn">Selecciona participantes para analizar su navegación.</div>';return}
     const rows=[];analyses.forEach((a,participantOrder)=>a.legs.forEach(x=>rows.push({a,x,participantOrder})));rows.sort((u,v)=>(u.participantOrder-v.participantOrder)||(u.x.index-v.x.index));
     table.innerHTML=`<table class="results-table"><thead><tr><th>Participante</th><th>Tramo</th><th>Estado</th><th>Tiempo</th><th>Distancia directa</th><th>Distancia real</th><th>Distancia extra</th><th>Eficiencia</th><th>Parado</th><th>Pérdida estimada</th><th>Contra líder</th></tr></thead><tbody>${rows.map(({a,x})=>`<tr class="smart-severity-${x.severity}" data-pid="${escapeHtml(String(a.r.participantId||''))}" data-leg-index="${x.index}" onclick="focusSmartLeg(decodeURIComponent('${encodeURIComponent(String(a.r.participantId||''))}'),${x.index})"><td>${escapeHtml(participantLabel(a.r))}</td><td><button type="button" class="link-button analysis-smart-focus">${escapeHtml(x.from.id)} → ${escapeHtml(x.to.id)}</button><br><small>${escapeHtml(x.reason)}</small></td><td>${smartSeverityBadge(x)}</td><td>${formatPlayback(x.duration)}</td><td>${Math.round(x.direct)} m</td><td>${Math.round(x.actual)} m</td><td>${Math.round(x.extra)} m</td><td><b>${Number.isFinite(x.efficiency)?x.efficiency.toFixed(1)+' %':'--'}</b></td><td>${formatPlayback(x.stopped)}</td><td><b>${formatPlayback(x.lost)}</b></td><td>${smartDeltaText(a.r,x.to)}</td></tr>`).join('')}</tbody></table>`;
   };
@@ -10440,14 +10459,14 @@ async function orientationGeoTiffDataUrlForBounds(bounds,width,height){if(!orien
   window.renderLiveRaceLeader=function(){
     const box=document.getElementById('analysisLiveLeader');if(!box)return;const rows=liveLeaderRows();
     if(!rows.length){box.innerHTML='<div class="status warn">Selecciona participantes para calcular el liderazgo provisional desde 00:00.</div>';return}
-    const leader=rows[0];box.innerHTML=`<div class="analysis-live-leader-head"><div><small>LÍDER PROVISIONAL EN ESTE INSTANTE</small><strong>🥇 ${escapeHtml(participantLabel(leader.x.r))}</strong><span>${escapeHtml(String(leader.x.r.routeId||leader.x.r.routeCode||'--'))} · ${escapeHtml(leader.label)}</span></div><b>${formatPlayback(analysisPlayback.currentMs)}</b></div><div class="analysis-live-leader-list">${rows.map((z,i)=>`<div class="analysis-live-leader-row ${i===0?'leader':''}"><b>${i+1}</b><i style="background:${z.x.color}"></i><span><strong>${escapeHtml(participantLabel(z.x.r))}</strong><small>${escapeHtml(z.label)}${z.penalties?' · '+z.penalties+' descarte'+(z.penalties===1?'':'s'):''}</small></span><em>${Number.isFinite(z.distance)&&!z.finished?Math.round(z.distance)+' m al objetivo':z.finished?'Finalizado':''}</em></div>`).join('')}</div><p>Clasificación provisional por avance desde 00:00. En empate se prioriza menor penalización y menor distancia al siguiente objetivo.</p>`;
+    const leader=rows[0];box.innerHTML=`<div class="analysis-live-leader-head"><div><small>LÍDER PROVISIONAL EN ESTE INSTANTE</small><strong>🥇 ${escapeHtml(participantLabel(leader.x.r))}</strong><span>${escapeHtml(String(leader.x.r.routeId||leader.x.r.routeCode||'--'))} · ${escapeHtml(leader.label)}</span></div><b>${formatPlayback(analysisPlayback.currentMs)}</b></div><div class="analysis-live-leader-list">${rows.map((z,i)=>`<div class="analysis-live-leader-row ${i===0?'leader':''}"><b>${i+1}</b><i style="background:${z.x.color}"></i><span><strong>${escapeHtml(participantLabel(z.x.r))}</strong><small>${escapeHtml(z.label)}${z.penalties?' · '+z.penalties+' descarte'+(z.penalties===1?'':'s'):''}</small></span><em>${Number.isFinite(z.distance)&&!z.finished?Math.round(z.distance)+' m al objetivo':z.finished?'Finalizado':''}</em></div>`).join('')}</div>`;
   };
 
   window.renderRaceAnalysis=function(){ensureRaceAnalysisState();renderAnalysisSummary();renderAnalysisSegments();renderAnalysisSplits();renderAnalysisTracks();renderSmartNavigationAnalysis();renderLiveRaceLeader();};
 
   function archivePayload(){
     ensureRaceAnalysisState();
-    return {format:'MILITOPO_RACE_ARCHIVE',version:1,createdAt:new Date().toISOString(),appVersion:'V39_INSPECCION_TRAMOS_ANALISIS',eventId:state.eventId,eventName:state.eventName,state:JSON.parse(JSON.stringify(state)),analysis:{segments:segmentDefinitions(),generatedAt:new Date().toISOString()}};
+    return {format:'MILITOPO_RACE_ARCHIVE',version:1,createdAt:new Date().toISOString(),appVersion:'V40_ANALISIS_SECUENCIAL_LIMPIO',eventId:state.eventId,eventName:state.eventName,state:JSON.parse(JSON.stringify(state)),analysis:{segments:segmentDefinitions(),generatedAt:new Date().toISOString()}};
   }
   window.downloadMilitopoRaceArchive=async function(){
     try{saveState();const payload=archivePayload();const safe=(state.eventName||state.eventId||'carrera').replace(/[^a-z0-9_-]+/gi,'_');if(typeof JSZip!=='undefined'){const zip=new JSZip();zip.file('carrera.json',JSON.stringify(payload));zip.file('LEER_PRIMERO.txt','Archivo completo de carrera MILITOPO. Ábrelo desde PASO 7 > ARCHIVO.');const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`MILITOPO_CARRERA_${safe}.militopo`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}else downloadText(`MILITOPO_CARRERA_${safe}.militopo`,JSON.stringify(payload));const st=document.getElementById('raceArchiveStatus');if(st){st.className='status ok';st.textContent='Carrera completa guardada correctamente.'}toast('Archivo completo de carrera guardado')}catch(e){console.error(e);toast('No se pudo guardar la carrera: '+(e.message||e))}
