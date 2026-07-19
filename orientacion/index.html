@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="js/vendor/qr.js?v=modular-fase2"></script>
-<link rel="stylesheet" href="css/styles.css?v=analisis-secuencial-limpio-v40" />
+<link rel="stylesheet" href="css/styles.css?v=analisis-participante-tramos-v41" />
 
 
 
@@ -510,6 +510,9 @@
         <section class="analysis-smart-panel" aria-label="Análisis inteligente de navegación">
           <div class="analysis-smart-header">
             <div><strong>🧠 ANÁLISIS INTELIGENTE DE NAVEGACIÓN</strong><small>Detecta desvíos, paradas, distancia extra y pérdida estimada por tramo.</small></div>
+            <label>Participante a analizar
+              <select id="analysisSmartParticipant" onchange="setSmartAnalysisParticipant(this.value)"></select>
+            </label>
             <label>Comparar contra
               <select id="analysisSmartLeaderMode" onchange="renderSmartNavigationAnalysis()">
                 <option value="route">Líder del mismo recorrido</option>
