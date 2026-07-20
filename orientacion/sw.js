@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · QR salida/llegada compacto */
-const MILITOPO_CACHE = "militopo-orientacion-v44-centrado-liderazgo";
+const MILITOPO_CACHE = "militopo-orientacion-v45-ranking-zoom-resumen";
 const CORE_ASSETS = [
   "./",
   "./index.html",
