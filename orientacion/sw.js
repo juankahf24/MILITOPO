@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · QR salida/llegada compacto */
-const MILITOPO_CACHE = "militopo-orientacion-v45-ranking-zoom-resumen";
+/* MILITOPO Orientación · V46 tiempo ajustado en selector tracks */
+const MILITOPO_CACHE = "militopo-orientacion-v46-tiempo-ajustado-track";
 const CORE_ASSETS = [
   "./",
   "./index.html",
