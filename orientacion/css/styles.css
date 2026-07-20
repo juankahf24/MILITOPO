@@ -2360,3 +2360,14 @@ th,td{
   .analysis-live-leader-row>span small.analysis-leader-counts{font-size:.63rem!important;gap:8px!important}
   .analysis-live-leader-row>em.analysis-adjusted-time{min-width:64px!important;padding:6px 4px!important;font-size:.77rem!important}
 }
+
+/* ===== V46 · tiempo ajustado visible en selector de tracks ===== */
+.analysis-track-choice-info .analysis-track-adjusted {
+  display: block;
+  color: #f4d47a;
+  font-weight: 700;
+}
+.analysis-track-choice-info .analysis-track-adjusted b {
+  color: #fff4c7;
+  font-size: 1.04em;
+}
