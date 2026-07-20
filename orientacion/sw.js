@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · V46 tiempo ajustado en selector tracks */
-const MILITOPO_CACHE = "militopo-orientacion-v50-ranking-radio-16m";
+/* MILITOPO Orientación · V51 plano integrado El Valle Perdido nuevo */
+const MILITOPO_CACHE = "militopo-orientacion-v51-plano-el-valle-nuevo";
 const CORE_ASSETS = [
   "./",
   "./index.html",
