@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · V46 tiempo ajustado en selector tracks */
-const MILITOPO_CACHE = "militopo-orientacion-v46-tiempo-ajustado-track";
+const MILITOPO_CACHE = "militopo-orientacion-v50-ranking-radio-16m";
 const CORE_ASSETS = [
   "./",
   "./index.html",
