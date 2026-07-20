@@ -7631,3 +7631,88 @@ body {
 .logo-imagen {
     border-radius: 24% !important;
 }
+
+/* ===== V46 · pantalla inicial a pantalla completa con logo protagonista ===== */
+.startup-overlay-minimal {
+  padding: 0 !important;
+  min-height: 100dvh;
+}
+.startup-minimal-shell {
+  width: 100vw !important;
+  min-height: 100dvh !important;
+  max-width: none !important;
+  border-radius: 0 !important;
+  padding: max(28px, env(safe-area-inset-top)) 24px max(30px, env(safe-area-inset-bottom)) !important;
+  justify-content: flex-end !important;
+  gap: 18px !important;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(5,17,12,.18) 0%, rgba(5,17,12,.35) 48%, rgba(5,17,12,.92) 76%, rgba(5,17,12,.98) 100%) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.startup-minimal-shell::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255,255,255,.08), transparent 38%),
+    linear-gradient(180deg, rgba(255,255,255,.025), rgba(0,0,0,.18)) !important;
+  -webkit-mask: none !important;
+  mask: none !important;
+  pointer-events: none;
+}
+.startup-minimal-logo-wrap {
+  position: absolute !important;
+  inset: max(22px, env(safe-area-inset-top)) 0 auto 0 !important;
+  width: 100% !important;
+  height: min(67dvh, 760px) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+  pointer-events: none;
+}
+.startup-minimal-logo {
+  width: min(96vw, 760px) !important;
+  height: min(64dvh, 720px) !important;
+  object-fit: contain !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 24px 42px rgba(0,0,0,.45));
+}
+.startup-minimal-title,
+.startup-minimal-actions,
+.startup-notice-floating {
+  position: relative;
+  z-index: 3;
+}
+.startup-minimal-title {
+  font-size: clamp(2.15rem, 10vw, 4.4rem) !important;
+  margin-bottom: 4px !important;
+}
+.startup-minimal-actions {
+  width: min(92vw, 500px) !important;
+}
+@media (max-width: 640px) {
+  .startup-overlay-minimal { padding: 0 !important; }
+  .startup-minimal-shell {
+    width: 100vw !important;
+    min-height: 100dvh !important;
+    border-radius: 0 !important;
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+  .startup-minimal-logo-wrap {
+    height: 62dvh !important;
+  }
+  .startup-minimal-logo {
+    width: 100vw !important;
+    height: 59dvh !important;
+  }
+}
