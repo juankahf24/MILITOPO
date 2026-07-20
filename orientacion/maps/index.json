@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "maps": [
     {
       "id": "valle-perdido",
@@ -14,6 +14,13 @@
       "format": "kmz",
       "file": "./maps/valle-perdido-v2.kmz",
       "source": "valle v1.kmz"
+    },
+    {
+      "id": "el-valle-perdido-nuevo",
+      "name": "El Valle Perdido nuevo",
+      "format": "kmz",
+      "file": "./maps/el-valle-perdido-nuevo.kmz",
+      "source": "El Valle perdido nuevo.kmz"
     }
   ]
 }
