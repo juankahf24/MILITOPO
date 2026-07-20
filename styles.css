@@ -7716,3 +7716,106 @@ body {
     height: 59dvh !important;
   }
 }
+
+/* ===== V47 · logo como fondo integral de la pantalla inicial ===== */
+.startup-overlay-minimal {
+  background: #06130d !important;
+  overflow: hidden !important;
+}
+.startup-minimal-shell {
+  position: relative !important;
+  isolation: isolate !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  min-height: 100dvh !important;
+  padding: max(28px, env(safe-area-inset-top)) 20px max(34px, calc(env(safe-area-inset-bottom) + 18px)) !important;
+  gap: 16px !important;
+  background-image: url("icons/militopo-startup-1536.png") !important;
+  background-size: cover !important;
+  background-position: center 38% !important;
+  background-repeat: no-repeat !important;
+}
+.startup-minimal-shell::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  background:
+    linear-gradient(180deg,
+      rgba(2,8,5,.04) 0%,
+      rgba(2,8,5,.08) 36%,
+      rgba(2,8,5,.42) 58%,
+      rgba(2,8,5,.86) 76%,
+      rgba(2,8,5,.97) 100%) !important;
+  pointer-events: none !important;
+}
+.startup-minimal-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 38%, transparent 0 28%, rgba(0,0,0,.12) 64%, rgba(0,0,0,.30) 100%);
+  pointer-events: none;
+}
+.startup-minimal-logo-wrap {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.startup-minimal-title {
+  position: relative !important;
+  z-index: 2 !important;
+  margin: 0 0 10px !important;
+  color: #fff7df !important;
+  font-size: clamp(2.55rem, 11vw, 5rem) !important;
+  line-height: .95 !important;
+  letter-spacing: .16em !important;
+  text-indent: .16em !important;
+  text-shadow: 0 4px 18px rgba(0,0,0,.95), 0 0 2px rgba(0,0,0,1) !important;
+}
+.startup-minimal-actions {
+  position: relative !important;
+  z-index: 2 !important;
+  width: min(92vw, 560px) !important;
+  display: grid !important;
+  gap: 14px !important;
+  padding: 12px !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  border-radius: 30px !important;
+  background: rgba(4,14,9,.46) !important;
+  box-shadow: 0 22px 48px rgba(0,0,0,.36) !important;
+  backdrop-filter: blur(12px) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.12) !important;
+}
+.startup-minimal-btn {
+  min-height: 78px !important;
+  border-radius: 23px !important;
+  font-size: clamp(1rem, 4.5vw, 1.25rem) !important;
+  letter-spacing: .10em !important;
+  text-shadow: 0 2px 8px rgba(0,0,0,.55) !important;
+}
+.startup-minimal-btn-primary {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 10px 24px rgba(0,0,0,.28) !important;
+}
+.startup-minimal-btn-secondary {
+  background: rgba(24,45,34,.66) !important;
+  border-color: rgba(255,255,255,.27) !important;
+  color: #fff8e8 !important;
+}
+.startup-backdrop-grid { display: none !important; }
+@media (max-height: 720px) {
+  .startup-minimal-shell {
+    padding-bottom: max(20px, calc(env(safe-area-inset-bottom) + 10px)) !important;
+    gap: 10px !important;
+    background-position: center 34% !important;
+  }
+  .startup-minimal-title { font-size: clamp(2.15rem, 9vw, 3.7rem) !important; margin-bottom: 2px !important; }
+  .startup-minimal-actions { gap: 10px !important; padding: 9px !important; }
+  .startup-minimal-btn { min-height: 64px !important; }
+}
