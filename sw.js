@@ -1,5 +1,5 @@
-/* MILITOPO PWA · v47 · logo integral de fondo en selector */
-const CACHE_NAME = "militopo-pwa-v47-inicio-logo-fondo";
+/* MILITOPO PWA · v48 · pantalla inicial premium */
+const CACHE_NAME = "militopo-pwa-v48-inicio-premium";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -8,7 +8,8 @@ const APP_SHELL = [
   "./manifest.webmanifest",
   "./icons/militopo-192.png",
   "./icons/militopo-512.png",
-  "./icons/militopo-startup-1536.png"
+  "./icons/militopo-startup-1536.png",
+  "./icons/militopo-startup-premium-2048x3072.jpg"
 ];
 
 self.addEventListener("install", event => {
