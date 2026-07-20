@@ -2371,3 +2371,13 @@ th,td{
   color: #fff4c7;
   font-size: 1.04em;
 }
+
+/* ===== V50 · selector de tracks ordenado y tiempo ajustado en una fila ===== */
+.analysis-track-choice-info .analysis-track-adjusted{
+  display:flex!important;align-items:baseline;gap:7px;white-space:nowrap!important;flex-wrap:nowrap;
+}
+.analysis-track-choice-info .analysis-track-adjusted b{margin-left:auto;white-space:nowrap}
+@media(max-width:520px){
+  .analysis-track-choice-info .analysis-track-adjusted{font-size:.78rem!important;gap:5px}
+  .analysis-track-choice-info .analysis-track-adjusted b{font-size:1em!important}
+}
