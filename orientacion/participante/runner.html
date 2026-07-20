@@ -1712,7 +1712,7 @@ const INITIAL_URL_LOG=readInitialUrlLog();
 const EVENT_DATA=(INITIAL_URL_EVENT_DATA&&Array.isArray(INITIAL_URL_EVENT_DATA.routes)&&INITIAL_URL_EVENT_DATA.routes.length)?INITIAL_URL_EVENT_DATA:((BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData());
 const PARENT_SAVED_LOG=INITIAL_URL_LOG||((BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null);
 let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-v4-salto-balizas-20260713";
+const APP_VERSION="militopo-participante-v45-resumen-final";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -2264,6 +2264,22 @@ function setParticipantLiveSyncStatus(state,text,lastSyncAt){const el=gpsEl("liv
 function resizeParticipantFrameFromInside(){try{const frame=window.frameElement;if(!frame)return;requestAnimationFrame(()=>{const h=Math.max(document.body?.scrollHeight||0,document.documentElement?.scrollHeight||0,window.innerHeight||0,900);frame.style.height=(h+24)+"px";frame.style.minHeight=(h+24)+"px";try{const pdoc=window.parent.document;pdoc.documentElement.style.overflowY="auto";pdoc.body.style.overflowY="auto";pdoc.body.style.overflowX="hidden"}catch(_){}})}catch(e){}}
 function focusFinishNoticeAtTop(){setTimeout(()=>{try{resizeParticipantFrameFromInside();if(window.parent&&window.parent!==window){const topbar=window.parent.document.querySelector("#militopoParticipantOnlyShell .participant-only-topbar");if(topbar){topbar.scrollIntoView({behavior:"smooth",block:"start"});return}const frame=window.frameElement;if(frame)frame.scrollIntoView({behavior:"smooth",block:"start"})}else{gpsEl("gpsFinishNotice")?.scrollIntoView({behavior:"smooth",block:"start"})}}catch(e){try{gpsEl("gpsFinishNotice")?.scrollIntoView({behavior:"smooth",block:"start"})}catch(_){}}},80)}
 function closeGpsFinishNotice(){const el=gpsEl("gpsFinishNotice");gpsFinishNoticeDismissedMode=gpsFinishNoticeMode;if(el)el.classList.remove("open");resizeParticipantFrameFromInside()}
+function participantTrackDistanceM(){
+    const pts=Array.isArray(log&&log.track)?log.track:[];let total=0;
+    for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i];const d=gpsDistanceM(Number(a.lat),Number(a.lon),Number(b.lat),Number(b.lon));if(Number.isFinite(d)&&d>=0&&d<500)total+=d}
+    return total;
+}
+function participantPenaltyMinutes(){return Math.max(0,Number(EVENT_DATA?.raceAnalysis?.discardPenaltyMinutes??EVENT_DATA?.discardPenaltyMinutes??15)||15)}
+function participantFinishMetrics(){
+    if(!log||!log.startTime||!log.finishTime)return null;
+    const realMs=Math.max(0,new Date(log.finishTime).getTime()-new Date(log.startTime).getTime());
+    const skipped=(log.scans||[]).filter(x=>x.status==='skipped').length;
+    const pending=Array.isArray(log.missingControls)?log.missingControls.length:0;
+    const adjustedMs=realMs+(skipped+pending)*participantPenaltyMinutes()*60000;
+    return {distanceM:participantTrackDistanceM(),realMs,adjustedMs,skipped,pending};
+}
+function participantDurationText(ms){const sec=Math.max(0,Math.round((Number(ms)||0)/1000)),h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),ss=sec%60;return h?String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0'):String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0')}
+function participantFinishMetricsText(){const x=participantFinishMetrics();if(!x)return '';const km=x.distanceM>=1000?(x.distanceM/1000).toFixed(2)+' km':Math.round(x.distanceM)+' m';return '\n\n📏 Distancia recorrida: '+km+'\n⏱️ Tiempo ajustado: '+participantDurationText(x.adjustedMs)}
 function showGpsFinishNotice(mode="pending"){
     const box=gpsEl("gpsFinishNotice"),title=gpsEl("gpsFinishTitle"),text=gpsEl("gpsFinishText");
     if(!box||!title||!text)return;
@@ -2295,6 +2311,7 @@ function showGpsFinishNotice(mode="pending"){
         title.textContent="🏁 CARRERA FINALIZADA";
         text.textContent="La llegada se ha registrado. Esperando confirmación de importación en vivo...";
     }
+    text.textContent+=participantFinishMetricsText();
     if(shouldFocus)focusFinishNoticeAtTop();
 }
 
@@ -2928,7 +2945,7 @@ async function showPartialResultQr(){
 }
 
 function resultPayload(){return encodeResultObject(compactResultObject(false))}
-async function renderResult(){const sec=document.getElementById("result");if(!sec)return;if(!log||!log.finishTime){sec.style.display="none";sec.classList.remove("result-open");return}sec.style.display="block";sec.classList.add("result-open");const payload=resultPayload();log.resultPayload=payload;const result="ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+payload;const discardedIds=(log.scans||[]).filter(s=>s.status==="skipped").map(s=>String(s.controlId));const pendingIds=log.missingControls||[];const completedCount=(log.scans||[]).filter(s=>s.status==="correct").length;document.getElementById("summary").innerHTML="<b>"+pid+"</b> · "+route.routeId+"<br>✅ Completados: "+completedCount+"<br>⏭️ Descartados: "+(discardedIds.length?discardedIds.join(", "):"Ninguno")+"<br>⏳ Pendientes: "+(pendingIds.length?pendingIds.join(", "):"Ninguno")+"<br><strong>ENSEÑA ESTE CÓDIGO AL ORGANIZADOR</strong>";document.getElementById("resultText").value=result;try{const url=await QRCode.toDataURL(result,{margin:8,width:1200,errorCorrectionLevel:"H"});document.getElementById("resultQr").innerHTML="<img src='"+url+"' alt='QR resultado'><div class='result-qr-instruction'>📲 QR FINAL DE RESULTADO<br>ENSÉÑASELO AL ORGANIZADOR PARA GUARDAR TU RESULTADO.</div>"}catch(e){document.getElementById("resultQr").innerHTML="<div class='status err'>No se pudo generar el QR final. Usa COPIAR CÓDIGO y enséñaselo al organizador.</div>"}save()}
+async function renderResult(){const sec=document.getElementById("result");if(!sec)return;if(!log||!log.finishTime){sec.style.display="none";sec.classList.remove("result-open");return}sec.style.display="block";sec.classList.add("result-open");const payload=resultPayload();log.resultPayload=payload;const result="ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+payload;const discardedIds=(log.scans||[]).filter(s=>s.status==="skipped").map(s=>String(s.controlId));const pendingIds=log.missingControls||[];const completedCount=(log.scans||[]).filter(s=>s.status==="correct").length;const metrics=participantFinishMetrics(),distanceText=metrics?(metrics.distanceM>=1000?(metrics.distanceM/1000).toFixed(2)+" km":Math.round(metrics.distanceM)+" m"):"--",adjustedText=metrics?participantDurationText(metrics.adjustedMs):"--";document.getElementById("summary").innerHTML="<b>"+pid+"</b> · "+route.routeId+"<br>📏 Distancia recorrida: "+distanceText+"<br>⏱️ Tiempo ajustado: "+adjustedText+"<br>✅ Completados: "+completedCount+"<br>⏭️ Descartados: "+(discardedIds.length?discardedIds.join(", "):"Ninguno")+"<br>⏳ Pendientes: "+(pendingIds.length?pendingIds.join(", "):"Ninguno")+"<br><strong>ENSEÑA ESTE CÓDIGO AL ORGANIZADOR</strong>";document.getElementById("resultText").value=result;try{const url=await QRCode.toDataURL(result,{margin:8,width:1200,errorCorrectionLevel:"H"});document.getElementById("resultQr").innerHTML="<img src='"+url+"' alt='QR resultado'><div class='result-qr-instruction'>📲 QR FINAL DE RESULTADO<br>ENSÉÑASELO AL ORGANIZADOR PARA GUARDAR TU RESULTADO.</div>"}catch(e){document.getElementById("resultQr").innerHTML="<div class='status err'>No se pudo generar el QR final. Usa COPIAR CÓDIGO y enséñaselo al organizador.</div>"}save()}
 function copyResult(){const t=document.getElementById("resultText");t.select();document.execCommand("copy");toast("Código de resultado copiado")}function downloadResult(){const b=new Blob([document.getElementById("resultText").value],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="codigo_resultado_"+(pid||"participante")+".txt";a.click();URL.revokeObjectURL(a.href)}function tm(i){return new Date(i).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
 function bindParticipantAutosave(){
     document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")save()});
