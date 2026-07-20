@@ -1,5 +1,5 @@
-/* MILITOPO PWA · v48 · pantalla inicial premium */
-const CACHE_NAME = "militopo-pwa-v48-inicio-premium";
+/* MILITOPO PWA · v49 · título superior y pantalla inicial premium */
+const CACHE_NAME = "militopo-pwa-v49-titulo-superior";
 const APP_SHELL = [
   "./",
   "./index.html",
