@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · V54 GeoTIFF único + zoom PNOA */
-const MILITOPO_CACHE = "militopo-orientacion-v54-geotiff-unico-zoom-pnoa";
+/* MILITOPO Orientación · V55 GeoTIFF + planos KMZ restaurados */
+const MILITOPO_CACHE = "militopo-orientacion-v55-planos-restaurados";
 const CORE_ASSETS = [
   "./",
   "./index.html",
