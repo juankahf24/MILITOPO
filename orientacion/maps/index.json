@@ -1,26 +1,13 @@
 {
-  "version": 5,
+  "version": 6,
   "maps": [
     {
-      "id": "valle-perdido",
+      "id": "valle-perdido-geotiff",
       "name": "Valle Perdido",
-      "format": "kmz",
-      "file": "./maps/valle-perdido.kmz",
-      "source": "Valle v2(2).kmz"
-    },
-    {
-      "id": "valle-perdido-v2",
-      "name": "Valle Perdido v2",
-      "format": "kmz",
-      "file": "./maps/valle-perdido-v2.kmz",
-      "source": "valle v1.kmz"
-    },
-    {
-      "id": "el-valle-perdido-nuevo",
-      "name": "El Valle Perdido nuevo",
-      "format": "kmz",
-      "file": "./maps/el-valle-perdido-nuevo.kmz",
-      "source": "El Valle perdido nuevo.kmz"
+      "format": "geotiff",
+      "file": "./maps/valle-perdido.tif",
+      "source": "valle perdido .tif",
+      "epsg": 25830
     }
   ]
 }
