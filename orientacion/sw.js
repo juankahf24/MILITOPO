@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · V52 zoom aéreo PNOA mejorado */
-const MILITOPO_CACHE = "militopo-orientacion-v52-zoom-aereo-pnoa";
+/* MILITOPO Orientación · V53 PNOA WMTS máxima actualidad */
+const MILITOPO_CACHE = "militopo-orientacion-v53-pnoa-wmts-maxima-actualidad";
 const CORE_ASSETS = [
   "./",
   "./index.html",
