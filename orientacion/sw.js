@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · V53 PNOA WMTS máxima actualidad */
-const MILITOPO_CACHE = "militopo-orientacion-v53-pnoa-wmts-maxima-actualidad";
+/* MILITOPO Orientación · V54 GeoTIFF único + zoom PNOA */
+const MILITOPO_CACHE = "militopo-orientacion-v54-geotiff-unico-zoom-pnoa";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const CORE_ASSETS = [
   "./css/styles.css",
   "./js/vendor/qr.js",
   "./maps/index.json",
+  "./maps/valle-perdido.tif",
   "./js/qr.js",
   "./participante/",
   "./participante/index.html",
@@ -34,6 +35,8 @@ self.addEventListener("activate", event => {
     if (self.registration.navigationPreload) {
       try { await self.registration.navigationPreload.enable(); } catch (e) {}
     }
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith("militopo-orientacion-") && key !== MILITOPO_CACHE).map(key => caches.delete(key)));
     await self.clients.claim();
   })());
 });
