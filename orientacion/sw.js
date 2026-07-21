@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · V51 plano integrado El Valle Perdido nuevo */
-const MILITOPO_CACHE = "militopo-orientacion-v51-plano-el-valle-nuevo";
+/* MILITOPO Orientación · V52 zoom aéreo PNOA mejorado */
+const MILITOPO_CACHE = "militopo-orientacion-v52-zoom-aereo-pnoa";
 const CORE_ASSETS = [
   "./",
   "./index.html",
