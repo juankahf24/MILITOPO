@@ -52,6 +52,11 @@
   function validRunLog(value){
     return !!(value&&typeof value==="object"&&value.participantId&&value.routeId);
   }
+  function compactRunLogForStorage(value){
+    if(!value||typeof value!=="object")return value;
+    const track=Array.isArray(value.track)?value.track:[];
+    return {...value,track:track.length<=80?track:[],trackPointCount:track.length,trackStoredInIndexedDb:track.length>80};
+  }
   function snapshotScore(value){
     try{
       const log=value&&value.log?value.log:value;
@@ -166,7 +171,7 @@
     try{
       if(!validEventData(eventData))return false;
       const snapshot={savedAt:new Date().toISOString(),eventData};
-      if(log&&typeof log==="object")snapshot.log=log;
+      if(log&&typeof log==="object")snapshot.log=compactRunLogForStorage(log);
       const raw=JSON.stringify(snapshot);
       writeStorageEverywhere(SNAPSHOT_KEY,raw);
       writeStorageEverywhere(EVENT_KEY,raw);
@@ -241,7 +246,7 @@
   const BOOT_KEY = "militopo_participant_boot_payload_v3";
   function saveBootPayload(eventData, log){
     try{
-      const payload={savedAt:new Date().toISOString(),eventData:eventData||emptyEventData(),log:log||null};
+      const payload={savedAt:new Date().toISOString(),eventData:eventData||emptyEventData(),log:compactRunLogForStorage(log)||null};
       const raw=JSON.stringify(payload);
       writeStorageEverywhere(BOOT_KEY,raw);
       writeStorageEverywhere("militopo_participant_boot_payload_latest",raw);
@@ -261,7 +266,7 @@
       frame.style.height=Math.max(window.innerHeight||0,720)+"px";
       frame.style.minHeight=Math.max(window.innerHeight||0,720)+"px";
       frame.removeAttribute("srcdoc");
-      const url="runner.html?app=1&v=v66-coordenadas-pdf-y-track-runid#boot";
+      const url="runner.html?app=1&v=v70-entrega-offline-track#boot";
       frame.addEventListener("load",()=>loading?.classList.add("is-hidden"),{once:true});
       frame.src=url;
     }catch(error){
@@ -292,7 +297,7 @@
     removeMatchingStorage(localStorage,predicate);removeMatchingStorage(sessionStorage,predicate);
     try{window.name=""}catch(_){ }
     if("caches" in window){const names=await caches.keys();await Promise.all(names.filter(name=>name.startsWith("militopo-participante-")).map(name=>caches.delete(name)));}
-    if("indexedDB" in window&&indexedDB.databases){try{const dbs=await indexedDB.databases();for(const db of dbs){if(String(db.name||"").startsWith("militopo-participante-"))indexedDB.deleteDatabase(db.name);}}catch(_){ }}
+    if("indexedDB" in window&&indexedDB.databases){try{const dbs=await indexedDB.databases();for(const db of dbs){if(/militopo|participant|participante/i.test(String(db.name||"")))indexedDB.deleteDatabase(db.name);}}catch(_){ }}
     if("serviceWorker" in navigator){try{const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(reg=>new URL(reg.scope).pathname.includes("/orientacion/participante/")).map(reg=>reg.unregister()));}catch(_){ }}
     location.replace("./?modo=participante&fresh="+Date.now());
     return true;
@@ -381,7 +386,7 @@
     const msg=event.data;if(!msg||msg.source!=="MILITOPO_PARTICIPANT_APP")return;
     if(msg.action==="EVENT_LOADED"&&msg.payload?.eventData){saveEventData(msg.payload.eventData);toast("Recorrido guardado en MILITOPO Participante");}
     if(msg.action==="RUN_STATE"&&msg.payload?.log){
-      try{writeStorageEverywhere(RUN_STATE_KEY,JSON.stringify(msg.payload.log))}catch(_){ }
+      try{writeStorageEverywhere(RUN_STATE_KEY,JSON.stringify(compactRunLogForStorage(msg.payload.log)))}catch(_){ }
       if(msg.payload?.eventData){saveSnapshot(msg.payload.eventData,msg.payload.log);saveBootPayload(msg.payload.eventData,msg.payload.log);}
       else{const saved=readSavedEventData(); if(saved){saveSnapshot(saved,msg.payload.log);saveBootPayload(saved,msg.payload.log);}}
     }
@@ -420,7 +425,7 @@
     toast("En Chrome abre el menú ⋮ y pulsa Instalar aplicación.");
   });
   document.getElementById("retrySyncBtn")?.addEventListener("click",async()=>{
-    try{await window.MILITOPO_LIVE_PHASE2?.flushParticipantQueue?.();toast("Sincronización solicitada");}catch(_){toast("No se pudo sincronizar todavía")}
+    try{await (window.MILITOPO_LIVE_PHASE2?.retryParticipantSync?.()||window.MILITOPO_LIVE_PHASE2?.flushParticipantQueue?.());toast("Sincronización solicitada");}catch(_){toast("No se pudo sincronizar todavía")}
   });
   document.getElementById("showResultBtn")?.addEventListener("click",()=>{
     document.getElementById("backupResultText").value=String(resetPayload?.resultCode||"");closeDialog(document.getElementById("resetDialog"));openDialog("resultBackupDialog");

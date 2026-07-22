@@ -1607,7 +1607,7 @@ module.exports = QRCode;
 
 <div id="gpsAudioVisualPulse" class="gps-audio-visual-pulse"></div>
 <div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
-<script type="module" src="../js/live/live-phase2.js?v=v70-track-offline-unico"></script>
+<script type="module" src="../js/live/live-phase2.js?v=v70-entrega-offline-track"></script>
 <script>
 const BOOT_PAYLOAD_KEYS=["militopo_participant_boot_payload_v3","militopo_participant_boot_payload_latest","militopo_participant_app_snapshot_v1","militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"];
 const PARTICIPANT_FORCE_BLANK_KEY="militopo_participant_force_blank_v1";
@@ -1729,7 +1729,7 @@ const INITIAL_URL_LOG=readInitialUrlLog();
 const EVENT_DATA=(INITIAL_URL_EVENT_DATA&&Array.isArray(INITIAL_URL_EVENT_DATA.routes)&&INITIAL_URL_EVENT_DATA.routes.length)?INITIAL_URL_EVENT_DATA:((BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData());
 const PARENT_SAVED_LOG=INITIAL_URL_LOG||((BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null);
 let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-v70-track-offline-unico";
+const APP_VERSION="militopo-participante-v70-entrega-offline-track";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -1738,6 +1738,97 @@ const APP_PERMANENT_EVENT_KEY="militopo_participant_permanent_event_v2";
 const APP_PERMANENT_SNAPSHOT_KEY="militopo_participant_permanent_snapshot_v2";
 const PARTICIPANT_IDB_NAME="MILITOPO_PARTICIPANTE_DB_V1";
 const PARTICIPANT_IDB_STORE="estado";
+const PARTICIPANT_TRACK_JOURNAL_DB="MILITOPO_PARTICIPANTE_TRACK_JOURNAL_V2";
+const PARTICIPANT_TRACK_JOURNAL_STORE="points";
+let participantTrackJournalWrite=Promise.resolve();
+let finishedRecoverySyncTimer=null;
+
+function participantTrackRaceKey(){
+    return [String(EVENT_DATA.eventId||""),String(pid||log?.participantId||""),String(route?.routeId||log?.routeId||""),String(log?.startTime||"")].join("::");
+}
+function participantTrackJournalOpen(){
+    return new Promise((resolve,reject)=>{
+        try{
+            const req=indexedDB.open(PARTICIPANT_TRACK_JOURNAL_DB,1);
+            req.onupgradeneeded=()=>{
+                const db=req.result;
+                const store=db.objectStoreNames.contains(PARTICIPANT_TRACK_JOURNAL_STORE)?req.transaction.objectStore(PARTICIPANT_TRACK_JOURNAL_STORE):db.createObjectStore(PARTICIPANT_TRACK_JOURNAL_STORE,{keyPath:"id"});
+                if(!store.indexNames.contains("raceKey"))store.createIndex("raceKey","raceKey",{unique:false});
+            };
+            req.onsuccess=()=>resolve(req.result);
+            req.onerror=()=>reject(req.error||new Error("No se pudo abrir el diario GPS"));
+        }catch(error){reject(error)}
+    });
+}
+function participantTrackJournalAppend(point,index){
+    if(!point||!log?.startTime||!pid)return Promise.resolve(false);
+    const raceKey=participantTrackRaceKey();
+    const pointKey=[String(point.timestamp||point.time||Date.now()),String(point.lat??point.latitude??""),String(point.lon??point.lng??point.longitude??"")].join("|");
+    const row={id:`${raceKey}::${pointKey}`,raceKey,index:Number(index)||0,point,savedAt:safeNow()};
+    participantTrackJournalWrite=participantTrackJournalWrite.catch(()=>{}).then(async()=>{
+        const db=await participantTrackJournalOpen();
+        await new Promise((resolve,reject)=>{const tx=db.transaction(PARTICIPANT_TRACK_JOURNAL_STORE,"readwrite");tx.objectStore(PARTICIPANT_TRACK_JOURNAL_STORE).put(row);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("No se pudo guardar el punto GPS"));});
+        try{db.close()}catch(_){ }
+        return true;
+    });
+    return participantTrackJournalWrite;
+}
+async function participantTrackJournalRead(){
+    if(!log?.startTime||!pid)return [];
+    try{
+        await participantTrackJournalWrite.catch(()=>{});
+        const db=await participantTrackJournalOpen();
+        const rows=await new Promise((resolve,reject)=>{const tx=db.transaction(PARTICIPANT_TRACK_JOURNAL_STORE,"readonly");const store=tx.objectStore(PARTICIPANT_TRACK_JOURNAL_STORE);const index=store.index("raceKey");const req=index.getAll(IDBKeyRange.only(participantTrackRaceKey()));req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error("No se pudo leer el diario GPS"));});
+        try{db.close()}catch(_){ }
+        rows.sort((a,b)=>(Date.parse(a?.point?.timestamp||a?.point?.time||"")||0)-(Date.parse(b?.point?.timestamp||b?.point?.time||"")||0)||Number(a.index||0)-Number(b.index||0));
+        return rows.map(row=>row.point).filter(Boolean);
+    }catch(error){console.warn("No se pudo recuperar el diario GPS",error);return []}
+}
+function trackPointIdentity(point){return [String(point?.timestamp||point?.time||""),Number(point?.lat??point?.latitude).toFixed(7),Number(point?.lon??point?.lng??point?.longitude).toFixed(7)].join("|")}
+async function seedTrackJournalFromLog(points,knownIds=new Set()){
+    const missing=(Array.isArray(points)?points:[]).filter(point=>point&&!knownIds.has(trackPointIdentity(point)));
+    if(!missing.length)return 0;
+    try{
+        await participantTrackJournalWrite.catch(()=>{});
+        const db=await participantTrackJournalOpen(),raceKey=participantTrackRaceKey();
+        await new Promise((resolve,reject)=>{
+            const tx=db.transaction(PARTICIPANT_TRACK_JOURNAL_STORE,"readwrite"),store=tx.objectStore(PARTICIPANT_TRACK_JOURNAL_STORE);
+            missing.forEach((point,index)=>{const pointKey=[String(point.timestamp||point.time||Date.now()),String(point.lat??point.latitude??""),String(point.lon??point.lng??point.longitude??"")].join("|");store.put({id:`${raceKey}::${pointKey}`,raceKey,index,point,savedAt:safeNow()});});
+            tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("No se pudo migrar el track al diario GPS"));
+        });
+        try{db.close()}catch(_){ }
+        return missing.length;
+    }catch(error){console.warn("No se pudo migrar el track anterior al diario GPS",error);return 0}
+}
+async function restoreTrackJournalIntoLog(resave=true){
+    if(!log?.startTime||!pid)return false;
+    const journal=await participantTrackJournalRead();
+    if(!Array.isArray(log.track))log.track=[];
+    const journalIds=new Set(journal.map(trackPointIdentity));
+    await seedTrackJournalFromLog(log.track,journalIds);
+    const known=new Set(log.track.map(trackPointIdentity));
+    let changed=false;
+    journal.forEach(point=>{const id=trackPointIdentity(point);if(!known.has(id)){known.add(id);log.track.push(point);changed=true;}});
+    log.track.sort((a,b)=>(Date.parse(a.timestamp||a.time||"")||0)-(Date.parse(b.timestamp||b.time||"")||0));
+    if(log.track.length){const last=log.track[log.track.length-1];militopoTrackLastSavedAt=Date.parse(last.timestamp||last.time||"")||0;militopoTrackLastPoint={lat:Number(last.lat??last.latitude),lon:Number(last.lon??last.lng??last.longitude)};}
+    if(changed&&resave)save();
+    return changed;
+}
+function participantLogForWebStorage(runLog){
+    if(!runLog||typeof runLog!=="object")return runLog;
+    const points=Array.isArray(runLog.track)?runLog.track:[];
+    return {...runLog,track:points.length<=80?points:[],trackPointCount:points.length,trackStoredInIndexedDb:points.length>80};
+}
+function scheduleFinishedRecoverySync(delay=700){
+    clearTimeout(finishedRecoverySyncTimer);
+    finishedRecoverySyncTimer=setTimeout(async()=>{
+        if(!log?.finishTime||!route||!pid)return;
+        await restoreTrackJournalIntoLog(true);
+        log.resultPayload=resultPayload();
+        save();
+        notifyMilitopoLive("FINISH",{resultCode:"ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+log.resultPayload});
+    },Math.max(0,Number(delay)||0));
+}
 function participantIdbSupported(){return !!window.indexedDB}
 function participantIdbOpen(){
     return new Promise((resolve,reject)=>{
@@ -1793,7 +1884,7 @@ function participantSnapshotPayload(eventData,runLog){
     try{
         if(!eventData||!Array.isArray(eventData.routes)||!eventData.routes.length||!eventData.points)return null;
         const snap={v:4,savedAt:safeNow(),eventData};
-        if(runLog&&typeof runLog==="object")snap.log=runLog;
+        if(runLog&&typeof runLog==="object")snap.log=participantLogForWebStorage(runLog);
         return snap;
     }catch(e){return null}
 }
@@ -1833,16 +1924,7 @@ function applyParticipantSnapshotObject(snap,silent=true){
         save();
         renderLoaded();
         notifyMilitopoLive("READY");
-        // Si la carrera ya terminó, reconstruye y reenvía automáticamente resultado y
-        // track desde el almacenamiento local. Esto recupera también carreras de V58
-        // cuyos bloques pudieron desaparecer de la cola durante una escritura simultánea.
-        if(log&&log.finishTime){
-            setTimeout(()=>{
-                if(!log.resultPayload&&route)log.resultPayload=resultPayload();
-                save();
-                notifyMilitopoLive("FINISH",{resultCode:log.resultPayload?("ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+log.resultPayload):""});
-            },1200);
-        }
+        if(log&&log.finishTime)scheduleFinishedRecoverySync(700);
         if(!silent)toast("Recorrido restaurado");
         return true;
     }catch(e){console.warn("No se pudo aplicar snapshot participante",e);return false}
@@ -1893,6 +1975,7 @@ function notifyMilitopoLive(kind,extra={}){
             participantId:String(pid||""),
             participantName,
             routeId:String(route.routeId||""),
+            routePointIds:Array.isArray(route.points)?route.points.map(String):[],
             totalControls:expected.length,
             completedControls:completed,
             discardedControls:discarded,
@@ -1904,6 +1987,7 @@ function notifyMilitopoLive(kind,extra={}){
             completed:!!(log&&log.completed),
             missingControls:log&&Array.isArray(log.missingControls)?log.missingControls:[],
             trackPointCount:log&&Array.isArray(log.track)?log.track.length:0,
+            distanceM:log&&Array.isArray(log.track)?Math.round(participantTrackDistanceM()):0,
             resultCode,
             clientTime:new Date().toISOString(),
             ...extra
@@ -1913,7 +1997,9 @@ function notifyMilitopoLive(kind,extra={}){
         send(kind,basePayload);
         if((kind==="FINISH"||kind==="TRACK")&&log&&Array.isArray(log.track)&&log.track.length){
             const fullTrack=compactTrackForSync(log.track);
-            const transferId=`${String(pid)}-${String(log.startTime||'run')}-${fullTrack.length}`.replace(/[^a-zA-Z0-9_-]/g,'-');
+            // Un solo id por carrera: sin cobertura, cada snapshot sustituye al
+            // anterior en IndexedDB en vez de acumular decenas de tracks completos.
+            const transferId=`${String(pid)}-${String(log.startTime||'run')}`.replace(/[^a-zA-Z0-9_-]/g,'-');
             // Un único mensaje hacia el contenedor. El contenedor lo guarda primero en IndexedDB
             // y después lo sube a Firebase por bloques. Así no depende del límite de localStorage.
             send("TRACK_BUNDLE",{
@@ -1976,14 +2062,15 @@ function safeNow(){return new Date().toISOString()}
 function writePermanentParticipantSnapshot(eventData,runLog){
     try{
         if(!eventData||!Array.isArray(eventData.routes)||!eventData.routes.length||!eventData.points)return false;
+        const compactLog=participantLogForWebStorage(runLog);
         const snap={savedAt:safeNow(),eventData};
-        if(runLog&&typeof runLog==="object")snap.log=runLog;
+        if(compactLog&&typeof compactLog==="object")snap.log=compactLog;
         const raw=JSON.stringify(snap);
         [APP_SNAPSHOT_KEY,APP_EVENT_KEY,APP_EVENT_BACKUP_KEY,APP_PERMANENT_SNAPSHOT_KEY,"militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1","militopo_participant_boot_payload_v3","militopo_participant_boot_payload_latest"].forEach(k=>writeKeyEverywhere(k,raw));
         writeKeyEverywhere(APP_PERMANENT_EVENT_KEY,JSON.stringify({savedAt:snap.savedAt,eventData}));
-        if(runLog&&runLog.participantId)writeKeyEverywhere(APP_RUN_STATE_KEY,JSON.stringify(runLog));
+        if(compactLog&&compactLog.participantId)writeKeyEverywhere(APP_RUN_STATE_KEY,JSON.stringify(compactLog));
         try{window.name="MILITOPO_PARTICIPANT_SNAPSHOT:"+raw}catch(e){}
-        try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"PERSIST_SNAPSHOT",payload:snap},"*")}catch(e){}
+        try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"PERSIST_SNAPSHOT",payload:{savedAt:snap.savedAt,eventData,log:compactLog}},"*")}catch(e){}
         try{persistParticipantSnapshotAsync(eventData,runLog)}catch(e){}
         updateParentUrlState();
         return true;
@@ -2023,7 +2110,7 @@ function writeKeyEverywhere(k,raw){
 }
 function updateParentUrlState(packed){
     try{
-        const logForUrl=(log&&pid&&route)?log:null;
+        const logForUrl=(log&&pid&&route)?participantLogForWebStorage(log):null;
         const top=(window.parent&&window.parent!==window)?window.parent:window;
         const pack=packed||EVENT_DATA.__participantPacked||"";
         let encLog=logForUrl?encodeB64UrlJson(logForUrl):"";
@@ -2102,7 +2189,7 @@ async function ensureOfflinePageAvailable(){
         }catch(e){}
     }
     try{
-        const cache=await caches.open("militopo-participante-page-v62");
+        const cache=await caches.open("militopo-participante-page-v70-entrega-offline-track");
         const pageUrl=location.href.split("#")[0];
         const html="<!DOCTYPE html>\n"+document.documentElement.outerHTML;
         await cache.put(new Request(pageUrl),new Response(html,{headers:{"Content-Type":"text/html;charset=utf-8"}}));
@@ -2180,6 +2267,8 @@ async function init(){
         if(!restored&&!embedded){
             restored=await restoreParticipantFromIndexedDb(true);
         }
+        if((restored||embedded)&&log?.startTime)await restoreTrackJournalIntoLog(true);
+        if(log?.finishTime)scheduleFinishedRecoverySync(500);
         updateOfflineSafetyPanel((restored||embedded)?"RECORRIDO CARGADO Y GUARDADO AUTOMÁTICAMENTE":"CARGA TU QR DE PARTICIPANTE ANTES DE SALIR");
         ensureOfflinePageAvailable().then(()=>updateOfflineSafetyPanel()).catch(()=>{});
         precacheQrReader().then(ok=>{qrReaderReady=!!ok;updateOfflineSafetyPanel();}).catch(()=>{});
@@ -2434,19 +2523,6 @@ function updateDeliveryConfirmations(){
     apply(resultEl,finished&&participantResultReceived,"Resultado pendiente de confirmación","Resultado recibido por el organizador");
     apply(trackEl,finished&&participantTrackReceived,"Track completo pendiente de confirmación","Track completo recibido");
 }
-// V70: al recuperar datos/Wi-Fi se vuelve a entregar al contenedor la instantánea
-// completa más reciente. Esto cubre cierres, recargas de caché y navegadores que
-// suspenden mensajes mientras el teléfono permanece sin cobertura.
-function resendLatestTrackToParent(){
-    try{
-        if(!log||!route||!pid||!Array.isArray(log.track)||!log.track.length)return;
-        notifyMilitopoLive(log.finishTime?"FINISH":"TRACK",log.finishTime&&log.resultPayload?{resultCode:"ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+log.resultPayload}:{});
-    }catch(e){console.warn("MILITOPO LIVE · reenvío del track",e)}
-}
-window.addEventListener("online",()=>setTimeout(resendLatestTrackToParent,600));
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&navigator.onLine)setTimeout(resendLatestTrackToParent,800)});
-window.addEventListener("pageshow",()=>{if(navigator.onLine)setTimeout(resendLatestTrackToParent,1000)});
-
 window.addEventListener("message",event=>{
     if(event.source!==window.parent)return;
     const msg=event.data;
@@ -2672,10 +2748,12 @@ function recordRaceTrackPoint(pos,force=false,eventType="gps"){
         if(!Array.isArray(log.track))log.track=[];
         const point={timestamp:new Date(now).toISOString(),lat:+lat.toFixed(7),lon:+lon.toFixed(7),accuracy:Math.round(acc*10)/10,altitude:Number.isFinite(Number(c.altitude))?Math.round(Number(c.altitude)*10)/10:null,speed:Number.isFinite(speed)?Math.round(speed*100)/100:null,heading:Number.isFinite(heading)?Math.round(heading):null,event:eventType||"gps"};
         log.track.push(point);
+        participantTrackJournalAppend(point,log.track.length-1).catch(error=>console.warn("No se pudo escribir el punto en el diario GPS",error));
         if(log.track.length>18000)log.track.splice(0,log.track.length-18000);
         militopoTrackLastSavedAt=now;militopoTrackLastPoint={lat,lon};if(Number.isFinite(heading))militopoTrackLastHeading=heading;
         if(force||log.track.length%4===0)save();
-        if(log.startTime&&log.track.length>=2&&(force||now-lastTrackLiveSyncAt>=20000||log.track.length%20===0)){lastTrackLiveSyncAt=now;notifyMilitopoLive("TRACK")}
+        const trackCheckpointMs=participantLiveSyncState==="synced"||participantLiveSyncState==="syncing"?20000:120000;
+        if(log.startTime&&log.track.length>=2&&(force||now-lastTrackLiveSyncAt>=trackCheckpointMs)){lastTrackLiveSyncAt=now;notifyMilitopoLive("TRACK")}
     }catch(e){console.warn('No se pudo guardar punto de track',e)}
 }
 function recordTrackEvent(eventType){try{if(gpsLastPosition)recordRaceTrackPoint(gpsLastPosition,true,eventType)}catch(e){}}
@@ -2810,6 +2888,7 @@ function loadParticipant(q){
     try{stopQrCamera()}catch(e){};
     setTimeout(()=>restoreParticipantScroll("race","smooth"),180);
     notifyMilitopoLive("READY");
+    if(log.finishTime)scheduleFinishedRecoverySync(500);
     toast("Recorrido cargado y guardado offline")
 }
 
@@ -2876,7 +2955,10 @@ function restoreBestSavedRun(silent){
     pid=best.participantId;
     route=EVENT_DATA.routes.find(r=>r.participantId===pid&&(!best.routeId||r.routeId===best.routeId))||EVENT_DATA.routes.find(r=>r.participantId===pid);
     if(!route){if(!silent)toast("No se encuentra el recorrido guardado");return false}
-    log=best;save();renderLoaded();notifyMilitopoLive("READY");if(!silent)toast("Recorrido restaurado correctamente");return true;
+    log=best;save();renderLoaded();notifyMilitopoLive("READY");
+    restoreTrackJournalIntoLog(true).then(()=>{if(log?.finishTime)scheduleFinishedRecoverySync(0);});
+    if(log.finishTime)scheduleFinishedRecoverySync(700);
+    if(!silent)toast("Recorrido restaurado correctamente");return true;
 }
 
 function renderLoaded(){document.body.classList.add("route-loaded");document.getElementById("race").style.display="block";const gpsCard=document.getElementById("gpsProximity");if(gpsCard)gpsCard.style.display="block";const resetCard=document.getElementById("participantResetCard");if(resetCard)resetCard.style.display="block";document.getElementById("identity").className="status ok";document.getElementById("identity").innerHTML="<b>"+pid+"</b> · "+route.routeId+" cargado";document.getElementById("route").innerHTML="<b>Orden obligatorio</b><br><div class='route'>"+route.points.join(" → ")+"</div>";const loadBtn=document.getElementById("loadParticipantQrBtn");if(loadBtn)loadBtn.style.display="none";renderNext();refreshSkipHoldVisibility();renderScans();renderResult();updateOfflineSafetyPanel("RECORRIDO GUARDADO EN ESTE MÓVIL");gpsRefreshState();restoreGpsPreferences();setTimeout(resizeParticipantFrameFromInside,80)}
@@ -2926,6 +3008,8 @@ async function finishRace(source="qr"){
     const discarded=new Set(log.scans.filter(s=>s.status==="skipped").map(s=>String(s.controlId)));
     log.missingControls=exp.filter(x=>!done.has(String(x))&&!discarded.has(String(x)));
     recordTrackEvent("finish");
+    await participantTrackJournalWrite.catch(()=>{});
+    await restoreTrackJournalIntoLog(false);
     log.finishTime=new Date().toISOString();
     log.completed=log.missingControls.length===0&&discarded.size===0;
     log.resultPayload=resultPayload();
@@ -2957,7 +3041,10 @@ function save(){
         if(log.finishTime&&!log.resultPayload&&route)log.resultPayload=resultPayload();
         log.lastSavedAt=safeNow();
         log.appVersion=APP_VERSION;
-        const raw=JSON.stringify(log);
+        // localStorage tiene una cuota pequeña. El track completo vive en
+        // IndexedDB + diario GPS; aquí queda un estado compacto para que nunca
+        // fallen tiempos, balizas o resultado por llenar la cuota del navegador.
+        const raw=JSON.stringify(participantLogForWebStorage(log));
         writeKeyEverywhere(key()+"_"+pid,raw);
         writeKeyEverywhere(key(),raw);
         writeKeyEverywhere(key()+"_active",raw);
@@ -2968,7 +3055,7 @@ function save(){
         writeKeyEverywhere(key()+"_checkpoint_"+pid,raw);
         writePermanentParticipantSnapshot(EVENT_DATA,log);
         updateParentUrlState();
-        try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"RUN_STATE",payload:{log,eventData:EVENT_DATA}},"*")}catch(e){}
+        try{window.parent.postMessage({source:"MILITOPO_PARTICIPANT_APP",action:"RUN_STATE",payload:{log:participantLogForWebStorage(log),eventData:EVENT_DATA}},"*")}catch(e){}
     }catch(e){
         console.warn("No se pudo guardar registro offline",e);
     }
@@ -2997,7 +3084,7 @@ function compactResultObject(partial=false){
         pr:Number(EVENT_DATA.penaltyPerControlMinutes||EVENT_DATA.analysisPenaltyMinutes||15)||15,
         tc:Array.isArray(log.track)?log.track.length:0,
         av:APP_VERSION,
-        ls:encResultTime(log.lastSavedAt||safeNow())
+        ls:encResultTime(log.finishTime||log.lastSavedAt||safeNow())
     };
 }
 
@@ -3070,13 +3157,13 @@ function resultPayload(){return encodeResultObject(compactResultObject(false))}
 async function renderResult(){updateDeliveryConfirmations();const sec=document.getElementById("result");if(!sec)return;if(!log||!log.finishTime){sec.style.display="none";sec.classList.remove("result-open");return}sec.style.display="block";sec.classList.add("result-open");const payload=resultPayload();log.resultPayload=payload;const result="ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+payload;const discardedIds=(log.scans||[]).filter(s=>s.status==="skipped").map(s=>String(s.controlId));const pendingIds=log.missingControls||[];const completedCount=(log.scans||[]).filter(s=>s.status==="correct").length;const metrics=participantFinishMetrics(),distanceText=metrics?(metrics.distanceM>=1000?(metrics.distanceM/1000).toFixed(2)+" km":Math.round(metrics.distanceM)+" m"):"--",adjustedText=metrics?participantDurationText(metrics.adjustedMs):"--";document.getElementById("summary").innerHTML="<b>"+pid+"</b> · "+route.routeId+"<br>📏 Distancia recorrida: "+distanceText+"<br>⏱️ Tiempo ajustado: "+adjustedText+"<br>✅ Completados: "+completedCount+"<br>⏭️ Descartados: "+(discardedIds.length?discardedIds.join(", "):"Ninguno")+"<br>⏳ Pendientes: "+(pendingIds.length?pendingIds.join(", "):"Ninguno")+"<br><strong>ENSEÑA ESTE CÓDIGO AL ORGANIZADOR</strong>";document.getElementById("resultText").value=result;try{const url=await QRCode.toDataURL(result,{margin:8,width:1200,errorCorrectionLevel:"H"});document.getElementById("resultQr").innerHTML="<img src='"+url+"' alt='QR resultado'><div class='result-qr-instruction'>📲 QR FINAL DE RESULTADO<br>ENSÉÑASELO AL ORGANIZADOR PARA GUARDAR TU RESULTADO.</div>"}catch(e){document.getElementById("resultQr").innerHTML="<div class='status err'>No se pudo generar el QR final. Usa COPIAR CÓDIGO y enséñaselo al organizador.</div>"}save()}
 function copyResult(){const t=document.getElementById("resultText");t.select();document.execCommand("copy");toast("Código de resultado copiado")}function downloadResult(){const b=new Blob([document.getElementById("resultText").value],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="codigo_resultado_"+(pid||"participante")+".txt";a.click();URL.revokeObjectURL(a.href)}function tm(i){return new Date(i).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
 function bindParticipantAutosave(){
-    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")save()});
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")save();else if(log?.finishTime)scheduleFinishedRecoverySync(250)});
     document.addEventListener("freeze",save);
-    document.addEventListener("resume",()=>{save();restoreBestSavedRun(true)});
+    document.addEventListener("resume",()=>{save();restoreBestSavedRun(true);if(log?.finishTime)scheduleFinishedRecoverySync(250)});
     document.addEventListener("input",save,true);
     document.addEventListener("change",save,true);
     window.addEventListener("pagehide",save);
-    window.addEventListener("pageshow",()=>{requestPersistentStorage();save();restoreBestSavedRun(true)});
+    window.addEventListener("pageshow",()=>{requestPersistentStorage();save();restoreBestSavedRun(true);if(log?.finishTime)scheduleFinishedRecoverySync(250)});
     window.addEventListener("beforeunload",save);
     window.addEventListener("offline",()=>{save();updateOfflineSafetyPanel("SIN COBERTURA: EL RECORRIDO SIGUE GUARDADO")});
     window.addEventListener("online",()=>{
@@ -3084,13 +3171,12 @@ function bindParticipantAutosave(){
         updateOfflineSafetyPanel("COBERTURA RECUPERADA");
         precacheQrReader();
         notifyMilitopoLive("READY");
-        if(log&&log.finishTime){
-            if(!log.resultPayload&&route)log.resultPayload=resultPayload();
-            save();
-            notifyMilitopoLive("FINISH",{resultCode:log.resultPayload?("ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+log.resultPayload):""});
-        }
+        if(log&&log.finishTime)scheduleFinishedRecoverySync(100);
     });
-    setInterval(save,1500);
+    // Los puntos GPS ya se escriben uno a uno en el diario. Este guardado de
+    // estado puede ser más espaciado y evita reescrituras innecesarias en pruebas largas.
+    setInterval(save,5000);
+    setInterval(()=>{if(log?.finishTime&&(!participantResultReceived||!participantTrackReceived))scheduleFinishedRecoverySync(0)},30000);
 }
 
 function loadJsQr(){return new Promise(async(res,rej)=>{
