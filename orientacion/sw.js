@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · V63 escala PDF física 1:10.000 / 1:7.500 corregida */
-const MILITOPO_CACHE = "militopo-orientacion-v63-escala-pdf-100-real";
+const MILITOPO_CACHE = "militopo-orientacion-v64-persistencia-track-outbox";
 const CORE_ASSETS = [
   "./",
   "./index.html",
