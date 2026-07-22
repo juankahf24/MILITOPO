@@ -1568,6 +1568,18 @@ module.exports = QRCode;
   <h2>Resultado final</h2>
   <div id="summary" class="status ok"></div>
   <div id="resultQr" class="qr"></div>
+  <button id="fullTrackQrBtn" class="btn green" type="button" onclick="openFullTrackQrTransfer()">📡 MOSTRAR QR DEL TRACK COMPLETO · SIN INTERNET</button>
+  <div id="fullTrackQrPanel" class="status" style="display:none;text-align:center">
+    <div id="fullTrackQrTitle" style="font-weight:900;margin-bottom:8px">TRACK COMPLETO</div>
+    <div id="fullTrackQrImage" class="qr"></div>
+    <div id="fullTrackQrProgress" class="small"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+      <button class="btn secondary" type="button" onclick="prevFullTrackQrPart()">◀ ANTERIOR</button>
+      <button class="btn secondary" type="button" onclick="nextFullTrackQrPart()">SIGUIENTE ▶</button>
+    </div>
+    <button id="fullTrackQrAutoBtn" class="btn" type="button" onclick="toggleFullTrackQrAuto()">▶ AUTO 3 s</button>
+    <div class="small" style="margin-top:8px">El organizador debe escanear todas las partes. El QR final guarda tiempos y balizas; esta secuencia añade el track GPS completo.</div>
+  </div>
   <div class="result-code-title">CÓDIGO MANUAL DEL RESULTADO · ORI|RESULT</div>
   <textarea id="resultText" readonly onclick="this.select()" aria-label="Código manual ORI RESULT para entregar al organizador"></textarea>
   <button class="btn secondary" onclick="copyResult()">📋 COPIAR CÓDIGO</button>
@@ -1712,7 +1724,7 @@ const INITIAL_URL_LOG=readInitialUrlLog();
 const EVENT_DATA=(INITIAL_URL_EVENT_DATA&&Array.isArray(INITIAL_URL_EVENT_DATA.routes)&&INITIAL_URL_EVENT_DATA.routes.length)?INITIAL_URL_EVENT_DATA:((BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData());
 const PARENT_SAVED_LOG=INITIAL_URL_LOG||((BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null);
 let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-v45-resumen-final";
+const APP_VERSION="militopo-participante-v56-offline-qr-completo";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -2241,7 +2253,7 @@ function parse(raw){
 }
 
 /* GPS de proximidad ejecutado dentro del iframe participante */
-const GPS_RADIUS_M=16,GPS_MAX_ACCURACY_M=10,GPS_REQUIRED_HITS=1,GPS_DUPLICATE_COOLDOWN_MS=4000;
+const GPS_RADIUS_M=12,GPS_MAX_ACCURACY_M=12,GPS_REQUIRED_HITS=1,GPS_DUPLICATE_COOLDOWN_MS=4000;
 const GPS_PREF_PREFIX="militopo_participant_gps_enabled_v1:";
 const GPS_LOCK_PREF_PREFIX="militopo_participant_gps_lock_v1:";
 let gpsWatchId=null,gpsWakeLock=null,gpsInsideHits=0,gpsLastTarget="",gpsLastPosition=null,gpsLastValidatedAt=0,gpsUnlockTimer=null,gpsPrefsRestoredFor="",participantLiveSyncState="inactive",participantPendingSyncCount=0,participantPendingControlSyncCount=0,participantPendingResultSync=false,gpsFinishedByProximity=false,gpsFinishNoticeMode="",gpsFinishNoticeDismissedMode="",gpsFinishInsideHits=0,gpsFinishConfirmOpen=false,gpsFinishDeclinedUntilLeave=false,gpsStartReminderOpen=false,cameraLayoutRestore=null;
@@ -2914,18 +2926,73 @@ function renderScans(){let h="<div class='scan "+(log.startTime?"ok":"")+"'><b>S
 function encResultTime(v){const ms=Date.parse(v);return Number.isFinite(ms)?ms.toString(36):(v||null)}
 function encResultStatus(s){return {correct:"c",out_of_order:"o",wrong:"w",duplicate:"d",skipped:"s"}[String(s||"")]||String(s||"")}
 function compactResultObject(partial=false){
+    const metrics=participantFinishMetrics();
     return {
-        v:3,
+        v:4,
         r:route.routeId,
+        n:String((EVENT_DATA.participantNames&&EVENT_DATA.participantNames[pid])||""),
         st:encResultTime(log.startTime),
         ft:encResultTime(log.finishTime),
         c:!!log.completed,
         ptl:!!partial,
         x:(log.scans||[]).map(s=>[s.controlId,encResultTime(s.timestamp),encResultStatus(s.status),Number.isFinite(Number(s.lat))?+Number(s.lat).toFixed(7):null,Number.isFinite(Number(s.lon))?+Number(s.lon).toFixed(7):null,Number.isFinite(Number(s.accuracy))?Math.round(Number(s.accuracy)*10)/10:null]),
         m:log.missingControls||[],
+        d:metrics?Math.round(metrics.distanceM):null,
+        a:metrics?Math.round(metrics.adjustedMs):null,
+        pr:Number(EVENT_DATA.penaltyPerControlMinutes||EVENT_DATA.analysisPenaltyMinutes||15)||15,
+        tc:Array.isArray(log.track)?log.track.length:0,
+        av:APP_VERSION,
         ls:encResultTime(log.lastSavedAt||safeNow())
     };
 }
+
+function fullTrackTransferObject(){
+    const src=Array.isArray(log&&log.track)?log.track:[];
+    const rows=[];
+    let prevT=0,prevLat=0,prevLon=0;
+    for(const p of src){
+        const lat=Number(p.lat??p.latitude),lon=Number(p.lon??p.lng??p.longitude),t=Date.parse(p.timestamp||p.time||"");
+        if(!Number.isFinite(lat)||!Number.isFinite(lon)||!Number.isFinite(t))continue;
+        const li=Math.round(lat*1e7),lo=Math.round(lon*1e7);
+        rows.push([rows.length?t-prevT:t,rows.length?li-prevLat:li,rows.length?lo-prevLon:lo,Number.isFinite(Number(p.accuracy))?Math.round(Number(p.accuracy)*10):null,Number.isFinite(Number(p.altitude))?Math.round(Number(p.altitude)*10):null,Number.isFinite(Number(p.speed))?Math.round(Number(p.speed)*100):null,Number.isFinite(Number(p.heading))?Math.round(Number(p.heading)):null,p.event&&p.event!=="gps"?String(p.event):null]);
+        prevT=t;prevLat=li;prevLon=lo;
+    }
+    return {v:1,e:String(EVENT_DATA.eventId||""),p:String(pid||""),r:String(route&&route.routeId||""),n:String((EVENT_DATA.participantNames&&EVENT_DATA.participantNames[pid])||""),rows};
+}
+let fullTrackQrParts=[],fullTrackQrIndex=0,fullTrackQrAutoTimer=null;
+function buildFullTrackQrParts(){
+    const encoded=encodeResultObject(fullTrackTransferObject());
+    const transferId=((Date.now().toString(36)+Math.random().toString(36).slice(2,7))).toUpperCase();
+    const chunkSize=650;
+    const chunks=[];
+    for(let i=0;i<encoded.length;i+=chunkSize)chunks.push(encoded.slice(i,i+chunkSize));
+    return chunks.map((chunk,i)=>`ORI|TRACKPART|${EVENT_DATA.eventId}|${pid}|${transferId}|${i+1}|${chunks.length}|${chunk}`);
+}
+async function renderFullTrackQrPart(){
+    if(!fullTrackQrParts.length)return;
+    fullTrackQrIndex=Math.max(0,Math.min(fullTrackQrParts.length-1,fullTrackQrIndex));
+    const value=fullTrackQrParts[fullTrackQrIndex];
+    const img=document.getElementById("fullTrackQrImage"),progress=document.getElementById("fullTrackQrProgress"),title=document.getElementById("fullTrackQrTitle");
+    if(title)title.textContent=`TRACK COMPLETO · PARTE ${fullTrackQrIndex+1}/${fullTrackQrParts.length}`;
+    if(progress)progress.textContent=`Escanea esta parte y después pulsa SIGUIENTE. Puntos GPS guardados: ${(log.track||[]).length}.`;
+    try{const url=await QRCode.toDataURL(value,{margin:5,width:1000,errorCorrectionLevel:"M"});if(img)img.innerHTML=`<img src="${url}" alt="QR track parte ${fullTrackQrIndex+1}">`}catch(e){if(img)img.innerHTML="<div class='status err'>No se pudo generar esta parte del track.</div>"}
+}
+function openFullTrackQrTransfer(){
+    if(!log||!log.finishTime)return toast("Finaliza la carrera primero");
+    fullTrackQrParts=buildFullTrackQrParts();fullTrackQrIndex=0;
+    const panel=document.getElementById("fullTrackQrPanel");if(panel)panel.style.display="block";
+    renderFullTrackQrPart();
+}
+function nextFullTrackQrPart(){if(!fullTrackQrParts.length)return openFullTrackQrTransfer();if(fullTrackQrIndex<fullTrackQrParts.length-1)fullTrackQrIndex++;renderFullTrackQrPart()}
+function prevFullTrackQrPart(){if(!fullTrackQrParts.length)return;if(fullTrackQrIndex>0)fullTrackQrIndex--;renderFullTrackQrPart()}
+function toggleFullTrackQrAuto(){
+    const btn=document.getElementById("fullTrackQrAutoBtn");
+    if(fullTrackQrAutoTimer){clearInterval(fullTrackQrAutoTimer);fullTrackQrAutoTimer=null;if(btn)btn.textContent="▶ AUTO 3 s";return}
+    if(!fullTrackQrParts.length)openFullTrackQrTransfer();
+    fullTrackQrAutoTimer=setInterval(()=>{fullTrackQrIndex=(fullTrackQrIndex+1)%Math.max(1,fullTrackQrParts.length);renderFullTrackQrPart()},3000);
+    if(btn)btn.textContent="⏸ DETENER AUTO";
+}
+
 function encodeResultObject(obj){
     return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
 }
