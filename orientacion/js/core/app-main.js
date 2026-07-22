@@ -8682,6 +8682,17 @@ function drawCourse(){
     const lines=document.getElementById('courseLines'), markers=document.getElementById('courseMarkers');
     if(!lines||!markers)return;
 
+    // V66: proyecta cada baliza con la MISMA proyección y el MISMO viewport de Leaflet.
+    // Antes se usaba una interpolación lat/lon lineal calculada antes de fitBounds; al cambiar
+    // la escala, Leaflet aplicaba Web Mercator y ajustes de encaje diferentes, desplazando los
+    // círculos respecto al punto real del fondo. Ahora el centro del símbolo sale directamente
+    // de map.latLngToContainerPoint(), por lo que queda exactamente sobre su coordenada.
+    const mapSize=map.getSize();
+    const projectedPoints=points.map(p=>{
+        const px=map.latLngToContainerPoint([Number(p.lat),Number(p.lon)]);
+        return {...p,x:(px.x/Math.max(1,mapSize.x))*1000,y:(px.y/Math.max(1,mapSize.y))*1000};
+    });
+
     // Símbolos uniformes y pequeños: el punto real queda en el centro del círculo/meta,
     // y en el vértice del triángulo de salida.
     const symbolR=10;
@@ -8704,8 +8715,8 @@ function drawCourse(){
     }
 
     const segs=[];
-    for(let i=0;i<points.length-1;i++){
-        const a=points[i],b=points[i+1];
+    for(let i=0;i<projectedPoints.length-1;i++){
+        const a=projectedPoints[i],b=projectedPoints[i+1];
         const u=unit(a,b);
         const g1=a.type==='START'?0:cutGap;
         const g2=cutGap;
@@ -8717,10 +8728,10 @@ function drawCourse(){
     }
     lines.innerHTML=segs.join('');
 
-    markers.innerHTML=points.map((p,i)=>{
+    markers.innerHTML=projectedPoints.map((p,i)=>{
         const x=p.x,y=p.y;
         if(p.type==='START'){
-            const next=points[i+1]||p;
+            const next=projectedPoints[i+1]||p;
             const u=unit(p,next);
             const px=-u.uy,py=u.ux;
             const tipX=x,tipY=y;
@@ -8736,7 +8747,7 @@ function drawCourse(){
     }).join('');
 }
 
-setTimeout(()=>{map.invalidateSize();map.fitBounds(bounds,{padding:[0,0],animate:false});drawCourse();},250);
+setTimeout(()=>{map.invalidateSize();map.fitBounds(bounds,{padding:[0,0],animate:false});map.once('moveend',drawCourse);requestAnimationFrame(()=>requestAnimationFrame(drawCourse));},250);
 <\/script></body></html>`;
 }
 
