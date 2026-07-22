@@ -1,19 +1,34 @@
-/* MILITOPO LIVE · Fase final
+/* MILITOPO LIVE · V70 entrega offline garantizada de resultado y track
    Sincronización automática de salida, controles, llegada y resultado.
    El organizador recibe e importa el ORI|RESULT sin escanearlo.
    El QR final y el código manual permanecen como respaldo. */
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-import {
-  getDatabase,
-  ref,
-  set,
-  update,
-  get,
-  onValue,
-  onDisconnect,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+// La cola local debe arrancar incluso cuando la PWA se abre sin cobertura. Con
+// imports remotos estáticos, el navegador abortaba TODO este módulo si Firebase
+// no podía descargarse y los mensajes FINISH/TRACK nunca llegaban a IndexedDB.
+// La SDK se carga de forma diferida: primero quedan activos los listeners y la
+// persistencia local; al volver internet se conecta y vacía las colas.
+const FIREBASE_SDK_VERSION = "12.15.0";
+let initializeApp, getApps, getApp;
+let getAuth, onAuthStateChanged, signInAnonymously;
+let getDatabase, ref, set, update, get, onValue, onDisconnect, serverTimestamp;
+let firebaseSdkReady = false;
+let firebaseInitPromise = null;
+let firebaseObserversBound = false;
+
+async function loadFirebaseSdk() {
+  if (firebaseSdkReady) return;
+  const base = `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}`;
+  const [appSdk, authSdk, databaseSdk] = await Promise.all([
+    import(`${base}/firebase-app.js`),
+    import(`${base}/firebase-auth.js`),
+    import(`${base}/firebase-database.js`)
+  ]);
+  ({ initializeApp, getApps, getApp } = appSdk);
+  ({ getAuth, onAuthStateChanged, signInAnonymously } = authSdk);
+  ({ getDatabase, ref, set, update, get, onValue, onDisconnect, serverTimestamp } = databaseSdk);
+  firebaseSdkReady = true;
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyDchEGOYe22ojtlo4qAiAzZkARqSRgXW14",
@@ -67,6 +82,10 @@ let participantExpectedTrackPointCount = 0;
 let participantLastSyncAt = "";
 let participantLastSyncIdentity = "";
 let participantHeartbeatTimer = null;
+let trackOutboxFlushBusy = false;
+let trackOutboxFlushAgain = false;
+let participantPendingTrackCount = 0;
+let participantRunResolvePromise = null;
 let organizerAutoImportTimer = null;
 let organizerLatestRows = [];
 let organizerSort = { key: "default", direction: "asc" };
@@ -287,6 +306,12 @@ async function processFinishedResults(rows){
     const pid=String(participant?.participantId||"");
     const resultCode=String(participant?.resultCode||"").trim();
     if(!pid||participant?.status!=="finished"||!resultCode)continue;
+    // FINISH llega antes que el track para que el resultado no dependa de un
+    // payload grande. Si el móvil declara puntos GPS, esperamos el ACK completo
+    // antes de importar: así distancia, replay y resultado entran juntos.
+    const expectedTrackCount=Math.max(0,Number(participant?.trackPointCount)||0);
+    const receivedTrackCount=Array.isArray(participant?.track)?participant.track.length:0;
+    if(expectedTrackCount>0&&(participant?.trackComplete!==true||receivedTrackCount<expectedTrackCount))continue;
     const fingerprint=resultFingerprint(resultCode);
     const busyKey=`${pid}:${fingerprint}`;
     if(organizerAutoImportBusy.has(busyKey))continue;
@@ -708,66 +733,160 @@ async function trackOutboxPut(bundle){
   await new Promise((resolve,reject)=>{
     const tx=dbx.transaction(TRACK_OUTBOX_STORE,"readwrite");
     const store=tx.objectStore(TRACK_OUTBOX_STORE);
-    // V70: solo debe existir UN track pendiente por carrera y participante.
-    // Durante una carrera sin cobertura el iframe envía instantáneas periódicas del track.
-    // Antes cada instantánea tenía un id distinto y se acumulaban cientos de copias completas.
-    // Al recuperar conexión se intentaban subir todas en orden y el track final podía tardar
-    // horas en llegar o quedarse permanentemente pendiente. La clave estable hace que cada
-    // instantánea sustituya a la anterior y conserve siempre la más completa y reciente.
-    store.put(bundle);
+    const read=store.get(bundle.id);
+    read.onsuccess=()=>{
+      const previous=read.result;
+      const previousCount=Array.isArray(previous?.track)?previous.track.length:0;
+      const nextCount=Array.isArray(bundle?.track)?bundle.track.length:0;
+      // Nunca permitimos que una escritura asíncrona antigua sustituya una
+      // captura más completa que ya llegó a IndexedDB.
+      const merged={...previous,...bundle};
+      if(previousCount>nextCount){merged.track=previous.track;merged.trackPointCount=previousCount;}
+      merged.runId=String(bundle?.runId||previous?.runId||"");
+      store.put(merged);
+    };
+    read.onerror=()=>reject(read.error||new Error("No se pudo comprobar la cola de tracks"));
     tx.oncomplete=resolve;
     tx.onerror=()=>reject(tx.error);
   });
   try{dbx.close()}catch(_){ }
+  await refreshTrackOutboxCount();
 }
 async function trackOutboxGetAll(){
   try{const dbx=await trackOutboxOpen();const rows=await new Promise((resolve,reject)=>{const tx=dbx.transaction(TRACK_OUTBOX_STORE,"readonly");const req=tx.objectStore(TRACK_OUTBOX_STORE).getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});try{dbx.close()}catch(_){ }return rows;}catch(_){return []}
 }
 async function trackOutboxDelete(id){
-  try{const dbx=await trackOutboxOpen();await new Promise((resolve,reject)=>{const tx=dbx.transaction(TRACK_OUTBOX_STORE,"readwrite");tx.objectStore(TRACK_OUTBOX_STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});try{dbx.close()}catch(_){ }}catch(_){ }
+  try{const dbx=await trackOutboxOpen();await new Promise((resolve,reject)=>{const tx=dbx.transaction(TRACK_OUTBOX_STORE,"readwrite");tx.objectStore(TRACK_OUTBOX_STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});try{dbx.close()}catch(_){ }await refreshTrackOutboxCount();}catch(_){ }
+}
+async function refreshTrackOutboxCount(){
+  const rows=await trackOutboxGetAll();
+  const eventKey=participantEventKey||safeFirebaseKey(participantContext?.eventId||"");
+  const pid=String(participantContext?.participantId||"");
+  participantPendingTrackCount=rows.filter(row=>(!eventKey||String(row?.eventKey||"")===eventKey)&&(!pid||String(row?.participantId||"")===pid)&&Array.isArray(row?.track)&&row.track.length).length;
+  return participantPendingTrackCount;
+}
+function rememberResolvedParticipantRun(runId,eventKey=participantEventKey){
+  const resolved=String(runId||"");
+  if(!resolved)return "";
+  participantRunId=resolved;
+  if(participantContext){
+    participantContext={...participantContext,eventId:participantContext.eventId||eventKey,liveRunId:resolved};
+    persistParticipantContext(participantContext);
+  }
+  return resolved;
+}
+async function resolveParticipantRunId(eventKey,pid,preferred="",meta={}){
+  const direct=String(preferred||participantRunId||participantContext?.liveRunId||"");
+  if(direct)return rememberResolvedParticipantRun(direct,eventKey);
+  if(!db||!currentUser||!eventKey||!pid)return "";
+  if(participantRunResolvePromise)return participantRunResolvePromise;
+  participantRunResolvePromise=(async()=>{
+    try{
+      const activeSnap=await get(ref(db,activeRunPath(eventKey)));
+      const active=activeSnap.val();
+      if(active?.runId)return rememberResolvedParticipantRun(String(active.runId),eventKey);
+
+      // Si el organizador cerró la carrera antes de volver la cobertura, activeRun
+      // ya no existe. Los runs conservan los participantes preparados al inicio;
+      // elegimos el más reciente que coincide con participante y recorrido.
+      const runsSnap=await get(ref(db,`${eventPath(eventKey)}/runs`));
+      const runs=runsSnap.val()||{};
+      const safePid=safeFirebaseKey(pid);
+      const wantedRoute=String(meta?.routeId||participantContext?.routeId||"");
+      const wantedStart=Date.parse(meta?.startTime||participantContext?.startTime||"")||0;
+      const candidates=[];
+      Object.entries(runs).forEach(([runId,run])=>{
+        const participant=run?.participants?.[safePid];
+        if(!participant||run?.meta?.status==="reset")return;
+        const created=Date.parse(run?.meta?.createdAtClient||run?.meta?.startedAtClient||"")||Number(run?.meta?.createdAt)||0;
+        let score=created;
+        if(wantedRoute&&String(participant?.routeId||"")===wantedRoute)score+=1e15;
+        if(wantedStart&&created)score-=Math.min(9e14,Math.abs(wantedStart-created));
+        if(run?.meta?.status==="active")score+=5e14;
+        candidates.push({runId:String(runId),score,created});
+      });
+      candidates.sort((a,b)=>b.score-a.score||b.created-a.created);
+      return candidates[0]?rememberResolvedParticipantRun(candidates[0].runId,eventKey):"";
+    }catch(error){
+      console.warn("MILITOPO LIVE · no se pudo recuperar la sesión de la carrera",error);
+      return "";
+    }finally{
+      participantRunResolvePromise=null;
+    }
+  })();
+  return participantRunResolvePromise;
 }
 async function flushTrackOutbox(){
-  // V66: una cola de track conserva su propio runId. No se bloquea el envío solo porque
-  // activeRun tarde en restaurarse o participantRunId aún esté vacío tras recargar la PWA.
-  if(!firebaseConnected||!db||!currentUser||!participantContext)return;
-  const rows=await trackOutboxGetAll();
-  const ownRows=rows.filter(bundle=>String(bundle.eventKey)===String(participantEventKey)&&String(bundle.participantId)===String(participantContext.participantId));
-  // Compatibilidad con V64-V69: si el móvil ya tenía muchas instantáneas antiguas,
-  // conservar únicamente la más completa/reciente y borrar el resto antes de subir.
-  ownRows.sort((a,b)=>{
-    const ap=Array.isArray(a.track)?a.track.length:0,bp=Array.isArray(b.track)?b.track.length:0;
-    if(ap!==bp)return bp-ap;
-    return String(b.clientTime||"").localeCompare(String(a.clientTime||""));
-  });
-  const newest=ownRows[0]||null;
-  for(const stale of ownRows.slice(1))await trackOutboxDelete(stale.id);
-  for(const bundle of (newest?[newest]:[])){
-    const track=Array.isArray(bundle.track)?bundle.track:[];
-    if(!track.length){await trackOutboxDelete(bundle.id);continue;}
-    const targetRunId=String(bundle.runId||participantRunId||participantContext?.liveRunId||"");
-    if(!targetRunId)continue;
-    if(!participantRunId){
-      participantRunId=targetRunId;
-      participantContext={...participantContext,liveRunId:targetRunId};
-      persistParticipantContext(participantContext);
-      bindParticipantOwnRecord();
-    }
-    const pBase=participantPath(participantEventKey,targetRunId,bundle.participantId);
-    const transferId=safeFirebaseKey(bundle.transferId||bundle.id);
-    const totalChunks=Math.ceil(track.length/TRACK_UPLOAD_CHUNK_SIZE);
-    try{
-      await update(ref(db,pBase),{trackComplete:false,trackPointCount:track.length,trackTransferId:transferId,trackTransferTotalChunks:totalChunks,trackUpdatedClient:bundle.clientTime||nowIso()});
-      for(let i=0;i<totalChunks;i++){
-        const chunk=track.slice(i*TRACK_UPLOAD_CHUNK_SIZE,(i+1)*TRACK_UPLOAD_CHUNK_SIZE);
-        await set(ref(db,`${pBase}/trackTransfers/${transferId}/chunks/${i}`),chunk);
-        await update(ref(db,`${pBase}/trackTransfers/${transferId}`),{transferId,totalChunks,trackPointCount:track.length,receivedChunks:i+1,lastChunkClient:nowIso()});
+  if(trackOutboxFlushBusy){trackOutboxFlushAgain=true;return;}
+  if(!firebaseConnected||!db||!currentUser){await refreshTrackOutboxCount();publishParticipantSyncStatus();return;}
+  trackOutboxFlushBusy=true;
+  try{
+    const rows=await trackOutboxGetAll();
+    for(const bundle of rows){
+      const bundleEventKey=String(bundle?.eventKey||safeFirebaseKey(bundle?.eventId||""));
+      const bundlePid=String(bundle?.participantId||"");
+      if(!bundleEventKey||!bundlePid)continue;
+      if(participantEventKey&&bundleEventKey!==String(participantEventKey))continue;
+      if(participantContext?.participantId&&bundlePid!==String(participantContext.participantId))continue;
+      if(!participantContext){
+        participantContext={eventId:String(bundle.eventId||bundleEventKey),participantId:bundlePid,routeId:String(bundle.routeId||""),startTime:bundle.startTime||null,finishTime:bundle.finishTime||null,trackPointCount:Number(bundle.trackPointCount)||0};
+        participantEventKey=bundleEventKey;
+        persistParticipantContext(participantContext);
       }
-      await update(ref(db,pBase),{track,trackPointCount:track.length,trackComplete:true,trackReceivedClient:nowIso(),trackUpdatedClient:nowIso(),trackTransferId:transferId,trackTransferReceivedChunks:totalChunks,lastSeen:serverTimestamp(),lastSeenClient:nowIso()});
-      await trackOutboxDelete(bundle.id);
-      participantExpectedTrackPointCount=Math.max(participantExpectedTrackPointCount,track.length);
-    }catch(error){console.warn("MILITOPO LIVE · track pendiente en IndexedDB",error);break;}
+      const track=Array.isArray(bundle.track)?bundle.track:[];
+      if(!track.length){await trackOutboxDelete(bundle.id);continue;}
+      const targetRunId=await resolveParticipantRunId(bundleEventKey,bundlePid,bundle.runId,{routeId:bundle.routeId,startTime:bundle.startTime});
+      if(!targetRunId)continue;
+      const pBase=participantPath(bundleEventKey,targetRunId,bundlePid);
+      const transferId=safeFirebaseKey(bundle.transferId||bundle.id);
+      const totalChunks=Math.ceil(track.length/TRACK_UPLOAD_CHUNK_SIZE);
+      try{
+        const trackStartData={
+          participantId:bundlePid,
+          routeId:String(bundle.routeId||participantContext?.routeId||""),
+          trackComplete:false,
+          trackUploadPending:true,
+          trackPointCount:track.length,
+          trackTransferId:transferId,
+          trackTransferTotalChunks:totalChunks,
+          trackUpdatedClient:bundle.clientTime||nowIso()
+        };
+        if(Array.isArray(bundle.routePointIds))trackStartData.routePointIds=bundle.routePointIds;
+        await update(ref(db,pBase),trackStartData);
+        for(let i=0;i<totalChunks;i++){
+          const chunk=track.slice(i*TRACK_UPLOAD_CHUNK_SIZE,(i+1)*TRACK_UPLOAD_CHUNK_SIZE);
+          await set(ref(db,`${pBase}/trackTransfers/${transferId}/chunks/${i}`),chunk);
+          await update(ref(db,`${pBase}/trackTransfers/${transferId}`),{transferId,totalChunks,trackPointCount:track.length,receivedChunks:i+1,lastChunkClient:nowIso()});
+        }
+        const trackCompleteData={
+          track,
+          trackPointCount:track.length,
+          trackComplete:true,
+          trackUploadPending:false,
+          trackReceivedClient:nowIso(),
+          trackUpdatedClient:nowIso(),
+          trackTransferId:transferId,
+          trackTransferReceivedChunks:totalChunks,
+          lastSeen:serverTimestamp(),
+          lastSeenClient:nowIso()
+        };
+        if(Number.isFinite(Number(bundle.distanceM)))trackCompleteData.distanceM=Math.round(Number(bundle.distanceM));
+        await update(ref(db,pBase),trackCompleteData);
+        const ack=(await get(ref(db,pBase))).val();
+        if(ack?.trackComplete!==true||Number(ack?.trackPointCount||0)<track.length)throw new Error(`ACK de track incompleto: ${Number(ack?.trackPointCount||0)}/${track.length}`);
+        await trackOutboxDelete(bundle.id);
+        participantExpectedTrackPointCount=Math.max(participantExpectedTrackPointCount,track.length);
+        participantTrackReceived=!!participantContext?.finishTime;
+        confirmParticipantSync();
+        bindParticipantOwnRecord();
+      }catch(error){console.warn("MILITOPO LIVE · track pendiente en IndexedDB",error);break;}
+    }
+  }finally{
+    trackOutboxFlushBusy=false;
+    await refreshTrackOutboxCount();
+    publishParticipantSyncStatus();
+    if(trackOutboxFlushAgain){trackOutboxFlushAgain=false;setTimeout(()=>flushTrackOutbox(),0);}
   }
-  publishParticipantSyncStatus();
 }
 
 function readQueue() {
@@ -808,17 +927,19 @@ function participantPendingQueueCount() {
 }
 function participantSyncSnapshot() {
   const summary = participantPendingQueueSummary();
-  const pending = summary.total;
-  const extra = { pending, pendingControls:summary.controls, pendingResult:summary.result, pendingStart:summary.start, resultReceived:participantResultReceived, trackReceived:participantTrackReceived, expectedTrackPointCount:participantExpectedTrackPointCount };
+  const pendingTrack=Math.max(0,Number(participantPendingTrackCount)||0);
+  const pending = summary.total+pendingTrack;
+  const finishedLocally=!!participantContext?.finishTime;
+  const extra = { pending, pendingEvents:summary.total, pendingTrack, pendingControls:summary.controls, pendingResult:summary.result||(finishedLocally&&!participantResultReceived), pendingStart:summary.start, resultReceived:participantResultReceived, trackReceived:participantTrackReceived, expectedTrackPointCount:participantExpectedTrackPointCount };
   const lastSyncAt = loadParticipantLastSync() || "";
-  if ((!participantActiveRunAvailable && pending === 0) || !participantRunId) {
-    return { state:"inactive", text:"⚪ CARRERA EN VIVO NO ACTIVA", lastSyncAt, ...extra };
-  }
   if (!firebaseConnected || !db || !currentUser) {
     return { state:"offline", text:"🟠 SIN COBERTURA · GUARDADO EN EL MÓVIL", lastSyncAt, ...extra };
   }
   if (pending > 0) {
-    return { state:"syncing", text:`🔄 SINCRONIZANDO ${pending} ${pending === 1 ? "CAMBIO" : "CAMBIOS"}`, lastSyncAt, ...extra };
+    return { state:"syncing", text:participantRunId?`🔄 SINCRONIZANDO ${pending} ${pending === 1 ? "CAMBIO" : "CAMBIOS"}`:"🔄 RECUPERANDO SESIÓN Y ENVIANDO DATOS", lastSyncAt, ...extra };
+  }
+  if ((!participantActiveRunAvailable && pending === 0) || !participantRunId) {
+    return { state:"inactive", text:"⚪ CARRERA EN VIVO NO ACTIVA", lastSyncAt, ...extra };
   }
   if (participantFlushBusy || !participantPresenceConfirmed) {
     return { state:"syncing", text:"🔄 SINCRONIZANDO CON EN VIVO", lastSyncAt, ...extra };
@@ -882,16 +1003,27 @@ function bindParticipantOwnRecord() {
 }
 function enqueueParticipantEvent(kind, payload) {
   const cleanPayload = payload || {};
+  const eventKey=safeFirebaseKey(cleanPayload.eventId || participantContext?.eventId || "");
+  const participantId=String(cleanPayload.participantId || participantContext?.participantId || "");
+  const queue = readQueue();
+  // Los reintentos al volver de segundo plano pueden emitir de nuevo START o
+  // FINISH. Conservamos uno solo por marca temporal para no llenar la cola.
+  const duplicate=queue.find(item=>
+    item?.kind===kind&&item?.eventKey===eventKey&&String(item?.participantId||"")===participantId&&(
+      (kind==="FINISH"&&String(item?.payload?.finishTime||"")===String(cleanPayload.finishTime||""))||
+      (kind==="START"&&String(item?.payload?.startTime||"")===String(cleanPayload.startTime||""))
+    )
+  );
+  if(duplicate){flushParticipantQueue();return;}
   const event = {
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`,
     kind,
-    eventKey: safeFirebaseKey(cleanPayload.eventId || participantContext?.eventId || ""),
-    participantId: String(cleanPayload.participantId || participantContext?.participantId || ""),
+    eventKey,
+    participantId,
     runId: String(participantRunId || participantContext?.liveRunId || ""),
     payload: cleanPayload,
     queuedAt: nowIso()
   };
-  const queue = readQueue();
   queue.push(event);
   if (!writeQueue(queue)) {
     publishParticipantSyncStatus();
@@ -903,9 +1035,15 @@ function enqueueParticipantEvent(kind, payload) {
 }
 
 function persistParticipantContext(ctx) {
-  participantContext = ctx;
-  loadParticipantLastSync(ctx);
-  try { localStorage.setItem(PARTICIPANT_CONTEXT_KEY, JSON.stringify(ctx)); } catch (_) {}
+  if(!ctx||typeof ctx!=="object")return;
+  const sameIdentity=participantContext&&String(participantContext.eventId||"")===String(ctx.eventId||participantContext.eventId||"")&&String(participantContext.participantId||"")===String(ctx.participantId||participantContext.participantId||"");
+  const previous=sameIdentity?participantContext:{};
+  const merged={...previous,...ctx};
+  if(!String(ctx.liveRunId||"").trim()&&String(previous?.liveRunId||"").trim())merged.liveRunId=previous.liveRunId;
+  if(!String(ctx.resultCode||"").trim()&&String(previous?.resultCode||"").trim())merged.resultCode=previous.resultCode;
+  participantContext=merged;
+  loadParticipantLastSync(merged);
+  try { localStorage.setItem(PARTICIPANT_CONTEXT_KEY, JSON.stringify(merged)); } catch (_) {}
 }
 function restoreParticipantContext() {
   try {
@@ -960,10 +1098,16 @@ async function bindParticipantEvent(ctx) {
   if (!db || !currentUser || !ctx?.eventId || !ctx?.participantId) return;
   persistParticipantContext(ctx);
   const eventKey = safeFirebaseKey(ctx.eventId);
-  if (participantEventKey === eventKey && participantUnsubActive) return;
+  if (participantEventKey === eventKey && participantUnsubActive) {
+    if(!participantRunId&&participantContext?.liveRunId)participantRunId=String(participantContext.liveRunId);
+    if(participantRunId)bindParticipantOwnRecord();
+    flushParticipantQueue();
+    flushTrackOutbox();
+    return;
+  }
   if (typeof participantUnsubActive === "function") participantUnsubActive();
   participantEventKey = eventKey;
-  participantRunId = "";
+  participantRunId = String(participantContext?.liveRunId||"");
   participantUnsubActive = onValue(ref(db, activeRunPath(eventKey)), async snap => {
     const active = snap.val();
     if (active && active.status === "active" && active.runId) {
@@ -984,17 +1128,18 @@ async function bindParticipantEvent(ctx) {
       participantUnsubOwnRecord = null;
       const savedRunId=String(participantContext?.liveRunId||"");
       const pid=String(participantContext?.participantId||"");
-      const hasQueuedEvents=readQueue().some(event=>event.eventKey===participantEventKey&&String(event.participantId||"")===pid);
-      const finishedLocally=!!participantContext?.finishTime;
       // Una carrera terminada conserva para siempre su runId hasta que el usuario pulse
       // BORRAR RECORRIDO. Así puede reabrirse el registro Firebase, comprobar los ACK y
       // vaciar la cola IndexedDB aunque activeRun ya no exista.
-      participantRunId=(savedRunId&&(hasQueuedEvents||finishedLocally))?savedRunId:"";
+      participantRunId=savedRunId;
       publishParticipantSyncStatus();
       if(participantRunId){
         bindParticipantOwnRecord();
         flushParticipantQueue();
         flushTrackOutbox();
+      }else{
+        const recovered=await resolveParticipantRunId(participantEventKey,pid,"",participantContext||{});
+        if(recovered){bindParticipantOwnRecord();flushParticipantQueue();flushTrackOutbox();}
       }
     }
   }, error => console.warn("MILITOPO LIVE · sesión participante", error));
@@ -1008,14 +1153,15 @@ async function applyParticipantEvent(event) {
   const pBase = participantPath(participantEventKey, targetRunId, pid);
   const completed = Math.max(0, Number(payload.completedControls) || 0);
   const total = Math.max(0, Number(payload.totalControls) || 0);
+  const discarded = Math.max(0, Number(payload.discardedControls) || 0, Number(payload.skippedControlsCount) || 0);
   const common = {
     participantId: pid,
     routeId: String(payload.routeId || participantContext.routeId || ""),
     totalControls: total,
     completedControls: completed,
-    discardedControls: Math.max(0, Number(payload.discardedControls) || 0, Number(payload.skippedControlsCount) || 0),
-    skippedControlsCount: Math.max(0, Number(payload.discardedControls) || 0, Number(payload.skippedControlsCount) || 0),
-    pendingControls: Math.max(0, total - completed),
+    discardedControls: discarded,
+    skippedControlsCount: discarded,
+    pendingControls: Math.max(0, total - completed - discarded),
     online: true,
     connectedUid: currentUser.uid,
     lastSeen: serverTimestamp(),
@@ -1023,6 +1169,7 @@ async function applyParticipantEvent(event) {
   };
   const liveName = String(payload.participantName || participantContext.participantName || "").trim();
   if (liveName) common.participantName = liveName;
+  if(Array.isArray(payload.routePointIds))common.routePointIds=payload.routePointIds;
   if (Array.isArray(payload.trackSnapshot) && payload.trackSnapshot.length) {
     common.track = payload.trackSnapshot;
     common.trackPointCount = Math.max(Number(payload.trackPointCount)||0, common.track.length);
@@ -1092,6 +1239,9 @@ async function applyParticipantEvent(event) {
     Object.assign(common, { status:payload.finishTime ? "finished" : "racing", lastScanStatus:String(payload.scanStatus || ""), startTime:payload.startTime || null });
   } else if (event.kind === "FINISH") {
     Object.assign(common, { status:"finished", finishTime:payload.finishTime || payload.clientTime || nowIso(), startTime:payload.startTime || null, completed:!!payload.completed, missingControlsCount:Array.isArray(payload.missingControls)?payload.missingControls.length:Number(payload.missingControlsCount)||0 });
+    const expectedTrackCount=Math.max(0,Number(payload.trackPointCount)||0);
+    common.trackPointCount=expectedTrackCount;
+    if(Number.isFinite(Number(payload.distanceM)))common.distanceM=Math.round(Number(payload.distanceM));
     const finishResultCode = String(payload.resultCode || "").trim();
     if (finishResultCode) { common.resultCode = finishResultCode; common.resultReceivedClient = payload.clientTime || nowIso(); }
   } else {
@@ -1113,9 +1263,16 @@ async function applyParticipantEvent(event) {
 }
 
 async function flushParticipantQueue() {
-  if (participantFlushBusy || !firebaseConnected || !db || !currentUser || !participantRunId || !participantContext) {
+  if (participantFlushBusy || !firebaseConnected || !db || !currentUser || !participantContext) {
     publishParticipantSyncStatus();
     return;
+  }
+  if(!participantRunId){
+    const pid=String(participantContext.participantId||"");
+    const pending=readQueue().find(item=>item.eventKey===(participantEventKey||safeFirebaseKey(participantContext.eventId||""))&&String(item.participantId||"")===pid);
+    const recovered=await resolveParticipantRunId(participantEventKey||safeFirebaseKey(participantContext.eventId||""),pid,pending?.runId||"",pending?.payload||participantContext);
+    if(!recovered){publishParticipantSyncStatus();return;}
+    bindParticipantOwnRecord();
   }
   participantFlushBusy = true;
   publishParticipantSyncStatus();
@@ -1155,6 +1312,7 @@ async function recoverParticipantConnection() {
   }
   try {
     if (!participantEventKey) await bindParticipantEvent(participantContext);
+    if(!participantRunId)await resolveParticipantRunId(participantEventKey,String(participantContext.participantId||""),participantContext.liveRunId||"",participantContext);
     if (participantRunId) {
       await markParticipantReady();
       bindParticipantOwnRecord();
@@ -1178,12 +1336,27 @@ function handleParticipantMessage(event) {
   if (msg.kind === "TRACK_BUNDLE") {
     const preservedResultCode=String(participantContext?.resultCode||"").trim();
     const fullTrack=Array.isArray(ctx.fullTrack)?ctx.fullTrack:[];
-    const stableRunId=String(participantRunId||participantContext?.liveRunId||ctx.liveRunId||"");
-    const stableId=`${safeFirebaseKey(ctx.eventId)}:${String(ctx.participantId)}:${safeFirebaseKey(stableRunId||"pending-run")}`;
-    const bundle={id:stableId,eventKey:safeFirebaseKey(ctx.eventId),participantId:String(ctx.participantId),runId:stableRunId,transferId:String(ctx.transferId||"track"),track:fullTrack,clientTime:ctx.clientTime||nowIso()};
-    persistParticipantContext({...participantContext,...ctx,fullTrack:undefined,resultCode:preservedResultCode,trackPointCount:fullTrack.length||Number(ctx.trackPointCount)||0});
+    const bundle={
+      id:`${safeFirebaseKey(ctx.eventId)}:${String(ctx.participantId)}:${safeFirebaseKey(ctx.transferId||Date.now())}`,
+      eventId:String(ctx.eventId||participantContext?.eventId||""),
+      eventKey:safeFirebaseKey(ctx.eventId),
+      participantId:String(ctx.participantId),
+      participantName:String(ctx.participantName||participantContext?.participantName||""),
+      routeId:String(ctx.routeId||participantContext?.routeId||""),
+      routePointIds:Array.isArray(ctx.routePointIds)?ctx.routePointIds:[],
+      startTime:ctx.startTime||participantContext?.startTime||null,
+      finishTime:ctx.finishTime||participantContext?.finishTime||null,
+      runId:String(participantRunId||participantContext?.liveRunId||ctx.liveRunId||""),
+      transferId:String(ctx.transferId||"track"),
+      trackPointCount:fullTrack.length||Number(ctx.trackPointCount)||0,
+      distanceM:Number.isFinite(Number(ctx.distanceM))?Math.round(Number(ctx.distanceM)):null,
+      track:fullTrack,
+      clientTime:ctx.clientTime||nowIso(),
+      savedAt:nowIso()
+    };
+    persistParticipantContext({...participantContext,...ctx,fullTrack:undefined,resultCode:preservedResultCode,trackPointCount:bundle.trackPointCount,liveRunId:bundle.runId||participantContext?.liveRunId||""});
     participantExpectedTrackPointCount=Math.max(0,fullTrack.length||Number(ctx.trackPointCount)||0);
-    trackOutboxPut(bundle).then(()=>flushTrackOutbox()).catch(error=>console.warn("MILITOPO LIVE · no se pudo guardar el track",error));
+    trackOutboxPut(bundle).then(()=>{publishParticipantSyncStatus();return flushTrackOutbox();}).catch(error=>console.warn("MILITOPO LIVE · no se pudo guardar el track",error));
     publishParticipantSyncStatus();
     return;
   }
@@ -1223,39 +1396,54 @@ function handleParticipantMessage(event) {
 }
 
 async function initFirebase() {
-  try {
+  if(firebaseInitPromise)return firebaseInitPromise;
+  firebaseInitPromise=(async()=>{
+    await loadFirebaseSdk();
     app = getApps().length ? getApp() : initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getDatabase(app);
 
-    onValue(ref(db, ".info/connected"), snap => {
-      firebaseConnected = snap.val() === true;
-      if (!firebaseConnected) participantPresenceConfirmed = false;
-      if (!isParticipantAccess()) {
-        setBadge("live2DbBadge", firebaseConnected ? "FIREBASE · CONECTADO" : "FIREBASE · SIN CONEXIÓN", firebaseConnected ? "ok" : "error");
-        if (!firebaseConnected) setMessage("Sin conexión. MILITOPO continúa funcionando de forma local.", "warn");
-      }
-      updateOrganizerButtons();
-      publishParticipantSyncStatus();
-      if (firebaseConnected) recoverParticipantConnection(); flushTrackOutbox();
-    });
+    if(!firebaseObserversBound){
+      firebaseObserversBound=true;
+      onValue(ref(db, ".info/connected"), snap => {
+        firebaseConnected = snap.val() === true;
+        if (!firebaseConnected) participantPresenceConfirmed = false;
+        if (!isParticipantAccess()) {
+          setBadge("live2DbBadge", firebaseConnected ? "FIREBASE · CONECTADO" : "FIREBASE · SIN CONEXIÓN", firebaseConnected ? "ok" : "error");
+          if (!firebaseConnected) setMessage("Sin conexión. MILITOPO continúa funcionando de forma local.", "warn");
+        }
+        updateOrganizerButtons();
+        publishParticipantSyncStatus();
+        if (firebaseConnected) {
+          recoverParticipantConnection();
+          flushTrackOutbox();
+        }
+      });
 
-    onAuthStateChanged(auth, user => {
-      currentUser = user || null;
-      if (!isParticipantAccess()) {
-        setBadge("live2AuthBadge", user ? "AUTENTICACIÓN · CORRECTA" : "AUTENTICACIÓN · CONECTANDO", user ? "ok" : "warn");
-        if (user) setMessage("Firebase preparado. Puedes iniciar la carrera en vivo.", "ok");
-      }
-      updateOrganizerButtons();
-      if (!user) participantPresenceConfirmed = false;
-      publishParticipantSyncStatus();
-      if (user && participantContext) {
-        bindParticipantEvent(participantContext);
-        recoverParticipantConnection(); flushTrackOutbox();
-      }
-    });
+      onAuthStateChanged(auth, user => {
+        currentUser = user || null;
+        if (!isParticipantAccess()) {
+          setBadge("live2AuthBadge", user ? "AUTENTICACIÓN · CORRECTA" : "AUTENTICACIÓN · CONECTANDO", user ? "ok" : "warn");
+          if (user) setMessage("Firebase preparado. Puedes iniciar la carrera en vivo.", "ok");
+        }
+        updateOrganizerButtons();
+        if (!user) participantPresenceConfirmed = false;
+        publishParticipantSyncStatus();
+        if (user && participantContext) {
+          bindParticipantEvent(participantContext);
+          recoverParticipantConnection();
+          flushTrackOutbox();
+        }
+      });
+    }
 
-    await signInAnonymously(auth);
+    currentUser=auth.currentUser||currentUser;
+    if(!currentUser)await signInAnonymously(auth);
+    await refreshTrackOutboxCount();
+    if(participantContext){await bindParticipantEvent(participantContext);await recoverParticipantConnection();}
+  })();
+  try {
+    await firebaseInitPromise;
   } catch (error) {
     console.error("MILITOPO LIVE · Firebase init", error);
     if (!isParticipantAccess()) {
@@ -1264,6 +1452,8 @@ async function initFirebase() {
       setMessage(`No se pudo iniciar Firebase: ${error.message}. MILITOPO local sigue operativo.`, "error");
     }
     publishParticipantSyncStatus();
+  } finally {
+    firebaseInitPromise=null;
   }
 }
 
@@ -1276,18 +1466,29 @@ function initLivePhase2() {
     }, 2500);
   } else {
     restoreParticipantContext();
+    refreshTrackOutboxCount().then(()=>publishParticipantSyncStatus());
     participantHeartbeatTimer = window.setInterval(() => {
-      if (document.visibilityState === "visible") recoverParticipantConnection(); flushTrackOutbox();
+      if(document.visibilityState!=="visible")return;
+      if(!firebaseSdkReady||!db||!currentUser)initFirebase();
+      else recoverParticipantConnection();
+      flushTrackOutbox();
     }, 12000);
   }
   window.addEventListener("message", handleParticipantMessage);
-  window.addEventListener("online", recoverParticipantConnection);
+  window.addEventListener("online", () => {
+    if(!firebaseSdkReady||!db||!currentUser)initFirebase();
+    else recoverParticipantConnection();
+    flushTrackOutbox();
+  });
   window.addEventListener("offline", () => {
     participantPresenceConfirmed = false;
     publishParticipantSyncStatus();
   });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") recoverParticipantConnection(); flushTrackOutbox();
+    if(document.visibilityState!=="visible")return;
+    if(!firebaseSdkReady||!db||!currentUser)initFirebase();
+    else recoverParticipantConnection();
+    flushTrackOutbox();
   });
   initFirebase();
 }
@@ -1299,7 +1500,9 @@ window.MILITOPO_LIVE_PHASE2 = {
   startOrganizerRun,
   stopOrganizerRun,
   resetOrganizerEventForReusableExercise,
-  flushParticipantQueue
+  flushParticipantQueue,
+  flushTrackOutbox,
+  retryParticipantSync:async()=>{await initFirebase();await recoverParticipantConnection();await flushParticipantQueue();await flushTrackOutbox();}
 };
 
 document.addEventListener("DOMContentLoaded", initLivePhase2, { once:true });
