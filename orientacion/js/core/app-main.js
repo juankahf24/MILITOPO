@@ -1576,7 +1576,9 @@ async function generateRoutes(silent=false){
 
             const qualityTier=quality.code==="clean"?0:(quality.code==="acceptable"?1:2);
             const shortLegPenalty=(quality.shortControlLegs||0)*90000;
+            const overMaxLegPenalty=(quality.overMaxLegs||0)*420000+(quality.maxLegExcessKm||0)*520000;
             const score=
+                overMaxLegPenalty +
                 qualityTier*180000 +
                 shortLegPenalty +
                 quality.total*22.0 +
@@ -1593,7 +1595,7 @@ async function generateRoutes(silent=false){
             if(!best||score<best.score)best=item;
 
             // Si encuentra un limpio sin tramos cortos ni coincidencias largas, puede parar antes.
-            if(best && best.quality.code==="clean" && Number(best.quality.shortControlLegs||0)===0 && best.sequencePenalty===0 && a>900){
+            if(best && best.quality.code==="clean" && Number(best.quality.shortControlLegs||0)===0 && Number(best.quality.overMaxLegs||0)===0 && best.sequencePenalty===0 && a>900){
                 break;
             }
         }
@@ -1604,6 +1606,9 @@ async function generateRoutes(silent=false){
             item.metrics.quality=item.quality.label;
             item.metrics.qualityCode=item.quality.code;
             item.metrics.qualityScore=Number(item.quality.total.toFixed(2));
+            item.metrics.maxLegTargetM=800;
+            item.metrics.overMaxLegs=Number(item.quality.overMaxLegs||0);
+            item.metrics.overMaxLegList=[...(item.quality.overMaxLegList||[])];
             item.metrics.routeMode=context.mode==="loop"?"circular":"lineal";
             if(clonedFrom)item.metrics.variantOf=clonedFrom;
             return item;
@@ -1615,6 +1620,9 @@ async function generateRoutes(silent=false){
             routes.push(item);
 
             const rid="R"+String(routeNumber).padStart(2,"0");
+            if(item.quality.overMaxLegs>0){
+                qualityWarnings.push(`${rid}: no fue posible mantener todos los tramos por debajo de 800 m. Tramo(s) a revisar: ${(item.quality.overMaxLegList||[]).join(", ")}. Añade o redistribuye balizas para reducirlos.`);
+            }
             if(item.quality.shortControlLegs>0){
                 qualityWarnings.push(`${rid}: contiene ${item.quality.shortControlLegs} tramo(s) entre balizas por debajo de 200 m (${(item.quality.shortControlLegList||[]).join(", ")}). Añade/mueve balizas o reduce controles por recorrido.`);
             }
@@ -1938,7 +1946,9 @@ async function regenerateSingleRoute(routeIndex){
         const balancePenalty=calcDistanceBalancePenalty(metrics,existingMetrics);
         const oldDistance=oldOrdered.length?calcSequenceOverlapPenalty(ordered,[{controls:oldOrdered}]):0;
 
+        const overMaxLegPenalty=(quality.overMaxLegs||0)*460000+(quality.maxLegExcessKm||0)*560000;
         const score=
+            overMaxLegPenalty +
             quality.total*19.0 +
             sequencePenalty*8.8 +
             overlap*1.7 +
@@ -1978,6 +1988,9 @@ async function regenerateSingleRoute(routeIndex){
     best.metrics.quality=best.quality.label;
     best.metrics.qualityCode=best.quality.code;
     best.metrics.qualityScore=Number(best.quality.total.toFixed(2));
+    best.metrics.maxLegTargetM=800;
+    best.metrics.overMaxLegs=Number(best.quality.overMaxLegs||0);
+    best.metrics.overMaxLegList=[...(best.quality.overMaxLegList||[])];
     best.metrics.routeMode=context.mode==="loop"?"circular":"lineal";
 
     const regeneratedPointIds=best.route.map(p=>p.id);
@@ -1998,6 +2011,7 @@ async function regenerateSingleRoute(routeIndex){
     assignBalancedDifficulties(state.metrics);
     state.routeQualitySummary=buildRouteQualitySummary(state.metrics);
     state.routeWarnings=(state.routeWarnings||[]).filter(w=>!String(w).startsWith(routeId+":"));
+    if(best.quality.overMaxLegs>0)state.routeWarnings.push(`${routeId}: no fue posible mantener todos los tramos por debajo de 800 m. Tramo(s) a revisar: ${(best.quality.overMaxLegList||[]).join(", ")}. Añade o redistribuye balizas para reducirlos.`);
     if(best.quality.shortControlLegs>0)state.routeWarnings.push(`${routeId}: contiene ${best.quality.shortControlLegs} tramo(s) entre balizas por debajo de 200 m (${(best.quality.shortControlLegList||[]).join(", ")}). Añade/mueve balizas o reduce controles por recorrido.`);
     if(best.quality.code==="forced")state.routeWarnings.push(`${routeId}: Recorrido forzado. Revisa distribución de balizas, reduce controles por recorrido o mueve salida/llegada.`);
     else if(best.quality.code==="acceptable")state.routeWarnings.push(`${routeId}: Recorrido aceptable. Trazado válido, pero no totalmente limpio.`);
@@ -2329,6 +2343,42 @@ function shortControlLegDetails(route,minKm=0.2){
     return {count,penalty:Number(penalty.toFixed(3)),legs};
 }
 
+const ROUTE_MAX_LEG_TARGET_KM=0.8;
+
+function maxRouteLegDetails(route,maxKm=ROUTE_MAX_LEG_TARGET_KM){
+    let count=0;
+    let excessKm=0;
+    let longestKm=0;
+    const legs=[];
+    if(!Array.isArray(route))return {count,excessKm,longestKm,legs};
+    for(let i=1;i<route.length;i++){
+        const a=route[i-1],b=route[i];
+        if(!a||!b)continue;
+        const d=haversineKm(a,b);
+        if(!Number.isFinite(d))continue;
+        longestKm=Math.max(longestKm,d);
+        if(d>maxKm){
+            count++;
+            excessKm+=d-maxKm;
+            legs.push(`${a.id}-${b.id}: ${Math.round(d*1000)} m`);
+        }
+    }
+    return {
+        count,
+        excessKm:Number(excessKm.toFixed(3)),
+        longestKm:Number(longestKm.toFixed(3)),
+        legs
+    };
+}
+
+function routeMaxLegScore(route,maxKm=ROUTE_MAX_LEG_TARGET_KM){
+    const d=maxRouteLegDetails(route,maxKm);
+    // Prioridad casi absoluta: primero evitar cualquier tramo superior a 800 m.
+    // Si el mapa lo hace imposible, se escoge la alternativa con menos tramos
+    // excedidos y con el menor exceso total.
+    return d.count*320000+d.excessKm*480000+Math.max(0,d.longestKm-maxKm)*180000;
+}
+
 function routeQualityDetails(route,context=null,direction=1){
     context=context||buildProfessionalRouteContext(route[0],route.slice(1,-1),route[route.length-1]);
     let crossings=0,backtracks=0,hardBacktracks=0,turnPenalty=0,zigzags=0,nearRevisits=0,longLegPenalty=0,lateralJumpPenalty=0,edgePenalty=0;
@@ -2375,7 +2425,10 @@ function routeQualityDetails(route,context=null,direction=1){
 
     const progressPenalty=backtracks*120+hardBacktracks*18;
     const shortLegs=shortControlLegDetails(route,0.2);
+    const maxLegs=maxRouteLegDetails(route,ROUTE_MAX_LEG_TARGET_KM);
+    const maxLegPenalty=routeMaxLegScore(route,ROUTE_MAX_LEG_TARGET_KM);
     const total=
+        maxLegPenalty+
         crossings*90+
         progressPenalty+
         turnPenalty*22+
@@ -2385,9 +2438,9 @@ function routeQualityDetails(route,context=null,direction=1){
         lateralJumpPenalty*7+
         edgePenalty*6+
         shortLegs.penalty;
-    const code=(shortLegs.count===0&&crossings===0&&hardBacktracks===0&&total<28&&turnPenalty<1.35&&zigzags<=1)?"clean":((shortLegs.count===0&&crossings<=1&&hardBacktracks<=1&&total<70)?"acceptable":"forced");
+    const code=(maxLegs.count===0&&shortLegs.count===0&&crossings===0&&hardBacktracks===0&&total<28&&turnPenalty<1.35&&zigzags<=1)?"clean":((maxLegs.count===0&&shortLegs.count===0&&crossings<=1&&hardBacktracks<=1&&total<70)?"acceptable":"forced");
     const label=code==="clean"?"Recorrido limpio":(code==="acceptable"?"Recorrido aceptable":"Recorrido forzado");
-    return {total,crossings,backtracks:Number(backtracks.toFixed(3)),hardBacktracks,turnPenalty:Number(turnPenalty.toFixed(2)),zigzags,nearRevisits:Number(nearRevisits.toFixed(2)),longLegPenalty:Number(longLegPenalty.toFixed(2)),lateralJumpPenalty:Number(lateralJumpPenalty.toFixed(2)),progressPenalty:Number(progressPenalty.toFixed(2)),shortControlLegs:shortLegs.count,shortControlLegList:shortLegs.legs,label,code};
+    return {total,crossings,backtracks:Number(backtracks.toFixed(3)),hardBacktracks,turnPenalty:Number(turnPenalty.toFixed(2)),zigzags,nearRevisits:Number(nearRevisits.toFixed(2)),longLegPenalty:Number(longLegPenalty.toFixed(2)),lateralJumpPenalty:Number(lateralJumpPenalty.toFixed(2)),progressPenalty:Number(progressPenalty.toFixed(2)),shortControlLegs:shortLegs.count,shortControlLegList:shortLegs.legs,maxLegTargetM:Math.round(ROUTE_MAX_LEG_TARGET_KM*1000),overMaxLegs:maxLegs.count,overMaxLegList:maxLegs.legs,maxLegExcessKm:maxLegs.excessKm,longestLegKm:maxLegs.longestKm,label,code};
 }
 
 function turnAngle(a,b,c){
