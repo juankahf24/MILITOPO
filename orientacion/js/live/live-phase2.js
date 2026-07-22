@@ -58,6 +58,9 @@ let participantMessageSource = null;
 let participantActiveRunAvailable = false;
 let participantLastImportNoticeKey = "";
 let participantPresenceConfirmed = false;
+let participantResultReceived = false;
+let participantTrackReceived = false;
+let participantExpectedTrackPointCount = 0;
 let participantLastSyncAt = "";
 let participantLastSyncIdentity = "";
 let participantHeartbeatTimer = null;
@@ -717,7 +720,7 @@ function participantPendingQueueCount() {
 function participantSyncSnapshot() {
   const summary = participantPendingQueueSummary();
   const pending = summary.total;
-  const extra = { pending, pendingControls:summary.controls, pendingResult:summary.result, pendingStart:summary.start };
+  const extra = { pending, pendingControls:summary.controls, pendingResult:summary.result, pendingStart:summary.start, resultReceived:participantResultReceived, trackReceived:participantTrackReceived, expectedTrackPointCount:participantExpectedTrackPointCount };
   const lastSyncAt = loadParticipantLastSync() || "";
   if ((!participantActiveRunAvailable && pending === 0) || !participantRunId) {
     return { state:"inactive", text:"⚪ CARRERA EN VIVO NO ACTIVA", lastSyncAt, ...extra };
@@ -762,6 +765,13 @@ function bindParticipantOwnRecord() {
     const data = snap.val();
     if (data && data.online === true && (!data.connectedUid || data.connectedUid === currentUser?.uid)) {
       participantPresenceConfirmed = true;
+    }
+    if (data) {
+      const localFinished = !!participantContext?.finishTime;
+      const localTrackCount = Math.max(0, Number(participantContext?.trackPointCount) || 0);
+      participantExpectedTrackPointCount = localTrackCount;
+      participantResultReceived = localFinished && data.status === "finished" && !!data.finishTime && !!String(data.resultCode || "").trim();
+      participantTrackReceived = localFinished && localTrackCount > 0 && Number(data.trackPointCount || 0) >= localTrackCount && Array.isArray(data.track) && data.track.length >= localTrackCount;
       publishParticipantSyncStatus();
     }
     if (!data || data.resultImported !== true) return;
@@ -902,8 +912,10 @@ async function applyParticipantEvent(event) {
   const liveName = String(payload.participantName || participantContext.participantName || "").trim();
   if (liveName) common.participantName = liveName;
   if (Array.isArray(payload.trackSnapshot) && payload.trackSnapshot.length) {
-    common.track = payload.trackSnapshot.slice(-1800);
+    common.track = payload.trackSnapshot;
     common.trackPointCount = Math.max(Number(payload.trackPointCount)||0, common.track.length);
+    common.trackReceivedClient = payload.clientTime || nowIso();
+    common.trackComplete = common.track.length >= common.trackPointCount;
     common.trackUpdatedClient = payload.clientTime || nowIso();
   }
   if (event.kind === "START") {
@@ -913,7 +925,7 @@ async function applyParticipantEvent(event) {
   } else if (event.kind === "FINISH") {
     Object.assign(common, { status:"finished", finishTime:payload.finishTime || payload.clientTime || nowIso(), startTime:payload.startTime || null, completed:!!payload.completed, missingControlsCount:Array.isArray(payload.missingControls)?payload.missingControls.length:Number(payload.missingControlsCount)||0 });
     const finishResultCode = String(payload.resultCode || "").trim();
-    if (finishResultCode) common.resultCode = finishResultCode;
+    if (finishResultCode) { common.resultCode = finishResultCode; common.resultReceivedClient = payload.clientTime || nowIso(); }
   } else {
     Object.assign(common, { status:payload.finishTime ? "finished" : (payload.startTime ? "racing" : "ready") });
   }
@@ -990,6 +1002,8 @@ function handleParticipantMessage(event) {
   if (event.source && participantMessageSource !== event.source) participantLastImportNoticeKey = "";
   participantMessageSource = event.source || participantMessageSource;
   persistParticipantContext(ctx);
+  participantExpectedTrackPointCount = Math.max(0, Number(ctx.trackPointCount) || participantExpectedTrackPointCount || 0);
+  if (!ctx.finishTime) { participantResultReceived = false; participantTrackReceived = false; }
   publishParticipantSyncStatus();
   if (db && currentUser) bindParticipantEvent(ctx);
   if (msg.kind === "READY") {
