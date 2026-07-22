@@ -84,7 +84,7 @@ body.route-loaded #race,body.route-loaded #gpsProximity{position:relative!import
 .gps-note{font-size:.76rem;line-height:1.35;color:var(--m);margin-top:10px}
 .gps-actions{display:grid;grid-template-columns:1fr;gap:8px}
 .live-sync-status{margin:10px 0 0;padding:8px 10px;border-radius:12px 12px 8px 8px;text-align:center;font-size:.72rem;line-height:1.25;font-weight:900;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.16)}.live-sync-status.is-synced{color:#eaffd8;border-color:rgba(139,181,106,.55);background:rgba(139,181,106,.14)}.live-sync-status.is-offline{color:#ffe0a0;border-color:rgba(230,188,122,.48);background:rgba(151,103,34,.14)}.live-sync-status.is-syncing{color:#d5edff;border-color:rgba(93,168,255,.42);background:rgba(70,139,206,.14)}.live-sync-status.is-inactive{color:#d6cfbf;border-color:rgba(203,184,148,.28);background:rgba(255,255,255,.045)}
-.live-last-sync{margin:0 0 4px;padding:6px 10px;border-radius:0 0 12px 12px;text-align:center;font-size:.66rem;line-height:1.3;font-weight:900;color:#cbb894;background:rgba(0,0,0,.13);border:1px solid rgba(255,255,255,.09);border-top:0;letter-spacing:.02em}
+.live-last-sync{margin:0 0 4px;padding:6px 10px;border-radius:0 0 12px 12px;text-align:center;font-size:.66rem;line-height:1.3;font-weight:900;color:#cbb894;background:rgba(0,0,0,.13);border:1px solid rgba(255,255,255,.09);border-top:0;letter-spacing:.02em}.delivery-confirmations{display:grid;gap:8px;margin:12px 0}.delivery-confirmation{display:grid;grid-template-columns:28px 1fr;gap:9px;align-items:center;padding:11px 12px;border-radius:15px;border:1px solid rgba(240,193,106,.42);background:rgba(240,193,106,.10);font-weight:900;line-height:1.3}.delivery-confirmation.wait{color:#ffe0a0}.delivery-confirmation.ok{color:#eaffd8;border-color:rgba(139,181,106,.72);background:rgba(139,181,106,.17)}.delivery-confirmation.bad{color:#fff1df;border-color:rgba(200,94,69,.65);background:rgba(200,94,69,.15)}.delivery-confirmation .icon{font-size:1.15rem;text-align:center}.delivery-note{margin:4px 0 10px;text-align:center;color:#cbb894;font-size:.72rem;line-height:1.35}
 .gps-finish-notice{display:none;margin:0 0 14px;padding:0;animation:finishNoticeReveal .38s ease both}.gps-finish-notice.open{display:block}.gps-finish-card{width:100%;padding:22px 18px;border-radius:28px;border:2px solid rgba(139,181,106,.72);background:radial-gradient(circle at 50% 0,rgba(139,181,106,.16),transparent 38%),linear-gradient(180deg,#27351d,#12190d);box-shadow:0 18px 46px rgba(0,0,0,.46);text-align:center}.gps-finish-icon{font-size:48px;line-height:1}.gps-finish-title{margin-top:9px;font-size:1.24rem;font-weight:1000;color:#eaffd8}.gps-finish-text{margin:9px 0 16px;color:#f5e6c8;font-size:.9rem;line-height:1.45;white-space:pre-line}.gps-finish-card .btn{width:100%}@keyframes finishNoticeReveal{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
 .gps-choice-overlay{position:fixed;inset:0;z-index:120000;display:none;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 12px;overflow:auto;overscroll-behavior:contain;background:rgba(5,10,4,.86);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}.gps-choice-overlay.open{display:grid}.gps-choice-card{width:min(94vw,520px);max-height:calc(100dvh - env(safe-area-inset-top,0px) - 22px);overflow:auto;padding:20px 16px;border-radius:28px;border:2px solid rgba(240,193,106,.72);background:radial-gradient(circle at 50% 0,rgba(240,193,106,.16),transparent 38%),linear-gradient(180deg,#2d2a1d,#12150e);box-shadow:0 22px 60px rgba(0,0,0,.58);text-align:center}.gps-choice-icon{font-size:52px;line-height:1}.gps-choice-title{margin-top:9px;font-size:1.22rem;font-weight:1000;color:#fff0c8}.gps-choice-text{margin:10px 0 16px;color:#f5e6c8;font-size:.9rem;line-height:1.48}.gps-choice-actions{display:grid;grid-template-columns:1fr;gap:9px}.gps-choice-actions .btn{margin-top:0;width:100%}
 #gpsLockOverlay{position:fixed!important;inset:0!important;top:0!important;left:0!important;width:100vw!important;height:100dvh!important;min-height:100svh;z-index:2147483000;display:none;place-items:center;padding:calc(env(safe-area-inset-top,0px) + 12px) 14px calc(env(safe-area-inset-bottom,0px) + 12px);overflow-y:auto;overscroll-behavior:none;background:radial-gradient(circle at 50% 25%,#4b341f,#17120d 72%);color:#fff8e8;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -1567,6 +1567,11 @@ module.exports = QRCode;
   <div class="simple-step">3</div>
   <h2>Resultado final</h2>
   <div id="summary" class="status ok"></div>
+  <div id="deliveryConfirmations" class="delivery-confirmations" aria-live="polite">
+    <div id="resultDeliveryStatus" class="delivery-confirmation wait"><span class="icon">⏳</span><span>Resultado pendiente de confirmación</span></div>
+    <div id="trackDeliveryStatus" class="delivery-confirmation wait"><span class="icon">⏳</span><span>Track completo pendiente de confirmación</span></div>
+  </div>
+  <div class="delivery-note">No borres el recorrido hasta que los dos avisos aparezcan en verde. Si no hay cobertura, utiliza los QR como respaldo.</div>
   <div id="resultQr" class="qr"></div>
   <button id="fullTrackQrBtn" class="btn green" type="button" onclick="openFullTrackQrTransfer()">📡 MOSTRAR QR DEL TRACK COMPLETO · SIN INTERNET</button>
   <div id="fullTrackQrPanel" class="status" style="display:none;text-align:center">
@@ -1602,7 +1607,7 @@ module.exports = QRCode;
 
 <div id="gpsAudioVisualPulse" class="gps-audio-visual-pulse"></div>
 <div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
-<script type="module" src="../js/live/live-phase2.js?v=participante-directa-v1"></script>
+<script type="module" src="../js/live/live-phase2.js?v=v57-confirmacion-doble"></script>
 <script>
 const BOOT_PAYLOAD_KEYS=["militopo_participant_boot_payload_v3","militopo_participant_boot_payload_latest","militopo_participant_app_snapshot_v1","militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"];
 const PARTICIPANT_FORCE_BLANK_KEY="militopo_participant_force_blank_v1";
@@ -1842,7 +1847,7 @@ async function restoreParticipantFromIndexedDb(silent=true){
     }catch(e){}
     return false;
 }
-function compactTrackForSync(points,maxPoints=1600){
+function compactTrackForSync(points,maxPoints=Number.POSITIVE_INFINITY){
     const src=Array.isArray(points)?points:[];
     if(!src.length)return [];
     const step=Math.max(1,Math.ceil(src.length/maxPoints));
@@ -2256,7 +2261,7 @@ function parse(raw){
 const GPS_RADIUS_M=12,GPS_MAX_ACCURACY_M=12,GPS_REQUIRED_HITS=1,GPS_DUPLICATE_COOLDOWN_MS=4000;
 const GPS_PREF_PREFIX="militopo_participant_gps_enabled_v1:";
 const GPS_LOCK_PREF_PREFIX="militopo_participant_gps_lock_v1:";
-let gpsWatchId=null,gpsWakeLock=null,gpsInsideHits=0,gpsLastTarget="",gpsLastPosition=null,gpsLastValidatedAt=0,gpsUnlockTimer=null,gpsPrefsRestoredFor="",participantLiveSyncState="inactive",participantPendingSyncCount=0,participantPendingControlSyncCount=0,participantPendingResultSync=false,gpsFinishedByProximity=false,gpsFinishNoticeMode="",gpsFinishNoticeDismissedMode="",gpsFinishInsideHits=0,gpsFinishConfirmOpen=false,gpsFinishDeclinedUntilLeave=false,gpsStartReminderOpen=false,cameraLayoutRestore=null;
+let gpsWatchId=null,gpsWakeLock=null,gpsInsideHits=0,gpsLastTarget="",gpsLastPosition=null,gpsLastValidatedAt=0,gpsUnlockTimer=null,gpsPrefsRestoredFor="",participantLiveSyncState="inactive",participantPendingSyncCount=0,participantPendingControlSyncCount=0,participantPendingResultSync=false,participantResultReceived=false,participantTrackReceived=false,gpsFinishedByProximity=false,gpsFinishNoticeMode="",gpsFinishNoticeDismissedMode="",gpsFinishInsideHits=0,gpsFinishConfirmOpen=false,gpsFinishDeclinedUntilLeave=false,gpsStartReminderOpen=false,cameraLayoutRestore=null;
 function gpsPrefSuffix(){return String(EVENT_DATA.eventId||"")+":"+String(pid||"pending")}
 function gpsReadPref(prefix){const k=prefix+gpsPrefSuffix();return safeGet(localStorage,k)==="1"||safeGet(sessionStorage,k)==="1"}
 function gpsWritePref(prefix,on){const k=prefix+gpsPrefSuffix(),v=on?"1":"0";try{localStorage.setItem(k,v)}catch(e){}try{sessionStorage.setItem(k,v)}catch(e){}}
@@ -2395,6 +2400,17 @@ async function activateGpsFromStartReminder(){
     closeGpsStartReminder();
     await startProximityGps(true);
 }
+function updateDeliveryConfirmations(){
+    const resultEl=gpsEl("resultDeliveryStatus"),trackEl=gpsEl("trackDeliveryStatus");
+    if(!resultEl||!trackEl)return;
+    const finished=!!(log&&log.finishTime);
+    const apply=(el,ok,waitingText,okText)=>{
+        el.className="delivery-confirmation "+(ok?"ok":"wait");
+        el.innerHTML=`<span class="icon">${ok?"✅":"⏳"}</span><span>${ok?okText:waitingText}</span>`;
+    };
+    apply(resultEl,finished&&participantResultReceived,"Resultado pendiente de confirmación","Resultado recibido por el organizador");
+    apply(trackEl,finished&&participantTrackReceived,"Track completo pendiente de confirmación","Track completo recibido");
+}
 window.addEventListener("message",event=>{
     if(event.source!==window.parent)return;
     const msg=event.data;
@@ -2403,13 +2419,16 @@ window.addEventListener("message",event=>{
         participantPendingSyncCount=Math.max(0,Number(msg.payload.pending)||0);
         participantPendingControlSyncCount=Math.max(0,Number(msg.payload.pendingControls)||0);
         participantPendingResultSync=!!msg.payload.pendingResult;
+        participantResultReceived=!!msg.payload.resultReceived;
+        participantTrackReceived=!!msg.payload.trackReceived;
         setParticipantLiveSyncStatus(msg.payload.state,msg.payload.text,msg.payload.lastSyncAt);
+        updateDeliveryConfirmations();
         if(log&&log.finishTime&&msg.payload.state==="offline")showGpsFinishNotice("offline");
         if(log&&log.finishTime&&msg.payload.state==="inactive")showGpsFinishNotice("inactive");
         return;
     }
     if(msg.source==="MILITOPO_LIVE_RESULT_IMPORTED"&&msg.payload&&String(msg.payload.participantId||"")===String(pid||"")){
-        if(log&&log.finishTime){showGpsFinishNotice("imported");toast("Resultado importado. Carrera finalizada.")}
+        if(log&&log.finishTime){participantResultReceived=true;updateDeliveryConfirmations();showGpsFinishNotice("imported");toast("Resultado importado. Carrera finalizada.")}
     }
 });
 function gpsCorrectCount(){return routeCorrectCount()}
@@ -3012,7 +3031,7 @@ async function showPartialResultQr(){
 }
 
 function resultPayload(){return encodeResultObject(compactResultObject(false))}
-async function renderResult(){const sec=document.getElementById("result");if(!sec)return;if(!log||!log.finishTime){sec.style.display="none";sec.classList.remove("result-open");return}sec.style.display="block";sec.classList.add("result-open");const payload=resultPayload();log.resultPayload=payload;const result="ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+payload;const discardedIds=(log.scans||[]).filter(s=>s.status==="skipped").map(s=>String(s.controlId));const pendingIds=log.missingControls||[];const completedCount=(log.scans||[]).filter(s=>s.status==="correct").length;const metrics=participantFinishMetrics(),distanceText=metrics?(metrics.distanceM>=1000?(metrics.distanceM/1000).toFixed(2)+" km":Math.round(metrics.distanceM)+" m"):"--",adjustedText=metrics?participantDurationText(metrics.adjustedMs):"--";document.getElementById("summary").innerHTML="<b>"+pid+"</b> · "+route.routeId+"<br>📏 Distancia recorrida: "+distanceText+"<br>⏱️ Tiempo ajustado: "+adjustedText+"<br>✅ Completados: "+completedCount+"<br>⏭️ Descartados: "+(discardedIds.length?discardedIds.join(", "):"Ninguno")+"<br>⏳ Pendientes: "+(pendingIds.length?pendingIds.join(", "):"Ninguno")+"<br><strong>ENSEÑA ESTE CÓDIGO AL ORGANIZADOR</strong>";document.getElementById("resultText").value=result;try{const url=await QRCode.toDataURL(result,{margin:8,width:1200,errorCorrectionLevel:"H"});document.getElementById("resultQr").innerHTML="<img src='"+url+"' alt='QR resultado'><div class='result-qr-instruction'>📲 QR FINAL DE RESULTADO<br>ENSÉÑASELO AL ORGANIZADOR PARA GUARDAR TU RESULTADO.</div>"}catch(e){document.getElementById("resultQr").innerHTML="<div class='status err'>No se pudo generar el QR final. Usa COPIAR CÓDIGO y enséñaselo al organizador.</div>"}save()}
+async function renderResult(){updateDeliveryConfirmations();const sec=document.getElementById("result");if(!sec)return;if(!log||!log.finishTime){sec.style.display="none";sec.classList.remove("result-open");return}sec.style.display="block";sec.classList.add("result-open");const payload=resultPayload();log.resultPayload=payload;const result="ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+payload;const discardedIds=(log.scans||[]).filter(s=>s.status==="skipped").map(s=>String(s.controlId));const pendingIds=log.missingControls||[];const completedCount=(log.scans||[]).filter(s=>s.status==="correct").length;const metrics=participantFinishMetrics(),distanceText=metrics?(metrics.distanceM>=1000?(metrics.distanceM/1000).toFixed(2)+" km":Math.round(metrics.distanceM)+" m"):"--",adjustedText=metrics?participantDurationText(metrics.adjustedMs):"--";document.getElementById("summary").innerHTML="<b>"+pid+"</b> · "+route.routeId+"<br>📏 Distancia recorrida: "+distanceText+"<br>⏱️ Tiempo ajustado: "+adjustedText+"<br>✅ Completados: "+completedCount+"<br>⏭️ Descartados: "+(discardedIds.length?discardedIds.join(", "):"Ninguno")+"<br>⏳ Pendientes: "+(pendingIds.length?pendingIds.join(", "):"Ninguno")+"<br><strong>ENSEÑA ESTE CÓDIGO AL ORGANIZADOR</strong>";document.getElementById("resultText").value=result;try{const url=await QRCode.toDataURL(result,{margin:8,width:1200,errorCorrectionLevel:"H"});document.getElementById("resultQr").innerHTML="<img src='"+url+"' alt='QR resultado'><div class='result-qr-instruction'>📲 QR FINAL DE RESULTADO<br>ENSÉÑASELO AL ORGANIZADOR PARA GUARDAR TU RESULTADO.</div>"}catch(e){document.getElementById("resultQr").innerHTML="<div class='status err'>No se pudo generar el QR final. Usa COPIAR CÓDIGO y enséñaselo al organizador.</div>"}save()}
 function copyResult(){const t=document.getElementById("resultText");t.select();document.execCommand("copy");toast("Código de resultado copiado")}function downloadResult(){const b=new Blob([document.getElementById("resultText").value],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="codigo_resultado_"+(pid||"participante")+".txt";a.click();URL.revokeObjectURL(a.href)}function tm(i){return new Date(i).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
 function bindParticipantAutosave(){
     document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")save()});
