@@ -1,7 +1,7 @@
 /* MILITOPO Orientación · cargador modular seguro fase 2
    No contiene lógica de la app: carga los bloques en orden clásico para mantener compatibilidad. */
 (function(){
-  var VERSION = "v53-pnoa-wmts-maxima-actualidad";
+  var VERSION = "v62-proximidad-15m-circulos-pdf-finos";
   var files = [
     "js/core/app-main.js",
     "js/pdf/pdf-professional.js",
