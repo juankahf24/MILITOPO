@@ -1607,7 +1607,7 @@ module.exports = QRCode;
 
 <div id="gpsAudioVisualPulse" class="gps-audio-visual-pulse"></div>
 <div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
-<script type="module" src="../js/live/live-phase2.js?v=v57-confirmacion-doble"></script>
+<script type="module" src="../js/live/live-phase2.js?v=v58-track-reconexion-segura"></script>
 <script>
 const BOOT_PAYLOAD_KEYS=["militopo_participant_boot_payload_v3","militopo_participant_boot_payload_latest","militopo_participant_app_snapshot_v1","militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"];
 const PARTICIPANT_FORCE_BLANK_KEY="militopo_participant_force_blank_v1";
@@ -1862,6 +1862,7 @@ function compactTrackForSync(points,maxPoints=Number.POSITIVE_INFINITY){
     if(last&&out.length&&String(out[out.length-1].timestamp||'')!==String(last.timestamp||last.time||'')){const lat=Number(last.lat??last.latitude),lon=Number(last.lon??last.lng??last.longitude);if(Number.isFinite(lat)&&Number.isFinite(lon))out.push({timestamp:last.timestamp||last.time||null,lat:+lat.toFixed(7),lon:+lon.toFixed(7),accuracy:Number.isFinite(Number(last.accuracy))?Math.round(Number(last.accuracy)*10)/10:null,altitude:Number.isFinite(Number(last.altitude))?Math.round(Number(last.altitude)*10)/10:null,speed:Number.isFinite(Number(last.speed))?Math.round(Number(last.speed)*100)/100:null,heading:Number.isFinite(Number(last.heading))?Math.round(Number(last.heading)):null,event:last.event||null})}
     return out;
 }
+const LIVE_TRACK_CHUNK_SIZE=100;
 let lastTrackLiveSyncAt=0;
 function notifyMilitopoLive(kind,extra={}){
     try{
@@ -1876,33 +1877,56 @@ function notifyMilitopoLive(kind,extra={}){
             if(finishPayload)log.resultPayload=finishPayload;
         }
         const resultCode=finishPayload?("ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+finishPayload):"";
-        window.parent.postMessage({
-            source:"MILITOPO_LIVE_V2",
-            kind,
-            payload:{
-                eventId:String(EVENT_DATA.eventId||""),
-                eventName:String(EVENT_DATA.eventName||"ENTRENAMIENTO ORIENTACIÓN"),
-                participantId:String(pid||""),
-                participantName,
-                routeId:String(route.routeId||""),
-                totalControls:expected.length,
-                completedControls:completed,
-                discardedControls:discarded,
-                skippedControlsCount:discarded,
-                discardedControlIds:(log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="skipped").map(s=>String(s.controlId)):[]),
-                pendingControls:Math.max(0,expected.length-completed-discarded),
-                startTime:log&&log.startTime?log.startTime:null,
-                finishTime:log&&log.finishTime?log.finishTime:null,
-                completed:!!(log&&log.completed),
-                missingControls:log&&Array.isArray(log.missingControls)?log.missingControls:[],
-                trackSnapshot:(kind==="FINISH"||kind==="TRACK")?compactTrackForSync(log&&log.track):undefined,
-                trackPointCount:log&&Array.isArray(log.track)?log.track.length:0,
-                resultCode,
-                clientTime:new Date().toISOString(),
-                ...extra
+        const basePayload={
+            eventId:String(EVENT_DATA.eventId||""),
+            eventName:String(EVENT_DATA.eventName||"ENTRENAMIENTO ORIENTACIÓN"),
+            participantId:String(pid||""),
+            participantName,
+            routeId:String(route.routeId||""),
+            totalControls:expected.length,
+            completedControls:completed,
+            discardedControls:discarded,
+            skippedControlsCount:discarded,
+            discardedControlIds:(log&&Array.isArray(log.scans)?log.scans.filter(s=>s.status==="skipped").map(s=>String(s.controlId)):[]),
+            pendingControls:Math.max(0,expected.length-completed-discarded),
+            startTime:log&&log.startTime?log.startTime:null,
+            finishTime:log&&log.finishTime?log.finishTime:null,
+            completed:!!(log&&log.completed),
+            missingControls:log&&Array.isArray(log.missingControls)?log.missingControls:[],
+            trackPointCount:log&&Array.isArray(log.track)?log.track.length:0,
+            resultCode,
+            clientTime:new Date().toISOString(),
+            ...extra
+        };
+        const send=(messageKind,payload)=>window.parent.postMessage({source:"MILITOPO_LIVE_V2",kind:messageKind,payload},"*");
+        // El resultado se manda por separado para que nunca quede bloqueado por el tamaño del track.
+        send(kind,basePayload);
+        if((kind==="FINISH"||kind==="TRACK")&&log&&Array.isArray(log.track)&&log.track.length){
+            const fullTrack=compactTrackForSync(log.track);
+            const transferId=`${String(pid)}-${String(log.startTime||'run')}-${fullTrack.length}`.replace(/[^a-zA-Z0-9_-]/g,'-');
+            const totalChunks=Math.ceil(fullTrack.length/LIVE_TRACK_CHUNK_SIZE);
+            for(let chunkIndex=0;chunkIndex<totalChunks;chunkIndex++){
+                send("TRACK_CHUNK",{
+                    ...basePayload,
+                    resultCode:"",
+                    transferId,
+                    chunkIndex,
+                    totalChunks,
+                    trackPointCount:fullTrack.length,
+                    trackChunk:fullTrack.slice(chunkIndex*LIVE_TRACK_CHUNK_SIZE,(chunkIndex+1)*LIVE_TRACK_CHUNK_SIZE),
+                    clientTime:new Date().toISOString()
+                });
             }
-        },"*");
-    }catch(e){}
+            send("TRACK_COMMIT",{
+                ...basePayload,
+                resultCode:"",
+                transferId,
+                totalChunks,
+                trackPointCount:fullTrack.length,
+                clientTime:new Date().toISOString()
+            });
+        }
+    }catch(e){console.warn("MILITOPO LIVE · envío participante",e)}
 }
 
 const JSQR_CACHE_KEY="militopo_jsqr_cache_v1";
