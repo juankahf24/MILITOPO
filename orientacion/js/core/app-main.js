@@ -3959,12 +3959,82 @@ function parseResultPayload(raw){
             finishTime:resultDecodeTime(data.finishTime||data.ft||null),
             scans,
             missingControls:missing,
+            distanceTrackM:Number.isFinite(Number(data.d))?Number(data.d):null,
+            adjustedTimeMs:Number.isFinite(Number(data.a))?Number(data.a):null,
+            penaltyPerControlMinutes:Number.isFinite(Number(data.pr))?Number(data.pr):null,
+            sourceAppVersion:String(data.av||""),
+            trackPointCount:Number.isFinite(Number(data.tc))?Number(data.tc):0,
             raw:value,
             importedAt:new Date().toISOString()
         };
     }catch(e){
         return {ok:false,error:"No se pudo leer el contenido del resultado"};
     }
+}
+
+const TRACK_PART_STORAGE_PREFIX="militopo_offline_track_parts_v56_";
+function trackPartStorageKey(eventId,participantId,transferId){return TRACK_PART_STORAGE_PREFIX+[eventId,participantId,transferId].map(x=>String(x||"").replace(/[^a-z0-9_-]/gi,"_")).join("_")}
+function decodeFullTrackTransfer(encoded){
+    const json=decodeURIComponent(escape(atob(encoded)));
+    const data=JSON.parse(json);
+    if(!data||!Array.isArray(data.rows))throw new Error("Track no válido");
+    const track=[];let t=0,lat=0,lon=0;
+    for(let i=0;i<data.rows.length;i++){
+        const r=data.rows[i]||[];
+        t=i? t+Number(r[0]||0):Number(r[0]||0);
+        lat=i? lat+Number(r[1]||0):Number(r[1]||0);
+        lon=i? lon+Number(r[2]||0):Number(r[2]||0);
+        if(!Number.isFinite(t)||!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+        track.push({timestamp:new Date(t).toISOString(),lat:lat/1e7,lon:lon/1e7,accuracy:r[3]===null||r[3]===undefined?null:Number(r[3])/10,altitude:r[4]===null||r[4]===undefined?null:Number(r[4])/10,speed:r[5]===null||r[5]===undefined?null:Number(r[5])/100,heading:r[6]===null||r[6]===undefined?null:Number(r[6]),event:r[7]||"gps"});
+    }
+    return {eventId:String(data.e||""),participantId:String(data.p||""),routeId:String(data.r||""),participantName:String(data.n||""),track};
+}
+function attachOfflineTrackToResult(participantId,trackData){
+    ensureImportedResultsStore();
+    const idx=state.importedResults.findIndex(r=>String(r.participantId||"")===String(participantId||""));
+    if(idx<0){
+        try{localStorage.setItem(`militopo_pending_full_track_v56_${state.eventId}_${participantId}`,JSON.stringify(trackData))}catch(e){}
+        return false;
+    }
+    const r=state.importedResults[idx];
+    r.track=trackData.track;r.gpsTrack=trackData.track;r.trackPointCount=trackData.track.length;
+    if(trackData.routeId&&!r.routeId)r.routeId=trackData.routeId;
+    if(trackData.participantName)r.participantName=trackData.participantName;
+    r.trackImportedOffline=true;r.trackImportedAt=new Date().toISOString();
+    try{localStorage.removeItem(`militopo_pending_full_track_v56_${state.eventId}_${participantId}`)}catch(e){}
+    saveState();renderImportedResults();renderResultsControl();if(Number(currentAppStep)===7&&typeof renderRaceAnalysis==="function")renderRaceAnalysis();
+    return true;
+}
+function applyPendingOfflineTrack(parsed){
+    try{
+        const key=`militopo_pending_full_track_v56_${state.eventId}_${parsed.participantId}`;
+        const raw=localStorage.getItem(key);if(!raw)return parsed;
+        const d=JSON.parse(raw);if(d&&Array.isArray(d.track)&&d.track.length){parsed.track=d.track;parsed.gpsTrack=d.track;parsed.trackPointCount=d.track.length;parsed.trackImportedOffline=true;localStorage.removeItem(key)}
+    }catch(e){}
+    return parsed;
+}
+function importOfflineTrackPart(raw){
+    const parts=String(raw||"").trim().split("|");
+    if(parts.length<8||parts[0]!=="ORI"||parts[1]!=="TRACKPART")return null;
+    const eventId=parts[2],participantId=parts[3],transferId=parts[4],index=Number(parts[5]),total=Number(parts[6]),chunk=parts.slice(7).join("|");
+    if(eventId!==state.eventId)return {ok:false,error:"Track de otro evento",keepScanning:false};
+    if(!participantId||!transferId||!Number.isInteger(index)||!Number.isInteger(total)||index<1||index>total||total>250)return {ok:false,error:"Parte de track no válida",keepScanning:true};
+    const key=trackPartStorageKey(eventId,participantId,transferId);
+    let acc={eventId,participantId,transferId,total,parts:{},updatedAt:new Date().toISOString()};
+    try{const old=JSON.parse(localStorage.getItem(key)||"null");if(old&&old.total===total)acc=old}catch(e){}
+    acc.parts[String(index)]=chunk;acc.updatedAt=new Date().toISOString();
+    try{localStorage.setItem(key,JSON.stringify(acc))}catch(e){return {ok:false,error:"Sin espacio para guardar las partes del track",keepScanning:false}}
+    const count=Object.keys(acc.parts).length;
+    if(count<total)return {ok:true,partial:true,participantId,index,total,count,keepScanning:true,message:`Track ${participantId}: parte ${index}/${total} guardada (${count}/${total})`};
+    try{
+        let encoded="";for(let i=1;i<=total;i++){if(!acc.parts[String(i)])throw new Error("Falta una parte");encoded+=acc.parts[String(i)]}
+        const data=decodeFullTrackTransfer(encoded);
+        if(data.eventId&&data.eventId!==state.eventId)throw new Error("Evento incorrecto");
+        if(data.participantId&&data.participantId!==participantId)throw new Error("Participante incorrecto");
+        const attached=attachOfflineTrackToResult(participantId,data);
+        localStorage.removeItem(key);
+        return {ok:true,complete:true,participantId,total,pointCount:data.track.length,attached,keepScanning:false,message:attached?`Track completo importado: ${participantId} · ${data.track.length} puntos`:`Track completo guardado. Importa ahora el QR final de ${participantId}`};
+    }catch(e){return {ok:false,error:"No se pudo reconstruir el track completo",keepScanning:false}}
 }
 
 function importResultFromInput(){
@@ -3976,15 +4046,22 @@ function importResultFromInput(){
 function importResultPayload(raw){
     ensureImportedResultsStore();
 
-    const parsed=parseResultPayload(raw);
+    const trackOutcome=importOfflineTrackPart(raw);
+    if(trackOutcome){
+        if(trackOutcome.ok)toast(trackOutcome.message||"Parte del track importada");else toast(trackOutcome.error||"Parte del track no válida");
+        return trackOutcome;
+    }
+
+    let parsed=parseResultPayload(raw);
     if(!parsed.ok){
         toast(parsed.error||"Resultado no válido");
-        return;
+        return {ok:false,error:parsed.error||"Resultado no válido",keepScanning:false};
     }
+    parsed=applyPendingOfflineTrack(parsed);
 
     if(isResultForSkippedRoute(parsed)){
         toast(`Resultado ignorado: ${parsed.participantId} está descartado por el organizador`);
-        return;
+        return {ok:false,error:"Participante descartado",keepScanning:false};
     }
 
     parsed.participantName=resultParticipantName(parsed.participantId);
@@ -4002,6 +4079,7 @@ function importResultPayload(raw){
     renderResultsControl();
     if(typeof updateOrganizerParticipantSelects==="function")updateOrganizerParticipantSelects({keepQr:true});
     renderStartFlowStatusPanel();
+    return {ok:true,complete:true,participantId:parsed.participantId,keepScanning:false};
 }
 
 
@@ -4229,13 +4307,11 @@ async function scanResultQrCameraLoop(){
                 const input=document.getElementById("resultImportInput");
                 if(input) input.value=raw;
 
+                const outcome=importResultPayload(raw);
                 if(status){
-                    status.className="status ok";
-                    status.textContent="QR resultado leído.";
+                    status.className=(outcome&&outcome.ok===false)?"status err":"status ok";
+                    status.textContent=(outcome&&outcome.message)||(outcome&&outcome.error)||"QR importado.";
                 }
-
-                importResultPayload(raw);
-
                 if(navigator.vibrate) navigator.vibrate(120);
             }
         }else if(status && resultQrCameraRunning){
@@ -9809,12 +9885,11 @@ async function scanStep5ResultQrCameraLoop(){
                 step5ResultQrLastTime=now;
                 const input=document.getElementById("step5ResultImportInput");
                 if(input)input.value=raw;
-                importResultPayload(raw);
+                const outcome=importResultPayload(raw);
                 renderResultsControl();
-                if(status){status.className="status ok";status.textContent="QR resultado importado."}
+                if(status){status.className=(outcome&&outcome.ok===false)?"status err":"status ok";status.textContent=(outcome&&outcome.message)||(outcome&&outcome.error)||"QR importado."}
                 if(navigator.vibrate)navigator.vibrate(120);
-                stopStep5ResultQrCamera();
-                return;
+                if(!(outcome&&outcome.keepScanning)){stopStep5ResultQrCamera();return;}
             }
         }else if(status){
             status.className="status warn";
