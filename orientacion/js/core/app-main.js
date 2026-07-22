@@ -1040,7 +1040,7 @@ function getPlanPdfPreviewGeometry(){
 
     // Debe coincidir exactamente con participantPlanHtml().
     const planScale=Number(state.planScale||10000)===7500?7500:10000;
-    const planHtmlToPdfMeasuredFactor=1.10;
+    const planHtmlToPdfMeasuredFactor=1.00;
     const mapPaperWidthMm=230;
     const mapPaperHeightMm=158;
     const terrainWidthM=mapPaperWidthMm*planHtmlToPdfMeasuredFactor*planScale/1000;
@@ -6841,7 +6841,7 @@ async function allControlsPlanPdfBlob(){
 async function buildPrintScaleCalibrationPdfBlob(){
     const jsPDF=await ensureJsPdf();
     const pdf=new jsPDF({orientation:"landscape",unit:"mm",format:"a4",compress:true});
-    const correctionFactor=1.10; // Se midió 1 cm como 1,1 cm en impresión.
+    const correctionFactor=1.00; // V63: sin compensación; imprimir a tamaño real / 100 %.
     const cm10Corrected=100/correctionFactor; // 90,909 mm dibujados para salir como 100 mm impresos.
     const cm1Corrected=10/correctionFactor;   // 9,091 mm dibujados para salir como 10 mm impresos.
 
@@ -6856,7 +6856,7 @@ async function buildPrintScaleCalibrationPdfBlob(){
 
     pdf.setFontSize(10.5);
     pdf.setFont("helvetica","normal");
-    pdf.text("Este PDF ya incluye la corrección aplicada al plano: 1 cm medido antes salía como 1,1 cm.",148.5,30,{align:"center"});
+    pdf.text("Escala física V63: sin compensación adicional. Imprime a tamaño real / 100 %.",148.5,30,{align:"center"});
     pdf.text("Imprime en A4 horizontal, tamaño real / 100 %, sin ajustar a página. Después mide las barras.",148.5,37,{align:"center"});
 
     pdf.setFont("helvetica","bold");
@@ -6901,7 +6901,7 @@ async function buildPrintScaleCalibrationPdfBlob(){
     pdf.setFont("helvetica","bold");
     pdf.text("Por qué se corrige:",165,102);
     pdf.setFont("helvetica","normal");
-    pdf.text("En la prueba anterior, la raya de 1 cm del plano salía como 1,1 cm.",165,112);
+    pdf.text("La escala del plano se genera ahora directamente a tamaño real, sin reducción previa.",165,112);
     pdf.text("Por eso esta calibración dibuja la barra un 10 % más corta,",165,121);
     pdf.text("para que al imprimirse mida 1 cm real con la regla.",165,130);
 
@@ -8573,9 +8573,9 @@ function participantPlanHtml(route){
     const pdfLayerKey=getSelectedPdfLayerKey();
     const pdfLayerMeta=getPdfBackgroundLayerMeta(pdfLayerKey);
     // Corrección de escala del plano generado desde HTML/canvas.
-    // En impresión real se midió 1,1 cm donde debía medir 1 cm; por eso se compensa el 10%.
-    // La barra visible sale a 1 cm exacto y el terreno mostrado se ajusta en la misma proporción.
-    const planHtmlToPdfMeasuredFactor=1.10;
+    // V63: escala física corregida. Se elimina la compensación 1,10 que reducía el plano
+    // y obligaba a imprimir al 110 %. A tamaño real/100 %, 1 cm representa exactamente la escala elegida.
+    const planHtmlToPdfMeasuredFactor=1.00;
     const scaleCheckMeters=planScale===7500?75:100;
     const scaleCheckWidthMm=10/planHtmlToPdfMeasuredFactor;
 
