@@ -721,7 +721,9 @@ async function flushTrackOutbox(){
     if(String(bundle.eventKey)!==String(participantEventKey)||String(bundle.participantId)!==String(participantContext.participantId))continue;
     const track=Array.isArray(bundle.track)?bundle.track:[];
     if(!track.length){await trackOutboxDelete(bundle.id);continue;}
-    const pBase=participantPath(participantEventKey,participantRunId,bundle.participantId);
+    const targetRunId=String(bundle.runId||participantRunId||participantContext?.liveRunId||"");
+    if(!targetRunId)continue;
+    const pBase=participantPath(participantEventKey,targetRunId,bundle.participantId);
     const transferId=safeFirebaseKey(bundle.transferId||bundle.id);
     const totalChunks=Math.ceil(track.length/TRACK_UPLOAD_CHUNK_SIZE);
     try{
@@ -828,8 +830,14 @@ function bindParticipantOwnRecord() {
       const localFinished = !!participantContext?.finishTime;
       const localTrackCount = Math.max(0, Number(participantContext?.trackPointCount) || 0);
       participantExpectedTrackPointCount = localTrackCount;
-      participantResultReceived = localFinished && data.status === "finished" && !!data.finishTime && !!String(data.resultCode || "").trim();
-      participantTrackReceived = localFinished && localTrackCount > 0 && data.trackComplete === true && Number(data.trackPointCount || 0) >= localTrackCount && Array.isArray(data.track) && data.track.length >= localTrackCount;
+      // La confirmación debe basarse en los marcadores de recepción persistidos por
+      // Firebase. No exigimos volver a descargar el array completo del track para pintar
+      // el aviso verde: en móviles ese nodo puede llegar antes/por separado o ser
+      // normalizado por el organizador, aunque trackComplete y el contador ya estén ACK.
+      participantResultReceived = localFinished && data.status === "finished" && !!data.finishTime && (
+        !!String(data.resultCode || "").trim() || !!data.resultReceivedClient
+      );
+      participantTrackReceived = localFinished && localTrackCount > 0 && data.trackComplete === true && Number(data.trackPointCount || 0) >= localTrackCount && !!data.trackReceivedClient;
       publishParticipantSyncStatus();
     }
     if (!data || data.resultImported !== true) return;
@@ -937,15 +945,28 @@ async function bindParticipantEvent(ctx) {
       try { await markParticipantReady(); bindParticipantOwnRecord(); await flushParticipantQueue(); await flushTrackOutbox(); } catch (error) { console.warn("MILITOPO LIVE participante", error); }
       publishParticipantSyncStatus();
     } else {
+      // La carrera puede estar cerrada en el organizador y, aun así, el participante debe
+      // terminar de enviar/confirmar su resultado y su track. V64 solo conservaba runId
+      // cuando quedaban eventos en localStorage; el track está en IndexedDB y quedaba
+      // huérfano al cerrar la sesión o renovar la caché/autenticación.
       participantActiveRunAvailable = false;
       participantPresenceConfirmed = false;
       if (typeof participantUnsubOwnRecord === "function") participantUnsubOwnRecord();
       participantUnsubOwnRecord = null;
       const savedRunId=String(participantContext?.liveRunId||"");
-      const hasPending=readQueue().some(event=>event.eventKey===participantEventKey&&String(event.participantId||"")===String(participantContext?.participantId||""));
-      participantRunId=hasPending?savedRunId:"";
+      const pid=String(participantContext?.participantId||"");
+      const hasQueuedEvents=readQueue().some(event=>event.eventKey===participantEventKey&&String(event.participantId||"")===pid);
+      const finishedLocally=!!participantContext?.finishTime;
+      // Una carrera terminada conserva para siempre su runId hasta que el usuario pulse
+      // BORRAR RECORRIDO. Así puede reabrirse el registro Firebase, comprobar los ACK y
+      // vaciar la cola IndexedDB aunque activeRun ya no exista.
+      participantRunId=(savedRunId&&(hasQueuedEvents||finishedLocally))?savedRunId:"";
       publishParticipantSyncStatus();
-      if(participantRunId)flushParticipantQueue();
+      if(participantRunId){
+        bindParticipantOwnRecord();
+        flushParticipantQueue();
+        flushTrackOutbox();
+      }
     }
   }, error => console.warn("MILITOPO LIVE · sesión participante", error));
 }
@@ -1128,7 +1149,7 @@ function handleParticipantMessage(event) {
   if (msg.kind === "TRACK_BUNDLE") {
     const preservedResultCode=String(participantContext?.resultCode||"").trim();
     const fullTrack=Array.isArray(ctx.fullTrack)?ctx.fullTrack:[];
-    const bundle={id:`${safeFirebaseKey(ctx.eventId)}:${String(ctx.participantId)}:${safeFirebaseKey(ctx.transferId||Date.now())}`,eventKey:safeFirebaseKey(ctx.eventId),participantId:String(ctx.participantId),transferId:String(ctx.transferId||"track"),track:fullTrack,clientTime:ctx.clientTime||nowIso()};
+    const bundle={id:`${safeFirebaseKey(ctx.eventId)}:${String(ctx.participantId)}:${safeFirebaseKey(ctx.transferId||Date.now())}`,eventKey:safeFirebaseKey(ctx.eventId),participantId:String(ctx.participantId),runId:String(participantRunId||participantContext?.liveRunId||ctx.liveRunId||""),transferId:String(ctx.transferId||"track"),track:fullTrack,clientTime:ctx.clientTime||nowIso()};
     persistParticipantContext({...participantContext,...ctx,fullTrack:undefined,resultCode:preservedResultCode,trackPointCount:fullTrack.length||Number(ctx.trackPointCount)||0});
     participantExpectedTrackPointCount=Math.max(0,fullTrack.length||Number(ctx.trackPointCount)||0);
     trackOutboxPut(bundle).then(()=>flushTrackOutbox()).catch(error=>console.warn("MILITOPO LIVE · no se pudo guardar el track",error));
