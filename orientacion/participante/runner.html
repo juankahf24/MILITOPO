@@ -1607,7 +1607,7 @@ module.exports = QRCode;
 
 <div id="gpsAudioVisualPulse" class="gps-audio-visual-pulse"></div>
 <div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
-<script type="module" src="../js/live/live-phase2.js?v=v58-track-reconexion-segura"></script>
+<script type="module" src="../js/live/live-phase2.js?v=v59-cola-track-sin-perdidas"></script>
 <script>
 const BOOT_PAYLOAD_KEYS=["militopo_participant_boot_payload_v3","militopo_participant_boot_payload_latest","militopo_participant_app_snapshot_v1","militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"];
 const PARTICIPANT_FORCE_BLANK_KEY="militopo_participant_force_blank_v1";
@@ -1833,6 +1833,16 @@ function applyParticipantSnapshotObject(snap,silent=true){
         save();
         renderLoaded();
         notifyMilitopoLive("READY");
+        // Si la carrera ya terminó, reconstruye y reenvía automáticamente resultado y
+        // track desde el almacenamiento local. Esto recupera también carreras de V58
+        // cuyos bloques pudieron desaparecer de la cola durante una escritura simultánea.
+        if(log&&log.finishTime){
+            setTimeout(()=>{
+                if(!log.resultPayload&&route)log.resultPayload=resultPayload();
+                save();
+                notifyMilitopoLive("FINISH",{resultCode:log.resultPayload?("ORI|RESULT|"+EVENT_DATA.eventId+"|"+pid+"|"+log.resultPayload):""});
+            },1200);
+        }
         if(!silent)toast("Recorrido restaurado");
         return true;
     }catch(e){console.warn("No se pudo aplicar snapshot participante",e);return false}
@@ -2103,7 +2113,7 @@ async function ensureOfflinePageAvailable(){
         }catch(e){}
     }
     try{
-        const cache=await caches.open("militopo-participante-page-v61");
+        const cache=await caches.open("militopo-participante-page-v62");
         const pageUrl=location.href.split("#")[0];
         const html="<!DOCTYPE html>\n"+document.documentElement.outerHTML;
         await cache.put(new Request(pageUrl),new Response(html,{headers:{"Content-Type":"text/html;charset=utf-8"}}));
