@@ -31,6 +31,9 @@ const PARTICIPANT_CONTEXT_KEY = "militopo_live_v2_participant_context";
 const ORGANIZER_RUN_KEY_PREFIX = "militopo_live_v2_organizer_run_";
 const AUTO_IMPORT_KEY_PREFIX = "militopo_live_v2_auto_import_";
 const PARTICIPANT_LAST_SYNC_KEY_PREFIX = "militopo_live_v2_last_sync_";
+const TRACK_OUTBOX_DB = "MILITOPO_LIVE_TRACK_OUTBOX_V1";
+const TRACK_OUTBOX_STORE = "bundles";
+const TRACK_UPLOAD_CHUNK_SIZE = 100;
 
 let app = null;
 let auth = null;
@@ -693,6 +696,49 @@ function startOrganizerContextWatcher() {
   organizerContextTimer = window.setInterval(tick, 1800);
 }
 
+
+function trackOutboxOpen(){
+  return new Promise((resolve,reject)=>{
+    try{const req=indexedDB.open(TRACK_OUTBOX_DB,1);req.onupgradeneeded=()=>{try{req.result.createObjectStore(TRACK_OUTBOX_STORE,{keyPath:"id"})}catch(_){}};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error("No se pudo abrir la cola de tracks"));}
+    catch(error){reject(error)}
+  });
+}
+async function trackOutboxPut(bundle){
+  const dbx=await trackOutboxOpen();
+  await new Promise((resolve,reject)=>{const tx=dbx.transaction(TRACK_OUTBOX_STORE,"readwrite");tx.objectStore(TRACK_OUTBOX_STORE).put(bundle);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
+  try{dbx.close()}catch(_){ }
+}
+async function trackOutboxGetAll(){
+  try{const dbx=await trackOutboxOpen();const rows=await new Promise((resolve,reject)=>{const tx=dbx.transaction(TRACK_OUTBOX_STORE,"readonly");const req=tx.objectStore(TRACK_OUTBOX_STORE).getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error)});try{dbx.close()}catch(_){ }return rows;}catch(_){return []}
+}
+async function trackOutboxDelete(id){
+  try{const dbx=await trackOutboxOpen();await new Promise((resolve,reject)=>{const tx=dbx.transaction(TRACK_OUTBOX_STORE,"readwrite");tx.objectStore(TRACK_OUTBOX_STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});try{dbx.close()}catch(_){ }}catch(_){ }
+}
+async function flushTrackOutbox(){
+  if(!firebaseConnected||!db||!currentUser||!participantRunId||!participantContext)return;
+  const rows=await trackOutboxGetAll();
+  for(const bundle of rows){
+    if(String(bundle.eventKey)!==String(participantEventKey)||String(bundle.participantId)!==String(participantContext.participantId))continue;
+    const track=Array.isArray(bundle.track)?bundle.track:[];
+    if(!track.length){await trackOutboxDelete(bundle.id);continue;}
+    const pBase=participantPath(participantEventKey,participantRunId,bundle.participantId);
+    const transferId=safeFirebaseKey(bundle.transferId||bundle.id);
+    const totalChunks=Math.ceil(track.length/TRACK_UPLOAD_CHUNK_SIZE);
+    try{
+      await update(ref(db,pBase),{trackComplete:false,trackPointCount:track.length,trackTransferId:transferId,trackTransferTotalChunks:totalChunks,trackUpdatedClient:bundle.clientTime||nowIso()});
+      for(let i=0;i<totalChunks;i++){
+        const chunk=track.slice(i*TRACK_UPLOAD_CHUNK_SIZE,(i+1)*TRACK_UPLOAD_CHUNK_SIZE);
+        await set(ref(db,`${pBase}/trackTransfers/${transferId}/chunks/${i}`),chunk);
+        await update(ref(db,`${pBase}/trackTransfers/${transferId}`),{transferId,totalChunks,trackPointCount:track.length,receivedChunks:i+1,lastChunkClient:nowIso()});
+      }
+      await update(ref(db,pBase),{track,trackPointCount:track.length,trackComplete:true,trackReceivedClient:nowIso(),trackUpdatedClient:nowIso(),trackTransferId:transferId,trackTransferReceivedChunks:totalChunks,lastSeen:serverTimestamp(),lastSeenClient:nowIso()});
+      await trackOutboxDelete(bundle.id);
+      participantExpectedTrackPointCount=Math.max(participantExpectedTrackPointCount,track.length);
+    }catch(error){console.warn("MILITOPO LIVE · track pendiente en IndexedDB",error);break;}
+  }
+  publishParticipantSyncStatus();
+}
+
 function readQueue() {
   try {
     const value = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
@@ -888,7 +934,7 @@ async function bindParticipantEvent(ctx) {
       participantRunId = String(active.runId);
       persistParticipantContext({...participantContext,liveRunId:participantRunId});
       publishParticipantSyncStatus();
-      try { await markParticipantReady(); bindParticipantOwnRecord(); await flushParticipantQueue(); } catch (error) { console.warn("MILITOPO LIVE participante", error); }
+      try { await markParticipantReady(); bindParticipantOwnRecord(); await flushParticipantQueue(); await flushTrackOutbox(); } catch (error) { console.warn("MILITOPO LIVE participante", error); }
       publishParticipantSyncStatus();
     } else {
       participantActiveRunAvailable = false;
@@ -1064,6 +1110,7 @@ async function recoverParticipantConnection() {
       bindParticipantOwnRecord();
     }
     await flushParticipantQueue();
+    await flushTrackOutbox();
   } catch (error) {
     participantPresenceConfirmed = false;
     publishParticipantSyncStatus();
@@ -1078,6 +1125,16 @@ function handleParticipantMessage(event) {
   if (!ctx.eventId || !ctx.participantId) return;
   if (event.source && participantMessageSource !== event.source) participantLastImportNoticeKey = "";
   participantMessageSource = event.source || participantMessageSource;
+  if (msg.kind === "TRACK_BUNDLE") {
+    const preservedResultCode=String(participantContext?.resultCode||"").trim();
+    const fullTrack=Array.isArray(ctx.fullTrack)?ctx.fullTrack:[];
+    const bundle={id:`${safeFirebaseKey(ctx.eventId)}:${String(ctx.participantId)}:${safeFirebaseKey(ctx.transferId||Date.now())}`,eventKey:safeFirebaseKey(ctx.eventId),participantId:String(ctx.participantId),transferId:String(ctx.transferId||"track"),track:fullTrack,clientTime:ctx.clientTime||nowIso()};
+    persistParticipantContext({...participantContext,...ctx,fullTrack:undefined,resultCode:preservedResultCode,trackPointCount:fullTrack.length||Number(ctx.trackPointCount)||0});
+    participantExpectedTrackPointCount=Math.max(0,fullTrack.length||Number(ctx.trackPointCount)||0);
+    trackOutboxPut(bundle).then(()=>flushTrackOutbox()).catch(error=>console.warn("MILITOPO LIVE · no se pudo guardar el track",error));
+    publishParticipantSyncStatus();
+    return;
+  }
   if (msg.kind === "TRACK_CHUNK" || msg.kind === "TRACK_COMMIT") {
     // Los mensajes de track llevan resultCode vacío para aligerar el envío. No deben
     // borrar el código final ni el estado de llegada ya guardados en el contexto.
@@ -1128,7 +1185,7 @@ async function initFirebase() {
       }
       updateOrganizerButtons();
       publishParticipantSyncStatus();
-      if (firebaseConnected) recoverParticipantConnection();
+      if (firebaseConnected) recoverParticipantConnection(); flushTrackOutbox();
     });
 
     onAuthStateChanged(auth, user => {
@@ -1142,7 +1199,7 @@ async function initFirebase() {
       publishParticipantSyncStatus();
       if (user && participantContext) {
         bindParticipantEvent(participantContext);
-        recoverParticipantConnection();
+        recoverParticipantConnection(); flushTrackOutbox();
       }
     });
 
@@ -1168,7 +1225,7 @@ function initLivePhase2() {
   } else {
     restoreParticipantContext();
     participantHeartbeatTimer = window.setInterval(() => {
-      if (document.visibilityState === "visible") recoverParticipantConnection();
+      if (document.visibilityState === "visible") recoverParticipantConnection(); flushTrackOutbox();
     }, 12000);
   }
   window.addEventListener("message", handleParticipantMessage);
@@ -1178,7 +1235,7 @@ function initLivePhase2() {
     publishParticipantSyncStatus();
   });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") recoverParticipantConnection();
+    if (document.visibilityState === "visible") recoverParticipantConnection(); flushTrackOutbox();
   });
   initFirebase();
 }
