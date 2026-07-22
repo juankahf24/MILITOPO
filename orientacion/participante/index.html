@@ -13,7 +13,7 @@
       try{
         var params=new URLSearchParams(location.search||'');
         if(!params.has('install') && !params.has('shell')){
-          var target=new URL('runner.html?v=v66-coordenadas-pdf-y-track-runid', location.href);
+          var target=new URL('runner.html?v=v70-track-offline-unico', location.href);
           params.forEach(function(v,k){ target.searchParams.set(k,v); });
           if(!target.searchParams.has('app')) target.searchParams.set('app','1');
           target.hash=location.hash||'';
@@ -85,6 +85,6 @@
 
   <div id="shellToast" class="shell-toast" role="status"></div>
   <script src="app.js"></script>
-  <script type="module" src="../js/live/live-phase2.js?v=v66-coordenadas-pdf-y-track-runid"></script>
+  <script type="module" src="../js/live/live-phase2.js?v=v70-track-offline-unico"></script>
 </body>
 </html>
