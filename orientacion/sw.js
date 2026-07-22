@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · V61 objetivo de tramos máximos de 800 m */
-const MILITOPO_CACHE = "militopo-orientacion-v61-tramos-maximos-800m";
+/* MILITOPO Orientación · V62 proximidad 15 m y círculos PDF más finos */
+const MILITOPO_CACHE = "militopo-orientacion-v62-proximidad-15m-circulos-pdf-finos";
 const CORE_ASSETS = [
   "./",
   "./index.html",
