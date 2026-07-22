@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "maps": [
     {
       "id": "valle-perdido-geotiff",
@@ -29,6 +29,14 @@
       "format": "kmz",
       "file": "./maps/el-valle-perdido-nuevo.kmz",
       "source": "El Valle perdido nuevo.kmz"
+    },
+    {
+      "id": "el-valle-matizado",
+      "name": "El valle matizado",
+      "format": "geotiff",
+      "file": "./maps/el-valle-matizado.tif",
+      "source": "El valle matizado.tif",
+      "epsg": 25830
     }
   ]
 }
