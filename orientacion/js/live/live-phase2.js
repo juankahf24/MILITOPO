@@ -700,7 +700,19 @@ function readQueue() {
   } catch (_) { return []; }
 }
 function writeQueue(queue) {
-  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue.slice(-600))); } catch (_) {}
+  try {
+    localStorage.setItem(QUEUE_KEY, JSON.stringify((Array.isArray(queue) ? queue : []).slice(-1200)));
+    return true;
+  } catch (error) {
+    console.warn("MILITOPO LIVE · no se pudo guardar la cola local", error);
+    return false;
+  }
+}
+function removeQueuedEventById(eventId) {
+  const latest = readQueue();
+  const next = latest.filter(item => String(item?.id || "") !== String(eventId || ""));
+  writeQueue(next);
+  return next;
 }
 function participantPendingQueueSummary() {
   if (!participantContext) return { total:0, controls:0, result:false, start:false };
@@ -798,7 +810,11 @@ function enqueueParticipantEvent(kind, payload) {
   };
   const queue = readQueue();
   queue.push(event);
-  writeQueue(queue);
+  if (!writeQueue(queue)) {
+    publishParticipantSyncStatus();
+    console.error("MILITOPO LIVE · cola local llena; conserva los QR como respaldo");
+    return;
+  }
   publishParticipantSyncStatus();
   flushParticipantQueue();
 }
@@ -1008,15 +1024,15 @@ async function flushParticipantQueue() {
   participantFlushBusy = true;
   publishParticipantSyncStatus();
   try {
-    let queue = readQueue();
-    while (queue.length) {
-      const index = queue.findIndex(event => event.eventKey === participantEventKey && String(event.participantId||"") === String(participantContext.participantId||""));
-      if (index < 0) break;
-      const event = queue[index];
+    while (true) {
+      // Siempre releer la cola actual. Mientras Firebase espera, el iframe puede añadir
+      // nuevos bloques del track; nunca debemos sobrescribirlos con una copia antigua.
+      const queue = readQueue();
+      const event = queue.find(item => item.eventKey === participantEventKey && String(item.participantId||"") === String(participantContext.participantId||""));
+      if (!event) break;
       try {
         await applyParticipantEvent(event);
-        queue.splice(index,1);
-        writeQueue(queue);
+        removeQueuedEventById(event.id);
         publishParticipantSyncStatus();
       } catch (error) {
         console.warn("MILITOPO LIVE · evento pendiente", error);
@@ -1027,6 +1043,11 @@ async function flushParticipantQueue() {
   } finally {
     participantFlushBusy = false;
     publishParticipantSyncStatus();
+    // Cubre la llegada de mensajes justo entre la última lectura y la liberación del bloqueo.
+    const remaining = participantPendingQueueCount();
+    if (remaining > 0 && firebaseConnected && db && currentUser && participantRunId && participantContext) {
+      setTimeout(() => flushParticipantQueue(), 0);
+    }
   }
 }
 
@@ -1058,12 +1079,27 @@ function handleParticipantMessage(event) {
   if (event.source && participantMessageSource !== event.source) participantLastImportNoticeKey = "";
   participantMessageSource = event.source || participantMessageSource;
   if (msg.kind === "TRACK_CHUNK" || msg.kind === "TRACK_COMMIT") {
-    persistParticipantContext({ ...participantContext, ...ctx, trackChunk:undefined });
+    // Los mensajes de track llevan resultCode vacío para aligerar el envío. No deben
+    // borrar el código final ni el estado de llegada ya guardados en el contexto.
+    const preservedResultCode = String(participantContext?.resultCode || "").trim();
+    persistParticipantContext({
+      ...participantContext,
+      ...ctx,
+      finishTime: ctx.finishTime || participantContext?.finishTime || null,
+      resultCode: String(ctx.resultCode || "").trim() || preservedResultCode,
+      trackChunk: undefined
+    });
   } else {
-    persistParticipantContext(ctx);
+    const preservedResultCode = String(participantContext?.resultCode || "").trim();
+    persistParticipantContext({
+      ...participantContext,
+      ...ctx,
+      resultCode: String(ctx.resultCode || "").trim() || preservedResultCode
+    });
   }
   participantExpectedTrackPointCount = Math.max(0, Number(ctx.trackPointCount) || participantExpectedTrackPointCount || 0);
-  if (!ctx.finishTime) { participantResultReceived = false; participantTrackReceived = false; }
+  const raceIsFinished = !!(ctx.finishTime || participantContext?.finishTime);
+  if (!raceIsFinished) { participantResultReceived = false; participantTrackReceived = false; }
   publishParticipantSyncStatus();
   if (db && currentUser) bindParticipantEvent(ctx);
   if (msg.kind === "READY") {
