@@ -1784,6 +1784,14 @@ async function regenerateSingleRoute(routeIndex){
     const participantId=oldRoute.participantId||("P"+String(routeIndex+1).padStart(2,"0"));
     const originalControlIds=(oldRoute.points||[]).filter(id=>id!=="START"&&id!=="FINISH");
 
+    // Un recorrido único puede estar asignado a varios participantes (por ejemplo,
+    // R01 a P01, P11, P21, P31...). Al regenerarlo desde cualquiera de sus tarjetas,
+    // deben cambiar todas las copias que comparten el mismo routeId.
+    const linkedRouteIndexes=(state.routes||[])
+        .map((route,index)=>String(route?.routeId||"")===String(routeId)?index:-1)
+        .filter(index=>index>=0);
+    const linkedRouteIndexSet=new Set(linkedRouteIndexes.length?linkedRouteIndexes:[routeIndex]);
+
     showRouteGenerationLoader(`Regenerando ${routeId} con más variedad...`,6);
     await routeSleep(70);
 
@@ -1800,9 +1808,11 @@ async function regenerateSingleRoute(routeIndex){
     const context=buildProfessionalRouteContext(startPoint,controls,finishPoint);
     const oldOrdered=originalControlIds.map(id=>state.points[id]).filter(Boolean);
 
-    const preservedRoutes=(state.routes||[]).filter((_,i)=>i!==routeIndex);
+    // Las asignaciones duplicadas del mismo recorrido no deben penalizarse entre sí.
+    // Se excluye todo el grupo enlazado durante la búsqueda de la nueva variante.
+    const preservedRoutes=(state.routes||[]).filter((_,i)=>!linkedRouteIndexSet.has(i));
     const existingRoutes=preservedRoutes.map(r=>routeEntryToPenaltyRoute(r)).filter(Boolean);
-    const existingMetrics=(state.metrics||[]).filter((_,i)=>i!==routeIndex);
+    const existingMetrics=(state.metrics||[]).filter((_,i)=>!linkedRouteIndexSet.has(i));
     const usage={};
     controls.forEach(c=>usage[c.id]=0);
     preservedRoutes.forEach(r=>{
@@ -1970,12 +1980,20 @@ async function regenerateSingleRoute(routeIndex){
     best.metrics.qualityScore=Number(best.quality.total.toFixed(2));
     best.metrics.routeMode=context.mode==="loop"?"circular":"lineal";
 
-    state.routes[routeIndex]={
-        participantId,
-        routeId,
-        points:best.route.map(p=>p.id)
-    };
-    state.metrics[routeIndex]=best.metrics;
+    const regeneratedPointIds=best.route.map(p=>p.id);
+    const indexesToUpdate=linkedRouteIndexes.length?linkedRouteIndexes:[routeIndex];
+    indexesToUpdate.forEach(index=>{
+        const current=state.routes[index]||{};
+        state.routes[index]={
+            ...current,
+            participantId:current.participantId||participantId,
+            routeId,
+            points:[...regeneratedPointIds]
+        };
+        // Cada participante conserva una copia independiente de las métricas para
+        // evitar que una modificación posterior afecte a todos por referencia.
+        state.metrics[index]={...best.metrics};
+    });
 
     assignBalancedDifficulties(state.metrics);
     state.routeQualitySummary=buildRouteQualitySummary(state.metrics);
@@ -1989,10 +2007,11 @@ async function regenerateSingleRoute(routeIndex){
     updateParticipantSelect();
     saveState();
 
-    updateRouteGenerationLoader(`${routeId} regenerado con variante nueva`,100);
+    const updatedCount=(linkedRouteIndexes.length||1);
+    updateRouteGenerationLoader(`${routeId} regenerado para ${updatedCount} participante${updatedCount===1?"":"s"}`,100);
     await routeSleep(450);
     hideRouteGenerationLoader();
-    toast(`${routeId} regenerado con más variedad`);
+    toast(`${routeId} actualizado en ${updatedCount} participante${updatedCount===1?"":"s"}`);
     return true;
 }
 
