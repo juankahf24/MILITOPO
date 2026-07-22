@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · V60 regeneración sincronizada de recorridos compartidos */
-const MILITOPO_CACHE = "militopo-orientacion-v60-regeneracion-recorrido-compartido";
+/* MILITOPO Orientación · V61 objetivo de tramos máximos de 800 m */
+const MILITOPO_CACHE = "militopo-orientacion-v61-tramos-maximos-800m";
 const CORE_ASSETS = [
   "./",
   "./index.html",
