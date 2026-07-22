@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · V55 GeoTIFF + planos KMZ restaurados */
-const MILITOPO_CACHE = "militopo-orientacion-v57-confirmacion-doble";
+const MILITOPO_CACHE = "militopo-orientacion-v58-track-reconexion-segura";
 const CORE_ASSETS = [
   "./",
   "./index.html",
