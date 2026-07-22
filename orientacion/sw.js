@@ -1,5 +1,5 @@
-/* MILITOPO Orientación · V55 GeoTIFF + planos KMZ restaurados */
-const MILITOPO_CACHE = "militopo-orientacion-v59-cola-track-sin-perdidas";
+/* MILITOPO Orientación · V60 regeneración sincronizada de recorridos compartidos */
+const MILITOPO_CACHE = "militopo-orientacion-v60-regeneracion-recorrido-compartido";
 const CORE_ASSETS = [
   "./",
   "./index.html",
