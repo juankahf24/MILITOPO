@@ -13,7 +13,7 @@
       try{
         var params=new URLSearchParams(location.search||'');
         if(!params.has('install') && !params.has('shell')){
-          var target=new URL('runner.html', location.href);
+          var target=new URL('runner.html?v=v62-proximidad-15m', location.href);
           params.forEach(function(v,k){ target.searchParams.set(k,v); });
           if(!target.searchParams.has('app')) target.searchParams.set('app','1');
           target.hash=location.hash||'';
