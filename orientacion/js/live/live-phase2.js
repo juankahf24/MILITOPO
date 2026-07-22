@@ -705,7 +705,19 @@ function trackOutboxOpen(){
 }
 async function trackOutboxPut(bundle){
   const dbx=await trackOutboxOpen();
-  await new Promise((resolve,reject)=>{const tx=dbx.transaction(TRACK_OUTBOX_STORE,"readwrite");tx.objectStore(TRACK_OUTBOX_STORE).put(bundle);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
+  await new Promise((resolve,reject)=>{
+    const tx=dbx.transaction(TRACK_OUTBOX_STORE,"readwrite");
+    const store=tx.objectStore(TRACK_OUTBOX_STORE);
+    // V70: solo debe existir UN track pendiente por carrera y participante.
+    // Durante una carrera sin cobertura el iframe envía instantáneas periódicas del track.
+    // Antes cada instantánea tenía un id distinto y se acumulaban cientos de copias completas.
+    // Al recuperar conexión se intentaban subir todas en orden y el track final podía tardar
+    // horas en llegar o quedarse permanentemente pendiente. La clave estable hace que cada
+    // instantánea sustituya a la anterior y conserve siempre la más completa y reciente.
+    store.put(bundle);
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error);
+  });
   try{dbx.close()}catch(_){ }
 }
 async function trackOutboxGetAll(){
@@ -719,8 +731,17 @@ async function flushTrackOutbox(){
   // activeRun tarde en restaurarse o participantRunId aún esté vacío tras recargar la PWA.
   if(!firebaseConnected||!db||!currentUser||!participantContext)return;
   const rows=await trackOutboxGetAll();
-  for(const bundle of rows){
-    if(String(bundle.eventKey)!==String(participantEventKey)||String(bundle.participantId)!==String(participantContext.participantId))continue;
+  const ownRows=rows.filter(bundle=>String(bundle.eventKey)===String(participantEventKey)&&String(bundle.participantId)===String(participantContext.participantId));
+  // Compatibilidad con V64-V69: si el móvil ya tenía muchas instantáneas antiguas,
+  // conservar únicamente la más completa/reciente y borrar el resto antes de subir.
+  ownRows.sort((a,b)=>{
+    const ap=Array.isArray(a.track)?a.track.length:0,bp=Array.isArray(b.track)?b.track.length:0;
+    if(ap!==bp)return bp-ap;
+    return String(b.clientTime||"").localeCompare(String(a.clientTime||""));
+  });
+  const newest=ownRows[0]||null;
+  for(const stale of ownRows.slice(1))await trackOutboxDelete(stale.id);
+  for(const bundle of (newest?[newest]:[])){
     const track=Array.isArray(bundle.track)?bundle.track:[];
     if(!track.length){await trackOutboxDelete(bundle.id);continue;}
     const targetRunId=String(bundle.runId||participantRunId||participantContext?.liveRunId||"");
@@ -1157,7 +1178,9 @@ function handleParticipantMessage(event) {
   if (msg.kind === "TRACK_BUNDLE") {
     const preservedResultCode=String(participantContext?.resultCode||"").trim();
     const fullTrack=Array.isArray(ctx.fullTrack)?ctx.fullTrack:[];
-    const bundle={id:`${safeFirebaseKey(ctx.eventId)}:${String(ctx.participantId)}:${safeFirebaseKey(ctx.transferId||Date.now())}`,eventKey:safeFirebaseKey(ctx.eventId),participantId:String(ctx.participantId),runId:String(participantRunId||participantContext?.liveRunId||ctx.liveRunId||""),transferId:String(ctx.transferId||"track"),track:fullTrack,clientTime:ctx.clientTime||nowIso()};
+    const stableRunId=String(participantRunId||participantContext?.liveRunId||ctx.liveRunId||"");
+    const stableId=`${safeFirebaseKey(ctx.eventId)}:${String(ctx.participantId)}:${safeFirebaseKey(stableRunId||"pending-run")}`;
+    const bundle={id:stableId,eventKey:safeFirebaseKey(ctx.eventId),participantId:String(ctx.participantId),runId:stableRunId,transferId:String(ctx.transferId||"track"),track:fullTrack,clientTime:ctx.clientTime||nowIso()};
     persistParticipantContext({...participantContext,...ctx,fullTrack:undefined,resultCode:preservedResultCode,trackPointCount:fullTrack.length||Number(ctx.trackPointCount)||0});
     participantExpectedTrackPointCount=Math.max(0,fullTrack.length||Number(ctx.trackPointCount)||0);
     trackOutboxPut(bundle).then(()=>flushTrackOutbox()).catch(error=>console.warn("MILITOPO LIVE · no se pudo guardar el track",error));
