@@ -715,7 +715,9 @@ async function trackOutboxDelete(id){
   try{const dbx=await trackOutboxOpen();await new Promise((resolve,reject)=>{const tx=dbx.transaction(TRACK_OUTBOX_STORE,"readwrite");tx.objectStore(TRACK_OUTBOX_STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});try{dbx.close()}catch(_){ }}catch(_){ }
 }
 async function flushTrackOutbox(){
-  if(!firebaseConnected||!db||!currentUser||!participantRunId||!participantContext)return;
+  // V66: una cola de track conserva su propio runId. No se bloquea el envío solo porque
+  // activeRun tarde en restaurarse o participantRunId aún esté vacío tras recargar la PWA.
+  if(!firebaseConnected||!db||!currentUser||!participantContext)return;
   const rows=await trackOutboxGetAll();
   for(const bundle of rows){
     if(String(bundle.eventKey)!==String(participantEventKey)||String(bundle.participantId)!==String(participantContext.participantId))continue;
@@ -723,6 +725,12 @@ async function flushTrackOutbox(){
     if(!track.length){await trackOutboxDelete(bundle.id);continue;}
     const targetRunId=String(bundle.runId||participantRunId||participantContext?.liveRunId||"");
     if(!targetRunId)continue;
+    if(!participantRunId){
+      participantRunId=targetRunId;
+      participantContext={...participantContext,liveRunId:targetRunId};
+      persistParticipantContext(participantContext);
+      bindParticipantOwnRecord();
+    }
     const pBase=participantPath(participantEventKey,targetRunId,bundle.participantId);
     const transferId=safeFirebaseKey(bundle.transferId||bundle.id);
     const totalChunks=Math.ceil(track.length/TRACK_UPLOAD_CHUNK_SIZE);
@@ -837,7 +845,7 @@ function bindParticipantOwnRecord() {
       participantResultReceived = localFinished && data.status === "finished" && !!data.finishTime && (
         !!String(data.resultCode || "").trim() || !!data.resultReceivedClient
       );
-      participantTrackReceived = localFinished && localTrackCount > 0 && data.trackComplete === true && Number(data.trackPointCount || 0) >= localTrackCount && !!data.trackReceivedClient;
+      participantTrackReceived = localFinished && data.trackComplete === true && Number(data.trackPointCount || 0) >= localTrackCount && !!data.trackReceivedClient;
       publishParticipantSyncStatus();
     }
     if (!data || data.resultImported !== true) return;
