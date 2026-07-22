@@ -700,7 +700,7 @@ function readQueue() {
   } catch (_) { return []; }
 }
 function writeQueue(queue) {
-  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue.slice(-300))); } catch (_) {}
+  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue.slice(-600))); } catch (_) {}
 }
 function participantPendingQueueSummary() {
   if (!participantContext) return { total:0, controls:0, result:false, start:false };
@@ -771,7 +771,7 @@ function bindParticipantOwnRecord() {
       const localTrackCount = Math.max(0, Number(participantContext?.trackPointCount) || 0);
       participantExpectedTrackPointCount = localTrackCount;
       participantResultReceived = localFinished && data.status === "finished" && !!data.finishTime && !!String(data.resultCode || "").trim();
-      participantTrackReceived = localFinished && localTrackCount > 0 && Number(data.trackPointCount || 0) >= localTrackCount && Array.isArray(data.track) && data.track.length >= localTrackCount;
+      participantTrackReceived = localFinished && localTrackCount > 0 && data.trackComplete === true && Number(data.trackPointCount || 0) >= localTrackCount && Array.isArray(data.track) && data.track.length >= localTrackCount;
       publishParticipantSyncStatus();
     }
     if (!data || data.resultImported !== true) return;
@@ -918,6 +918,62 @@ async function applyParticipantEvent(event) {
     common.trackComplete = common.track.length >= common.trackPointCount;
     common.trackUpdatedClient = payload.clientTime || nowIso();
   }
+  if (event.kind === "TRACK_CHUNK") {
+    const transferId = safeFirebaseKey(payload.transferId || "track");
+    const chunkIndex = Math.max(0, Number(payload.chunkIndex) || 0);
+    const totalChunks = Math.max(1, Number(payload.totalChunks) || 1);
+    const chunk = Array.isArray(payload.trackChunk) ? payload.trackChunk : [];
+    await set(ref(db, `${pBase}/trackTransfers/${transferId}/chunks/${chunkIndex}`), chunk);
+    await update(ref(db, `${pBase}/trackTransfers/${transferId}`), {
+      transferId,
+      totalChunks,
+      trackPointCount: Math.max(0, Number(payload.trackPointCount) || 0),
+      lastChunkClient: payload.clientTime || nowIso(),
+      receivedChunks: chunkIndex + 1
+    });
+    await update(ref(db, pBase), {
+      trackTransferId: transferId,
+      trackTransferTotalChunks: totalChunks,
+      trackPointCount: Math.max(0, Number(payload.trackPointCount) || 0),
+      trackComplete: false,
+      trackUpdatedClient: payload.clientTime || nowIso(),
+      lastSeen: serverTimestamp(),
+      lastSeenClient: payload.clientTime || nowIso()
+    });
+    participantPresenceConfirmed = true;
+    confirmParticipantSync();
+    publishParticipantSyncStatus();
+    return;
+  }
+  if (event.kind === "TRACK_COMMIT") {
+    const transferId = safeFirebaseKey(payload.transferId || "track");
+    const totalChunks = Math.max(1, Number(payload.totalChunks) || 1);
+    const expectedCount = Math.max(0, Number(payload.trackPointCount) || 0);
+    const chunksSnap = await get(ref(db, `${pBase}/trackTransfers/${transferId}/chunks`));
+    const rawChunks = chunksSnap.val() || {};
+    const track = [];
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = rawChunks[i] ?? rawChunks[String(i)];
+      if (!Array.isArray(chunk)) throw new Error(`Falta la parte ${i + 1}/${totalChunks} del track`);
+      track.push(...chunk);
+    }
+    if (expectedCount && track.length !== expectedCount) throw new Error(`Track incompleto: ${track.length}/${expectedCount} puntos`);
+    await update(ref(db, pBase), {
+      track,
+      trackPointCount: track.length,
+      trackComplete: true,
+      trackReceivedClient: payload.clientTime || nowIso(),
+      trackUpdatedClient: payload.clientTime || nowIso(),
+      trackTransferId: transferId,
+      trackTransferReceivedChunks: totalChunks,
+      lastSeen: serverTimestamp(),
+      lastSeenClient: payload.clientTime || nowIso()
+    });
+    participantPresenceConfirmed = true;
+    confirmParticipantSync();
+    publishParticipantSyncStatus();
+    return;
+  }
   if (event.kind === "START") {
     Object.assign(common, { status:"racing", startTime:payload.startTime || payload.clientTime || nowIso(), finishTime:null, completed:false });
   } else if (event.kind === "CONTROL") {
@@ -1001,7 +1057,11 @@ function handleParticipantMessage(event) {
   if (!ctx.eventId || !ctx.participantId) return;
   if (event.source && participantMessageSource !== event.source) participantLastImportNoticeKey = "";
   participantMessageSource = event.source || participantMessageSource;
-  persistParticipantContext(ctx);
+  if (msg.kind === "TRACK_CHUNK" || msg.kind === "TRACK_COMMIT") {
+    persistParticipantContext({ ...participantContext, ...ctx, trackChunk:undefined });
+  } else {
+    persistParticipantContext(ctx);
+  }
   participantExpectedTrackPointCount = Math.max(0, Number(ctx.trackPointCount) || participantExpectedTrackPointCount || 0);
   if (!ctx.finishTime) { participantResultReceived = false; participantTrackReceived = false; }
   publishParticipantSyncStatus();
