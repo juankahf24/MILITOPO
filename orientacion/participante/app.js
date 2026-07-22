@@ -15,6 +15,25 @@
   let deferredInstallPrompt = null;
   let runnerTemplate = "";
 
+  const PARTICIPANT_IDB_NAME="MILITOPO_PARTICIPANTE_DB_V1";
+  const PARTICIPANT_IDB_STORE="estado";
+  async function shellIdbGet(key){
+    try{
+      const db=await new Promise((resolve,reject)=>{const req=indexedDB.open(PARTICIPANT_IDB_NAME,1);req.onupgradeneeded=()=>{try{req.result.createObjectStore(PARTICIPANT_IDB_STORE)}catch(_){}};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});
+      const value=await new Promise((resolve,reject)=>{const tx=db.transaction(PARTICIPANT_IDB_STORE,"readonly");const req=tx.objectStore(PARTICIPANT_IDB_STORE).get(key);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error)});
+      try{db.close()}catch(_){ }
+      return value;
+    }catch(_){return null}
+  }
+  async function recoverSnapshotFromIndexedDb(){
+    const snapshot=await shellIdbGet("snapshot");
+    if(snapshot&&validEventData(snapshot.eventData))return snapshot;
+    const eventData=await shellIdbGet("eventData");
+    const log=await shellIdbGet("runLog");
+    if(validEventData(eventData))return {savedAt:new Date().toISOString(),eventData,log:validRunLog(log)?log:null};
+    return null;
+  }
+
   const emptyEventData = () => ({
     version:"participant_independent_empty_v1",participantMode:true,webParticipantId:"",eventId:"",eventName:"MILITOPO PARTICIPANTE",
     points:{},routes:[],metrics:[],participantNames:{},participantLogs:{},skippedRoutes:{},importedResults:[],iofDescriptions:{}
@@ -231,8 +250,10 @@
   }
   async function loadRunner(){
     try{
-      currentEventData=eventFromUrl()||readSavedEventData()||emptyEventData();
-      const savedRun=readSavedRunState();
+      const idbSnapshot=await recoverSnapshotFromIndexedDb();
+      currentEventData=eventFromUrl()||readSavedEventData()||idbSnapshot?.eventData||emptyEventData();
+      const savedRun=readSavedRunState()||idbSnapshot?.log||null;
+      if(validEventData(currentEventData))saveSnapshot(currentEventData,savedRun);
       saveBootPayload(currentEventData,savedRun);
       frame.removeAttribute("scrolling");
       frame.style.overflow="hidden";
@@ -240,7 +261,7 @@
       frame.style.height=Math.max(window.innerHeight||0,720)+"px";
       frame.style.minHeight=Math.max(window.innerHeight||0,720)+"px";
       frame.removeAttribute("srcdoc");
-      const url="runner.html?app=1&v=v59-cola-track-sin-perdidas#boot";
+      const url="runner.html?app=1&v=v64-persistencia-track-outbox#boot";
       frame.addEventListener("load",()=>loading?.classList.add("is-hidden"),{once:true});
       frame.src=url;
     }catch(error){

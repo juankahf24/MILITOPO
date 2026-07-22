@@ -1607,7 +1607,7 @@ module.exports = QRCode;
 
 <div id="gpsAudioVisualPulse" class="gps-audio-visual-pulse"></div>
 <div id="toast" style="display:none;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1c2414;color:#f5e6c8;border-radius:999px;padding:12px 16px;font-weight:900"></div>
-<script type="module" src="../js/live/live-phase2.js?v=v59-cola-track-sin-perdidas"></script>
+<script type="module" src="../js/live/live-phase2.js?v=v64-persistencia-track-outbox"></script>
 <script>
 const BOOT_PAYLOAD_KEYS=["militopo_participant_boot_payload_v3","militopo_participant_boot_payload_latest","militopo_participant_app_snapshot_v1","militopo_participante_recorrido_activo_v1","militopo_participante_recorrido_rescate_v1"];
 const PARTICIPANT_FORCE_BLANK_KEY="militopo_participant_force_blank_v1";
@@ -1729,7 +1729,7 @@ const INITIAL_URL_LOG=readInitialUrlLog();
 const EVENT_DATA=(INITIAL_URL_EVENT_DATA&&Array.isArray(INITIAL_URL_EVENT_DATA.routes)&&INITIAL_URL_EVENT_DATA.routes.length)?INITIAL_URL_EVENT_DATA:((BOOT_PAYLOAD&&BOOT_PAYLOAD.eventData&&Array.isArray(BOOT_PAYLOAD.eventData.routes)&&BOOT_PAYLOAD.eventData.routes.length)?BOOT_PAYLOAD.eventData:emptyParticipantEventData());
 const PARENT_SAVED_LOG=INITIAL_URL_LOG||((BOOT_PAYLOAD&&BOOT_PAYLOAD.log)?BOOT_PAYLOAD.log:null);
 let route=null,pid=null,log=null,stream=null,running=false,detector=null,useJsQr=false,last="",lastT=0;
-const APP_VERSION="militopo-participante-v56-offline-qr-completo";
+const APP_VERSION="militopo-participante-v64-persistencia-track-outbox";
 const APP_SNAPSHOT_KEY="militopo_participant_app_snapshot_v1";
 const APP_EVENT_KEY="militopo_participant_app_event_v1";
 const APP_EVENT_BACKUP_KEY="militopo_participant_app_event_backup_v1";
@@ -1914,25 +1914,14 @@ function notifyMilitopoLive(kind,extra={}){
         if((kind==="FINISH"||kind==="TRACK")&&log&&Array.isArray(log.track)&&log.track.length){
             const fullTrack=compactTrackForSync(log.track);
             const transferId=`${String(pid)}-${String(log.startTime||'run')}-${fullTrack.length}`.replace(/[^a-zA-Z0-9_-]/g,'-');
-            const totalChunks=Math.ceil(fullTrack.length/LIVE_TRACK_CHUNK_SIZE);
-            for(let chunkIndex=0;chunkIndex<totalChunks;chunkIndex++){
-                send("TRACK_CHUNK",{
-                    ...basePayload,
-                    resultCode:"",
-                    transferId,
-                    chunkIndex,
-                    totalChunks,
-                    trackPointCount:fullTrack.length,
-                    trackChunk:fullTrack.slice(chunkIndex*LIVE_TRACK_CHUNK_SIZE,(chunkIndex+1)*LIVE_TRACK_CHUNK_SIZE),
-                    clientTime:new Date().toISOString()
-                });
-            }
-            send("TRACK_COMMIT",{
+            // Un único mensaje hacia el contenedor. El contenedor lo guarda primero en IndexedDB
+            // y después lo sube a Firebase por bloques. Así no depende del límite de localStorage.
+            send("TRACK_BUNDLE",{
                 ...basePayload,
                 resultCode:"",
                 transferId,
-                totalChunks,
                 trackPointCount:fullTrack.length,
+                fullTrack,
                 clientTime:new Date().toISOString()
             });
         }
