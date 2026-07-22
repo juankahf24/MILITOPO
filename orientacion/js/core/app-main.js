@@ -8685,7 +8685,7 @@ function drawCourse(){
     // Símbolos uniformes y pequeños: el punto real queda en el centro del círculo/meta,
     // y en el vértice del triángulo de salida.
     const symbolR=10;
-    const strokeW=1.9;
+    const strokeW=1.15; // V62: borde de círculos/símbolos PDF más fino para no tapar cartografía
     const lineW=1.7;
     const cutGap=symbolR+2.2;
 
