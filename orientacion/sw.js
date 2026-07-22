@@ -1,5 +1,5 @@
 /* MILITOPO Orientación · V55 GeoTIFF + planos KMZ restaurados */
-const MILITOPO_CACHE = "militopo-orientacion-v56-radio12-qr-offline-completo";
+const MILITOPO_CACHE = "militopo-orientacion-v57-confirmacion-doble";
 const CORE_ASSETS = [
   "./",
   "./index.html",
